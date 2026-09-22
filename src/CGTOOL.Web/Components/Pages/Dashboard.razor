@@ -1,0 +1,182 @@
+@page "/"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject IActivityEmailSender EmailSender
+@inject IDeclarationReminderLogWriter ReminderLogWriter
+@inject IAuditLogger AuditLog
+@inject ToastService Toasts
+
+<PageTitle>DI Corporate Governance Tool</PageTitle>
+
+<div class="cg-shell">
+    <InsiderDeclarationBanner />
+
+    <header class="cg-topbar">
+        <div class="cg-brand">
+            <span class="cg-brand-mark" aria-hidden="true">DI</span>
+            <div>
+                <h1>DI Corporate Governance Tool</h1>
+                <div class="cg-subtitle">Declaration compliance — Insider Trading and Related Party &amp; COI submission status</div>
+            </div>
+        </div>
+        <div class="cg-asof">
+            Data as of<br /><span class="val">@DateTime.Now.ToString("MMMM d, yyyy")</span>
+        </div>
+    </header>
+
+    @if (_rows is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <section class="cg-kpis" aria-label="Declaration totals">
+            <div class="cg-kpi" data-tone="@(InsiderPendingCount > 0 ? "critical" : "good")">
+                <div class="cg-kpi-label">Insider — Pending</div>
+                <div class="cg-kpi-value mono">@InsiderPendingCount</div>
+            </div>
+            <div class="cg-kpi" data-tone="good">
+                <div class="cg-kpi-label">Insider — Complete</div>
+                <div class="cg-kpi-value mono">@InsiderCompleteCount</div>
+            </div>
+            <div class="cg-kpi" data-tone="@(CoiPendingCount > 0 ? "critical" : "good")">
+                <div class="cg-kpi-label">RP/COI — Pending</div>
+                <div class="cg-kpi-value mono">@CoiPendingCount</div>
+            </div>
+            <div class="cg-kpi" data-tone="good">
+                <div class="cg-kpi-label">RP/COI — Complete</div>
+                <div class="cg-kpi-value mono">@CoiCompleteCount</div>
+            </div>
+        </section>
+
+        <section class="cg-controls">
+            <select class="cg-input" style="width:auto;" @bind="_yearFilter" @bind:after="ResetToFirstPage" aria-label="Filter by year">
+                <option value="0">All years</option>
+                @foreach (var y in AvailableYears())
+                {
+                    <option value="@y">@y</option>
+                }
+            </select>
+            <select class="cg-input" style="width:auto;" @bind="_quarterFilter" @bind:after="ResetToFirstPage" aria-label="Filter by quarter">
+                <option value="0">All quarters</option>
+                <option value="1">Q1</option>
+                <option value="2">Q2</option>
+                <option value="3">Q3</option>
+                <option value="4">Q4</option>
+            </select>
+            <select class="cg-input" style="width:auto;" @bind="_categoryFilter" @bind:after="ResetToFirstPage" aria-label="Filter by category">
+                <option value="">All Categories</option>
+                <option value="insider">Insider declaration</option>
+                <option value="coi">RP/COI Declaration</option>
+            </select>
+            <select class="cg-input" style="width:auto;" @bind="_statusFilter" @bind:after="ResetToFirstPage" aria-label="Filter by status">
+                <option value="">All statuses</option>
+                <option value="complete">Complete</option>
+                <option value="pending">Pending</option>
+            </select>
+            <span class="cg-result-count">@FilteredRows().Count record(s)</span>
+        </section>
+
+        <div class="cg-controls">
+            <span class="cg-result-count">@SelectedCount selected</span>
+            <button type="button" class="cg-action-btn cg-good" disabled="@(SelectedCount == 0 || _sendingReminders)" @onclick="SendRemindersAsync">
+                @(_sendingReminders ? "Sending…" : "Send Reminder")
+            </button>
+        </div>
+
+        <div class="cg-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>
+                            <input type="checkbox" title="Select all pending (matching filters)" checked="@AllVisiblePendingSelected" @onchange="e => ToggleSelectAll((bool)e.Value!)" />
+                        </th>
+                        <th>User</th>
+                        <th>Entity</th>
+                        <th>Category</th>
+                        <th>Quarter</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th>Reminders Sent</th>
+                        <th>Last Reminder</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in PagedRows())
+                    {
+                        <tr class="cg-data-row">
+                            <td>
+                                @if (!row.Complete)
+                                {
+                                    <input type="checkbox" checked="@IsSelected(row)" @onchange="e => ToggleSelected(row, (bool)e.Value!)" />
+                                }
+                            </td>
+                            <td>@row.MemberName</td>
+                            <td>@(row.EntityShortCode ?? "—")</td>
+                            <td>@CategoryLabel(row.Category)</td>
+                            <td class="mono">Q@(row.Quarter) @row.Year</td>
+                            <td><span class="cg-status-pill @(row.Complete ? "cleared" : "pending")">@(row.Complete ? "Complete" : "Pending")</span></td>
+                            <td class="mono">@(row.SubmittedAtUtc?.ToLocalDisplay("dd/MM/yyyy HH:mm") ?? "—")</td>
+                            <td class="mono">@ReminderCountFor(row)</td>
+                            <td class="mono">@(LastReminderAtFor(row)?.ToLocalDisplay("dd/MM/yyyy HH:mm") ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (FilteredRows().Count == 0)
+            {
+                <div class="cg-empty-state">No records match these filters.</div>
+            }
+        </div>
+
+        @if (TotalPages > 1)
+        {
+            <div class="cg-controls">
+                <button type="button" class="cg-action-btn" disabled="@(_page <= 1)" @onclick="() => GoToPage(_page - 1)">‹ Previous</button>
+                <span class="cg-result-count">Page @_page of @TotalPages</span>
+                <button type="button" class="cg-action-btn" disabled="@(_page >= TotalPages)" @onclick="() => GoToPage(_page + 1)">Next ›</button>
+            </div>
+        }
+
+        <details class="cg-audit-history" style="margin-top:16px;">
+            <summary>Reminder log (@(_reminderLogs?.Count ?? 0))</summary>
+            @if (_reminderLogs is null || _reminderLogs.Count == 0)
+            {
+                <div class="cg-empty-state">No reminders have been sent yet.</div>
+            }
+            else
+            {
+                <div class="cg-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Entity</th>
+                                <th>Category</th>
+                                <th>Quarter</th>
+                                <th>Sent</th>
+                                <th>Sent By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in _reminderLogs)
+                            {
+                                <tr class="cg-data-row">
+                                    <td>@log.MemberName</td>
+                                    <td>@(log.CompanyName ?? "—")</td>
+                                    <td>@(log.Category == DeclarationCycleType.InsiderTrading ? "Insider Trading" : "RP/COI")</td>
+                                    <td class="mono">Q@(log.Quarter) @log.Year</td>
+                                    <td class="mono">@log.SentAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm")</td>
+                                    <td>@log.SentByName</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </details>
+    }
+</div>

@@ -1,0 +1,74 @@
+@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
+@using CGTOOL.Web.Data
+@using CGTOOL.Web.Data.Governance
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthState
+@inject ImpersonationContext Impersonation
+
+@if (_dueForName is not null)
+{
+    <a href="/declarations/insider-trading" class="cg-insider-due-banner">
+        <b>⚠ Insider Trading Declaration due@(_isImpersonating ? $" for {_dueForName}" : "")</b>
+        <span>Due @_dueDateUtc!.Value.ToLocalDisplay("dd MMM yyyy")@(_isImpersonating ? " — click to submit on their behalf" : " — click to submit now")</span>
+    </a>
+}
+
+@code {
+    private string? _dueForName;
+    private DateTime? _dueDateUtc;
+    private bool _isImpersonating;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // This component is embedded inside whichever page is currently loading (Dashboard,
+        // My Declarations), so it must NOT share the circuit-scoped ApplicationDbContext with
+        // that page's own OnInitializedAsync -- both would race on the same DbContext instance
+        // ("A second operation was started on this context instance..."). A private, short-lived
+        // context avoids it entirely (same fix as NavMenu.razor.cs).
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        Member? effectiveMember;
+        _isImpersonating = Impersonation.ActingMemberId is not null;
+
+        if (Impersonation.ActingMemberId is { } actingId)
+        {
+            effectiveMember = await db.Members.FirstOrDefaultAsync(m => m.Id == actingId);
+        }
+        else
+        {
+            var state = await AuthState.GetAuthenticationStateAsync();
+            var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            effectiveMember = userId is null ? null : await db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
+        }
+
+        if (effectiveMember is null || !effectiveMember.InsiderTradingAccess) return;
+
+        // A saved-but-not-submitted draft must not silence this due banner -- it's still a row in
+        // InsiderDeclarations, but the declaration isn't actually complete yet.
+        var submittedRunIds = await db.InsiderDeclarations
+            .Where(d => d.MemberId == effectiveMember.Id && !d.IsDraft)
+            .Select(d => d.DeclarationCycleRunId)
+            .ToListAsync();
+
+        // ThenByDescending(Id) is required, not cosmetic: SentAtUtc alone isn't unique (repeated
+        // Send Now/reminders can land within the same second, or even tie exactly), and without a
+        // deterministic tiebreaker SQL Server can return a different "top" row on different runs of
+        // this identical query -- which is exactly why this banner and the "Submit Insider
+        // Declaration" tile on My Declarations were showing two different due dates for what should
+        // be the same pending run.
+        var run = await db.DeclarationCycleRuns
+            .Where(r => r.Type == DeclarationCycleType.InsiderTrading
+                && (r.CompanyId == null || r.CompanyId == effectiveMember.CompanyId)
+                && !r.Recalled
+                && !submittedRunIds.Contains(r.Id))
+            .OrderByDescending(r => r.SentAtUtc)
+            .ThenByDescending(r => r.Id)
+            .FirstOrDefaultAsync();
+
+        if (run is null) return;
+
+        _dueForName = effectiveMember.FullName;
+        _dueDateUtc = run.DueDateUtc;
+    }
+}

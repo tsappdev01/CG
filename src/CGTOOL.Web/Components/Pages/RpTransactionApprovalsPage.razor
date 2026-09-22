@@ -1,0 +1,60 @@
+@page "/rp-transactions/approvals"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using System.Security.Claims
+@inject ApplicationDbContext Db
+@inject IRelatedPartyTransactionWriter Writer
+@inject IActivityEmailSender EmailSender
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toasts
+
+<PageTitle>RP Transactions — Pending My Approval</PageTitle>
+
+<div class="cg-shell">
+    <h1>Pending My Approval</h1>
+    <p class="cg-subtitle">Related Party Transactions awaiting your decision as the designated Approver for your entity.</p>
+
+    @if (_step == Step.Loading)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else if (_step == Step.NoAccess)
+    {
+        <div class="cg-empty-state">Your login isn't linked to a User record yet. Ask an Administrator to link your account on the User Management page.</div>
+    }
+    else if (_pending.Count == 0)
+    {
+        <div class="cg-empty-state">No transactions are awaiting your approval.</div>
+    }
+    else
+    {
+        @foreach (var t in _pending)
+        {
+            <div class="cg-member-form" style="max-width:800px; margin-bottom:16px;">
+                <h2>@RelatedPartyTransaction.DisplayReference(t.Id)</h2>
+                <table>
+                    <tbody>
+                        <tr><th>Entity</th><td>@t.Company?.Name</td></tr>
+                        <tr><th>User</th><td>@t.Member?.FullName</td></tr>
+                        <tr><th>Name of the counter-party</th><td>@t.CounterPartyName</td></tr>
+                        <tr><th>Transaction Value</th><td class="mono">@t.TransactionValue.ToString("N2")</td></tr>
+                        <tr><th>Description</th><td>@t.Description</td></tr>
+                        <tr><th>Date of request</th><td class="mono">@t.DateOfRequest.ToString("dd/MM/yyyy")</td></tr>
+                    </tbody>
+                </table>
+
+                <label class="cg-field">
+                    <span>Remarks</span>
+                    <textarea class="cg-input" rows="3" value="@RemarksFor(t.Id)" @oninput="e => _remarks[t.Id] = e.Value?.ToString() ?? string.Empty"></textarea>
+                </label>
+
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn cg-good" @onclick="() => ApproveAsync(t)">Approve</button>
+                    <button type="button" class="cg-action-btn" @onclick="() => EscalateAsync(t)">Escalate</button>
+                    <button type="button" class="cg-action-btn cg-critical" @onclick="() => RejectAsync(t)">Reject</button>
+                </div>
+            </div>
+        }
+    }
+</div>

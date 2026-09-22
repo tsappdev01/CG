@@ -1,0 +1,42 @@
+@if (Show)
+{
+    <div class="cg-justify-prompt">
+        <label class="cg-field">
+            <span>@Label</span>
+            <textarea class="cg-input" rows="2" @bind="_text" @bind:event="oninput" placeholder="Required — explain why, like a helpdesk ticket note"></textarea>
+        </label>
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn cg-critical" @onclick="ConfirmAsync">Confirm</button>
+            <button type="button" class="cg-action-btn" @onclick="Cancel">Cancel</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public string Label { get; set; } = "Justification";
+    [Parameter] public EventCallback<string> OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public ToastService? Toasts { get; set; }
+
+    private string _text = string.Empty;
+
+    private async Task ConfirmAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_text))
+        {
+            Toasts?.ShowError("A justification is required before this action can proceed.");
+            return;
+        }
+
+        var text = _text;
+        _text = string.Empty;
+        await OnConfirm.InvokeAsync(text);
+    }
+
+    private async Task Cancel()
+    {
+        _text = string.Empty;
+        await OnCancel.InvokeAsync();
+    }
+}

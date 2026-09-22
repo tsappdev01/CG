@@ -1,0 +1,106 @@
+@page "/rp-transactions/ccao-review"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using System.Security.Claims
+@inject ApplicationDbContext Db
+@inject IRelatedPartyTransactionWriter Writer
+@inject IActivityEmailSender EmailSender
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toasts
+
+<PageTitle>RP Transactions — CCAO Review</PageTitle>
+
+<div class="cg-shell">
+    <h1>CCAO Review</h1>
+    <p class="cg-subtitle">Confirm the offline MD&amp;CEO/Board/AC/GA review (FRD §3.5) concluded satisfactorily, then release cleared transactions into the RP Register.</p>
+
+    @if (_step == Step.Loading)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else if (_step == Step.NoAccess)
+    {
+        <div class="cg-empty-state">This screen is restricted to the CCAO position. Ask an Administrator to set it on your User record's "RP Transaction Role."</div>
+    }
+    else
+    {
+        <div class="cg-tabs" role="tablist">
+            <button type="button" class="cg-tab @(_activeTab == "review" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "review")" @onclick='() => SwitchTab("review")'>Awaiting Decision — @_awaitingDecision.Count</button>
+            <button type="button" class="cg-tab @(_activeTab == "release" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "release")" @onclick='() => SwitchTab("release")'>Ready to Release — @_readyToRelease.Count</button>
+        </div>
+
+        @if (_activeTab == "review")
+        {
+            @if (_awaitingDecision.Count == 0)
+            {
+                <div class="cg-empty-state">No transactions awaiting your Form 3 decision.</div>
+            }
+            else
+            {
+                @foreach (var t in _awaitingDecision)
+                {
+                    <div class="cg-member-form" style="max-width:800px; margin-bottom:16px;">
+                        <h2>@RelatedPartyTransaction.DisplayReference(t.Id)</h2>
+                        <table>
+                            <tbody>
+                                <tr><th>Entity</th><td>@t.Company?.Name</td></tr>
+                                <tr><th>User</th><td>@t.Member?.FullName</td></tr>
+                                <tr><th>Name of the counter-party</th><td>@t.CounterPartyName</td></tr>
+                                <tr><th>Transaction Value</th><td class="mono">@t.TransactionValue.ToString("N2")</td></tr>
+                                <tr><th>Description</th><td>@t.Description</td></tr>
+                                <tr><th>Date of request</th><td class="mono">@t.DateOfRequest.ToString("dd/MM/yyyy")</td></tr>
+                                <tr><th>Approver Action</th><td>@t.ApproverAction (@t.ApproverActionAtUtc?.ToString("dd/MM/yyyy"))</td></tr>
+                                <tr><th>Approver Remarks</th><td>@t.ApproverRemarks</td></tr>
+                            </tbody>
+                        </table>
+
+                        <label class="cg-field">
+                            <span>CCAO Remarks</span>
+                            <textarea class="cg-input" rows="3" value="@RemarksFor(t.Id)" @oninput="e => _remarks[t.Id] = e.Value?.ToString() ?? string.Empty"></textarea>
+                        </label>
+
+                        <div class="cg-actions">
+                            <button type="button" class="cg-action-btn cg-good" @onclick="() => CcaoApproveAsync(t)">Approve</button>
+                            <button type="button" class="cg-action-btn cg-critical" @onclick="() => CcaoRejectAsync(t)">Reject</button>
+                        </div>
+                    </div>
+                }
+            }
+        }
+        else
+        {
+            @if (_readyToRelease.Count == 0)
+            {
+                <div class="cg-empty-state">No transactions ready to release.</div>
+            }
+            else
+            {
+                @foreach (var t in _readyToRelease)
+                {
+                    <div class="cg-member-form" style="max-width:800px; margin-bottom:16px;">
+                        <h2>@RelatedPartyTransaction.DisplayReference(t.Id)</h2>
+                        <table>
+                            <tbody>
+                                <tr><th>Entity</th><td>@t.Company?.Name</td></tr>
+                                <tr><th>User</th><td>@t.Member?.FullName</td></tr>
+                                <tr><th>Name of the counter-party</th><td>@t.CounterPartyName</td></tr>
+                                <tr><th>Transaction Value</th><td class="mono">@t.TransactionValue.ToString("N2")</td></tr>
+                                <tr><th>CCAO Remarks</th><td>@t.CcaoRemarks</td></tr>
+                            </tbody>
+                        </table>
+
+                        <label class="cg-field-row" style="align-items:center; gap:8px;">
+                            <input type="checkbox" checked="@(_documentationConfirmed.TryGetValue(t.Id, out var c) && c)" @onchange="e => _documentationConfirmed[t.Id] = (bool)e.Value!" />
+                            <span>All documentation in respect of approvals obtained from AC/Board/GM is in place for this transaction.</span>
+                        </label>
+
+                        <div class="cg-actions">
+                            <button type="button" class="cg-action-btn cg-good" @onclick="() => ReleaseAsync(t)">Release to RP Register</button>
+                        </div>
+                    </div>
+                }
+            }
+        }
+    }
+</div>

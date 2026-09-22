@@ -1,0 +1,138 @@
+@page "/admin/departments"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IDepartmentWriter DepartmentWriter
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toasts
+@inject IJSRuntime JS
+
+<PageTitle>Departments</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1>Departments</h1>
+    <p class="cg-subtitle">Control Panel — departments Users can be assigned to.</p>
+
+    @if (_departments is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+        </div>
+
+        <div class="cg-bulk-bar">
+            <button type="button" class="cg-action-btn" disabled="@(_selectedIds.Count == 0)" @onclick="DeselectAll">Deselect all</button>
+            @if (_selectedIds.Count > 0)
+            {
+                <span class="cg-result-count">@_selectedIds.Count selected</span>
+                <button type="button" class="cg-action-btn cg-critical" @onclick="() => _bulkSetActive = false">Deactivate selected</button>
+                <button type="button" class="cg-action-btn cg-good" @onclick="() => _bulkSetActive = true">Reactivate selected</button>
+            }
+        </div>
+
+        @if (_bulkSetActive is not null)
+        {
+            <JustificationPrompt Show="true"
+                                 Label="@($"Why are you {(_bulkSetActive == true ? "reactivating" : "deactivating")} {_selectedIds.Count} department(s)?")"
+                                 Toasts="Toasts"
+                                 OnConfirm="BulkSetActiveAsync"
+                                 OnCancel="() => _bulkSetActive = null" />
+        }
+
+        <div class="cg-table-wrap cg-employee-form">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="cg-select-col"><input type="checkbox" checked="@AllSelected" @onchange="e => ToggleSelectAll((bool)e.Value!)" aria-label="Select all" /></th>
+                        <SortableHeader Label="Code" Column="Code" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Name" Column="Name" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Users" Column="Users" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Status" Column="Status" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="cg-data-row">
+                        <td></td>
+                        <td><input class="cg-input" placeholder="Code" @bind="_newCode" maxlength="20" /></td>
+                        <td><input class="cg-input" placeholder="Name" @bind="_newName" maxlength="120" /></td>
+                        <td></td>
+                        <td></td>
+                        <td><button type="button" class="cg-action-btn cg-good" @onclick="AddAsync">Add department</button></td>
+                    </tr>
+                    @foreach (var d in SortedDepartments())
+                    {
+                        <tr class="cg-data-row @(d.Id == _pendingJustify?.Id ? "cg-selected" : "")">
+                            <td class="cg-select-col"><input type="checkbox" checked="@_selectedIds.Contains(d.Id)" @onchange="e => ToggleSelect(d.Id, (bool)e.Value!)" aria-label="Select @d.Name" /></td>
+                            <td><input class="cg-input" @bind="d.Code" maxlength="20" /></td>
+                            <td><input class="cg-input" @bind="d.Name" maxlength="120" /></td>
+                            <td class="mono">@MemberCount(d.Id)</td>
+                            <td><ToggleSwitch Value="d.Active" ValueChanged="() => _pendingJustify = d" /></td>
+                            <td>
+                                <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveAsync(d)">Save</button>
+                                <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = d"><span class="cg-icon-print-glyph"></span></button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (_pendingJustify is not null)
+        {
+            <JustificationPrompt Show="true"
+                                  Label="@($"Why are you {(_pendingJustify.Active ? "deactivating" : "reactivating")} {_pendingJustify.Name}?")"
+                                  Toasts="Toasts"
+                                  OnConfirm="ToggleActiveAsync"
+                                  OnCancel="() => _pendingJustify = null" />
+        }
+
+        @if (_showPrintPreview || _printSingleRecord is not null)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => { _showPrintPreview = false; _printSingleRecord = null; }">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — @(_printSingleRecord is not null ? $"Department — {_printSingleRecord.Name}" : "Departments")</h2>
+                                <PrintFooter />
+                            </div>
+                        </div>
+                        <div class="cg-table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Name</th>
+                                        <th>Users</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var d in PrintRows())
+                                    {
+                                        <tr class="cg-data-row">
+                                            <td class="mono">@d.Code</td>
+                                            <td>@d.Name</td>
+                                            <td class="mono">@MemberCount(d.Id)</td>
+                                            <td>@(d.Active ? "Active" : "Inactive")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

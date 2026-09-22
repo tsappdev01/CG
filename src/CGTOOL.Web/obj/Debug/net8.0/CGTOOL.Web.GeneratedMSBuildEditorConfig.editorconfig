@@ -1,0 +1,357 @@
+is_global = true
+build_property.TargetFramework = net8.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.RootNamespace = CGTOOL.Web
+build_property.RootNamespace = CGTOOL.Web
+build_property.ProjectDir = C:\Claude.AI\CGS\CGTOOL\src\CGTOOL.Web\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 8.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = C:\Claude.AI\CGS\CGTOOL\src\CGTOOL.Web
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 8.0
+build_property.EnableCodeStyleSeverity = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/AccessDenied.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXEFjY2Vzc0RlbmllZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/ConfirmEmail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXENvbmZpcm1FbWFpbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/ConfirmEmailChange.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXENvbmZpcm1FbWFpbENoYW5nZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/ExternalLogin.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXEV4dGVybmFsTG9naW4ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/ForgotPassword.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXEZvcmdvdFBhc3N3b3JkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/ForgotPasswordConfirmation.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXEZvcmdvdFBhc3N3b3JkQ29uZmlybWF0aW9uLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/InvalidPasswordReset.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXEludmFsaWRQYXNzd29yZFJlc2V0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/InvalidUser.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXEludmFsaWRVc2VyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Lockout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXExvY2tvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Login.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXExvZ2luLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/LoginWith2fa.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXExvZ2luV2l0aDJmYS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/LoginWithRecoveryCode.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXExvZ2luV2l0aFJlY292ZXJ5Q29kZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/ChangePassword.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxDaGFuZ2VQYXNzd29yZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/DeletePersonalData.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxEZWxldGVQZXJzb25hbERhdGEucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/Disable2fa.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxEaXNhYmxlMmZhLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/Email.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxFbWFpbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/EnableAuthenticator.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxFbmFibGVBdXRoZW50aWNhdG9yLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/ExternalLogins.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxFeHRlcm5hbExvZ2lucy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/GenerateRecoveryCodes.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxHZW5lcmF0ZVJlY292ZXJ5Q29kZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxJbmRleC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/PersonalData.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxQZXJzb25hbERhdGEucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/ResetAuthenticator.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxSZXNldEF1dGhlbnRpY2F0b3IucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/SetPassword.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxTZXRQYXNzd29yZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/TwoFactorAuthentication.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxUd29GYWN0b3JBdXRoZW50aWNhdGlvbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Manage/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxfSW1wb3J0cy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/Register.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXFJlZ2lzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/RegisterConfirmation.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXFJlZ2lzdGVyQ29uZmlybWF0aW9uLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/ResendEmailConfirmation.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXFJlc2VuZEVtYWlsQ29uZmlybWF0aW9uLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/ResetPassword.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXFJlc2V0UGFzc3dvcmQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/ResetPasswordConfirmation.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXFJlc2V0UGFzc3dvcmRDb25maXJtYXRpb24ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Pages/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXF9JbXBvcnRzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Shared/AccountLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFNoYXJlZFxBY2NvdW50TGF5b3V0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Shared/ExternalLoginPicker.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFNoYXJlZFxFeHRlcm5hbExvZ2luUGlja2VyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Shared/ManageLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFNoYXJlZFxNYW5hZ2VMYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Shared/RedirectToLogin.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFNoYXJlZFxSZWRpcmVjdFRvTG9naW4ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Shared/ShowRecoveryCodes.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFNoYXJlZFxTaG93UmVjb3ZlcnlDb2Rlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Account/Shared/StatusMessage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFNoYXJlZFxTdGF0dXNNZXNzYWdlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/App.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBcHAucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Layout/AdminImpersonationBanner.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcQWRtaW5JbXBlcnNvbmF0aW9uQmFubmVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Layout/IdleLockOverlay.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcSWRsZUxvY2tPdmVybGF5LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Layout/ImpersonationBanner.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcSW1wZXJzb25hdGlvbkJhbm5lci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Layout/ToastContainer.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcVG9hc3RDb250YWluZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/AdminSetup.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxBZG1pblNldHVwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/AuditLog.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxBdWRpdExvZy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/Companies.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxDb21wYW5pZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/CompanyDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxDb21wYW55RGV0YWlsLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/DeclarationSetupPage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxEZWNsYXJhdGlvblNldHVwUGFnZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/DeclarationsSetupPage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxEZWNsYXJhdGlvbnNTZXR1cFBhZ2UucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/Departments.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxEZXBhcnRtZW50cy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/InsiderDeclarationReport.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxJbnNpZGVyRGVjbGFyYXRpb25SZXBvcnQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/JobTitles.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxKb2JUaXRsZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/MemberDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxNZW1iZXJEZXRhaWwucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/PendingNotifications.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxQZW5kaW5nTm90aWZpY2F0aW9ucy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/RelatedPartyCoiDeclarationReport.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxSZWxhdGVkUGFydHlDb2lEZWNsYXJhdGlvblJlcG9ydC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/RelatedPartyRegister.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxSZWxhdGVkUGFydHlSZWdpc3Rlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/ScheduleActivitiesPage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxTY2hlZHVsZUFjdGl2aXRpZXNQYWdlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/Settings.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxTZXR0aW5ncy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/ShareholderRegisterPage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxTaGFyZWhvbGRlclJlZ2lzdGVyUGFnZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/ShareTradingPage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxTaGFyZVRyYWRpbmdQYWdlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Admin/UserManagement.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxVc2VyTWFuYWdlbWVudC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Error.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xFcnJvci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Impersonate.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xJbXBlcnNvbmF0ZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/MyDeclarations.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xNeURlY2xhcmF0aW9ucy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/MyWorkspace.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xNeVdvcmtzcGFjZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/RpTransactionApprovalsPage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xScFRyYW5zYWN0aW9uQXBwcm92YWxzUGFnZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/RpTransactionCcaoReviewPage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xScFRyYW5zYWN0aW9uQ2Nhb1Jldmlld1BhZ2UucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/RpTransactionRegisterPage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xScFRyYW5zYWN0aW9uUmVnaXN0ZXJQYWdlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/RpTransactionsPage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xScFRyYW5zYWN0aW9uc1BhZ2UucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/SubmitInsiderDeclaration.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xTdWJtaXRJbnNpZGVyRGVjbGFyYXRpb24ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/SubmitRelatedPartyCoiDeclaration.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xTdWJtaXRSZWxhdGVkUGFydHlDb2lEZWNsYXJhdGlvbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Routes.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSb3V0ZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Shared/CompanyRowEditor.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcQ29tcGFueVJvd0VkaXRvci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Shared/ConfirmPrompt.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcQ29uZmlybVByb21wdC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Shared/EntityLogo.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcRW50aXR5TG9nby5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Shared/InsiderDeclarationBanner.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcSW5zaWRlckRlY2xhcmF0aW9uQmFubmVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Shared/JustificationPrompt.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcSnVzdGlmaWNhdGlvblByb21wdC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Shared/NotifyUserPrompt.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcTm90aWZ5VXNlclByb21wdC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Shared/PrintFooter.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcUHJpbnRGb290ZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Shared/SortableHeader.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcU29ydGFibGVIZWFkZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Shared/ToggleSwitch.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcVG9nZ2xlU3dpdGNoLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xfSW1wb3J0cy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Layout/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTWFpbkxheW91dC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-kgzxa2iloz
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Layout/NavMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTmF2TWVudS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-y4jh2n5o9y
+
+[C:/Claude.AI/CGS/CGTOOL/src/CGTOOL.Web/Components/Pages/Dashboard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xEYXNoYm9hcmQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-aq3tkbj87f

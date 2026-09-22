@@ -1,0 +1,326 @@
+@page "/admin/declarations-setup/{TypeSlug}"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@using System.Security.Claims
+@inject ApplicationDbContext Db
+@inject IDeclarationCycleSetupWriter SetupWriter
+@inject IDeclarationCycleRunWriter RunWriter
+@inject IActivityEmailSender EmailSender
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toasts
+@inject IJSRuntime JS
+
+<PageTitle>@PageHeading</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <p><a href="/admin/user-management">← Back to Admin</a></p>
+    <h1>@PageHeading</h1>
+    <p class="cg-subtitle">Data Management — Declarations Setup. Configure the template, then Send Now or Schedule Send for a future date.</p>
+
+    @if (_setup is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-tabs" role="tablist">
+            <button type="button" class="cg-tab @(_activeTab == "template" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "template")" @onclick='() => _activeTab = "template"'>
+                Configure the template
+            </button>
+            <button type="button" class="cg-tab @(_activeTab == "send" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "send")" @onclick='() => _activeTab = "send"'>
+                Send Notification
+            </button>
+            <button type="button" class="cg-tab @(_activeTab == "history" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "history")" @onclick='() => _activeTab = "history"'>
+                History
+            </button>
+        </div>
+
+        @if (_activeTab == "template")
+        {
+            <EditForm Model="_setup" OnValidSubmit="SaveAsync" class="cg-member-form cg-member-page">
+                <DataAnnotationsValidator />
+
+                <label class="cg-field">
+                    <span>No. of reminders</span>
+                    <InputNumber class="cg-input" @bind-Value="_setup.ReminderCount" />
+                </label>
+
+                <label class="cg-field">
+                    <span>Reminder frequency</span>
+                    <select class="cg-input" @bind="_setup.ReminderFrequency">
+                        <option value="@CycleReminderFrequency.Daily">Daily</option>
+                        <option value="@CycleReminderFrequency.Weekly">Weekly</option>
+                    </select>
+                </label>
+
+                <label class="cg-field">
+                    <span>Email subject</span>
+                    <InputText class="cg-input" @bind-Value="_setup.EmailSubject" maxlength="200" />
+                    <ValidationMessage For="() => _setup.EmailSubject" class="cg-error" />
+                </label>
+
+                <label class="cg-field">
+                    <span>Email template</span>
+                    <InputTextArea class="cg-input" rows="8" @bind-Value="_setup.EmailBody" />
+                    <ValidationMessage For="() => _setup.EmailBody" class="cg-error" />
+                    <p class="cg-subtitle">Placeholders: <code>{FullName}</code>, <code>{DueDate}</code>.</p>
+                </label>
+
+                <div class="cg-actions">
+                    <button type="submit" class="cg-action-btn cg-good">Save</button>
+                </div>
+            </EditForm>
+        }
+        else if (_activeTab == "send")
+        {
+            <div class="cg-member-form" style="max-width:640px;">
+                <h2>Send</h2>
+                <label class="cg-field">
+                    <span>Entity</span>
+                    <select class="cg-input" @bind="_sendCompanyId">
+                        <option value="">All entities</option>
+                        @foreach (var c in _companies ?? [])
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </label>
+                <div class="cg-field-row">
+                    <label class="cg-field">
+                        <span>Year</span>
+                        <select class="cg-input" @bind="_periodYear" @bind:after="EnsureValidSelectedPeriod">
+                            @foreach (var y in PeriodYearOptions())
+                            {
+                                <option value="@y">@y</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="cg-field">
+                        <span>Quarter</span>
+                        <select class="cg-input" @bind="_periodQuarter">
+                            <option value="1" disabled="@IsQuarterDisabled(1)">Q1</option>
+                            <option value="2" disabled="@IsQuarterDisabled(2)">Q2</option>
+                            <option value="3" disabled="@IsQuarterDisabled(3)">Q3</option>
+                            <option value="4" disabled="@IsQuarterDisabled(4)">Q4</option>
+                        </select>
+                    </label>
+                </div>
+                @if (LatestSentPeriod() is { } latestSent)
+                {
+                    <p class="cg-subtitle">Periods before Q@(latestSent.Quarter) @(latestSent.Year) (the most recently sent) are disabled — notifications must go out in order.</p>
+                }
+                <p class="cg-subtitle">The declaration period this notification covers — independent of when it's actually sent.</p>
+                <label class="cg-field">
+                    <span>Due date</span>
+                    <input type="date" class="cg-input" value="@_dueDate.ToString("yyyy-MM-dd")" @onchange="e => _dueDate = DateTime.Parse((string)e.Value!)" />
+                </label>
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn cg-good" disabled="@_sending" @onclick="PrepareSendNow">@(_sending ? "Sending…" : "Send now")</button>
+                </div>
+
+                @if (_pendingSendConfirm)
+                {
+                    <ConfirmPrompt Show="true" Message="@_confirmMessage" ConfirmLabel="Send" OnConfirm="ConfirmSendNowAsync" OnCancel="CancelSendConfirm" />
+                }
+
+                <h2>Schedule send</h2>
+                <label class="cg-field">
+                    <span>Send on date</span>
+                    <input type="date" class="cg-input" value="@_scheduleSendDate.ToString("yyyy-MM-dd")" @onchange="e => _scheduleSendDate = DateTime.Parse((string)e.Value!)" />
+                    <p class="cg-subtitle">Always fires at 08:00 (local time) on the chosen date.</p>
+                </label>
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn" disabled="@_scheduling" @onclick="PrepareScheduleSend">@(_scheduling ? "Scheduling…" : "Schedule send")</button>
+                </div>
+
+                @if (_pendingScheduleConfirm)
+                {
+                    <ConfirmPrompt Show="true" Message="@_confirmMessage" ConfirmLabel="Schedule" OnConfirm="ConfirmScheduleSendAsync" OnCancel="CancelScheduleConfirm" />
+                }
+            </div>
+        }
+        else
+        {
+            <div class="cg-controls">
+                <select class="cg-input" style="width:auto;" @bind="_historyYearFilter" aria-label="Filter by year">
+                    <option value="0">All years</option>
+                    @foreach (var y in AvailableHistoryYears())
+                    {
+                        <option value="@y">@y</option>
+                    }
+                </select>
+
+                <select class="cg-input" style="width:auto;" @bind="_historyQuarterFilter" aria-label="Filter by quarter">
+                    <option value="0">All quarters</option>
+                    <option value="1">Q1</option>
+                    <option value="2">Q2</option>
+                    <option value="3">Q3</option>
+                    <option value="4">Q4</option>
+                </select>
+
+                <select class="cg-input" style="width:auto;" @bind="_historyCompanyFilter" aria-label="Filter by entity">
+                    <option value="0">All entities</option>
+                    @foreach (var c in _companies ?? [])
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </select>
+
+                <select class="cg-input" style="width:auto;" @bind="_historyStatusFilter" aria-label="Filter by submission status">
+                    <option value="">All statuses</option>
+                    <option value="sent">Sent</option>
+                    <option value="scheduled">Scheduled</option>
+                </select>
+
+                <span class="cg-result-count">@SortedRuns().Count matching</span>
+            </div>
+
+            <div class="cg-actions">
+                <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+            </div>
+
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <SortableHeader Label="Sent" Column="Sent" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Period</th>
+                            <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Due" Column="Due" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Status</th>
+                            <SortableHeader Label="Recipients" Column="Recipients" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Reminders sent</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in SortedRuns())
+                        {
+                            <tr class="cg-data-row">
+                                <td class="mono">@r.SentAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm")</td>
+                                <td class="mono">Q@(r.PeriodQuarter) @r.PeriodYear</td>
+                                <td>@(r.Company?.Name ?? "All entities")</td>
+                                <td class="mono">
+                                    @if (_editingDueDateRunId == r.Id)
+                                    {
+                                        <input type="date" class="cg-input" style="width:auto; display:inline-block;" value="@_editingDueDate.ToString("yyyy-MM-dd")" @onchange="e => _editingDueDate = DateTime.Parse((string)e.Value!)" />
+                                        <button type="button" class="cg-icon-btn" title="Save due date" disabled="@_savingDueDate" @onclick="() => SaveDueDateAsync(r)">✓</button>
+                                        <button type="button" class="cg-icon-btn" title="Cancel" disabled="@_savingDueDate" @onclick="CancelEditDueDate">✕</button>
+                                    }
+                                    else
+                                    {
+                                        @r.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")
+                                        <button type="button" class="cg-icon-btn" title="Extend due date" @onclick="() => StartEditDueDate(r)">✎</button>
+                                    }
+                                </td>
+                                <td>
+                                    @if (r.Recalled)
+                                    {
+                                        <span class="cg-status-pill flagged" title="@($"Recalled {r.RecalledAtUtc?.ToLocalDisplay("dd/MM/yyyy HH:mm")} by {r.RecalledByName}")">Recalled</span>
+                                    }
+                                    else if (r.Sent)
+                                    {
+                                        <span class="cg-status-pill cleared">Sent</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="cg-status-pill pending">Scheduled</span>
+                                    }
+                                </td>
+                                <td class="mono">@(r.Sent ? r.RecipientCount.ToString() : "—")</td>
+                                <td class="mono">@(r.Sent ? $"{r.RemindersSent} / {_setup.ReminderCount}" : "—")</td>
+                                <td>
+                                    @if (r.Sent)
+                                    {
+                                        <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = r"><span class="cg-icon-print-glyph"></span></button>
+                                        @if (CanRecall(r))
+                                        {
+                                            <button type="button" class="cg-action-btn cg-critical" @onclick="() => PrepareRecall(r)">Recall</button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="cg-action-btn cg-critical" @onclick="() => CancelScheduledSendAsync(r)">Cancel</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (SortedRuns().Count == 0)
+                {
+                    <div class="cg-empty-state">No cycles match these filters.</div>
+                }
+            </div>
+
+            @if (_pendingRecallRun is not null)
+            {
+                <ConfirmPrompt Show="true"
+                               Message="@($"Recall this Q{_pendingRecallRun.PeriodQuarter} {_pendingRecallRun.PeriodYear} notification ({EntityLabel(_pendingRecallRun.CompanyId)})? No submissions have been made yet. All {_pendingRecallRun.Recipients.Count} recipient(s) will be emailed that it's been withdrawn.")"
+                               ConfirmLabel="Recall and notify"
+                               OnConfirm="ConfirmRecallAsync"
+                               OnCancel="CancelRecallConfirm" />
+            }
+
+            @if (_showPrintPreview || _printSingleRecord is not null)
+            {
+                <div class="cg-print-overlay">
+                    <div class="cg-print-modal cg-print-modal-wide">
+                        <div class="cg-print-modal-actions no-print">
+                            <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                            <button type="button" class="cg-action-btn" @onclick="() => { _showPrintPreview = false; _printSingleRecord = null; }">Close</button>
+                        </div>
+                        <div class="cg-print-area">
+                            <div class="cg-print-header">
+                                <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                                <div>
+                                    <h2>Corporate Governance Tool — @(_printSingleRecord is not null ? $"{PageHeading} — {_printSingleRecord.SentAtUtc.ToLocalDisplay():dd/MM/yyyy HH:mm}" : PageHeading)</h2>
+                                    <PrintFooter />
+                                </div>
+                            </div>
+                            <div class="cg-table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Sent on</th>
+                                            <th>Entity</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var r in PrintRecipients())
+                                        {
+                                            <tr class="cg-data-row">
+                                                <td>@r.MemberName</td>
+                                                <td class="mono">@r.Email</td>
+                                                <td class="mono">@r.SentAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm")</td>
+                                                <td>@(r.CompanyName ?? "—")</td>
+                                                <td>
+                                                    @if (r.Success)
+                                                    {
+                                                        <span class="cg-status-icon-good" title="Sent">✓</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="cg-status-icon-bad" title="Failed">✗</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                                @if (PrintRecipients().Count == 0)
+                                {
+                                    <div class="cg-empty-state">No recipients recorded yet.</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    }
+</div>

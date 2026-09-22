@@ -1,0 +1,132 @@
+@page "/admin/audit-log"
+@page "/admin/audit-log/{ModeSlug}"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IJSRuntime JS
+
+<PageTitle>@PageHeading</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1>@PageHeading</h1>
+    <p class="cg-subtitle">Who did what, why, and from where — retained for SCA compliance audit.</p>
+
+    <div class="cg-controls">
+        <label class="cg-field" style="max-width:180px;">
+            <span>From</span>
+            <input type="date" class="cg-input" value="@_from?.ToString("yyyy-MM-dd")" @onchange="OnFromChangedAsync" />
+        </label>
+        <label class="cg-field" style="max-width:180px;">
+            <span>To</span>
+            <input type="date" class="cg-input" value="@_to?.ToString("yyyy-MM-dd")" @onchange="OnToChangedAsync" />
+        </label>
+        @if (IsPeriodic)
+        {
+            <span class="cg-result-count">@(_totalCount) matching entr@(_totalCount == 1 ? "y" : "ies")</span>
+        }
+    </div>
+
+    @if (_entries is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+        </div>
+
+        <div class="cg-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <SortableHeader Label="When" Column="When" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Who" Column="Who" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Acting on behalf of" Column="ActingOnBehalfOf" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Action" Column="Action" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <th>How (details)</th>
+                        <th>Why (justification)</th>
+                        <th>IP address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in SortedEntries())
+                    {
+                        <tr class="cg-data-row">
+                            <td class="mono">@e.OccurredAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm:ss")</td>
+                            <td>@e.ActorDisplayName</td>
+                            <td>@(e.ActingOnBehalfOf ?? "—")</td>
+                            <td><span class="cg-status-pill @StatusClass(e.Action)">@e.Action</span></td>
+                            <td>@e.EntityType #@e.EntityId</td>
+                            <td>@e.Details</td>
+                            <td>@(e.Justification ?? "—")</td>
+                            <td class="mono">@(e.IpAddress ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (_entries.Count == 0)
+            {
+                <div class="cg-empty-state">No audit events recorded for this date range.</div>
+            }
+            @if (_totalCount > _entries.Count)
+            {
+                <p class="cg-subtitle">Showing the most recent @_entries.Count of @_totalCount matching entries — narrow the date range to see the rest.</p>
+            }
+        </div>
+
+        @if (_showPrintPreview)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = false">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — @PageHeading</h2>
+                                <p>Range @_from?.ToString("dd/MM/yyyy") to @_to?.ToString("dd/MM/yyyy")</p>
+                            </div>
+                        </div>
+                        <PrintFooter />
+                        <div class="cg-table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>When</th>
+                                        <th>Who</th>
+                                        <th>Acting on behalf of</th>
+                                        <th>Action</th>
+                                        <th>Entity</th>
+                                        <th>How (details)</th>
+                                        <th>Why (justification)</th>
+                                        <th>IP address</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var e in SortedEntries())
+                                    {
+                                        <tr class="cg-data-row">
+                                            <td class="mono">@e.OccurredAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm:ss")</td>
+                                            <td>@e.ActorDisplayName</td>
+                                            <td>@(e.ActingOnBehalfOf ?? "—")</td>
+                                            <td>@e.Action</td>
+                                            <td>@e.EntityType #@e.EntityId</td>
+                                            <td>@e.Details</td>
+                                            <td>@(e.Justification ?? "—")</td>
+                                            <td class="mono">@(e.IpAddress ?? "—")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

@@ -1,0 +1,91 @@
+@page "/impersonate"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+@inject ImpersonationContext Impersonation
+@inject IAuditLogger AuditLog
+@inject NavigationManager Nav
+
+<PageTitle>Impersonate</PageTitle>
+
+<div class="cg-shell cg-narrow">
+    <h1>Act on behalf of another user</h1>
+    <p class="cg-subtitle">Only users who have approved you as an impersonator appear here, for filling their Insider Trading, Related Party Register, or Conflict of Interest declarations on their behalf.</p>
+
+    @if (Impersonation.ActingMemberId is not null)
+    {
+        <p>You are currently acting on behalf of <b>@Impersonation.ActingMemberName</b>.</p>
+        <button type="button" class="cg-action-btn cg-critical" @onclick="EndAsync">End impersonation</button>
+    }
+    else if (_myMember is null)
+    {
+        <p class="cg-subtitle">Your account isn't linked to a User record, so you have no impersonation grants. Ask an Administrator to link your login on the User Management page.</p>
+    }
+    else if (_candidates is null || _candidates.Count == 0)
+    {
+        <p class="cg-subtitle">No one has approved you as an impersonator.</p>
+    }
+    else
+    {
+        <div class="cg-table-wrap">
+            <table>
+                <thead><tr><th>User</th><th>Entity</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var m in _candidates)
+                    {
+                        <tr class="cg-data-row">
+                            <td>@m.FullName</td>
+                            <td>@m.Company?.ShortCode</td>
+                            <td><button type="button" class="cg-action-btn cg-good" @onclick="() => StartAsync(m)">Act as</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private Member? _myMember;
+    private List<Member>? _candidates;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        if (GovernanceRoles.IsNormalStaffOnly(state.User))
+        {
+            Nav.NavigateTo("/my-declarations");
+            return;
+        }
+
+        var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (userId is null) return;
+
+        _myMember = await Db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
+        if (_myMember is null) return;
+
+        var approvedIds = await Db.MemberImpersonationApprovals
+            .Where(a => a.ImpersonatorId == _myMember.Id)
+            .Select(a => a.MemberId)
+            .ToListAsync();
+
+        _candidates = await Db.Members.Include(m => m.Company).Where(m => approvedIds.Contains(m.Id) && m.Active).ToListAsync();
+    }
+
+    private async Task StartAsync(Member member)
+    {
+        Impersonation.Start(member.Id, member.FullName);
+        var state = await AuthState.GetAuthenticationStateAsync();
+        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.ImpersonationStart, nameof(Member), member.Id.ToString(), $"Started acting on behalf of {member.FullName}");
+        Nav.NavigateTo("/");
+    }
+
+    private async Task EndAsync()
+    {
+        var name = Impersonation.ActingMemberName;
+        var state = await AuthState.GetAuthenticationStateAsync();
+        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.ImpersonationEnd, nameof(Member), null, $"Ended acting on behalf of {name}");
+        Impersonation.End();
+    }
+}

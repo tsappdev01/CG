@@ -1,0 +1,373 @@
+@page "/declarations/related-party-coi"
+@page "/declarations/related-party-coi/{Id:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using System.Security.Claims
+@inject ApplicationDbContext Db
+@inject IRelatedPartyCoiDeclarationWriter Writer
+@inject IActivityEmailSender EmailSender
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ImpersonationContext Impersonation
+@inject ToastService Toasts
+@inject IWebHostEnvironment Env
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager Nav
+@inject IUaePassAuthService UaePass
+@inject Microsoft.AspNetCore.DataProtection.IDataProtector UaePassStateProtector
+@inject IDocumentIntelligenceService DocIntel
+
+<PageTitle>Related Party & COI Declaration</PageTitle>
+
+<div class="cg-shell cg-declaration-wizard">
+    <p><a href="/my-declarations">← Back to Declarations</a></p>
+    <h1>@(IsBod ? "BOD Member Declaration" : "Executive Management Declaration")</h1>
+    <p class="cg-subtitle">I, @_effectiveMember?.FullName, the undersigned, declare the following in respect of Related Party and Conflict of Interest matters.</p>
+    @if (Impersonation.ActingMemberId is not null)
+    {
+        <p class="cg-subtitle">Submitting on behalf of <b>@Impersonation.ActingMemberName</b>.</p>
+    }
+
+    @if (_step == Step.Loading)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else if (_step == Step.NoAccess)
+    {
+        <div class="cg-empty-state">
+            @(_effectiveMember is null
+                ? "Your login isn't linked to a User record yet. Ask an Administrator to link your account on the User Management page."
+                : "You don't have Related Party / Conflict of Interest declaration access assigned. Ask an Administrator to grant it on your User record.")
+        </div>
+    }
+    else if (_step == Step.NotDue)
+    {
+        <div class="cg-empty-state">No Related Party &amp; COI declaration is currently due for @_effectiveMember!.FullName.</div>
+    }
+    else if (_step == Step.EditWindowClosed)
+    {
+        <div class="cg-empty-state">The due date for this declaration has passed, so it can no longer be edited.</div>
+    }
+    else
+    {
+        @if (_step == Step.Form || _step == Step.Review)
+        {
+            <div class="cg-info-callout">
+                <p>@(_isEditing ? "Editing your submitted declaration. " : "")Due date: <b class="mono">@_run!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</b></p>
+            </div>
+        }
+
+        @if (_step == Step.Form)
+        {
+            <div class="cg-member-form cg-declaration-form">
+                <div class="cg-info-callout">
+                    <p>I, @_effectiveMember?.FullName, the undersigned, hereby declare the following:</p>
+                    <ul class="cg-pointer-list">
+                        <li>List of my relatives <em>(Note 2)</em>.</li>
+                        <li>Companies in which I, or my relatives, hold more than 30% of paid-up share capital, wherein my shareholding represents both beneficial interest and ability to influence strategic, operating, investing and financial decision-making.</li>
+                        <li>Companies in which I serve as a board member or senior executive.</li>
+                    </ul>
+                </div>
+
+                <h2 class="cg-section-heading">Part I — Related Party Declaration</h2>
+
+                <h3>List of Relatives</h3>
+                <div class="cg-info-callout">
+                    <p><b>Note 2 — Relative:</b> Father, mother, brother, sister, children, spouse, father-in-law, mother-in-law, and children of the spouse.</p>
+                </div>
+                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                    <input type="checkbox" @bind="_nothingRelatives" />
+                    <span>I have nothing to declare in this section.</span>
+                </label>
+                @if (!_nothingRelatives)
+                {
+                    <div class="cg-table-wrap">
+                        <table>
+                            <thead><tr><th>Name</th><th>Relationship</th><th></th></tr></thead>
+                            <tbody>
+                                @foreach (var r in _relatives)
+                                {
+                                    <tr class="cg-data-row">
+                                        <td><input class="cg-input" @bind="r.Name" maxlength="120" /></td>
+                                        <td>
+                                            <select class="cg-input" @bind="r.Relationship">
+                                                @foreach (var opt in RelativeOptions)
+                                                {
+                                                    <option value="@opt.Value">@opt.Label</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td><button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveRelative(r)">Remove</button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn" @onclick="AddRelative">+ Add relative</button>
+                        @if (_myFamilyMembers.Count > 0)
+                        {
+                            <select class="cg-input" style="width:auto; display:inline-block;" @bind="_pickFamilyMemberId">
+                                <option value="">Add from My Family…</option>
+                                @foreach (var f in AvailableFamilyMembers)
+                                {
+                                    <option value="@f.Id">@f.Name (@RelationshipLabel(f.Relationship))</option>
+                                }
+                            </select>
+                            <button type="button" class="cg-action-btn" disabled="@(_pickFamilyMemberId is null)" @onclick="AddFromMyFamily">Add</button>
+                        }
+                    </div>
+                }
+
+                <h3>Companies in which you own ≥30% of paid-up share capital</h3>
+                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                    <input type="checkbox" @bind="_nothingSelfOwned" />
+                    <span>I have nothing to declare in this section.</span>
+                </label>
+                @if (!_nothingSelfOwned)
+                {
+                    @foreach (var row in _selfOwnedCompanies)
+                    {
+                        <CompanyRowEditor Row="row" Relatives="_relatives" ShowRelativeLink="false"
+                                          OnRemove="() => RemoveCompany(_selfOwnedCompanies, row)"
+                                          OnFileSelected="e => UploadTradeLicenseFileAsync(row, e)"
+                                          OnFileRemove="doc => RemoveDocument(row, doc)" />
+                    }
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn" @onclick="() => AddCompany(_selfOwnedCompanies)">+ Add company</button>
+                        @if (_myCompanies.Count > 0)
+                        {
+                            <select class="cg-input" style="width:auto; display:inline-block;" @bind="_pickSelfCompanyId">
+                                <option value="">Add from My Companies…</option>
+                                @foreach (var c in AvailableCompaniesFor(_selfOwnedCompanies))
+                                {
+                                    <option value="@c.Id">@c.CompanyName</option>
+                                }
+                            </select>
+                            <button type="button" class="cg-action-btn" disabled="@(_pickSelfCompanyId is null)" @onclick='() => { AddCompanyFromWorkspace(_selfOwnedCompanies, _pickSelfCompanyId); _pickSelfCompanyId = null; }'>Add</button>
+                        }
+                    </div>
+                }
+
+                <h3>Companies in which a relative owns ≥30% of its shares</h3>
+                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                    <input type="checkbox" @bind="_nothingRelativeOwned" />
+                    <span>I have nothing to declare in this section.</span>
+                </label>
+                @if (!_nothingRelativeOwned)
+                {
+                    @foreach (var row in _relativeOwnedCompanies)
+                    {
+                        <CompanyRowEditor Row="row" Relatives="_relatives" ShowRelativeLink="true" EarlierCompanies="_selfOwnedCompanies"
+                                          OnRemove="() => RemoveCompany(_relativeOwnedCompanies, row)"
+                                          OnFileSelected="e => UploadTradeLicenseFileAsync(row, e)"
+                                          OnFileRemove="doc => RemoveDocument(row, doc)" />
+                    }
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn" @onclick="() => AddCompany(_relativeOwnedCompanies)">+ Add company</button>
+                        @if (_myCompanies.Count > 0)
+                        {
+                            <select class="cg-input" style="width:auto; display:inline-block;" @bind="_pickRelativeCompanyId">
+                                <option value="">Add from My Companies…</option>
+                                @foreach (var c in AvailableCompaniesFor(_relativeOwnedCompanies))
+                                {
+                                    <option value="@c.Id">@c.CompanyName</option>
+                                }
+                            </select>
+                            <button type="button" class="cg-action-btn" disabled="@(_pickRelativeCompanyId is null)" @onclick='() => { AddCompanyFromWorkspace(_relativeOwnedCompanies, _pickRelativeCompanyId); _pickRelativeCompanyId = null; }'>Add</button>
+                        }
+                    </div>
+                }
+
+                <h3>Companies in which you serve as board member or senior executive</h3>
+                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                    <input type="checkbox" @bind="_nothingBoardRoles" />
+                    <span>I have nothing to declare in this section.</span>
+                </label>
+                @if (!_nothingBoardRoles)
+                {
+                    @foreach (var row in _boardRoleCompanies)
+                    {
+                        <CompanyRowEditor Row="row" Relatives="_relatives" ShowRelativeLink="false" EarlierCompanies="CompaniesBeforeBoardRole"
+                                          OnRemove="() => RemoveCompany(_boardRoleCompanies, row)"
+                                          OnFileSelected="e => UploadTradeLicenseFileAsync(row, e)"
+                                          OnFileRemove="doc => RemoveDocument(row, doc)" />
+                    }
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn" @onclick="() => AddCompany(_boardRoleCompanies)">+ Add company</button>
+                        @if (_myCompanies.Count > 0)
+                        {
+                            <select class="cg-input" style="width:auto; display:inline-block;" @bind="_pickBoardCompanyId">
+                                <option value="">Add from My Companies…</option>
+                                @foreach (var c in AvailableCompaniesFor(_boardRoleCompanies))
+                                {
+                                    <option value="@c.Id">@c.CompanyName</option>
+                                }
+                            </select>
+                            <button type="button" class="cg-action-btn" disabled="@(_pickBoardCompanyId is null)" @onclick='() => { AddCompanyFromWorkspace(_boardRoleCompanies, _pickBoardCompanyId); _pickBoardCompanyId = null; }'>Add</button>
+                        }
+                    </div>
+                }
+
+                <h2 class="cg-section-heading">Part II — Conflict of Interest Declaration</h2>
+                @if (IsBod)
+                {
+                    <div class="cg-info-callout">
+                        <p>
+                            A conflict of interest is a transaction or relationship that presents or might conflict with a Board member's obligations owed to DI
+                            and the Board member's personal, business or other interests. All conflict of interest are not necessarily prohibited or harmful to DI.
+                            However, full disclosure of all actual and potential conflicts is necessary, and the interested Board member(s) shall be recused from
+                            participating in discussions and voting on the matter. Board members must recognize that conflict of interest, even when in fact it
+                            may not exist, can be damaging to them and to DI PJSC and accordingly, must be avoided.
+                        </p>
+                    </div>
+                }
+                else
+                {
+                    <div class="cg-info-callout">
+                        <p>
+                            A conflict of interest is a transaction or relationship that presents or might conflict with an Employee's obligations owed to Dubai
+                            Investments PJSC and its Group Companies (DI) and the individual's personal, business or other interests. All conflicts of interest
+                            are not necessarily prohibited or harmful to DI. However, full disclosure of all actual and potential conflicts is necessary, and the
+                            interested individual shall be recused from participating in decision making on the matter. An employee must recognize that conflict
+                            of interest, even when in fact it may not exist, can be damaging to them and to DI PJSC and accordingly, must be avoided.
+                        </p>
+                    </div>
+                    <p class="cg-subtitle">
+                        I hereby declare that if at any time following the submission of this form I become aware of any actual or potential transactions,
+                        relationships, or activities that could reasonably be expected to give rise to potential conflicts of interest, I will promptly
+                        escalate the matter to the Corporate Affairs Office of DI for further decision making on the matter.
+                    </p>
+                }
+                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                    <input type="checkbox" @bind="_nothingConflicts" />
+                    <span>I have nothing to declare in this section.</span>
+                </label>
+                @if (!_nothingConflicts)
+                {
+                    <div class="cg-table-wrap">
+                        <table>
+                            <thead><tr><th>Legal Name of Company/Counterparty</th><th>Principal Business Activity</th><th>Nature of Holding</th><th></th></tr></thead>
+                            <tbody>
+                                @foreach (var c in _conflicts)
+                                {
+                                    <tr class="cg-data-row">
+                                        <td>
+                                            <input class="cg-input" list="@($"conflict-company-names-{c.Key:N}")" value="@c.CompanyOrCounterpartyName"
+                                                   @oninput="e => OnConflictCompanyNameInput(c, e)" maxlength="160" />
+                                            @if (AllDeclaredCompanies.Count > 0)
+                                            {
+                                                <datalist id="@($"conflict-company-names-{c.Key:N}")">
+                                                    @foreach (var name in AllDeclaredCompanies.Select(x => x.LegalCompanyName).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct())
+                                                    {
+                                                        <option value="@name"></option>
+                                                    }
+                                                </datalist>
+                                            }
+                                        </td>
+                                        <td><input class="cg-input" @bind="c.PrincipalBusinessActivity" maxlength="400" /></td>
+                                        <td>
+                                            <select class="cg-input" @bind="c.NatureOfHolding">
+                                                <option value="">Select…</option>
+                                                @foreach (var opt in NatureOfHoldingOptions)
+                                                {
+                                                    <option value="@opt">@opt</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td><button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveConflict(c)">Remove</button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="cg-actions"><button type="button" class="cg-action-btn" @onclick="AddConflict">+ Add conflict</button></div>
+                }
+
+                <div class="cg-info-callout">
+                    <p>
+                        <b>Note:</b>
+                        @(IsBod
+                            ? "The above declared information on I. Related Party and II. Conflict of Interest shall be reviewed at every board meeting and updated for any changes in a Board Member's interests."
+                            : "Updates to the above declared information on I. Related Party and II. Conflict of Interest, if any, shall be made on the online platform for submission of RP declarations, as and when they occur.")
+                    </p>
+                </div>
+
+                <h2 class="cg-section-heading">Attestation</h2>
+                <label class="cg-field">
+                    <span>Typed signature (full name)</span>
+                    <input class="cg-input" @bind="_attestationName" maxlength="160" />
+                </label>
+
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn" disabled="@_savingDraft" @onclick="SaveDraftAsync">@(_savingDraft ? "Saving…" : "Save as Draft")</button>
+                    <button type="button" class="cg-action-btn cg-good" @onclick="GoToReview">Proceed to Submission</button>
+                </div>
+
+                <ConfirmPrompt Show="_pendingFormConfirm"
+                               Message="Please confirm all information entered above is correct before proceeding — you can still come back and edit it, but double-check now."
+                               ConfirmLabel="All information is correct — proceed"
+                               OnConfirm="ConfirmForm"
+                               OnCancel="CancelFormConfirm" />
+            </div>
+        }
+        else if (_step == Step.Review)
+        {
+            <div class="cg-member-form cg-declaration-form">
+                @if (_justAutoSaved)
+                {
+                    <div class="cg-toast cg-toast-success" style="margin-bottom:12px;">Declaration saved</div>
+                }
+                <h2>@(_loadedAsSubmittedEdit ? "Are you sure you want to proceed for editing your declaration?" : "Are you sure you want to submit below declaration form?")</h2>
+
+                <div class="cg-table-wrap">
+                    <table>
+                        <tbody>
+                            <tr><th>List of Relatives</th><td>@(_nothingRelatives ? "Nothing to declare" : $"{_relatives.Count} declared")</td></tr>
+                            <tr><th>Companies you own ≥30%</th><td>@(_nothingSelfOwned ? "Nothing to declare" : $"{_selfOwnedCompanies.Count} declared")</td></tr>
+                            <tr><th>Companies a relative owns ≥30%</th><td>@(_nothingRelativeOwned ? "Nothing to declare" : $"{_relativeOwnedCompanies.Count} declared")</td></tr>
+                            <tr><th>Companies you serve as board member/executive</th><td>@(_nothingBoardRoles ? "Nothing to declare" : $"{_boardRoleCompanies.Count} declared")</td></tr>
+                            <tr><th>Conflicts of Interest (Part II)</th><td>@(_nothingConflicts ? "Nothing to declare" : $"{_conflicts.Count} declared")</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="cg-subtitle">Please review carefully. You can still edit this declaration from Declarations until the due date (<b class="mono">@_run!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</b>).</p>
+
+                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                    <input type="checkbox" @bind="_attestationConfirmed" />
+                    <span>I, @_attestationName, confirm the above declaration is complete and accurate.</span>
+                </label>
+
+                @if (UaePass.IsConfigured)
+                {
+                    <div class="cg-info-callout">
+                        @if (_uaePassVerifiedAtUtc is not null)
+                        {
+                            <p>✅ Identity verified via <b>UAE PASS</b> as <b>@_uaePassVerifiedName</b> on <span class="mono">@_uaePassVerifiedAtUtc.Value.ToLocalDisplay("dd MMM yyyy HH:mm")</span>.</p>
+                        }
+                        else
+                        {
+                            <p><b>Optional:</b> verify your identity via UAE PASS before submitting.</p>
+                            <div class="cg-actions" style="margin-top:8px;">
+                                <button type="button" class="cg-action-btn" disabled="@_verifyingUaePass" @onclick="StartUaePassVerificationAsync">@(_verifyingUaePass ? "Redirecting to UAE PASS…" : "Verify with UAE PASS")</button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn" disabled="@_submitting" @onclick="() => _step = Step.Form">← Back to edit</button>
+                    <button type="button" class="cg-action-btn cg-good" disabled="@(_submitting || !_attestationConfirmed)" @onclick="SubmitAsync">@(_submitting ? "Saving…" : (_hadExistingRow ? "Save changes" : "Confirm & Submit"))</button>
+                </div>
+            </div>
+        }
+        else if (_step == Step.Done)
+        {
+            <div class="cg-empty-state">
+                <p><b>Your Related Party &amp; COI declaration was @(_hadExistingRow ? "updated" : "submitted") successfully</b> on @_submittedAtUtc!.Value.ToString("dd MMM yyyy HH:mm") UTC.</p>
+                <p><a href="/my-declarations">Return to Declarations</a></p>
+            </div>
+        }
+    }
+</div>

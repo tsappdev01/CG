@@ -1,0 +1,60 @@
+@page "/admin/setup"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject ToastService Toasts
+
+<PageTitle>Administrator Setup</PageTitle>
+
+<div class="cg-shell cg-narrow">
+    <h1>Administrator setup</h1>
+
+    @if (_loading)
+    {
+        <p><em>Checking…</em></p>
+    }
+    else if (_alreadyConfigured)
+    {
+        <p>An administrator has already been configured for this deployment. Ask an existing administrator to grant you access from <a href="/admin/user-management">User management</a>.</p>
+    }
+    else
+    {
+        <p>No administrator has claimed this deployment yet. Claiming access grants your account the <b>Administrator</b> role.</p>
+        <button type="button" class="cg-action-btn cg-good" @onclick="Claim">Claim administrator access</button>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private bool _alreadyConfigured;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var admins = await UserManager.GetUsersInRoleAsync(GovernanceRoles.Administrator);
+        _alreadyConfigured = admins.Count > 0;
+        _loading = false;
+    }
+
+    private async Task Claim()
+    {
+        var admins = await UserManager.GetUsersInRoleAsync(GovernanceRoles.Administrator);
+        if (admins.Count > 0)
+        {
+            _alreadyConfigured = true;
+            return;
+        }
+
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        if (user is null)
+        {
+            Toasts.ShowError("Could not resolve the current user.");
+            return;
+        }
+
+        await UserManager.AddToRoleAsync(user, GovernanceRoles.Administrator);
+        Nav.NavigateTo("/admin/user-management", forceLoad: true);
+    }
+}

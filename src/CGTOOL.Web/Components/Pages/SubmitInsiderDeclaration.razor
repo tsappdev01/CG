@@ -1,0 +1,384 @@
+@page "/declarations/insider-trading"
+@page "/declarations/insider-trading/{Id:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using System.Security.Claims
+@inject ApplicationDbContext Db
+@inject IInsiderDeclarationWriter Writer
+@inject IActivityEmailSender EmailSender
+@inject SqlDbMailSender SqlMail
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ImpersonationContext Impersonation
+@inject ToastService Toasts
+@inject IWebHostEnvironment Env
+@inject IDocumentIntelligenceService DocIntel
+
+<PageTitle>Insider Trading Declaration</PageTitle>
+
+<div class="cg-shell cg-declaration-wizard">
+    <p><a href="/my-declarations">← Back to Declarations</a></p>
+    <h1>Declaration of Transactions in DI Shares by Insiders</h1>
+    <p class="cg-subtitle">Employee Name: <b>@_effectiveMember?.FullName</b></p>
+    @if (Impersonation.ActingMemberId is not null)
+    {
+        <p class="cg-subtitle">Submitting on behalf of <b>@Impersonation.ActingMemberName</b>.</p>
+    }
+
+    @if (_step == Step.Loading)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else if (_step == Step.NoAccess)
+    {
+        <div class="cg-empty-state">
+            @(_effectiveMember is null
+                ? "Your login isn't linked to a User record yet. Ask an Administrator to link your account on the User Management page."
+                : "You don't have Insider Trading declaration access assigned. Ask an Administrator to grant it on your User record.")
+        </div>
+    }
+    else if (_step == Step.NotDue)
+    {
+        <div class="cg-empty-state">No Insider Trading declaration is currently due for @_effectiveMember!.FullName.</div>
+    }
+    else if (_step == Step.EditWindowClosed)
+    {
+        <div class="cg-empty-state">The due date for this declaration has passed, so it can no longer be edited.</div>
+    }
+    else
+    {
+        var period = PeriodRange();
+        <p class="cg-subtitle">
+            I, @_effectiveMember!.FullName, have read the Securities Dealing Policy including the relevant section on Material Price Sensitive
+            Information (<a href="/assets/policy.pdf" target="_blank">Link to Policy</a>) and hereby confirm that I have wholly complied with the
+            policies. Accordingly, I report the following in compliance with the Securities Dealing Policy during the period
+            @period.From.ToString("dd-MM-yyyy") till @period.To.ToString("dd-MM-yyyy").
+        </p>
+
+        @if (_step == Step.Capture1 || _step == Step.Capture2)
+        {
+            <p class="cg-subtitle">
+                @(_isEditing ? "Editing your submitted declaration. " : "")Due date: <b class="mono">@_run!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</b>
+            </p>
+        }
+
+        @if (_step == Step.Capture1)
+        {
+            <div class="cg-member-form cg-declaration-form">
+                <label class="cg-field">
+                    <span>1. Do you have a National Investor Number (NIN)?</span>
+                    <div class="cg-yesno">
+                        <button type="button" class="cg-action-btn @(_hasNin ? "cg-good" : "")" @onclick="() => _hasNin = true">Yes, I have a NIN</button>
+                        <button type="button" class="cg-action-btn @(!_hasNin ? "cg-good" : "")" @onclick="() => _hasNin = false">I don't have a NIN</button>
+                    </div>
+                </label>
+                @if (_hasNin)
+                {
+                    <label class="cg-field">
+                        <span>NIN Number</span>
+                        <input class="cg-input" @bind="_ninNumber" maxlength="40" placeholder="Alphanumeric, minimum 10 characters" />
+                    </label>
+                }
+
+                <label class="cg-field">
+                    <span>2. Do your relatives have a National Investor Number (NIN)? <em class="cg-subtitle" style="margin:0;">(Father, Mother, Brother, Sister, Children, Spouse, Father-in-Law, Mother-in-Law, Stepchildren)</em></span>
+                    <div class="cg-yesno">
+                        <button type="button" class="cg-action-btn @(_relativesHaveNin ? "cg-good" : "")" @onclick="() => _relativesHaveNin = true">Yes, my relatives have a NIN</button>
+                        <button type="button" class="cg-action-btn @(!_relativesHaveNin ? "cg-good" : "")" @onclick="() => _relativesHaveNin = false">No, my relatives do not have a NIN</button>
+                    </div>
+                </label>
+                @if (_relativesHaveNin)
+                {
+                    <div class="cg-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Share Held By</th>
+                                    <th>Name of Share Holder</th>
+                                    <th>NIN</th>
+                                    <th>Additional</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var h in _ninHolders)
+                                {
+                                    <tr class="cg-data-row">
+                                        <td>
+                                            <select class="cg-input" @bind="h.Relationship">
+                                                @foreach (var opt in RelativeOptions)
+                                                {
+                                                    <option value="@opt.Value">@opt.Label</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td><input class="cg-input" @bind="h.NameOfShareHolder" maxlength="120" /></td>
+                                        <td><input class="cg-input" @bind="h.NinNumber" maxlength="40" placeholder="Min. 10 chars" /></td>
+                                        <td><input class="cg-input" @bind="h.Additional" maxlength="400" /></td>
+                                        <td><button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveNinHolderAsync(h)">Remove</button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn" @onclick="AddNinHolderAsync">+ Add relative</button>
+                    </div>
+                }
+
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn cg-good" @onclick="GoToCapture2">Next</button>
+                </div>
+
+                <ConfirmPrompt Show="_pendingCapture1Confirm"
+                               Message="Please confirm all information entered above is correct before proceeding — you can still come back and edit it, but double-check now."
+                               ConfirmLabel="All information is correct — proceed"
+                               OnConfirm="ConfirmCapture1"
+                               OnCancel="CancelCapture1Confirm" />
+            </div>
+        }
+        else if (_step == Step.Capture2)
+        {
+            <div class="cg-member-form cg-declaration-form">
+                <h2 class="cg-section-heading">Document Upload</h2>
+                <p class="cg-subtitle">
+                    Accepted file formats: JPG, PNG, PDF only. Maximum size 1 MB.
+                    @(DocIntel.IsConfigured ? " Fields below will auto-fill from the uploaded Emirates ID / Passport / Trade Licence — please verify before continuing." : "")
+                </p>
+
+                <div class="cg-field-row">
+                    <label class="cg-field">
+                        <span>Emirates ID <em class="cg-subtitle" style="margin:0;">(mandatory)</em></span>
+                        <InputFile OnChange="OnEmiratesIdSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingEmiratesId" />
+                        @if (_uploadingEmiratesId)
+                        {
+                            <progress class="cg-upload-progress" max="100" value="@_emiratesIdUploadProgress"></progress>
+                            <span class="cg-subtitle">Uploading… @_emiratesIdUploadProgress%</span>
+                        }
+                        else if (!string.IsNullOrEmpty(_emiratesIdPath))
+                        {
+                            <a href="@_emiratesIdPath" target="_blank" class="cg-subtitle">✓ Uploaded — view file</a>
+                        }
+                        else if (_emiratesIdExpiredNeedsReupload)
+                        {
+                            <p class="cg-error">Your Emirates ID on file has expired — please upload a current copy.</p>
+                        }
+                        <input class="cg-input" @bind="_emiratesIdNumber" maxlength="40" placeholder="Emirates ID number" />
+                        <input class="cg-input" @bind="_emiratesIdNameOnCard" maxlength="120" placeholder="Name on card" />
+                        <input type="date" class="cg-input" @bind="_emiratesIdExpiryDate" placeholder="Expiry date" />
+                    </label>
+                    <label class="cg-field">
+                        <span>Passport <em class="cg-subtitle" style="margin:0;">(mandatory)</em></span>
+                        <InputFile OnChange="OnPassportSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingPassport" />
+                        @if (_uploadingPassport)
+                        {
+                            <progress class="cg-upload-progress" max="100" value="@_passportUploadProgress"></progress>
+                            <span class="cg-subtitle">Uploading… @_passportUploadProgress%</span>
+                        }
+                        else if (!string.IsNullOrEmpty(_passportPath))
+                        {
+                            <a href="@_passportPath" target="_blank" class="cg-subtitle">✓ Uploaded — view file</a>
+                        }
+                        else if (_passportExpiredNeedsReupload)
+                        {
+                            <p class="cg-error">Your Passport on file has expired — please upload a current copy.</p>
+                        }
+                        <input class="cg-input" @bind="_passportNumber" maxlength="40" placeholder="Passport number" />
+                        <input type="date" class="cg-input" @bind="_passportExpiryDate" placeholder="Expiry date" />
+                        <input class="cg-input" @bind="_passportIssuingCountry" maxlength="80" placeholder="Issuing country" />
+                    </label>
+                </div>
+
+                <div class="cg-field-row">
+                    <label class="cg-field">
+                        <span>Trade Licence <em class="cg-subtitle" style="margin:0;">(optional)</em></span>
+                        <InputFile OnChange="OnTradeLicenceSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingTradeLicence" />
+                        @if (_uploadingTradeLicence)
+                        {
+                            <progress class="cg-upload-progress" max="100" value="@_tradeLicenceUploadProgress"></progress>
+                            <span class="cg-subtitle">Uploading… @_tradeLicenceUploadProgress%</span>
+                        }
+                        else if (!string.IsNullOrEmpty(_tradeLicencePath))
+                        {
+                            <a href="@_tradeLicencePath" target="_blank" class="cg-subtitle">✓ Uploaded — view file</a>
+                        }
+                        else if (_tradeLicenceExpiredNeedsReupload)
+                        {
+                            <p class="cg-error">Your Trade Licence on file has expired — please upload a current copy.</p>
+                        }
+                        <input class="cg-input" @bind="_tradeLicenceNumber" maxlength="40" placeholder="Licence number" />
+                        <input class="cg-input" @bind="_tradeLicenceLegalName" maxlength="160" placeholder="Business name" />
+                        <input type="date" class="cg-input" @bind="_tradeLicenceExpiryDate" placeholder="Expiry date" />
+                        <input class="cg-input" @bind="_tradeLicenceIssuingAuthority" maxlength="160" placeholder="Issuing authority (optional)" />
+                    </label>
+                    <label class="cg-field">
+                        <span>Other Documents <em class="cg-subtitle" style="margin:0;">(optional)</em></span>
+                        <InputFile OnChange="OnOtherDocumentSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingOtherDocument" />
+                        @if (_uploadingOtherDocument)
+                        {
+                            <progress class="cg-upload-progress" max="100" value="@_otherDocumentUploadProgress"></progress>
+                            <span class="cg-subtitle">Uploading… @_otherDocumentUploadProgress%</span>
+                        }
+                        else if (!string.IsNullOrEmpty(_otherDocumentPath))
+                        {
+                            <a href="@_otherDocumentPath" target="_blank" class="cg-subtitle">✓ Uploaded — view file</a>
+                        }
+                    </label>
+                </div>
+
+                <label class="cg-field">
+                    <span>Do you or your relatives hold shares in DI PJSC?</span>
+                    <div class="cg-yesno">
+                        <button type="button" class="cg-action-btn @(_holdsSharesInDI ? "cg-good" : "")" @onclick="() => _holdsSharesInDI = true">I / my relatives hold shares in DI</button>
+                        <button type="button" class="cg-action-btn @(!_holdsSharesInDI ? "cg-good" : "")" @onclick="() => _holdsSharesInDI = false">Neither I / my relatives hold shares in DI</button>
+                    </div>
+                </label>
+                @if (_holdsSharesInDI)
+                {
+                    <div class="cg-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Share Held By</th>
+                                    <th>Name of Share Holder</th>
+                                    <th>NIN</th>
+                                    <th>Additional</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in _relatives)
+                                {
+                                    <tr class="cg-data-row">
+                                        <td>
+                                            @if (r.IsSelf)
+                                            {
+                                                <span>Self</span>
+                                            }
+                                            else
+                                            {
+                                                <select class="cg-input" @bind="r.Relationship">
+                                                    @foreach (var opt in RelativeOptions)
+                                                    {
+                                                        <option value="@opt.Value">@opt.Label</option>
+                                                    }
+                                                </select>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (r.IsSelf)
+                                            {
+                                                <span>@_effectiveMember!.FullName</span>
+                                            }
+                                            else
+                                            {
+                                                <input class="cg-input" @bind="r.RelativeName" maxlength="120" />
+                                            }
+                                        </td>
+                                        <td><input class="cg-input" @bind="r.NinNumber" maxlength="40" placeholder="Min. 10 chars" /></td>
+                                        <td><input class="cg-input" @bind="r.Additional" maxlength="400" /></td>
+                                        <td><button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveRelativeAsync(r)">Remove</button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn" @onclick="AddRelativeAsync">+ Add shareholder</button>
+                        @if (!_relatives.Any(r => r.IsSelf))
+                        {
+                            <button type="button" class="cg-action-btn" @onclick='() => { _relatives.Add(new RelativeRow { IsSelf = true }); }'>+ Add myself</button>
+                        }
+                    </div>
+                }
+
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn" @onclick="() => _step = Step.Capture1">← Back</button>
+                    <button type="button" class="cg-action-btn" disabled="@_savingDraft" @onclick="SaveDraftAsync">@(_savingDraft ? "Saving…" : "Save as Draft")</button>
+                    <button type="button" class="cg-action-btn cg-good" @onclick="GoToReviewAsync">Proceed to Submission</button>
+                </div>
+            </div>
+        }
+        else if (_step == Step.Review)
+        {
+            <div class="cg-member-form cg-declaration-form">
+                @if (_justAutoSaved)
+                {
+                    <div class="cg-toast cg-toast-success" style="margin-bottom:12px;">Declaration saved</div>
+                }
+                <h2>@(_loadedAsSubmittedEdit ? "Are you sure you want to proceed for editing your declaration?" : "Are you sure you want to submit below declaration form?")</h2>
+                <div class="cg-table-wrap">
+                    <table>
+                        <tbody>
+                            <tr><th>Holds a NIN</th><td>@(_hasNin ? $"Yes ({_ninNumber})" : "No — I do not have a National Investor Number (NIN) from Dubai Financial Market (DFM).")</td></tr>
+                            <tr><th>Relatives have a NIN</th><td>@(_relativesHaveNin ? "Yes" : "No")</td></tr>
+                            <tr><th>Holds shares in DI PJSC (self or relatives)</th><td>@(_holdsSharesInDI ? "Yes" : "Neither I, my spouse, nor my relatives hold shares in DI PJSC.")</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (_relativesHaveNin && _ninHolders.Count > 0)
+                {
+                    <h2 class="cg-section-heading">Relatives' NIN</h2>
+                    <div class="cg-table-wrap">
+                        <table>
+                            <thead><tr><th>Share Held By</th><th>Name of Share Holder</th><th>NIN</th><th>Additional</th></tr></thead>
+                            <tbody>
+                                @foreach (var h in _ninHolders)
+                                {
+                                    <tr class="cg-data-row">
+                                        <td>@RelationshipLabel(h.Relationship)</td>
+                                        <td>@h.NameOfShareHolder</td>
+                                        <td>@h.NinNumber</td>
+                                        <td>@h.Additional</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                @if (_holdsSharesInDI && _relatives.Count > 0)
+                {
+                    <h2 class="cg-section-heading">Shareholding</h2>
+                    <div class="cg-table-wrap">
+                        <table>
+                            <thead><tr><th>Share Held By</th><th>Name of Share Holder</th><th>NIN</th><th>Additional</th></tr></thead>
+                            <tbody>
+                                @foreach (var r in _relatives)
+                                {
+                                    <tr class="cg-data-row">
+                                        <td>@(r.IsSelf ? "Self" : RelationshipLabel(r.Relationship))</td>
+                                        <td>@(r.IsSelf ? _effectiveMember!.FullName : r.RelativeName)</td>
+                                        <td>@r.NinNumber</td>
+                                        <td>@r.Additional</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <p class="cg-subtitle">Please review carefully. You can still edit this declaration from Declarations until the due date (<b class="mono">@_run!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</b>).</p>
+
+                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                    <input type="checkbox" @bind="_agreeConfirmed" />
+                    <span>I agree and confirm that the information given in this form is true, complete and accurate.</span>
+                </label>
+
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn" disabled="@_submitting" @onclick="() => _step = Step.Capture2">← Back to edit</button>
+                    <button type="button" class="cg-action-btn cg-good" disabled="@(_submitting || !_agreeConfirmed)" @onclick="SubmitAsync">@(_submitting ? "Saving…" : (_hadExistingRow ? "Save changes" : "Confirm & Submit"))</button>
+                </div>
+            </div>
+        }
+        else if (_step == Step.Done)
+        {
+            <div class="cg-empty-state">
+                <p><b>Your Insider Trading declaration was @(_hadExistingRow ? "updated" : "submitted") successfully</b> on @_submittedAtUtc!.Value.ToString("dd MMM yyyy HH:mm") UTC.</p>
+                <p>A confirmation email with the details submitted has been sent@(string.IsNullOrWhiteSpace(_effectiveMember?.Email) ? "" : $" to {_effectiveMember!.Email}").</p>
+                <p><a href="/my-declarations">Return to Declarations</a></p>
+            </div>
+        }
+    }
+</div>

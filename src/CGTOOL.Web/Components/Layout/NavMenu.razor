@@ -1,0 +1,337 @@
+@implements IDisposable
+@using System.Security.Claims
+
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthState
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">
+            <img src="images/di-logo.jpg" alt="Dubai Investments" class="cg-brand-logo" />
+        </a>
+    </div>
+</div>
+
+<AuthorizeView>
+    <Authorized>
+        <a class="cg-profile-block" href="Account/Manage">
+            @if (!string.IsNullOrEmpty(_profilePicturePath))
+            {
+                <img src="@_profilePicturePath" alt="" class="cg-profile-pic" />
+            }
+            else
+            {
+                <span class="cg-profile-pic-placeholder">@InitialFor(_profileFullName ?? context.User.Identity?.Name)</span>
+            }
+            <span class="cg-profile-name">@(_profileFullName ?? context.User.Identity?.Name)</span>
+        </a>
+        <div class="cg-profile-icon-actions">
+            <form action="Account/Logout" method="post">
+                <AntiforgeryToken />
+                <input type="hidden" name="ReturnUrl" value="Account/Login" />
+                <button type="submit" class="cg-icon-only-btn" title="Switch User">
+                    <span class="bi bi-person-nav-menu" aria-hidden="true"></span>
+                </button>
+            </form>
+            <form action="Account/Logout" method="post">
+                <AntiforgeryToken />
+                <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                <button type="submit" class="cg-icon-only-btn" title="Logout">
+                    <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span>
+                </button>
+            </form>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <AuthorizeView Context="dashCtx">
+            <Authorized>
+                @if (!GovernanceRoles.IsNormalStaffOnly(dashCtx.User))
+                {
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                            <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
+                        </NavLink>
+                    </div>
+                }
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3" style="order:@OrderOf("MyAccount");">
+                    <button type="button" class="nav-link cg-nav-group-toggle" @onclick='() => ToggleGroup("MyAccount")'>
+                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @LabelOf("MyAccount")
+                        <span class="cg-nav-caret @(IsExpanded("MyAccount") ? "cg-nav-caret-open" : "")">▸</span>
+                    </button>
+                </div>
+                @if (IsExpanded("MyAccount"))
+                {
+                    <div class="cg-nav-submenu" style="order:@OrderOf("MyAccount");">
+                        <div class="nav-item px-3" style="order:@OrderOf("MyAccount.Profile");"><NavLink class="nav-link" href="Account/Manage" Match="NavLinkMatch.All">@LabelOf("MyAccount.Profile")</NavLink></div>
+                        <div class="nav-item px-3" style="order:@OrderOf("MyAccount.Workspace");"><NavLink class="nav-link" href="my-workspace">@LabelOf("MyAccount.Workspace")</NavLink></div>
+                        <div class="nav-item px-3" style="order:@OrderOf("MyAccount.Declarations");"><NavLink class="nav-link" href="my-declarations">@LabelOf("MyAccount.Declarations")</NavLink></div>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView>
+            <Authorized>
+                @if (!GovernanceRoles.IsNormalStaffOnly(context.User))
+                {
+                    <div class="nav-item px-3" style="order:@OrderOf("AdminPanel");">
+                        <button type="button" class="nav-link cg-nav-group-toggle" @onclick='() => ToggleGroup("AdminSetup")'>
+                            <span class="bi bi-lock-nav-menu" aria-hidden="true"></span> @LabelOf("AdminPanel")
+                            <span class="cg-nav-caret @(IsExpanded("AdminSetup") ? "cg-nav-caret-open" : "")">▸</span>
+                        </button>
+                    </div>
+                    @if (IsExpanded("AdminSetup"))
+                    {
+                        <div class="cg-nav-submenu" style="order:@OrderOf("AdminPanel");">
+                            <AuthorizeView Roles="@GovernanceRoles.Administrator" Context="adminSetupCtx">
+                                <Authorized>
+                                    <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.UserManagement");"><NavLink class="nav-link" href="admin/user-management">@LabelOf("AdminPanel.UserManagement")</NavLink></div>
+                                </Authorized>
+                            </AuthorizeView>
+                            <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.Impersonate");"><NavLink class="nav-link" href="impersonate">@LabelOf("AdminPanel.Impersonate")</NavLink></div>
+                            <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.ClaimAdmin");"><NavLink class="nav-link" href="admin/setup">@LabelOf("AdminPanel.ClaimAdmin")</NavLink></div>
+
+                            <AuthorizeView Roles="@GovernanceRoles.Administrator" Context="setupCtx">
+                                <Authorized>
+                                    <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.Company");"><NavLink class="nav-link" href="admin/companies">@LabelOf("AdminPanel.Company")</NavLink></div>
+                                    <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.Departments");"><NavLink class="nav-link" href="admin/departments">@LabelOf("AdminPanel.Departments")</NavLink></div>
+                                    <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.JobTitle");"><NavLink class="nav-link" href="admin/job-titles">@LabelOf("AdminPanel.JobTitle")</NavLink></div>
+                                    <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.Settings");"><NavLink class="nav-link" href="admin/settings">@LabelOf("AdminPanel.Settings")</NavLink></div>
+
+                                    <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.AuditLogs");">
+                                        <button type="button" class="nav-link cg-nav-group-toggle" @onclick='() => ToggleGroup("AdminSetup.AuditLogs")'>
+                                            @LabelOf("AdminPanel.AuditLogs")
+                                            <span class="cg-nav-caret @(IsExpanded("AdminSetup.AuditLogs") ? "cg-nav-caret-open" : "")">▸</span>
+                                        </button>
+                                    </div>
+                                    @if (IsExpanded("AdminSetup.AuditLogs"))
+                                    {
+                                        <div class="cg-nav-submenu" style="order:@OrderOf("AdminPanel.AuditLogs");">
+                                            <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.AuditLogs.Daily");"><NavLink class="nav-link" href="admin/audit-log" Match="NavLinkMatch.All">@LabelOf("AdminPanel.AuditLogs.Daily")</NavLink></div>
+                                            <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.AuditLogs.Periodic");"><NavLink class="nav-link" href="admin/audit-log/periodic">@LabelOf("AdminPanel.AuditLogs.Periodic")</NavLink></div>
+                                        </div>
+                                    }
+                                </Authorized>
+                            </AuthorizeView>
+                        </div>
+                    }
+                }
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="@GovernanceRoles.Administrator">
+            <Authorized>
+                <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup");">
+                    <button type="button" class="nav-link cg-nav-group-toggle" @onclick='() => ToggleGroup("DeclarationSetup")'>
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> @LabelOf("DeclarationSetup")
+                        <span class="cg-nav-caret @(IsExpanded("DeclarationSetup") ? "cg-nav-caret-open" : "")">▸</span>
+                    </button>
+                </div>
+                @if (IsExpanded("DeclarationSetup"))
+                {
+                    <div class="cg-nav-submenu" style="order:@OrderOf("DeclarationSetup");">
+                        <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup.InsiderTrading");"><NavLink class="nav-link" href="admin/declarations-setup/insider-trading">@LabelOf("DeclarationSetup.InsiderTrading")</NavLink></div>
+                        <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup.ConflictOfInterest");"><NavLink class="nav-link" href="admin/declarations-setup/conflict-of-interest">@LabelOf("DeclarationSetup.ConflictOfInterest")</NavLink></div>
+                        <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup.RelatedPartyRegister");"><NavLink class="nav-link" href="admin/declarations-setup/related-party-register">@LabelOf("DeclarationSetup.RelatedPartyRegister")</NavLink></div>
+                        <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup.BlackoutPeriods");"><NavLink class="nav-link" href="admin/declarations-setup/blackout-periods">@LabelOf("DeclarationSetup.BlackoutPeriods")</NavLink></div>
+                        <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup.ScheduledMaintenance");"><NavLink class="nav-link" href="admin/declarations-setup/scheduled-maintenance">@LabelOf("DeclarationSetup.ScheduledMaintenance")</NavLink></div>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="@GovernanceRoles.Administrator">
+            <Authorized>
+                <div class="nav-item px-3" style="order:@OrderOf("Reports");">
+                    <button type="button" class="nav-link cg-nav-group-toggle" @onclick='() => ToggleGroup("Reports")'>
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> @LabelOf("Reports")
+                        <span class="cg-nav-caret @(IsExpanded("Reports") ? "cg-nav-caret-open" : "")">▸</span>
+                    </button>
+                </div>
+                @if (IsExpanded("Reports"))
+                {
+                    <div class="cg-nav-submenu" style="order:@OrderOf("Reports");">
+                        <div class="nav-item px-3" style="order:@OrderOf("Reports.InsiderSubmission");"><NavLink class="nav-link" href="reports/insider-declarations">@LabelOf("Reports.InsiderSubmission")</NavLink></div>
+                        <div class="nav-item px-3" style="order:@OrderOf("Reports.RpCoiSubmission");"><NavLink class="nav-link" href="reports/related-party-coi-declarations">@LabelOf("Reports.RpCoiSubmission")</NavLink></div>
+                        <div class="nav-item px-3" style="order:@OrderOf("Reports.RelatedPartyRegister");"><NavLink class="nav-link" href="reports/related-party-register">@LabelOf("Reports.RelatedPartyRegister")</NavLink></div>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="@GovernanceRoles.Administrator">
+            <Authorized>
+                <div class="nav-item px-3" style="order:@OrderOf("InvestorRelations");">
+                    <button type="button" class="nav-link cg-nav-group-toggle" @onclick='() => ToggleGroup("InvestorRelations")'>
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> @LabelOf("InvestorRelations")
+                        <span class="cg-nav-caret @(IsExpanded("InvestorRelations") ? "cg-nav-caret-open" : "")">▸</span>
+                    </button>
+                </div>
+                @if (IsExpanded("InvestorRelations"))
+                {
+                    <div class="cg-nav-submenu" style="order:@OrderOf("InvestorRelations");">
+                        <div class="nav-item px-3" style="order:@OrderOf("InvestorRelations.ShareRegister");"><NavLink class="nav-link" href="admin/investor-relations/share-register">@LabelOf("InvestorRelations.ShareRegister")</NavLink></div>
+                        <div class="nav-item px-3" style="order:@OrderOf("InvestorRelations.ShareTrading");"><NavLink class="nav-link" href="admin/investor-relations/share-trading">@LabelOf("InvestorRelations.ShareTrading")</NavLink></div>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Context="rpTxnCtx">
+            <Authorized>
+                @if (rpTxnCtx.User.IsInRole(GovernanceRoles.Administrator) || _hasRelatedPartyTransactionAccess)
+                {
+                    <div class="nav-item px-3" style="order:@OrderOf("RpTransactions");">
+                        <button type="button" class="nav-link cg-nav-group-toggle" @onclick='() => ToggleGroup("RpTransactions")'>
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> @LabelOf("RpTransactions")
+                            <span class="cg-nav-caret @(IsExpanded("RpTransactions") ? "cg-nav-caret-open" : "")">▸</span>
+                        </button>
+                    </div>
+                    @if (IsExpanded("RpTransactions"))
+                    {
+                        <div class="cg-nav-submenu" style="order:@OrderOf("RpTransactions");">
+                            <div class="nav-item px-3" style="order:@OrderOf("RpTransactions.AddNew");"><NavLink class="nav-link" href="rp-transactions/new">@LabelOf("RpTransactions.AddNew")</NavLink></div>
+                            <div class="nav-item px-3" style="order:@OrderOf("RpTransactions.MyTransactions");"><NavLink class="nav-link" href="rp-transactions/mine">@LabelOf("RpTransactions.MyTransactions")</NavLink></div>
+                            <div class="nav-item px-3" style="order:@OrderOf("RpTransactions.ApproverQueue");"><NavLink class="nav-link" href="rp-transactions/approvals">@LabelOf("RpTransactions.ApproverQueue")</NavLink></div>
+                            <div class="nav-item px-3" style="order:@OrderOf("RpTransactions.CcaoReview");"><NavLink class="nav-link" href="rp-transactions/ccao-review">@LabelOf("RpTransactions.CcaoReview")</NavLink></div>
+                            @if (rpTxnCtx.User.IsInRole(GovernanceRoles.Administrator))
+                            {
+                                <div class="nav-item px-3" style="order:@OrderOf("RpTransactions.Register");"><NavLink class="nav-link" href="rp-transactions/register">@LabelOf("RpTransactions.Register")</NavLink></div>
+                            }
+                        </div>
+                    }
+                }
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Register">
+                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Login">
+                        <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    private string? currentUrl;
+    private string? _profilePicturePath;
+    private string? _profileFullName;
+    private bool _hasRelatedPartyTransactionAccess;
+    private readonly HashSet<string> _expandedGroups = [];
+    private Dictionary<string, int> _navOrder = [];
+    private Dictionary<string, string> _navLabels = [];
+
+    private bool IsExpanded(string key) => _expandedGroups.Contains(key);
+
+    // Drives the CSS "order" applied to each nav item's container so items visually reorder without
+    // touching any of the surrounding AuthorizeView/role-gating logic -- see Settings > Menu Order
+    // (Admin Panel) for where an admin edits this. Falls back to 0 for keys not in the catalog (there
+    // are none normally; defensive only).
+    private int OrderOf(string key)
+    {
+        var item = NavMenuCatalog.Items.FirstOrDefault(i => i.Key == key);
+        return item is null ? 0 : NavMenuCatalog.EffectiveOrder(item, _navOrder);
+    }
+
+    // Same idea as OrderOf, but for the item's display text -- see Settings > Menu Order (Admin
+    // Panel) for where an admin renames an item.
+    private string LabelOf(string key) => NavMenuCatalog.EffectiveLabel(key, _navLabels);
+
+    // Accordion behavior: only one top-level section (My Account / Admin Panel / Declaration Setup /
+    // Reports) stays expanded at a time. Nested keys use "Parent.Child" (e.g. "AdminSetup.AuditLogs")
+    // -- toggling a child only ever affects groups under the same top-level root, so opening a
+    // sub-menu doesn't collapse its own already-open parent.
+    private void ToggleGroup(string key)
+    {
+        if (_expandedGroups.Contains(key))
+        {
+            _expandedGroups.RemoveWhere(g => g == key || g.StartsWith(key + "."));
+            return;
+        }
+
+        var root = key.Split('.')[0];
+        _expandedGroups.RemoveWhere(g => g.Split('.')[0] != root);
+        _expandedGroups.Add(key);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+        await RefreshProfilePictureAsync();
+
+        // Short-lived context, same reason as RefreshProfilePictureAsync below -- this component is
+        // a persistent layout, not a page, so it must not share the circuit-scoped DbContext.
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _navOrder = await db.NavMenuItemOrders.AsNoTracking().ToDictionaryAsync(o => o.ItemKey, o => o.SortOrder);
+        _navLabels = await db.NavMenuItemLabels.AsNoTracking().ToDictionaryAsync(l => l.ItemKey, l => l.CustomLabel);
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        await RefreshProfilePictureAsync();
+        StateHasChanged();
+    }
+
+    private async Task RefreshProfilePictureAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId is null)
+        {
+            _profilePicturePath = null;
+            _profileFullName = null;
+            _hasRelatedPartyTransactionAccess = false;
+            return;
+        }
+
+        // NavMenu is a persistent layout component that fires this on every navigation, so it must
+        // NOT share the circuit-scoped ApplicationDbContext/UserManager with whichever page is
+        // concurrently loading -- that races on the same DbContext instance ("A second operation was
+        // started on this context instance..."). A private, short-lived context avoids it entirely.
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var path = await db.Users.Where(u => u.Id == userId).Select(u => u.ProfilePicturePath).FirstOrDefaultAsync();
+        // Cache-bust: the filename is deterministic per user (userId + extension), so a browser that
+        // cached the old picture (or its absence) under that exact URL would otherwise keep showing it.
+        _profilePicturePath = string.IsNullOrEmpty(path) ? path : $"{path}?v={DateTime.UtcNow.Ticks}";
+
+        _profileFullName = await db.Members.Where(m => m.ApplicationUserId == userId).Select(m => m.FullName).FirstOrDefaultAsync();
+        _hasRelatedPartyTransactionAccess = await db.Members.Where(m => m.ApplicationUserId == userId).Select(m => m.RelatedPartyTransactionAccess).FirstOrDefaultAsync();
+    }
+
+    private static string InitialFor(string? name) =>
+        string.IsNullOrEmpty(name) ? "?" : name[..1].ToUpperInvariant();
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

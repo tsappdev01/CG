@@ -1,0 +1,20 @@
+@* FRD §2.2 — shown after saving a new user record. *@
+@if (Show)
+{
+    <div class="cg-justify-prompt">
+        <p>Do you want to notify <strong>@UserName</strong>?</p>
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn cg-good" @onclick="() => Choose(NotifyChoice.Now)">Notify Now</button>
+            <button type="button" class="cg-action-btn" @onclick="() => Choose(NotifyChoice.Later)">Send Message Later</button>
+            <button type="button" class="cg-action-btn cg-critical" @onclick="() => Choose(NotifyChoice.No)">No</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public string UserName { get; set; } = string.Empty;
+    [Parameter] public EventCallback<NotifyChoice> OnChoice { get; set; }
+
+    private Task Choose(NotifyChoice choice) => OnChoice.InvokeAsync(choice);
+}

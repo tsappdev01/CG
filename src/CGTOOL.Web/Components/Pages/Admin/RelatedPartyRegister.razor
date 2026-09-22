@@ -1,0 +1,337 @@
+@page "/reports/related-party-register"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject IJSRuntime JS
+
+<PageTitle>Related Party Register</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1>Related Party Register</h1>
+    <p class="cg-subtitle">Every related party declared in a submitted Related Party &amp; COI declaration, consolidated across all declarants, with a complete trace back to the declaration it came from.</p>
+
+    @if (_rows is null || _relativeRows is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-tabs" role="tablist">
+            <button type="button" class="cg-tab @(_activeTab == "relatives" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "relatives")" @onclick='() => SwitchTab("relatives")'>Related Party Register — @_relativeRows.Count</button>
+            <button type="button" class="cg-tab @(_activeTab == "companies" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "companies")" @onclick='() => SwitchTab("companies")'>Company Interests (I.B/I.C/I.D) — @_rows.Count</button>
+        </div>
+
+        <div class="cg-controls">
+            <div class="cg-search-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                <input type="search" placeholder="@(_activeTab == "companies" ? "Search user or company…" : "Search related party or employee name…")" @bind="_search" @bind:event="oninput" aria-label="Search" />
+            </div>
+
+            <select class="cg-input" style="width:auto;" @bind="_yearFilter" aria-label="Filter by year">
+                <option value="0">All years</option>
+                @foreach (var y in AvailableYears())
+                {
+                    <option value="@y">@y</option>
+                }
+            </select>
+
+            <select class="cg-input" style="width:auto;" @bind="_quarterFilter" aria-label="Filter by quarter">
+                <option value="0">All quarters</option>
+                <option value="1">Q1</option>
+                <option value="2">Q2</option>
+                <option value="3">Q3</option>
+                <option value="4">Q4</option>
+            </select>
+
+            <select class="cg-input" style="width:auto;" @bind="_companyFilter" aria-label="Filter by entity">
+                <option value="0">All entities</option>
+                @foreach (var c in _companies ?? [])
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </select>
+
+            <select class="cg-input" style="width:auto;" @bind="_designationFilter" aria-label="Filter by designation">
+                <option value="">All designations</option>
+                @foreach (var d in AvailableDesignations())
+                {
+                    <option value="@d">@d</option>
+                }
+            </select>
+
+            @if (_activeTab == "companies")
+            {
+                <select class="cg-input" style="width:auto;" @bind="_ownerTypeFilter" aria-label="Filter by table">
+                    <option value="">All tables</option>
+                    <option value="@CoiCompanyOwnerType.Self">I.B — Self-owned</option>
+                    <option value="@CoiCompanyOwnerType.Relative">I.C — Relative-owned</option>
+                    <option value="@CoiCompanyOwnerType.BoardOrExecutiveRole">I.D — Board/executive role</option>
+                </select>
+
+                <select class="cg-input" style="width:auto;" @bind="_expiryFilter" aria-label="Filter by expiry status">
+                    <option value="">All licenses</option>
+                    <option value="expired">Expired</option>
+                    <option value="expiring-soon">Expiring soon (≤60 days)</option>
+                    <option value="valid">Valid</option>
+                </select>
+            }
+
+            <span class="cg-result-count">@(_activeTab == "companies" ? FilteredRows().Count : FilteredRelativeRows().Count) record(s)</span>
+        </div>
+
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+        </div>
+
+        @if (_activeTab == "companies")
+        {
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <SortableHeader Label="Member" Column="Member" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Designation</th>
+                            <th>Table</th>
+                            <SortableHeader Label="Company" Column="Company" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Principal Business Activity</th>
+                            <th>Trade License No.</th>
+                            <SortableHeader Label="Expiry" Column="Expiry" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>License Activities</th>
+                            <th>Document(s)</th>
+                            <SortableHeader Label="Quarter" Column="Quarter" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in FilteredRows())
+                        {
+                            <tr class="cg-data-row">
+                                <td>@r.MemberName</td>
+                                <td>@(r.EntityShortCode ?? "—")</td>
+                                <td>@(r.Designation ?? "—")</td>
+                                <td>@OwnerTypeLabel(r.OwnerType)</td>
+                                <td>@r.LegalCompanyName</td>
+                                <td>@(r.PrincipalBusinessActivity ?? "—")</td>
+                                <td class="mono">@(r.TradeLicenseNumber ?? "—")</td>
+                                <td>
+                                    @if (r.TradeLicenseExpiryDate is not null)
+                                    {
+                                        <span class="mono">@r.TradeLicenseExpiryDate.Value.ToString("dd/MM/yyyy")</span>
+                                        <span class="cg-status-pill @(SubmitRelatedPartyCoiDeclaration.ExpiryStatus(r.TradeLicenseExpiryDate) switch { "expired" => "flagged", "expiring-soon" => "pending", "valid" => "cleared", _ => "pending" })">
+                                            @SubmitRelatedPartyCoiDeclaration.ExpiryLabel(r.TradeLicenseExpiryDate)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                                <td>@(r.LicenseActivities ?? "—")</td>
+                                <td>
+                                    @if (r.Documents.Count == 0)
+                                    {
+                                        <span>—</span>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var doc in r.Documents)
+                                        {
+                                            <div><a href="@doc.FilePath" target="_blank">@doc.FileName</a></div>
+                                        }
+                                    }
+                                </td>
+                                <td class="mono">Q@(r.Quarter) @r.Year</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (FilteredRows().Count == 0)
+                {
+                    <div class="cg-empty-state">No records match these filters.</div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>S.No</th>
+                            <th>Member</th>
+                            <SortableHeader Label="Related Party" Column="RelatedParty" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Category</th>
+                            <SortableHeader Label="Company" Column="Company" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Designation</th>
+                            <th>Name as per Emirates Id</th>
+                            <th>Emirates Id</th>
+                            <th>Emirates Expiry</th>
+                            <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Quarter" Column="Quarter" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Documents</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ var i = 0; }
+                        @foreach (var r in FilteredRelativeRows())
+                        {
+                            i++;
+                            <tr class="cg-data-row">
+                                <td>@i</td>
+                                <td>@r.MemberName</td>
+                                <td>@r.RelatedParty</td>
+                                <td>@r.Category</td>
+                                <td>@(r.CompanyName ?? "—")</td>
+                                <td>@(r.Designation ?? "—")</td>
+                                <td>@(r.EmiratesIdNameOnCard ?? "—")</td>
+                                <td class="mono">@(r.EmiratesIdNumber ?? "—")</td>
+                                <td class="mono">@(r.EmiratesIdExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td>@(r.EntityShortCode ?? "—")</td>
+                                <td class="mono">Q@(r.Quarter) @r.Year</td>
+                                <td>
+                                    <button type="button" class="cg-icon-btn" title="View all documents uploaded with this declaration" disabled="@(!HasAnyDocument(r))" @onclick="() => _viewDocumentsRecord = r"><span class="cg-icon-document-glyph"></span></button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (FilteredRelativeRows().Count == 0)
+                {
+                    <div class="cg-empty-state">No records match these filters.</div>
+                }
+            </div>
+        }
+
+        @if (_showPrintPreview)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = false">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — Related Party Register@(_activeTab == "relatives" ? "" : " (Company Interests)")</h2>
+                                <PrintFooter />
+                            </div>
+                        </div>
+                        @if (_activeTab == "companies")
+                        {
+                            <div class="cg-table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Member</th>
+                                            <th>Entity</th>
+                                            <th>Designation</th>
+                                            <th>Table</th>
+                                            <th>Company</th>
+                                            <th>Trade License No.</th>
+                                            <th>Expiry</th>
+                                            <th>License Activities</th>
+                                            <th>Quarter</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var r in FilteredRows())
+                                        {
+                                            <tr class="cg-data-row">
+                                                <td>@r.MemberName</td>
+                                                <td>@(r.EntityShortCode ?? "—")</td>
+                                                <td>@(r.Designation ?? "—")</td>
+                                                <td>@OwnerTypeLabel(r.OwnerType)</td>
+                                                <td>@r.LegalCompanyName</td>
+                                                <td class="mono">@(r.TradeLicenseNumber ?? "—")</td>
+                                                <td class="mono">@(r.TradeLicenseExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                                <td>@(r.LicenseActivities ?? "—")</td>
+                                                <td class="mono">Q@(r.Quarter) @r.Year</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="cg-table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>S.No</th>
+                                            <th>Member</th>
+                                            <th>Related Party</th>
+                                            <th>Category</th>
+                                            <th>Company</th>
+                                            <th>Designation</th>
+                                            <th>Name as per Emirates Id</th>
+                                            <th>Emirates Id</th>
+                                            <th>Emirates Expiry</th>
+                                            <th>Quarter</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{ var pi = 0; }
+                                        @foreach (var r in FilteredRelativeRows())
+                                        {
+                                            pi++;
+                                            <tr class="cg-data-row">
+                                                <td>@pi</td>
+                                                <td>@r.MemberName</td>
+                                                <td>@r.RelatedParty</td>
+                                                <td>@r.Category</td>
+                                                <td>@(r.CompanyName ?? "—")</td>
+                                                <td>@(r.Designation ?? "—")</td>
+                                                <td>@(r.EmiratesIdNameOnCard ?? "—")</td>
+                                                <td class="mono">@(r.EmiratesIdNumber ?? "—")</td>
+                                                <td class="mono">@(r.EmiratesIdExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                                <td class="mono">Q@(r.Quarter) @r.Year</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (_viewDocumentsRecord is not null)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn" @onclick="() => _viewDocumentsRecord = null">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <h2>Documents — @_viewDocumentsRecord.MemberName (Q@(_viewDocumentsRecord.Quarter) @_viewDocumentsRecord.Year)</h2>
+                        <p class="cg-subtitle">Every document uploaded with this declaration, across I.B/I.C/I.D — this relative was declared as part of the same submission.</p>
+                        <div class="cg-table-wrap">
+                            <table>
+                                <thead><tr><th>Table</th><th>Company</th><th>Trade License No.</th><th>Expiry</th><th>Document</th></tr></thead>
+                                <tbody>
+                                    @foreach (var company in _viewDocumentsRecord.Declaration.Companies)
+                                    {
+                                        @foreach (var doc in company.Documents)
+                                        {
+                                            <tr class="cg-data-row">
+                                                <td>@OwnerTypeLabel(company.OwnerType)</td>
+                                                <td>@company.LegalCompanyName</td>
+                                                <td>@(company.TradeLicenseNumber ?? "—")</td>
+                                                <td class="mono">@(company.TradeLicenseExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                                <td><a href="@doc.FilePath" target="_blank">@doc.FileName</a></td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

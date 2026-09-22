@@ -1,0 +1,124 @@
+@page "/admin/companies/{Id:int}"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject ICompanyWriter CompanyWriter
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject ToastService Toasts
+@inject IWebHostEnvironment Env
+@inject IConfiguration Configuration
+
+<PageTitle>@(Id == 0 ? "New Company" : "Edit Company")</PageTitle>
+
+<div class="cg-shell">
+    <p><a href="/admin/companies">← Back to Companies</a></p>
+
+    @if (_editing is null || _members is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <EditForm Model="_editing" OnValidSubmit="SaveAsync" class="cg-member-form cg-member-page">
+            <DataAnnotationsValidator />
+            <h1>@(_editing.Id == 0 ? "New company" : $"Edit — {_editing.Name}")</h1>
+
+            <label class="cg-field"><span>Short code</span><InputText class="cg-input" @bind-Value="_editing.ShortCode" maxlength="20" /><ValidationMessage For="() => _editing.ShortCode" class="cg-error" /></label>
+            <label class="cg-field"><span>Company name</span><InputText class="cg-input" @bind-Value="_editing.Name" maxlength="160" /><ValidationMessage For="() => _editing.Name" class="cg-error" /></label>
+
+            <label class="cg-field">
+                <span>Company logo</span>
+                @if (_editing.Id == 0)
+                {
+                    <p class="cg-subtitle">Save this company first, then upload its logo.</p>
+                }
+                else
+                {
+                    <div class="cg-profile-upload">
+                        @if (!string.IsNullOrEmpty(_editing.LogoPath))
+                        {
+                            <img src="@_editing.LogoPath" alt="@_editing.Name logo" class="cg-logo-preview" />
+                        }
+                        else
+                        {
+                            <span class="cg-logo-placeholder">@(_editing.Name.Length > 0 ? _editing.Name[..1].ToUpperInvariant() : "?")</span>
+                        }
+                        <InputFile OnChange="OnLogoSelectedAsync" accept="image/png,image/jpeg,image/webp" />
+                    </div>
+                    <p class="cg-subtitle">JPEG, PNG, or WebP, up to 2 MB. Shown in place of the name in Entity columns.</p>
+                }
+            </label>
+            <label class="cg-field"><span>Address</span><InputText class="cg-input" @bind-Value="_editing.Address" maxlength="240" /></label>
+            <label class="cg-field"><span>City</span><InputText class="cg-input" @bind-Value="_editing.City" maxlength="80" /></label>
+            <label class="cg-field"><span>Country</span><InputText class="cg-input" @bind-Value="_editing.Country" maxlength="80" /></label>
+
+            <label class="cg-field">
+                <span>Sector</span>
+                <select class="cg-input" @bind="_editing.Sector">
+                    <option value="">Select…</option>
+                    @foreach (var s in Sectors)
+                    {
+                        <option value="@s">@s</option>
+                    }
+                </select>
+            </label>
+            <label class="cg-field">
+                <span>Group Name</span>
+                <select class="cg-input" @bind="_editing.GroupName">
+                    <option value="">Select…</option>
+                    @foreach (var g in GroupNames)
+                    {
+                        <option value="@g">@g</option>
+                    }
+                </select>
+            </label>
+
+            <label class="cg-field">
+                <span>Authorized / approving authority</span>
+                <select class="cg-input" @bind="_editing.ApprovingAuthorityMemberId">
+                    <option value="">None</option>
+                    @foreach (var m in _members)
+                    {
+                        <option value="@m.Id">@m.FullName</option>
+                    }
+                </select>
+            </label>
+            <label class="cg-field">
+                <span>Delegate authority</span>
+                <select class="cg-input" @bind="_editing.DelegateAuthorityMemberId">
+                    <option value="">None</option>
+                    @foreach (var m in _members)
+                    {
+                        <option value="@m.Id">@m.FullName</option>
+                    }
+                </select>
+            </label>
+
+            <div class="cg-actions">
+                <button type="submit" class="cg-action-btn cg-good" disabled="@_saving">@(_saving ? "Saving…" : "Save")</button>
+                <button type="button" class="cg-action-btn" @onclick="GoBack" disabled="@_saving">Cancel</button>
+            </div>
+
+            @if (_editing.Id != 0)
+            {
+                <div class="cg-actions" style="margin-top:16px;">
+                    <label style="display:flex; align-items:center; gap:8px;">
+                        <ToggleSwitch Value="_editing.Active" ValueChanged="() => _showDeactivateJustify = true" />
+                        @(_editing.Active ? "Active" : "Inactive")
+                    </label>
+                </div>
+            }
+
+            @if (_showDeactivateJustify && _editing.Id != 0)
+            {
+                <JustificationPrompt Show="true"
+                                     Label="@($"Why are you {(_editing.Active ? "deactivating" : "reactivating")} {_editing.Name}?")"
+                                     Toasts="Toasts"
+                                     OnConfirm="ToggleActiveAsync"
+                                     OnCancel="() => _showDeactivateJustify = false" />
+            }
+        </EditForm>
+    }
+</div>

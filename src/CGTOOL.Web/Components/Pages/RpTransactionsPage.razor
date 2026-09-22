@@ -1,0 +1,179 @@
+@page "/rp-transactions/new"
+@page "/rp-transactions/mine"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using System.Security.Claims
+@inject ApplicationDbContext Db
+@inject IRelatedPartyTransactionWriter Writer
+@inject IActivityEmailSender EmailSender
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ImpersonationContext Impersonation
+@inject ToastService Toasts
+@inject NavigationManager Nav
+@inject IWebHostEnvironment Env
+
+<PageTitle>Related Party Transactions</PageTitle>
+
+<div class="cg-shell">
+    <h1>Related Party Transactions</h1>
+    <p class="cg-subtitle">Record a transaction with a Related Party and track it through Approver, CCAO, and Board/AC/GA review to release into the RP Register.</p>
+    @if (Impersonation.ActingMemberId is not null)
+    {
+        <p class="cg-subtitle">Submitting on behalf of <b>@Impersonation.ActingMemberName</b>.</p>
+    }
+
+    @if (_step == Step.Loading)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else if (_step == Step.NoAccess)
+    {
+        <div class="cg-empty-state">
+            @(_effectiveMember is null
+                ? "Your login isn't linked to a User record yet. Ask an Administrator to link your account on the User Management page."
+                : "You don't have Related Party Transaction access assigned. Ask an Administrator to grant it on your User record.")
+        </div>
+    }
+    else
+    {
+        <div class="cg-tabs" role="tablist">
+            <button type="button" class="cg-tab @(_activeTab == "new" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "new")" @onclick='() => SwitchTab("new")'>New Transaction</button>
+            <button type="button" class="cg-tab @(_activeTab == "mine" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "mine")" @onclick='() => SwitchTab("mine")'>My Transactions — @_myTransactions.Count</button>
+        </div>
+
+        @if (_activeTab == "new")
+        {
+            <div class="cg-member-form" style="max-width:720px;">
+                <h2>Details of Requestor</h2>
+                <div class="cg-field-row">
+                    <label class="cg-field"><span>Entity</span><input class="cg-input" value="@_effectiveMember?.Company?.Name" disabled /></label>
+                    <label class="cg-field"><span>User</span><input class="cg-input" value="@_effectiveMember?.FullName" disabled /></label>
+                </div>
+
+                <h2>Details of Transaction</h2>
+                <label class="cg-field">
+                    <span>Name of the counter-party</span>
+                    <select class="cg-input" @bind="_counterPartyName">
+                        <option value="">Select a related party…</option>
+                        @foreach (var name in _counterPartyNames)
+                        {
+                            <option value="@name">@name</option>
+                        }
+                    </select>
+                    <p class="cg-subtitle">Sourced from the Related Party Register -- every related party in the company: declarants (Normal User/BOD/Executive Member), their declared relatives, and their declared company interests.</p>
+                </label>
+                <label class="cg-field">
+                    <span>Transaction Value</span>
+                    <input type="number" class="cg-input" @bind="_transactionValue" min="0.01" step="0.01" />
+                </label>
+                <label class="cg-field">
+                    <span>Description of the transaction, including material terms and conditions</span>
+                    <textarea class="cg-input" rows="4" @bind="_description" maxlength="4000"></textarea>
+                </label>
+                <label class="cg-field"><span>Date of request</span><input class="cg-input" value="@DateTime.Today.ToString("dd/MM/yyyy")" disabled /></label>
+
+                <label class="cg-field">
+                    <span>Supporting documents <em class="cg-subtitle" style="margin:0;">(optional -- e.g. draft agreement, board paper. PDF, JPG, or PNG, up to 10 MB each)</em></span>
+                    <InputFile OnChange="UploadDocumentAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingDocument" />
+                    @if (_uploadingDocument)
+                    {
+                        <progress class="cg-upload-progress" max="100" value="@_uploadProgress"></progress>
+                        <span class="cg-subtitle">Uploading… @_uploadProgress%</span>
+                    }
+                    @if (_pendingDocuments.Count > 0)
+                    {
+                        <ul class="cg-coi-document-list">
+                            @foreach (var doc in _pendingDocuments)
+                            {
+                                <li>
+                                    <a href="@doc.FilePath" target="_blank">@doc.FileName</a>
+                                    <button type="button" class="cg-icon-btn" title="Remove file" @onclick="() => RemovePendingDocument(doc)">×</button>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </label>
+
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn cg-good" disabled="@_submitting" @onclick="SubmitAsync">Submit</button>
+                </div>
+            </div>
+        }
+        else
+        {
+            @if (_myTransactions.Count == 0)
+            {
+                <div class="cg-empty-state">No RP Transactions submitted yet.</div>
+            }
+            else
+            {
+                <div class="cg-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Reference</th>
+                                <th>Counter-party</th>
+                                <th>Value</th>
+                                <th>Date of request</th>
+                                <th>Status</th>
+                                <th>Pending With</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var t in _myTransactions)
+                            {
+                                <tr class="cg-data-row">
+                                    <td class="mono">@RelatedPartyTransaction.DisplayReference(t.Id)</td>
+                                    <td>@t.CounterPartyName</td>
+                                    <td class="mono">@t.TransactionValue.ToString("N2")</td>
+                                    <td class="mono">@t.DateOfRequest.ToString("dd/MM/yyyy")</td>
+                                    <td><span class="cg-status-pill @StatusPillClass(t.Status)">@StatusLabel(t.Status)</span></td>
+                                    <td>@PendingWithName(t)</td>
+                                    <td>
+                                        @if (CanAmend(t))
+                                        {
+                                            <button type="button" class="cg-action-btn" @onclick="() => StartAmend(t)">Amend</button>
+                                        }
+                                    </td>
+                                </tr>
+                                @if (_amendingRow?.Id == t.Id)
+                                {
+                                    <tr>
+                                        <td colspan="7">
+                                            <div class="cg-member-form" style="max-width:640px;">
+                                                <label class="cg-field">
+                                                    <span>Name of the counter-party</span>
+                                                    <select class="cg-input" @bind="_amendCounterPartyName">
+                                                        <option value="">Select a related party…</option>
+                                                        @foreach (var name in _counterPartyNames)
+                                                        {
+                                                            <option value="@name">@name</option>
+                                                        }
+                                                    </select>
+                                                </label>
+                                                <label class="cg-field">
+                                                    <span>Transaction Value</span>
+                                                    <input type="number" class="cg-input" @bind="_amendTransactionValue" min="0.01" step="0.01" />
+                                                </label>
+                                                <label class="cg-field">
+                                                    <span>Description</span>
+                                                    <textarea class="cg-input" rows="3" @bind="_amendDescription" maxlength="4000"></textarea>
+                                                </label>
+                                                <div class="cg-actions">
+                                                    <button type="button" class="cg-action-btn cg-good" @onclick="SaveAmendAsync">Save amendment</button>
+                                                    <button type="button" class="cg-action-btn" @onclick="CancelAmend">Cancel</button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+    }
+</div>

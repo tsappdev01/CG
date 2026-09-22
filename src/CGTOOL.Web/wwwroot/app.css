@@ -1,0 +1,1324 @@
+:root {
+    --cg-bg: #F5F6F8;
+    --cg-surface: #FFFFFF;
+    --cg-surface-sunken: #EEF0F3;
+    --cg-ink: #1B2430;
+    --cg-ink-muted: #5B6472;
+    --cg-ink-faint: #8993A3;
+    --cg-line: #E1E4E9;
+    --cg-line-strong: #CBD1D9;
+    --cg-accent: #A8790C;
+    --cg-accent-ink: #5C4408;
+    --cg-accent-tint: #FBF0D8;
+    --cg-navy: #0E2A47;
+    --cg-navy-deep: #081A2E;
+    --cg-good: #2E7D4F;
+    --cg-good-tint: #E4F2E9;
+    --cg-warning: #A6690F;
+    --cg-warning-tint: #FBEEDD;
+    --cg-critical: #A8352B;
+    --cg-critical-tint: #FBE7E5;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --cg-bg: #11151B;
+        --cg-surface: #171C24;
+        --cg-surface-sunken: #1D232C;
+        --cg-ink: #E7EAEE;
+        --cg-ink-muted: #97A0AD;
+        --cg-ink-faint: #6D7683;
+        --cg-line: #262D38;
+        --cg-line-strong: #333B48;
+        --cg-accent: #E3BB55;
+        --cg-accent-ink: #F6E4B0;
+        --cg-accent-tint: #3B2E12;
+        --cg-navy: #0E2A47;
+        --cg-navy-deep: #081A2E;
+        --cg-good: #4FAE73;
+        --cg-good-tint: #16281C;
+        --cg-warning: #D69A4E;
+        --cg-warning-tint: #2E2413;
+        --cg-critical: #E17A6E;
+        --cg-critical-tint: #2E1917;
+    }
+}
+
+html, body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: var(--cg-bg);
+    color: var(--cg-ink);
+}
+
+a, .btn-link {
+    color: var(--cg-navy);
+}
+
+.btn-primary {
+    color: #fff;
+    background-color: var(--cg-navy);
+    border-color: var(--cg-navy);
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--cg-navy-deep);
+    border-color: var(--cg-navy-deep);
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #E8B84C;
+}
+
+.content {
+    padding-top: 1.1rem;
+}
+
+h1:focus {
+    outline: none;
+}
+
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid #26b050;
+}
+
+.invalid {
+    outline: 1px solid #e50000;
+}
+
+.validation-message {
+    color: #e50000;
+}
+
+.blazor-error-boundary {
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
+    padding: 1rem 1rem 1rem 3.7rem;
+    color: white;
+}
+
+    .blazor-error-boundary::after {
+        content: "An error has occurred."
+    }
+
+.darker-border-checkbox.form-check-input {
+    border-color: #929292;
+}
+
+/* ---------- Shared governance page chrome (used across Dashboard + Admin pages) ---------- */
+.cg-shell {
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.cg-shell.cg-shell-full {
+    max-width: none;
+}
+
+.cg-shell.cg-narrow {
+    max-width: 640px;
+}
+
+.cg-shell h1 {
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+}
+
+.cg-subtitle {
+    color: var(--cg-ink-muted);
+    font-size: 13px;
+    margin-bottom: 18px;
+}
+
+.mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Single validated categorical slot (blue) from the standard data-viz palette -- validated
+   colorblind-safe/contrast in both light and dark mode via scripts/validate_palette.js. A single
+   series needs no legend; --cg-accent/--cg-good/etc. are tuned for text/status-pill contrast, not
+   line-mark contrast, so this stays its own token. */
+:root { --cg-chart-series-1: #2a78d6; }
+@media (prefers-color-scheme: dark) {
+    :root { --cg-chart-series-1: #3987e5; }
+}
+
+.cg-sparkline polyline {
+    fill: none;
+    stroke: var(--cg-chart-series-1);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Trend direction (closing vs opening) -- reuses the app's own status tones (already used for
+   cg-status-pill) rather than the chart-only blue, since these read as good/bad/neutral state. */
+.cg-sparkline.trend-up polyline { stroke: var(--cg-good); }
+.cg-sparkline.trend-down polyline { stroke: var(--cg-critical); }
+
+.cg-table-wrap {
+    background: var(--cg-surface);
+    border: 1px solid var(--cg-line);
+    border-radius: 10px;
+    overflow: auto;
+    align-self: stretch;
+    width: 100%;
+}
+
+.cg-table-wrap table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.cg-table-wrap thead th {
+    position: sticky;
+    top: 0;
+    background: var(--cg-surface-sunken);
+    text-align: left;
+    font-size: 11px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--cg-ink-muted);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--cg-line);
+    white-space: nowrap;
+}
+
+.cg-table-wrap td {
+    padding: 10px 14px;
+    vertical-align: middle;
+}
+
+.cg-table-wrap tbody tr.cg-data-row {
+    border-bottom: 1px solid var(--cg-line);
+}
+
+.cg-table-wrap tbody tr.cg-data-row:last-child {
+    border-bottom: none;
+}
+
+.cg-table-wrap tbody tr.cg-data-row:hover {
+    background: var(--cg-surface-sunken);
+}
+
+.cg-input {
+    font: inherit;
+    color: var(--cg-ink);
+    background: var(--cg-surface);
+    border: 1px solid var(--cg-line-strong);
+    border-radius: 6px;
+    padding: 6px 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.cg-action-btn {
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--cg-line-strong);
+    background: var(--cg-surface);
+    color: var(--cg-ink);
+    cursor: pointer;
+}
+
+.cg-action-btn:disabled { opacity: 0.45; cursor: default; }
+.cg-action-btn.cg-good:not(:disabled) { border-color: var(--cg-good); color: var(--cg-good); }
+.cg-action-btn.cg-critical:not(:disabled) { border-color: var(--cg-critical); color: var(--cg-critical); }
+
+.cg-error {
+    color: var(--cg-critical);
+    font-size: 13px;
+}
+
+.cg-error-banner {
+    background: color-mix(in srgb, var(--cg-critical) 12%, transparent);
+    border: 1px solid var(--cg-critical);
+    color: var(--cg-critical);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    margin-bottom: 14px;
+}
+
+.cg-yesno {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.cg-insider-due-banner {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: color-mix(in srgb, var(--cg-critical) 14%, transparent);
+    border: 1.5px solid var(--cg-critical);
+    color: var(--cg-critical);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.cg-insider-due-banner b {
+    font-size: 15.5px;
+}
+
+.cg-insider-due-banner span {
+    font-size: 12.5px;
+    opacity: 0.9;
+}
+
+.cg-insider-due-banner:hover {
+    background: color-mix(in srgb, var(--cg-critical) 22%, transparent);
+}
+
+.cg-declaration-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 20px 0;
+}
+
+.cg-declaration-option {
+    flex: 1 1 260px;
+    display: block;
+    border: 1.5px solid var(--cg-good);
+    border-radius: 12px;
+    padding: 18px 20px;
+    text-decoration: none;
+    color: inherit;
+    background: color-mix(in srgb, var(--cg-good) 8%, var(--cg-surface));
+    transition: background 0.15s ease;
+}
+
+.cg-declaration-option:hover {
+    background: color-mix(in srgb, var(--cg-good) 16%, var(--cg-surface));
+}
+
+.cg-declaration-option h2 {
+    margin: 0 0 6px;
+    font-size: 16px;
+}
+
+.cg-declaration-option p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--cg-ink-muted);
+}
+
+.cg-declaration-option.disabled {
+    border-color: var(--cg-line-strong);
+    background: var(--cg-surface);
+    color: var(--cg-ink-faint);
+    cursor: default;
+    pointer-events: none;
+    opacity: 0.65;
+}
+
+.cg-loading {
+    color: var(--cg-ink-muted);
+}
+
+/* ---------- Search/filter controls above a table (shared by Dashboard, User Management, Audit Log) ---------- */
+.cg-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.cg-search-wrap {
+    position: relative;
+    flex: 1 1 220px;
+    min-width: 200px;
+}
+
+.cg-search-wrap svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--cg-ink-faint);
+    pointer-events: none;
+}
+
+.cg-controls input[type="search"], .cg-controls select {
+    font: inherit;
+    color: var(--cg-ink);
+    background: var(--cg-surface);
+    border: 1px solid var(--cg-line-strong);
+    border-radius: 7px;
+    padding: 8px 10px;
+    height: 36px;
+}
+
+.cg-controls input[type="search"] {
+    width: 100%;
+    padding-left: 32px;
+}
+
+.cg-result-count {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--cg-ink-faint);
+    white-space: nowrap;
+}
+
+.cg-empty-state {
+    padding: 48px 20px;
+    text-align: center;
+    color: var(--cg-ink-faint);
+    font-size: 13.5px;
+}
+
+.cg-cell-role {
+    display: block;
+    font-weight: 400;
+    font-size: 11.5px;
+    color: var(--cg-ink-faint);
+    margin-top: 1px;
+}
+
+.cg-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 100px;
+}
+.cg-status-pill::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+.cg-status-pill.cleared { background: var(--cg-good-tint); color: var(--cg-good); }
+.cg-status-pill.pending { background: var(--cg-warning-tint); color: var(--cg-warning); }
+.cg-status-pill.flagged { background: var(--cg-critical-tint); color: var(--cg-critical); }
+.cg-status-pill.escalated { background: var(--cg-critical-tint); color: var(--cg-critical); font-weight: 700; }
+
+/* ---------- KPI row ---------- */
+/* Global, not page-scoped: Dashboard and Investor Relations > Share Register both use it, and CSS
+   isolation (a .razor.css file) only reaches the component that owns it. */
+.cg-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 22px 0 26px;
+}
+
+.cg-kpi {
+    background: var(--cg-surface);
+    border: 1px solid var(--cg-line);
+    border-left: 3px solid var(--cg-line-strong);
+    border-radius: 8px;
+    padding: 14px 16px;
+}
+
+.cg-kpi[data-tone="critical"] { border-left-color: var(--cg-critical); }
+.cg-kpi[data-tone="warning"] { border-left-color: var(--cg-warning); }
+.cg-kpi[data-tone="good"] { border-left-color: var(--cg-good); }
+
+.cg-kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--cg-ink-muted);
+}
+
+.cg-kpi-value {
+    font-size: 26px;
+    font-weight: 650;
+    margin-top: 6px;
+}
+
+.cg-kpi-sub {
+    font-size: 12px;
+    color: var(--cg-ink-faint);
+    margin-top: 3px;
+}
+
+@media (max-width: 720px) {
+    .cg-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ---------- Admin master-detail forms (Members, etc.) ---------- */
+.cg-members-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.cg-data-row.cg-selected td:first-child {
+    border-left: 3px solid var(--cg-accent);
+}
+
+.cg-member-form {
+    background: var(--cg-surface);
+    border: 1px solid var(--cg-line);
+    border-radius: 10px;
+    padding: 20px;
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cg-activity-card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.cg-member-form.cg-member-page {
+    max-width: 900px;
+}
+
+.cg-shell.cg-declaration-wizard {
+    max-width: 1000px;
+}
+
+.cg-shell.cg-declarations-page {
+    max-width: 1100px;
+}
+
+.cg-section-heading {
+    margin: 28px 0 4px;
+    font-size: 17px;
+}
+
+.cg-member-form.cg-declaration-form {
+    max-width: 100%;
+}
+
+.cg-member-form h2 {
+    font-size: 16px;
+    font-weight: 650;
+    margin: 0;
+}
+
+.cg-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12.5px;
+    color: var(--cg-ink-muted);
+}
+
+.cg-field-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.cg-field-row .cg-field { flex: 1; min-width: 220px; }
+
+.cg-coi-company-row {
+    border: 1px solid var(--cg-line);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--cg-surface);
+}
+
+.cg-coi-document-list {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.cg-coi-document-list li { display: flex; align-items: center; gap: 8px; }
+
+/* Pointer-icon list -- used in place of plain round bullets for declaration-form notes/instructions. */
+.cg-pointer-list {
+    list-style: none;
+    margin: 10px 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.cg-pointer-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.5;
+}
+.cg-pointer-list li::before {
+    content: "\27A4";
+    color: var(--cg-accent);
+    font-size: 13px;
+    line-height: 1.6;
+    flex-shrink: 0;
+}
+
+/* Highlighted callout -- surfaces important declaration-form text (due dates, disclaimers, notes)
+   so it doesn't blend into surrounding body copy. */
+.cg-info-callout {
+    background: var(--cg-accent-tint);
+    border-left: 3px solid var(--cg-accent);
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin: 12px 0;
+}
+.cg-info-callout p { margin: 0; }
+.cg-info-callout + .cg-info-callout { margin-top: -4px; }
+
+.cg-upload-progress {
+    width: 100%;
+    height: 6px;
+    accent-color: var(--cg-accent);
+}
+
+.cg-profile-upload {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cg-profile-pic-preview,
+.cg-profile-pic-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    flex: none;
+}
+
+.cg-profile-pic-preview {
+    object-fit: cover;
+}
+
+.cg-profile-pic-placeholder {
+    background-color: var(--cg-accent-tint);
+    color: var(--cg-accent-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.cg-table-avatar,
+.cg-table-avatar-placeholder {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    flex: none;
+    display: block;
+}
+
+.cg-table-avatar {
+    object-fit: cover;
+}
+
+.cg-table-avatar-placeholder {
+    background-color: var(--cg-accent-tint);
+    color: var(--cg-accent-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.cg-entity-logo {
+    max-width: 96px;
+    max-height: 28px;
+    object-fit: contain;
+    display: block;
+}
+
+.cg-logo-preview,
+.cg-logo-placeholder {
+    width: 96px;
+    height: 48px;
+    border-radius: 6px;
+    flex: none;
+}
+
+.cg-logo-preview {
+    object-fit: contain;
+    background-color: var(--cg-surface);
+    border: 1px solid var(--cg-line);
+}
+
+.cg-logo-placeholder {
+    background-color: var(--cg-accent-tint);
+    color: var(--cg-accent-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+    border: 1px solid var(--cg-line);
+}
+
+.cg-checkgroup {
+    border: 1px solid var(--cg-line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.cg-checkgroup legend {
+    font-size: 11px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--cg-ink-faint);
+    padding: 0 4px;
+}
+
+.cg-ad-status {
+    font-size: 12.5px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.cg-ad-status.cg-ad-ok { background: var(--cg-good-tint); color: var(--cg-good); }
+.cg-ad-status.cg-ad-warn { background: var(--cg-warning-tint); color: var(--cg-warning); }
+
+.cg-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--cg-line);
+    margin-bottom: 12px;
+}
+
+.cg-tab {
+    appearance: none;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 4px;
+    margin-right: 20px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--cg-ink-muted);
+    cursor: pointer;
+}
+
+.cg-tab:hover {
+    color: var(--cg-ink);
+}
+
+.cg-tab.active {
+    color: var(--cg-navy);
+    border-bottom-color: var(--cg-accent);
+}
+
+/* ---------- Idle lock overlay ---------- */
+.cg-lock-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 14, 20, 0.72);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.cg-lock-card {
+    background: var(--cg-surface);
+    border: 1px solid var(--cg-line);
+    border-radius: 12px;
+    padding: 28px;
+    width: 100%;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cg-lock-card h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 650;
+}
+
+.cg-impersonation-banner {
+    background: var(--cg-warning-tint);
+    color: var(--cg-warning);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cg-admin-impersonation-banner {
+    background: var(--cg-critical-tint);
+    color: var(--cg-critical);
+}
+
+.cg-login-logo {
+    display: block;
+    max-width: 260px;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 18px;
+}
+
+.cg-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--cg-ink-faint);
+    font-size: 12.5px;
+    margin: 18px 0;
+}
+.cg-divider::before, .cg-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--cg-line);
+}
+
+.cg-um-roles {
+    max-width: 100%;
+    margin-bottom: 20px;
+}
+
+.cg-role-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.cg-role-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--cg-accent-tint);
+    color: var(--cg-accent-ink);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 100px;
+}
+
+.cg-role-chip-remove {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+}
+
+.cg-audit-history {
+    margin-top: 8px;
+}
+
+.cg-audit-history summary {
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 650;
+    color: var(--cg-ink-muted);
+    margin-bottom: 8px;
+}
+
+/* ---------- Toast notifications ---------- */
+.cg-toast-stack {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 360px;
+}
+
+.cg-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 550;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    background: var(--cg-surface);
+    border: 1px solid var(--cg-line);
+    color: var(--cg-ink);
+    animation: cg-toast-in 0.15s ease-out;
+}
+
+@keyframes cg-toast-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.cg-toast span {
+    flex: 1;
+}
+
+.cg-toast-close {
+    background: none;
+    border: none;
+    color: inherit;
+    opacity: 0.6;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0;
+}
+.cg-toast-close:hover { opacity: 1; }
+
+.cg-toast-error { border-color: var(--cg-critical); background: var(--cg-critical-tint); color: var(--cg-critical); }
+.cg-toast-success { border-color: var(--cg-good); background: var(--cg-good-tint); color: var(--cg-good); }
+.cg-toast-warning { border-color: var(--cg-warning); background: var(--cg-warning-tint); color: var(--cg-warning); }
+.cg-toast-info { border-color: var(--cg-line-strong); }
+
+@media (prefers-reduced-motion: reduce) {
+    .cg-toast { animation: none; }
+}
+
+.cg-justify-prompt {
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px dashed var(--cg-critical);
+    border-radius: 8px;
+    background: var(--cg-critical-tint);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cg-justify-prompt textarea.cg-input {
+    resize: vertical;
+    font-family: inherit;
+}
+
+.cg-confirm-prompt {
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px dashed var(--cg-line-strong);
+    border-radius: 8px;
+    background: var(--cg-surface-muted, var(--cg-surface));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cg-confirm-prompt.cg-confirm-prompt-critical {
+    border-color: var(--cg-critical);
+    background: var(--cg-critical-tint);
+}
+
+.cg-confirm-prompt p {
+    margin: 0;
+}
+
+.cg-status-icon-good, .cg-status-icon-bad {
+    font-weight: 700;
+}
+
+.cg-status-icon-good { color: var(--cg-good); }
+.cg-status-icon-bad { color: var(--cg-critical); }
+
+/* Toast-style presentation for ASP.NET Core Identity's own status messages (Login, Register,
+   Manage, etc.) -- those pages must stay static-SSR for cookie sign-in to work, so they can't use
+   the live ToastService; this makes their existing alert-danger/alert-success banners look and
+   behave like the same floating toast instead. */
+.alert-danger, .alert-success {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 3000;
+    max-width: 360px;
+    width: calc(100% - 32px);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 550;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    animation: cg-toast-in 0.15s ease-out;
+}
+.alert-danger {
+    background: var(--cg-critical-tint);
+    color: var(--cg-critical);
+    border-color: var(--cg-critical);
+}
+.alert-success {
+    background: var(--cg-good-tint);
+    color: var(--cg-good);
+    border-color: var(--cg-good);
+}
+
+/* ---------- Notify-by-email icon button (MemberDetail) ---------- */
+.cg-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    margin-left: 8px;
+    padding: 0;
+    border: 1px solid var(--cg-line-strong);
+    border-radius: 6px;
+    background: var(--cg-surface);
+    cursor: pointer;
+    vertical-align: middle;
+}
+.cg-icon-btn:disabled { opacity: 0.35; cursor: default; }
+.cg-icon-btn:hover:not(:disabled) { border-color: var(--cg-accent); }
+
+.cg-icon-mail-glyph {
+    display: block;
+    width: 15px;
+    height: 15px;
+    background-color: var(--cg-accent);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2Zm13 2.383-4.708 2.825L15 11.105V5.383Zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741ZM1 11.105l4.708-2.897L1 5.383v5.722Z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2Zm13 2.383-4.708 2.825L15 11.105V5.383Zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741ZM1 11.105l4.708-2.897L1 5.383v5.722Z'/%3E%3C/svg%3E");
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+}
+.cg-icon-btn:disabled .cg-icon-mail-glyph { background-color: var(--cg-ink-faint); }
+
+.cg-icon-print-glyph {
+    display: block;
+    width: 15px;
+    height: 15px;
+    background-color: var(--cg-ink-muted);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1Z'/%3E%3Cpath d='M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5Zm7 4H4V3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2ZM4 9h8v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9Zm-1-4h10a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v2H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1Z'/%3E%3Cpath d='M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5Zm7 4H4V3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2ZM4 9h8v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9Zm-1-4h10a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v2H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z'/%3E%3C/svg%3E");
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+}
+.cg-icon-btn:hover:not(:disabled) .cg-icon-print-glyph { background-color: var(--cg-accent); }
+
+.cg-icon-document-glyph {
+    display: block;
+    width: 15px;
+    height: 15px;
+    background-color: var(--cg-ink-muted);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0ZM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1ZM4.5 9a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5Zm0 2.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5Zm0-5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5Z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0ZM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1ZM4.5 9a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5Zm0 2.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5Zm0-5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5Z'/%3E%3C/svg%3E");
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+}
+.cg-icon-btn:hover:not(:disabled) .cg-icon-document-glyph { background-color: var(--cg-accent); }
+
+/* ---------- Print preview (MemberDetail) ---------- */
+.cg-print-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 20, 28, 0.55);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 32px 16px;
+    z-index: 2000;
+    overflow-y: auto;
+}
+
+.cg-print-modal {
+    background: var(--cg-surface);
+    border-radius: 10px;
+    padding: 20px;
+    width: 100%;
+    max-width: 640px;
+}
+
+.cg-print-modal.cg-print-modal-wide {
+    max-width: 1100px;
+}
+
+.cg-print-modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+}
+
+.cg-col-picker {
+    position: relative;
+    margin-right: auto;
+}
+
+.cg-col-picker-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 170px;
+    padding: 10px 12px;
+    background: var(--cg-surface);
+    border: 1px solid var(--cg-line-strong);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.cg-col-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.cg-print-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.cg-print-header img { height: 40px; }
+.cg-print-header h2 { font-size: 15px; font-weight: 650; margin: 0; }
+.cg-print-header p { font-size: 12px; color: var(--cg-ink-faint); margin: 2px 0 0; }
+
+.cg-print-footer {
+    font-size: 11px;
+    color: var(--cg-ink-faint);
+    font-style: italic;
+    margin: 18px 0 0;
+}
+
+.cg-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.cg-print-table th, .cg-print-table td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--cg-line);
+}
+.cg-print-table th {
+    width: 40%;
+    color: var(--cg-ink-muted);
+    font-weight: 600;
+}
+
+@media print {
+    /* display:none (not visibility:hidden) removes hidden page content from layout entirely --
+       visibility:hidden kept the reserved space of everything outside .cg-print-overlay (the page's
+       own heading, "Back to X" link, forms, etc.), which was tall enough on some pages to spill onto
+       a second, blank printed page. display:none has no reserved space, so nothing outside the print
+       area contributes to pagination, and nothing from the page (including the "Back to X" link) can
+       bleed into the printout. `revert` restores each descendant's own tag-appropriate display (table
+       rows/cells etc.) instead of forcing everything to block.
+
+       .cg-print-overlay is always nested several levels deep (div.page > main > article.content >
+       the page's own wrapper), never a direct child of body. A display:none ancestor hides its
+       descendants no matter what display those descendants declare for themselves, so blindly hiding
+       "everything" and then reverting just .cg-print-overlay left every ancestor of the overlay
+       still display:none -- the overlay itself never painted and print/print-to-PDF came out
+       entirely blank. Ancestors of the overlay (selected via :has()) must stay in the render tree,
+       collapsed to zero height so their normal screen chrome (sidebar rail, min-height, padding)
+       doesn't reserve blank space above the printed report. */
+    body * { display: none !important; }
+    body *:has(.cg-print-overlay) {
+        display: block !important;
+        position: static !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        background: none !important;
+        overflow: visible !important;
+    }
+    .cg-print-overlay, .cg-print-overlay * { display: revert !important; }
+    .cg-print-overlay {
+        display: block !important;
+        position: static !important;
+        inset: auto !important;
+        background: none !important;
+        padding: 0 !important;
+    }
+    .cg-print-modal {
+        display: block !important;
+        max-width: none !important;
+        padding: 0 !important;
+    }
+    .no-print { display: none !important; }
+
+    /* .cg-table-wrap's overflow:auto is needed on-screen so wide tables scroll instead of blowing out
+       the layout, but that same clipping applies to the printed page too -- browsers don't expand a
+       scrollable container to show everything it holds, so reports were coming out cut short, or with
+       a stray scrollbar-shaped edge where the content got clipped. Same story for the sticky table
+       header (position: sticky is a scroll concept with no defined print behavior) and the overlay's
+       own overflow-y. Making all of these fully visible lets the underlying <table> paginate across as
+       many printed pages as it actually needs, with the header naturally repeating via <thead>'s
+       default table-header-group display (restored by the `display: revert` rule above). */
+    .cg-print-overlay, .cg-print-modal, .cg-table-wrap {
+        overflow: visible !important;
+        max-height: none !important;
+    }
+    .cg-table-wrap {
+        border: none !important;
+        border-radius: 0 !important;
+    }
+    .cg-table-wrap thead th {
+        position: static !important;
+    }
+    .cg-table-wrap tbody tr.cg-data-row {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    /* Reports with many columns (e.g. Related Party Register) don't fit at screen font sizes on a
+       portrait page -- columns were being clipped at the page edge instead of wrapping. Shrinking
+       the type further, tightening the padding, and letting header/cell text wrap instead of
+       forcing nowrap keeps every column on the page without cutting content. Portrait alone still
+       isn't wide enough for 9+ columns, so these reports also print on a landscape page via the
+       named-page rule below -- more horizontal room than any font shrink alone can buy back.
+       (CSS "page" is a fragmentation property, not a selector-scoped one: giving the wide print
+       root a page name -- rather than touching the shared, unnamed @page rule every other report
+       still uses -- is what keeps this landscape switch scoped to only the wide reports.) */
+    .cg-print-modal-wide .cg-table-wrap thead th {
+        font-size: 7.5px;
+        padding: 4px 5px;
+        white-space: normal;
+    }
+    .cg-print-modal-wide .cg-table-wrap td {
+        font-size: 8.5px;
+        padding: 4px 5px;
+    }
+    .cg-print-modal-wide {
+        page: cg-wide;
+    }
+
+    @page {
+        margin: 12mm;
+    }
+
+    @page cg-wide {
+        size: A4 landscape;
+        margin: 10mm;
+    }
+}
+
+/* ---------- Sortable table columns ---------- */
+.cg-table-wrap thead th.cg-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+.cg-table-wrap thead th.cg-sortable:hover { color: var(--cg-ink); }
+
+.cg-sort-arrows {
+    display: inline-flex;
+    gap: 1px;
+    margin-left: 4px;
+    font-size: 9px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.cg-sort-arrow { color: var(--cg-line-strong); }
+.cg-sort-arrow.cg-sort-active { color: var(--cg-accent); }
+
+/* ---------- Row checkboxes + bulk action bar ---------- */
+.cg-table-wrap th.cg-select-col,
+.cg-table-wrap td.cg-select-col {
+    width: 1%;
+    padding-left: 14px;
+    padding-right: 4px;
+}
+
+.cg-bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.cg-bulk-bar .cg-result-count {
+    margin-right: auto;
+}
+
+/* ---------- Active/Inactive toggle switch ---------- */
+.cg-toggle {
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 22px;
+    flex: none;
+    cursor: pointer;
+}
+
+.cg-toggle input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    margin: 0;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.cg-toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--cg-critical);
+    border-radius: 999px;
+    transition: background-color 0.15s ease;
+}
+
+.cg-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: #FFFFFF;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s ease;
+}
+
+.cg-toggle input:checked ~ .cg-toggle-track {
+    background: var(--cg-good);
+}
+
+.cg-toggle input:checked ~ .cg-toggle-track .cg-toggle-thumb {
+    transform: translateX(20px);
+}
+
+.cg-toggle.cg-toggle-disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.cg-toggle.cg-toggle-disabled input {
+    cursor: default;
+}

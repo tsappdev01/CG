@@ -1,0 +1,229 @@
+@page "/admin/user-management"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IMemberWriter MemberWriter
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<IdentityRole> RoleManager
+@inject NavigationManager Nav
+@inject ToastService Toasts
+@inject IJSRuntime JS
+
+<PageTitle>User Management</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1>User management</h1>
+    <p class="cg-subtitle">Users, login accounts, roles, and audit history — all in one place.</p>
+
+    <AuthorizeView Roles="@GovernanceRoles.Administrator" Context="adminCtx">
+        <Authorized>
+            <div class="cg-member-form cg-um-roles">
+                <h2>Roles</h2>
+                <div class="cg-role-chip-row">
+                    @foreach (var role in _roles ?? [])
+                    {
+                        <span class="cg-role-chip">
+                            @role.Name
+                            @if (!GovernanceRoles.All.Contains(role.Name))
+                            {
+                                <button type="button" class="cg-role-chip-remove" title="Delete role" @onclick="() => _roleToDelete = role.Name">×</button>
+                            }
+                        </span>
+                    }
+                </div>
+                <div class="cg-actions">
+                    <input class="cg-input" style="width:220px;" placeholder="New role name" @bind="_newRoleName" />
+                    <button type="button" class="cg-action-btn cg-good" @onclick="CreateRoleAsync">+ Create role</button>
+                </div>
+
+                @if (_roleToDelete is not null)
+                {
+                    <JustificationPrompt Show="true"
+                                         Label="@($"Why are you deleting the role '{_roleToDelete}'?")"
+                                         Toasts="Toasts"
+                                         OnConfirm="DeleteRoleAsync"
+                                         OnCancel="() => _roleToDelete = null" />
+                }
+            </div>
+        </Authorized>
+    </AuthorizeView>
+
+    @if (_members is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div class="cg-tabs" role="tablist">
+                <button type="button" class="cg-tab @(_statusFilter == StatusFilter.Active ? "active" : "")" role="tab" aria-selected="@(_statusFilter == StatusFilter.Active)" @onclick="() => SetStatusFilter(StatusFilter.Active)">
+                    Active
+                </button>
+                <button type="button" class="cg-tab @(_statusFilter == StatusFilter.Recent ? "active" : "")" role="tab" aria-selected="@(_statusFilter == StatusFilter.Recent)" @onclick="() => SetStatusFilter(StatusFilter.Recent)">
+                    Recent
+                </button>
+                <button type="button" class="cg-tab @(_statusFilter == StatusFilter.Inactive ? "active" : "")" role="tab" aria-selected="@(_statusFilter == StatusFilter.Inactive)" @onclick="() => SetStatusFilter(StatusFilter.Inactive)">
+                    Inactive
+                </button>
+            </div>
+            <button type="button" class="cg-action-btn cg-good" @onclick="AddNew">+ Add user</button>
+        </div>
+
+        @if (_statusFilter == StatusFilter.Recent)
+        {
+            <div class="cg-actions">
+                <span class="cg-subtitle" style="margin:0;">Window (open item, TBC with Corporate Affairs):</span>
+                @foreach (var days in RecentWindowOptions)
+                {
+                    <button type="button" class="cg-action-btn @(_recentDays == days ? "cg-good" : "")" @onclick="() => SetRecentWindow(days)">Last @days days</button>
+                }
+            </div>
+        }
+
+        <div class="cg-controls">
+            <div class="cg-search-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                <input type="search" placeholder="Search users…" @bind="_search" @bind:event="oninput" @bind:after="ResetToFirstPage" aria-label="Search users" />
+            </div>
+
+            <select class="cg-input" style="width:auto;" value="@_companyFilter" @onchange="e => SetCompanyFilter(int.Parse((string)e.Value!))" aria-label="Filter by company">
+                <option value="0">All entities</option>
+                @foreach (var c in _companies ?? [])
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </select>
+
+            <span class="cg-result-count">@FilteredMembers().Count @StatusFilterLabel() user(s)</span>
+
+            @if (TotalPages > 1)
+            {
+                <button type="button" class="cg-action-btn" disabled="@(_page <= 1)" @onclick="() => GoToPage(_page - 1)">‹ Previous</button>
+                <span class="cg-result-count">Page @_page of @TotalPages</span>
+                <button type="button" class="cg-action-btn" disabled="@(_page >= TotalPages)" @onclick="() => GoToPage(_page + 1)">Next ›</button>
+            }
+        </div>
+
+        <div class="cg-bulk-bar">
+            <button type="button" class="cg-action-btn" disabled="@(_selectedIds.Count == 0)" @onclick="DeselectAll">Deselect all</button>
+            @if (_selectedIds.Count > 0)
+            {
+                <span class="cg-result-count">@_selectedIds.Count selected</span>
+                <button type="button" class="cg-action-btn cg-critical" @onclick="() => _bulkSetActive = false">Deactivate selected</button>
+                <button type="button" class="cg-action-btn cg-good" @onclick="() => _bulkSetActive = true">Reactivate selected</button>
+            }
+        </div>
+
+        @if (_bulkSetActive is not null)
+        {
+            <JustificationPrompt Show="true"
+                                 Label="@($"Why are you {(_bulkSetActive == true ? "reactivating" : "deactivating")} {_selectedIds.Count} user(s)?")"
+                                 Toasts="Toasts"
+                                 OnConfirm="BulkSetActiveAsync"
+                                 OnCancel="() => _bulkSetActive = null" />
+        }
+
+        <div class="cg-members-layout">
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="cg-select-col"><input type="checkbox" checked="@AllVisibleSelected" @onchange="e => ToggleSelectAllVisible((bool)e.Value!)" aria-label="Select all visible" /></th>
+                            <th></th>
+                            <SortableHeader Label="Name" Column="Name" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Department" Column="Department" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Created on" Column="CreatedOn" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Last modified" Column="ModifiedOn" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            @if (_statusFilter == StatusFilter.Recent)
+                            {
+                                <th>Recency</th>
+                            }
+                            <SortableHeader Label="Active" Column="Active" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in PagedMembers())
+                        {
+                            <tr class="cg-data-row">
+                                <td class="cg-select-col"><input type="checkbox" checked="@_selectedIds.Contains(m.Id)" @onchange="e => ToggleSelect(m.Id, (bool)e.Value!)" aria-label="Select @m.FullName" /></td>
+                                <td>
+                                    @{ var photo = _users?.FirstOrDefault(u => u.Id == m.ApplicationUserId)?.ProfilePicturePath; }
+                                    @if (!string.IsNullOrEmpty(photo))
+                                    {
+                                        <img src="@photo" alt="" class="cg-table-avatar" />
+                                    }
+                                    else
+                                    {
+                                        <span class="cg-table-avatar-placeholder">@(m.FullName.Length > 0 ? m.FullName[..1].ToUpperInvariant() : "?")</span>
+                                    }
+                                </td>
+                                <td>@m.FullName<span class="cg-cell-role">@m.JobTitle</span></td>
+                                <td><EntityLogo Company="m.Company" /></td>
+                                <td>@m.Department?.Name</td>
+                                <td class="mono">@m.CreatedAtUtc.ToLocalDisplay("dd/MM/yyyy")</td>
+                                <td class="mono">@m.ModifiedAtUtc.ToLocalDisplay("dd/MM/yyyy")</td>
+                                @if (_statusFilter == StatusFilter.Recent)
+                                {
+                                    <td class="mono">@RecencyLabel(m)</td>
+                                }
+                                <td><ToggleSwitch Value="m.Active" ValueChanged="() => _pendingJustify = m" /></td>
+                                <td>
+                                    <button type="button" class="cg-action-btn" @onclick="() => Edit(m)">Edit</button>
+                                    <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = m"><span class="cg-icon-print-glyph"></span></button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (_pendingJustify is not null)
+            {
+                <JustificationPrompt Show="true"
+                                     Label="@($"Why are you {(_pendingJustify.Active ? "deactivating" : "reactivating")} {_pendingJustify.FullName}? (Deactivating blocks their login.)")"
+                                     Toasts="Toasts"
+                                     OnConfirm="ToggleActiveAsync"
+                                     OnCancel="() => _pendingJustify = null" />
+            }
+        </div>
+
+        @if (_printSingleRecord is not null)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => _printSingleRecord = null">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — User — @_printSingleRecord.FullName</h2>
+                                <PrintFooter />
+                            </div>
+                        </div>
+                        <div class="cg-table-wrap">
+                            <table>
+                                <tbody>
+                                    <tr><th>Full name</th><td>@_printSingleRecord.FullName</td></tr>
+                                    <tr><th>Job title</th><td>@(_printSingleRecord.JobTitle ?? "—")</td></tr>
+                                    <tr><th>Entity</th><td>@(_printSingleRecord.Company?.Name ?? "—")</td></tr>
+                                    <tr><th>Department</th><td>@(_printSingleRecord.Department?.Name ?? "—")</td></tr>
+                                    <tr><th>Email</th><td>@(_printSingleRecord.Email ?? "—")</td></tr>
+                                    <tr><th>Created on</th><td>@_printSingleRecord.CreatedAtUtc.ToLocalDisplay("dd/MM/yyyy")</td></tr>
+                                    <tr><th>Last modified</th><td>@_printSingleRecord.ModifiedAtUtc.ToLocalDisplay("dd/MM/yyyy")</td></tr>
+                                    <tr><th>Status</th><td>@(_printSingleRecord.Active ? "Active" : "Inactive")</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

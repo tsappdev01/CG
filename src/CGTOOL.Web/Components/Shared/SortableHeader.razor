@@ -1,0 +1,13 @@
+<th class="cg-sortable" @onclick="() => OnSort.InvokeAsync(Column)">
+    @Label<span class="cg-sort-arrows"><span class="cg-sort-arrow @(IsActive && !Ascending ? "cg-sort-active" : "")">↓</span><span class="cg-sort-arrow @(IsActive && Ascending ? "cg-sort-active" : "")">↑</span></span>
+</th>
+
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Column { get; set; } = string.Empty;
+    [Parameter] public string CurrentColumn { get; set; } = string.Empty;
+    [Parameter] public bool Ascending { get; set; }
+    [Parameter] public EventCallback<string> OnSort { get; set; }
+
+    private bool IsActive => Column == CurrentColumn;
+}

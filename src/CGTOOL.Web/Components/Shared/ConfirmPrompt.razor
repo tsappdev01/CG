@@ -1,0 +1,19 @@
+@if (Show)
+{
+    <div class="cg-confirm-prompt @(Critical ? "cg-confirm-prompt-critical" : "")">
+        <p>@Message</p>
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn @(Critical ? "cg-critical" : "cg-good")" @onclick="() => OnConfirm.InvokeAsync()">@ConfirmLabel</button>
+            <button type="button" class="cg-action-btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public string Message { get; set; } = "Are you sure?";
+    [Parameter] public string ConfirmLabel { get; set; } = "Confirm";
+    [Parameter] public bool Critical { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+}

@@ -1,0 +1,96 @@
+.page[b-kgzxa2iloz] {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+main[b-kgzxa2iloz] {
+    flex: 1;
+}
+
+.sidebar[b-kgzxa2iloz] {
+    background-image: linear-gradient(180deg, var(--cg-navy) 0%, var(--cg-navy-deep) 100%);
+}
+
+.top-row[b-kgzxa2iloz] {
+    background-color: var(--cg-navy-deep);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    justify-content: flex-end;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+}
+
+    .top-row[b-kgzxa2iloz]  a, .top-row[b-kgzxa2iloz]  .btn-link {
+        white-space: nowrap;
+        margin-left: 1.5rem;
+        text-decoration: none;
+    }
+
+    .top-row[b-kgzxa2iloz]  a:hover, .top-row[b-kgzxa2iloz]  .btn-link:hover {
+        text-decoration: underline;
+    }
+
+    .top-row[b-kgzxa2iloz]  a:first-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+@media (max-width: 640.98px) {
+    .top-row[b-kgzxa2iloz] {
+        justify-content: space-between;
+    }
+
+    .top-row[b-kgzxa2iloz]  a, .top-row[b-kgzxa2iloz]  .btn-link {
+        margin-left: 0;
+    }
+}
+
+@media (min-width: 641px) {
+    .page[b-kgzxa2iloz] {
+        flex-direction: row;
+    }
+
+    .sidebar[b-kgzxa2iloz] {
+        width: 300px;
+        height: 100vh;
+        position: sticky;
+        top: 0;
+    }
+
+    .top-row[b-kgzxa2iloz] {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .top-row.auth[b-kgzxa2iloz]  a:first-child {
+        flex: 1;
+        text-align: right;
+        width: 0;
+    }
+
+    .top-row[b-kgzxa2iloz], article[b-kgzxa2iloz] {
+        padding-left: 2rem !important;
+        padding-right: 1.5rem !important;
+    }
+}
+
+#blazor-error-ui[b-kgzxa2iloz] {
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss[b-kgzxa2iloz] {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }

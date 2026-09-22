@@ -1,0 +1,292 @@
+@page "/admin/schedule-activities"
+@page "/admin/schedule-activities/{TypeSlug}"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IScheduledActivityWriter ActivityWriter
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toasts
+@inject IJSRuntime JS
+
+<PageTitle>@PageHeading</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1>@PageHeading</h1>
+    <p class="cg-subtitle">Control Panel — recurring dates that trigger reminder emails.</p>
+
+    @if (_activities is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+        </div>
+
+        <div class="cg-activity-card-row">
+        @foreach (var activity in _activities)
+        {
+            <div class="cg-member-form" style="max-width: 640px;">
+                @if (FilterType is null)
+                {
+                    <h2>@Label(activity.Type)</h2>
+                }
+                <label style="display:flex; align-items:center; gap:8px;"><ToggleSwitch Value="activity.Active" ValueChanged="v => ToggleActive(activity, v)" /> Active</label>
+
+                <div class="cg-actions">
+                    <select class="cg-input" @bind="_newMonth" style="width:auto;">
+                        @for (var m = 1; m <= 12; m++)
+                        {
+                            <option value="@m">@System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(m)</option>
+                        }
+                    </select>
+                    <input type="number" min="1" max="31" class="cg-input" style="width:80px;" @bind="_newDay" />
+                    <button type="button" class="cg-action-btn cg-good" @onclick="() => AddDateAsync(activity)">Add date</button>
+                </div>
+
+                <div class="cg-bulk-bar">
+                    <button type="button" class="cg-action-btn" disabled="@(SelectedFor(activity.Id).Count == 0)" @onclick="() => DeselectAllDates(activity.Id)">Deselect all</button>
+                    @if (SelectedFor(activity.Id).Count > 0)
+                    {
+                        <span class="cg-result-count">@SelectedFor(activity.Id).Count selected</span>
+                        <button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveSelectedDatesAsync(activity)">Remove selected</button>
+                    }
+                </div>
+
+                <div class="cg-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="cg-select-col"><input type="checkbox" checked="@AllSelected(activity)" @onchange="e => ToggleSelectAll(activity, (bool)e.Value!)" aria-label="Select all" /></th>
+                                <SortableHeader Label="Month" Column="Month" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                                <SortableHeader Label="Day" Column="Day" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                                <SortableHeader Label="Last triggered" Column="LastTriggered" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var d in SortedDates(activity))
+                            {
+                                <tr class="cg-data-row">
+                                    <td class="cg-select-col"><input type="checkbox" checked="@SelectedFor(activity.Id).Contains(d.Id)" @onchange="e => ToggleSelectDate(activity.Id, d.Id, (bool)e.Value!)" aria-label="Select date" /></td>
+                                    <td class="mono">@d.Month</td>
+                                    <td class="mono">@d.Day</td>
+                                    <td class="mono">@(d.LastTriggeredUtc?.ToLocalDisplay("dd/MM/yyyy HH:mm") ?? "never")</td>
+                                    <td><button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveDateAsync(activity, d)">Remove</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        </div>
+
+        @if (_showPrintPreview)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = false">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — @PageHeading</h2>
+                                <PrintFooter />
+                            </div>
+                        </div>
+                        @foreach (var activity in _activities)
+                        {
+                            <h3 style="margin:16px 0 8px;">@Label(activity.Type) — @(activity.Active ? "Active" : "Inactive")</h3>
+                            <div class="cg-table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Month</th>
+                                            <th>Day</th>
+                                            <th>Last triggered</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var d in SortedDates(activity))
+                                        {
+                                            <tr class="cg-data-row">
+                                                <td class="mono">@d.Month</td>
+                                                <td class="mono">@d.Day</td>
+                                                <td class="mono">@(d.LastTriggeredUtc?.ToLocalDisplay("dd/MM/yyyy HH:mm") ?? "never")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string? TypeSlug { get; set; }
+
+    private List<ScheduledActivity>? _activities;
+    private int _newMonth = 1;
+    private int _newDay = 1;
+    private string _sortColumn = "Month";
+    private bool _sortAscending = true;
+    private readonly Dictionary<int, HashSet<int>> _selectedDateIds = [];
+    private bool _showPrintPreview;
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private List<ScheduledActivityDate> SortedDates(ScheduledActivity activity)
+    {
+        IOrderedEnumerable<ScheduledActivityDate> sorted = _sortColumn switch
+        {
+            "Day" => activity.Dates.OrderBy(d => d.Day),
+            "LastTriggered" => activity.Dates.OrderBy(d => d.LastTriggeredUtc),
+            _ => activity.Dates.OrderBy(d => d.Month).ThenBy(d => d.Day),
+        };
+        return (_sortAscending ? sorted : sorted.Reverse()).ToList();
+    }
+
+    private void Sort(string column)
+    {
+        if (_sortColumn == column) _sortAscending = !_sortAscending;
+        else { _sortColumn = column; _sortAscending = true; }
+    }
+
+    private HashSet<int> SelectedFor(int activityId) =>
+        _selectedDateIds.TryGetValue(activityId, out var set) ? set : _selectedDateIds[activityId] = [];
+
+    private bool AllSelected(ScheduledActivity activity) =>
+        activity.Dates.Count > 0 && activity.Dates.All(d => SelectedFor(activity.Id).Contains(d.Id));
+
+    private void ToggleSelectAll(ScheduledActivity activity, bool select)
+    {
+        if (select) _selectedDateIds[activity.Id] = activity.Dates.Select(d => d.Id).ToHashSet();
+        else SelectedFor(activity.Id).Clear();
+    }
+
+    private void ToggleSelectDate(int activityId, int dateId, bool select)
+    {
+        if (select) SelectedFor(activityId).Add(dateId);
+        else SelectedFor(activityId).Remove(dateId);
+    }
+
+    private void DeselectAllDates(int activityId) => SelectedFor(activityId).Clear();
+
+    private async Task RemoveSelectedDatesAsync(ScheduledActivity activity)
+    {
+        var ids = SelectedFor(activity.Id).ToList();
+        foreach (var dateId in ids)
+        {
+            var date = activity.Dates.FirstOrDefault(d => d.Id == dateId);
+            if (date is null) continue;
+            await ActivityWriter.DeleteDateAsync(date.Id);
+            var state = await AuthState.GetAuthenticationStateAsync();
+            await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.Update, nameof(ScheduledActivity), activity.Id.ToString(), $"Removed trigger date {date.Month}/{date.Day} from {Label(activity.Type)}");
+        }
+
+        Toasts.ShowSuccess($"{ids.Count} trigger date(s) removed.");
+        SelectedFor(activity.Id).Clear();
+        await LoadAsync();
+    }
+
+    /// <summary>null when reached via the unfiltered base route (still shows every configured
+    /// activity, including the Insider Trading/Conflict of Interest reminder schedules); otherwise
+    /// the single type this nav-specific route (Setup &gt; Activities &gt; Event &amp; Notification &gt;
+    /// Blackout / Outages) is scoped to.</summary>
+    private ScheduledActivityType? FilterType => TypeSlug switch
+    {
+        "blackout" => ScheduledActivityType.BlackoutPeriod,
+        "outages" => ScheduledActivityType.Outage,
+        _ => null,
+    };
+
+    private string PageHeading => FilterType switch
+    {
+        ScheduledActivityType.BlackoutPeriod => "Blackout period schedule",
+        ScheduledActivityType.Outage => "Outage schedule",
+        _ => "Schedule activities",
+    };
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        if (FilterType is { } type)
+        {
+            // Every Type is meant to have exactly one row; there's no general "add activity" UI, so
+            // the first visit to a type-filtered route creates it (inactive, no dates) if missing.
+            await ActivityWriter.EnsureExistsAsync(type);
+            _activities = await Db.ScheduledActivities.Include(a => a.Dates).Where(a => a.Type == type).ToListAsync();
+        }
+        else
+        {
+            _activities = await Db.ScheduledActivities.Include(a => a.Dates).ToListAsync();
+        }
+    }
+
+    private async Task ToggleActive(ScheduledActivity activity, bool isChecked)
+    {
+        activity.Active = isChecked;
+        await ActivityWriter.SetActiveAsync(activity.Id, isChecked);
+        var state = await AuthState.GetAuthenticationStateAsync();
+        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.Update, nameof(ScheduledActivity), activity.Id.ToString(), $"{Label(activity.Type)} {(isChecked ? "activated" : "deactivated")}");
+        Toasts.ShowSuccess($"{Label(activity.Type)} {(isChecked ? "activated" : "deactivated")}.");
+    }
+
+    private async Task AddDateAsync(ScheduledActivity activity)
+    {
+        if (_newDay < 1 || _newDay > DateTime.DaysInMonth(2024, _newMonth))
+        {
+            Toasts.ShowError($"{System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(_newMonth)} doesn't have a day {_newDay}.");
+            return;
+        }
+
+        if (activity.Dates.Any(d => d.Month == _newMonth && d.Day == _newDay))
+        {
+            Toasts.ShowError("That trigger date is already configured for this activity.");
+            return;
+        }
+
+        try
+        {
+            await ActivityWriter.InsertDateAsync(activity.Id, _newMonth, _newDay);
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 50006)
+        {
+            Toasts.ShowError("That trigger date is already configured for this activity.");
+            return;
+        }
+        var state = await AuthState.GetAuthenticationStateAsync();
+        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.Update, nameof(ScheduledActivity), activity.Id.ToString(), $"Added trigger date {_newMonth}/{_newDay} to {Label(activity.Type)}");
+        Toasts.ShowSuccess("Trigger date added.");
+        await LoadAsync();
+    }
+
+    private async Task RemoveDateAsync(ScheduledActivity activity, ScheduledActivityDate date)
+    {
+        await ActivityWriter.DeleteDateAsync(date.Id);
+        var state = await AuthState.GetAuthenticationStateAsync();
+        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.Update, nameof(ScheduledActivity), activity.Id.ToString(), $"Removed trigger date {date.Month}/{date.Day} from {Label(activity.Type)}");
+        Toasts.ShowSuccess("Trigger date removed.");
+        await LoadAsync();
+    }
+
+    private static string Label(ScheduledActivityType type) => type switch
+    {
+        ScheduledActivityType.BlackoutPeriod => "Blackout Period",
+        ScheduledActivityType.InsiderTrading => "Insider Trading",
+        ScheduledActivityType.ConflictOfInterest => "Conflict of Interest",
+        ScheduledActivityType.Outage => "Outage",
+        _ => type.ToString(),
+    };
+}

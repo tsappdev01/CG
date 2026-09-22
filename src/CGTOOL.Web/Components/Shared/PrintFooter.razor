@@ -1,0 +1,13 @@
+@inject AuthenticationStateProvider AuthState
+
+<p class="cg-print-footer">This is a system generated report, printed by @(_userName ?? "unknown") on @DateTime.Now.ToString("dd MMM yyyy HH:mm").</p>
+
+@code {
+    private string? _userName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        _userName = state.User.Identity?.Name;
+    }
+}

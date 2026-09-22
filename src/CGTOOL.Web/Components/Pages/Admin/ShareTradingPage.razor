@@ -1,0 +1,345 @@
+@page "/admin/investor-relations/share-trading"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IShareTradingWriter Writer
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toasts
+@inject IJSRuntime JS
+
+<PageTitle>Shares Trading</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1>Investor Relations — Shares Trading</h1>
+    <p class="cg-subtitle">DFM share movements, uploaded per report date -- view, filter and print each investor's opening/closing quantity and net buy/sell movement as on a given report date.</p>
+
+    @if (_uploads is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-tabs" role="tablist">
+            <button type="button" class="cg-tab @(_activeTab == "report" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "report")" @onclick='() => SwitchTab("report")'>Trading Report</button>
+            <button type="button" class="cg-tab @(_activeTab == "position" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "position")" @onclick='() => SwitchTab("position")'>Running Position</button>
+            <button type="button" class="cg-tab @(_activeTab == "upload" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "upload")" @onclick='() => SwitchTab("upload")'>Upload — @_uploads.Count</button>
+        </div>
+
+        @if (_activeTab == "report")
+        {
+            @if (_availableReportDates.Count == 0)
+            {
+                <div class="cg-empty-state">No Shares Trading data has been uploaded yet -- use the Upload tab.</div>
+            }
+            else
+            {
+                <div class="cg-controls">
+                    <label class="cg-field" style="width:auto;">
+                        <span>Report date</span>
+                        <select class="cg-input" style="width:auto;" @onchange="OnReportDateSelectedAsync">
+                            @foreach (var d in _availableReportDates)
+                            {
+                                <option value="@d.ToString("yyyy-MM-dd")" selected="@(d == _selectedReportDate)">@d.ToString("dd/MM/yyyy")</option>
+                            }
+                        </select>
+                    </label>
+
+                    <div class="cg-search-wrap">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                        <input type="search" placeholder="Search NIN or Investor Name…" @bind="_search" @bind:event="oninput" aria-label="Search" />
+                    </div>
+
+                    <select class="cg-input" style="width:auto;" @bind="_clientTypeFilter" aria-label="Filter by client type">
+                        <option value="">All client types</option>
+                        @foreach (var c in AvailableClientTypes())
+                        {
+                            <option value="@c">@c</option>
+                        }
+                    </select>
+
+                    <span class="cg-result-count">@FilteredRecords().Count record(s)</span>
+                </div>
+
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+                </div>
+
+                <div class="cg-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>NIN</th>
+                                <th>Investor Name</th>
+                                <th>Client Type</th>
+                                <th>Nationality</th>
+                                <th>Opening Qty</th>
+                                <th>Closing Qty</th>
+                                <th>Net Transaction</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in FilteredRecords())
+                            {
+                                <tr class="cg-data-row">
+                                    <td class="mono">@r.Nin</td>
+                                    <td>@(r.InvestorName ?? "—")</td>
+                                    <td>@(r.ClientType ?? "—")</td>
+                                    <td>@(r.Nationality ?? "—")</td>
+                                    <td class="mono">@r.PreviousOwnQty.ToString("N0")</td>
+                                    <td class="mono">@r.CurrentOwnQty.ToString("N0")</td>
+                                    <td class="mono">@r.OwnedQtyChange.ToString("N0")</td>
+                                    <td><span class="cg-status-pill @(r.OwnedQtyChange switch { > 0 => "cleared", < 0 => "flagged", _ => "pending" })">@TransactionType(r.OwnedQtyChange)</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (FilteredRecords().Count == 0)
+                    {
+                        <div class="cg-empty-state">No records match these filters.</div>
+                    }
+                </div>
+            }
+        }
+        else if (_activeTab == "position")
+        {
+            <p class="cg-subtitle">Each investor's running quantity across a date range -- opening balance, one column per uploaded report date in range, closing balance, and a trend sparkline.</p>
+
+            <div class="cg-controls">
+                <label class="cg-field" style="width:auto;">
+                    <span>From</span>
+                    <input type="date" class="cg-input" value="@_positionFrom.ToString("yyyy-MM-dd")" @onchange="OnPositionFromChangedAsync" />
+                </label>
+                <label class="cg-field" style="width:auto;">
+                    <span>To</span>
+                    <input type="date" class="cg-input" value="@_positionTo.ToString("yyyy-MM-dd")" @onchange="OnPositionToChangedAsync" />
+                </label>
+
+                <div class="cg-search-wrap">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                    <input type="search" placeholder="Search NIN or Investor Name…" @bind="_positionSearch" @bind:event="oninput" aria-label="Search" />
+                </div>
+
+                <span class="cg-result-count">@FilteredPositionRows().Count investor(s)</span>
+            </div>
+
+            @if (_positionRows is null)
+            {
+                <p class="cg-loading"><em>Loading…</em></p>
+            }
+            else if (_positionFrom > _positionTo)
+            {
+                <div class="cg-empty-state">"From" is after "To" -- pick a valid date range.</div>
+            }
+            else if (_positionDates.Count == 0)
+            {
+                <div class="cg-empty-state">No Shares Trading uploads fall within this date range.</div>
+            }
+            else
+            {
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn" @onclick="() => _showPositionPrintPreview = true">Print Preview</button>
+                </div>
+
+                <div class="cg-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>NIN</th>
+                                <th>Name</th>
+                                <th>Opening</th>
+                                @foreach (var d in _positionDates)
+                                {
+                                    <th>@d.ToString("dd/MM/yyyy")</th>
+                                }
+                                <th>Closing</th>
+                                <th>Trend</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in FilteredPositionRows())
+                            {
+                                <tr class="cg-data-row">
+                                    <td class="mono">@r.Nin</td>
+                                    <td>@(r.InvestorName ?? "—")</td>
+                                    <td class="mono">@r.Opening.ToString("N0")</td>
+                                    @foreach (var v in r.DailyValues)
+                                    {
+                                        <td class="mono">@(v?.ToString("N0") ?? "—")</td>
+                                    }
+                                    <td class="mono">@r.Closing.ToString("N0")</td>
+                                    <td>
+                                        <svg class="cg-sparkline @TrendClass(r)" width="90" height="28" viewBox="0 0 90 28" preserveAspectRatio="none">
+                                            <polyline points="@SparklinePoints(SparklineValues(r), 90, 28)" />
+                                        </svg>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (FilteredPositionRows().Count == 0)
+                    {
+                        <div class="cg-empty-state">No records match this search.</div>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <h2>Upload Shares Trading data</h2>
+            <p class="cg-subtitle">DFM extract -- Report Date, Symbol, Investor Number, Investor Name, Client Type, Nationality, Previous/Current Own Qty, Owned Qty Change. Every upload adds to the existing history, it never overwrites a prior one.</p>
+
+            <label class="cg-field">
+                <span>Shares Trading file (.xlsx)</span>
+                <InputFile OnChange="OnFileSelectedAsync" accept=".xlsx" disabled="@(_reading || _uploading)" />
+            </label>
+
+            @if (_reading)
+            {
+                <p class="cg-subtitle">Reading file… @_readProgress%</p>
+                <progress class="cg-upload-progress" max="100" value="@_readProgress"></progress>
+            }
+
+            @if (_parseError is not null)
+            {
+                <p class="cg-error">@_parseError</p>
+            }
+
+            @if (_parsedRecords is { Count: > 0 })
+            {
+                <p class="cg-subtitle">Parsed <b>@_parsedRecords.Count.ToString("N0")</b> trading record(s) from <b>@_parsedFileName</b>@(_parsedSkipped > 0 ? $" ({_parsedSkipped} row(s) skipped)." : ".")</p>
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn cg-good" disabled="@_uploading" @onclick="ConfirmUploadAsync">@(_uploading ? "Saving…" : "Confirm & Save")</button>
+                </div>
+                @if (_uploading)
+                {
+                    <progress class="cg-upload-progress" max="100" value="@_saveProgress"></progress>
+                }
+            }
+
+            <h2>Upload History</h2>
+            <div class="cg-table-wrap">
+                <table>
+                    <thead><tr><th>File</th><th>Records</th><th>Uploaded</th><th>Uploaded By</th></tr></thead>
+                    <tbody>
+                        @foreach (var u in _uploads)
+                        {
+                            <tr class="cg-data-row">
+                                <td>@u.FileName</td>
+                                <td class="mono">@u.RecordCount.ToString("N0")</td>
+                                <td class="mono">@u.UploadedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm")</td>
+                                <td>@u.UploadedByName</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (_uploads.Count == 0)
+                {
+                    <div class="cg-empty-state">No uploads yet.</div>
+                }
+            </div>
+        }
+
+        @if (_showPrintPreview)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = false">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — Shares Trading Transactions as on @(_selectedReportDate?.ToString("dd/MM/yyyy") ?? "—")</h2>
+                                <PrintFooter />
+                            </div>
+                        </div>
+                        <div class="cg-table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>NIN</th>
+                                        <th>Investor Name</th>
+                                        <th>Total Shares Opening</th>
+                                        <th>Total Shares Closing</th>
+                                        <th>Net Transaction</th>
+                                        <th>Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var r in FilteredRecords())
+                                    {
+                                        <tr class="cg-data-row">
+                                            <td class="mono">@r.Nin</td>
+                                            <td>@(r.InvestorName ?? "—")</td>
+                                            <td class="mono">@r.PreviousOwnQty.ToString("N0")</td>
+                                            <td class="mono">@r.CurrentOwnQty.ToString("N0")</td>
+                                            <td class="mono">@r.OwnedQtyChange.ToString("N0")</td>
+                                            <td>@TransactionType(r.OwnedQtyChange)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (_showPositionPrintPreview)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => _showPositionPrintPreview = false">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — Shares Trading Running Position</h2>
+                                <p class="cg-subtitle">From @_positionFrom.ToString("dd/MM/yyyy") to @_positionTo.ToString("dd/MM/yyyy")</p>
+                                <PrintFooter />
+                            </div>
+                        </div>
+                        <div class="cg-table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>NIN</th>
+                                        <th>Name</th>
+                                        <th>Opening</th>
+                                        @foreach (var d in _positionDates)
+                                        {
+                                            <th>@d.ToString("dd/MM/yyyy")</th>
+                                        }
+                                        <th>Closing</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var r in FilteredPositionRows())
+                                    {
+                                        <tr class="cg-data-row">
+                                            <td class="mono">@r.Nin</td>
+                                            <td>@(r.InvestorName ?? "—")</td>
+                                            <td class="mono">@r.Opening.ToString("N0")</td>
+                                            @foreach (var v in r.DailyValues)
+                                            {
+                                                <td class="mono">@(v?.ToString("N0") ?? "—")</td>
+                                            }
+                                            <td class="mono">@r.Closing.ToString("N0")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

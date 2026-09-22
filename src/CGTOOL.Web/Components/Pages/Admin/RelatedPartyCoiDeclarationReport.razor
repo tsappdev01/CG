@@ -1,0 +1,353 @@
+@page "/reports/related-party-coi-declarations"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IJSRuntime JS
+
+<PageTitle>Related Party & COI Declaration Submission Report</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1>Related Party &amp; COI Declaration Submission report</h1>
+    <p class="cg-subtitle">Everyone notified of a Related Party &amp; COI declaration, per quarter and entity, and whether they've completed it — for compliance reporting and historical comparison.</p>
+
+    @if (_rows is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-controls">
+            <div class="cg-search-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                <input type="search" placeholder="Search user…" @bind="_search" @bind:event="oninput" aria-label="Search user" />
+            </div>
+
+            <select class="cg-input" style="width:auto;" @bind="_yearFilter" aria-label="Filter by year">
+                <option value="0">All years</option>
+                @foreach (var y in AvailableYears())
+                {
+                    <option value="@y">@y</option>
+                }
+            </select>
+
+            <select class="cg-input" style="width:auto;" @bind="_quarterFilter" aria-label="Filter by quarter">
+                <option value="0">All quarters</option>
+                <option value="1">Q1</option>
+                <option value="2">Q2</option>
+                <option value="3">Q3</option>
+                <option value="4">Q4</option>
+            </select>
+
+            <select class="cg-input" style="width:auto;" @bind="_companyFilter" aria-label="Filter by entity">
+                <option value="0">All entities</option>
+                @foreach (var c in _companies ?? [])
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </select>
+
+            <select class="cg-input" style="width:auto;" @bind="_statusFilter" aria-label="Filter by submission status">
+                <option value="">All statuses</option>
+                <option value="complete">Complete</option>
+                <option value="pending">Pending</option>
+            </select>
+
+            <span class="cg-result-count">@FilteredRows().Count record(s)</span>
+        </div>
+
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+        </div>
+
+        <div class="cg-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <SortableHeader Label="Member" Column="Member" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <th>Department</th>
+                        <SortableHeader Label="Quarter" Column="Quarter" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <th>Submission</th>
+                        <th>Relatives</th>
+                        <th>Companies</th>
+                        <th>Conflicts of Interest</th>
+                        <SortableHeader Label="Submitted" Column="Submitted" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <th>On behalf of</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in FilteredRows())
+                    {
+                        <tr class="cg-data-row">
+                            <td>@r.MemberName</td>
+                            <td>@r.EntityShortCode</td>
+                            <td>@(r.DepartmentName ?? "—")</td>
+                            <td class="mono">Q@(r.Quarter) @r.Year</td>
+                            <td>
+                                @if (r.Submitted)
+                                {
+                                    <span class="cg-status-icon-good" title="Complete">✓</span>
+                                }
+                                else
+                                {
+                                    <span class="cg-status-icon-bad" title="Pending">✗</span>
+                                }
+                            </td>
+                            <td>@(r.Declaration is null ? "—" : (r.Declaration.NothingToDeclareRelatives ? "No" : $"Yes ({r.Declaration.Relatives.Count})"))</td>
+                            <td>@(r.Declaration is null ? "—" : (CompanyCount(r.Declaration) > 0 ? $"Yes ({CompanyCount(r.Declaration)})" : "No"))</td>
+                            <td>@(r.Declaration is null ? "—" : (r.Declaration.NothingToDeclareConflicts ? "No" : $"Yes ({r.Declaration.Conflicts.Count})"))</td>
+                            <td class="mono">@(r.Declaration is not null ? r.Declaration.SubmittedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm") : "—")</td>
+                            <td>@(r.Declaration?.SubmittedOnBehalfOf ?? "—")</td>
+                            <td>
+                                <button type="button" class="cg-icon-btn" title="View uploaded documents" disabled="@(!HasAnyDocument(r))" @onclick="() => _viewDocumentsRecord = r"><span class="cg-icon-document-glyph"></span></button>
+                                <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = r"><span class="cg-icon-print-glyph"></span></button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (FilteredRows().Count == 0)
+            {
+                <div class="cg-empty-state">No records match these filters.</div>
+            }
+        </div>
+
+        @if (_showPrintPreview || _printSingleRecord is not null)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        @if (_printSingleRecord is null)
+                        {
+                            <div class="cg-col-picker">
+                                <button type="button" class="cg-action-btn" @onclick="() => _showColumnPicker = !_showColumnPicker">Columns ▾</button>
+                                @if (_showColumnPicker)
+                                {
+                                    <div class="cg-col-picker-panel">
+                                        @foreach (var col in PrintColumns)
+                                        {
+                                            <label class="cg-col-picker-item">
+                                                <input type="checkbox" checked="@IsColumnSelected(col.Key)" @onchange="e => ToggleColumn(col.Key, (bool)e.Value!)" />
+                                                @col.Label
+                                            </label>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => { _showPrintPreview = false; _printSingleRecord = null; _showColumnPicker = false; }">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — @(_printSingleRecord is not null ? $"Related Party & COI Declaration — {_printSingleRecord.MemberName}" : "Related Party & COI Declaration Submission Report")</h2>
+                                <PrintFooter />
+                            </div>
+                        </div>
+
+                        @if (_printSingleRecord is { Declaration: { } d })
+                        {
+                            <div class="cg-table-wrap">
+                                <table>
+                                    <tbody>
+                                        <tr><th>Member</th><td>@_printSingleRecord.MemberName</td></tr>
+                                        <tr><th>Entity</th><td>@(_printSingleRecord.EntityShortCode ?? "—")</td></tr>
+                                        <tr><th>Department</th><td>@(_printSingleRecord.DepartmentName ?? "—")</td></tr>
+                                        <tr><th>Quarter</th><td class="mono">Q@(_printSingleRecord.Quarter) @_printSingleRecord.Year</td></tr>
+                                        <tr><th>Status</th><td>@(d.IsDraft ? "Draft" : "Submitted")</td></tr>
+                                        <tr><th>Submitted</th><td class="mono">@(d.IsDraft ? "—" : d.SubmittedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm"))</td></tr>
+                                        <tr><th>Last modified</th><td class="mono">@(d.ModifiedAtUtc?.ToLocalDisplay("dd/MM/yyyy HH:mm") ?? "—")</td></tr>
+                                        <tr><th>Submitted by</th><td>@d.SubmittedByName</td></tr>
+                                        <tr><th>On behalf of</th><td>@(d.SubmittedOnBehalfOf ?? "—")</td></tr>
+                                        <tr><th>UAE PASS verification</th><td>@(d.UaePassVerifiedAtUtc is null ? "Not verified" : $"{d.UaePassVerifiedName} on {d.UaePassVerifiedAtUtc.Value.ToLocalDisplay("dd/MM/yyyy HH:mm")}")</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h3>I.A — List of Relatives</h3>
+                            @if (d.NothingToDeclareRelatives || d.Relatives.Count == 0)
+                            {
+                                <p class="cg-subtitle">Nothing to declare.</p>
+                            }
+                            else
+                            {
+                                <div class="cg-table-wrap">
+                                    <table>
+                                        <thead><tr><th>Name</th><th>Relationship</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var r in d.Relatives)
+                                            {
+                                                <tr class="cg-data-row"><td>@r.Name</td><td>@RelationshipLabel(r.Relationship)</td></tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+
+                            <h3>I.B / I.C / I.D — Companies</h3>
+                            @if (d.Companies.Count == 0)
+                            {
+                                <p class="cg-subtitle">Nothing to declare.</p>
+                            }
+                            else
+                            {
+                                <div class="cg-table-wrap">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Table</th>
+                                                <th>Company</th>
+                                                <th>Principal Business Activity</th>
+                                                <th>Trade License No.</th>
+                                                <th>Expiry</th>
+                                                <th>License Activities</th>
+                                                <th>Document(s)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var c in d.Companies)
+                                            {
+                                                <tr class="cg-data-row">
+                                                    <td>@OwnerTypeLabel(c.OwnerType)</td>
+                                                    <td>@c.LegalCompanyName</td>
+                                                    <td>@(c.PrincipalBusinessActivity ?? "—")</td>
+                                                    <td class="mono">@(c.TradeLicenseNumber ?? "—")</td>
+                                                    <td class="mono">@(c.TradeLicenseExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                                    <td>@(c.LicenseActivities ?? "—")</td>
+                                                    <td>
+                                                        @if (c.Documents.Count == 0)
+                                                        {
+                                                            <span>—</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            @foreach (var doc in c.Documents)
+                                                            {
+                                                                <div>@doc.FileName</div>
+                                                            }
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+
+                            <h3>Part II — Conflict of Interest Declaration</h3>
+                            @if (d.NothingToDeclareConflicts || d.Conflicts.Count == 0)
+                            {
+                                <p class="cg-subtitle">Nothing to declare.</p>
+                            }
+                            else
+                            {
+                                <div class="cg-table-wrap">
+                                    <table>
+                                        <thead><tr><th>Company / Counterparty</th><th>Principal Business Activity</th><th>Nature of Holding</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var c in d.Conflicts)
+                                            {
+                                                <tr class="cg-data-row"><td>@c.CompanyOrCounterpartyName</td><td>@(c.PrincipalBusinessActivity ?? "—")</td><td>@(c.NatureOfHolding ?? "—")</td></tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        }
+                        else if (_printSingleRecord is not null)
+                        {
+                            <p class="cg-subtitle">@_printSingleRecord.MemberName has not submitted a Related Party &amp; COI declaration for this cycle -- nothing to print.</p>
+                        }
+                        else
+                        {
+                            <div class="cg-table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            @if (IsColumnSelected("Member")) { <th>Member</th> }
+                                            @if (IsColumnSelected("Entity")) { <th>Entity</th> }
+                                            @if (IsColumnSelected("Department")) { <th>Department</th> }
+                                            @if (IsColumnSelected("Quarter")) { <th>Quarter</th> }
+                                            @if (IsColumnSelected("Submission")) { <th>Submission</th> }
+                                            @if (IsColumnSelected("Relatives")) { <th>Relatives</th> }
+                                            @if (IsColumnSelected("Companies")) { <th>Companies</th> }
+                                            @if (IsColumnSelected("Conflicts")) { <th>Conflicts of Interest</th> }
+                                            @if (IsColumnSelected("Submitted")) { <th>Submitted</th> }
+                                            @if (IsColumnSelected("OnBehalfOf")) { <th>On behalf of</th> }
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var r in PrintRows())
+                                        {
+                                            <tr class="cg-data-row">
+                                                @if (IsColumnSelected("Member")) { <td>@r.MemberName</td> }
+                                                @if (IsColumnSelected("Entity")) { <td>@r.EntityShortCode</td> }
+                                                @if (IsColumnSelected("Department")) { <td>@(r.DepartmentName ?? "—")</td> }
+                                                @if (IsColumnSelected("Quarter")) { <td class="mono">Q@(r.Quarter) @r.Year</td> }
+                                                @if (IsColumnSelected("Submission"))
+                                                {
+                                                    <td>
+                                                        @if (r.Submitted)
+                                                        {
+                                                            <span class="cg-status-icon-good" title="Complete">✓</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="cg-status-icon-bad" title="Pending">✗</span>
+                                                        }
+                                                    </td>
+                                                }
+                                                @if (IsColumnSelected("Relatives")) { <td>@(r.Declaration is null ? "—" : (r.Declaration.NothingToDeclareRelatives ? "No" : $"Yes ({r.Declaration.Relatives.Count})"))</td> }
+                                                @if (IsColumnSelected("Companies")) { <td>@(r.Declaration is null ? "—" : (CompanyCount(r.Declaration) > 0 ? $"Yes ({CompanyCount(r.Declaration)})" : "No"))</td> }
+                                                @if (IsColumnSelected("Conflicts")) { <td>@(r.Declaration is null ? "—" : (r.Declaration.NothingToDeclareConflicts ? "No" : $"Yes ({r.Declaration.Conflicts.Count})"))</td> }
+                                                @if (IsColumnSelected("Submitted")) { <td class="mono">@(r.Declaration is not null ? r.Declaration.SubmittedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm") : "—")</td> }
+                                                @if (IsColumnSelected("OnBehalfOf")) { <td>@(r.Declaration?.SubmittedOnBehalfOf ?? "—")</td> }
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (_viewDocumentsRecord?.Declaration is { } viewedDeclaration)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn" @onclick="() => _viewDocumentsRecord = null">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <h2>Documents — @_viewDocumentsRecord.MemberName (Q@(_viewDocumentsRecord.Quarter) @_viewDocumentsRecord.Year)</h2>
+                        <div class="cg-table-wrap">
+                            <table>
+                                <thead><tr><th>Table</th><th>Company</th><th>Trade License No.</th><th>Expiry</th><th>Document</th></tr></thead>
+                                <tbody>
+                                    @foreach (var company in viewedDeclaration.Companies)
+                                    {
+                                        @foreach (var doc in company.Documents)
+                                        {
+                                            <tr class="cg-data-row">
+                                                <td>@(company.OwnerType switch { CoiCompanyOwnerType.Self => "I.B", CoiCompanyOwnerType.Relative => "I.C", _ => "I.D" })</td>
+                                                <td>@company.LegalCompanyName</td>
+                                                <td>@(company.TradeLicenseNumber ?? "—")</td>
+                                                <td class="mono">@(company.TradeLicenseExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                                <td><a href="@doc.FilePath" target="_blank">@doc.FileName</a></td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

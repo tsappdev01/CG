@@ -1,0 +1,286 @@
+@page "/admin/declaration-setup"
+@page "/admin/declaration-setup/{TypeSlug}"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IDeclarationSetupWriter SetupWriter
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toasts
+@inject IJSRuntime JS
+
+<PageTitle>@PageHeading</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1>@PageHeading</h1>
+    <p class="cg-subtitle">Control Panel — declaration periods@(FilterType is null ? " for Insider Trading and Conflict of Interest" : "").</p>
+
+    @if (_setups is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+        </div>
+
+        <div class="cg-bulk-bar">
+            <button type="button" class="cg-action-btn" disabled="@(_selectedIds.Count == 0)" @onclick="DeselectAll">Deselect all</button>
+            @if (_selectedIds.Count > 0)
+            {
+                <span class="cg-result-count">@_selectedIds.Count selected</span>
+                <button type="button" class="cg-action-btn cg-critical" @onclick="() => BulkSetActiveAsync(false)">Deactivate selected</button>
+                <button type="button" class="cg-action-btn cg-good" @onclick="() => BulkSetActiveAsync(true)">Activate selected</button>
+            }
+        </div>
+
+        <div class="cg-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="cg-select-col"><input type="checkbox" checked="@AllSelected" @onchange="e => ToggleSelectAll((bool)e.Value!)" aria-label="Select all" /></th>
+                        @if (FilterType is null)
+                        {
+                            <SortableHeader Label="Type" Column="Type" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        }
+                        <SortableHeader Label="Date" Column="Date" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Due date" Column="DueDate" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Active" Column="Active" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="cg-data-row">
+                        <td></td>
+                        @if (FilterType is null)
+                        {
+                            <td>
+                                <select class="cg-input" @bind="_newType">
+                                    <option value="@DeclarationType.InsiderTrading">Insider Trading</option>
+                                    <option value="@DeclarationType.ConflictOfInterest">Conflict of Interest</option>
+                                </select>
+                            </td>
+                        }
+                        <td><input type="date" class="cg-input" @bind="_newDate" /></td>
+                        <td><input type="date" class="cg-input" @bind="_newDueDate" /></td>
+                        <td></td>
+                        <td><button type="button" class="cg-action-btn cg-good" @onclick="AddAsync">Add</button></td>
+                    </tr>
+                    @foreach (var s in SortedSetups())
+                    {
+                        <tr class="cg-data-row">
+                            <td class="cg-select-col"><input type="checkbox" checked="@_selectedIds.Contains(s.Id)" @onchange="e => ToggleSelect(s.Id, (bool)e.Value!)" aria-label="Select row" /></td>
+                            @if (FilterType is null)
+                            {
+                                <td>
+                                    <select class="cg-input" @bind="s.Type">
+                                        <option value="@DeclarationType.InsiderTrading">Insider Trading</option>
+                                        <option value="@DeclarationType.ConflictOfInterest">Conflict of Interest</option>
+                                    </select>
+                                </td>
+                            }
+                            <td><input type="date" class="cg-input" value="@s.Date.ToString("yyyy-MM-dd")" @onchange="e => s.Date = DateOnly.Parse((string)e.Value!)" /></td>
+                            <td><input type="date" class="cg-input" value="@s.DueDate.ToString("yyyy-MM-dd")" @onchange="e => s.DueDate = DateOnly.Parse((string)e.Value!)" /></td>
+                            <td><ToggleSwitch @bind-Value="s.Active" /></td>
+                            <td>
+                                <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveAsync(s)">Save</button>
+                                <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = s"><span class="cg-icon-print-glyph"></span></button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (_showPrintPreview || _printSingleRecord is not null)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => { _showPrintPreview = false; _printSingleRecord = null; }">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — @(_printSingleRecord is not null ? $"{PageHeading} — {_printSingleRecord.Type}" : PageHeading)</h2>
+                                <PrintFooter />
+                            </div>
+                        </div>
+                        <div class="cg-table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        @if (FilterType is null)
+                                        {
+                                            <th>Type</th>
+                                        }
+                                        <th>Date</th>
+                                        <th>Due date</th>
+                                        <th>Active</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var s in PrintRows())
+                                    {
+                                        <tr class="cg-data-row">
+                                            @if (FilterType is null)
+                                            {
+                                                <td>@s.Type</td>
+                                            }
+                                            <td class="mono">@s.Date.ToString("dd/MM/yyyy")</td>
+                                            <td class="mono">@s.DueDate.ToString("dd/MM/yyyy")</td>
+                                            <td>@(s.Active ? "Active" : "Inactive")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string? TypeSlug { get; set; }
+
+    private List<DeclarationSetup>? _setups;
+    private DeclarationType _newType;
+    private DateTime _newDate = DateTime.Today;
+    private DateTime _newDueDate = DateTime.Today;
+    private string _sortColumn = "Date";
+    private bool _sortAscending = false;
+    private HashSet<int> _selectedIds = [];
+    private bool _showPrintPreview;
+    private DeclarationSetup? _printSingleRecord;
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private List<DeclarationSetup> PrintRows() => _printSingleRecord is not null ? [_printSingleRecord] : SortedSetups();
+
+    private List<DeclarationSetup> SortedSetups()
+    {
+        if (_setups is null) return [];
+        IOrderedEnumerable<DeclarationSetup> sorted = _sortColumn switch
+        {
+            "Type" => _setups.OrderBy(s => s.Type),
+            "DueDate" => _setups.OrderBy(s => s.DueDate),
+            "Active" => _setups.OrderBy(s => s.Active),
+            _ => _setups.OrderBy(s => s.Date),
+        };
+        return (_sortAscending ? sorted : sorted.Reverse()).ToList();
+    }
+
+    private void Sort(string column)
+    {
+        if (_sortColumn == column) _sortAscending = !_sortAscending;
+        else { _sortColumn = column; _sortAscending = true; }
+    }
+
+    private bool AllSelected => _setups is { Count: > 0 } && _setups.All(s => _selectedIds.Contains(s.Id));
+
+    private void ToggleSelectAll(bool select)
+    {
+        if (select) _selectedIds = _setups!.Select(s => s.Id).ToHashSet();
+        else _selectedIds.Clear();
+    }
+
+    private void ToggleSelect(int id, bool select)
+    {
+        if (select) _selectedIds.Add(id);
+        else _selectedIds.Remove(id);
+    }
+
+    private void DeselectAll() => _selectedIds.Clear();
+
+    private async Task BulkSetActiveAsync(bool targetActive)
+    {
+        if (_setups is null) return;
+
+        foreach (var id in _selectedIds.ToList())
+        {
+            var setup = _setups.FirstOrDefault(s => s.Id == id);
+            if (setup is null || setup.Active == targetActive) continue;
+
+            setup.Active = targetActive;
+            await SetupWriter.UpdateAsync(setup);
+            var state = await AuthState.GetAuthenticationStateAsync();
+            await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.Update, nameof(DeclarationSetup), setup.Id.ToString(), $"{setup.Type} due {setup.DueDate} {(targetActive ? "activated" : "deactivated")}");
+        }
+
+        Toasts.ShowSuccess($"{_selectedIds.Count} declaration setup(s) {(targetActive ? "activated" : "deactivated")}.");
+        _selectedIds.Clear();
+    }
+
+    /// <summary>null when reached via the unfiltered base route; otherwise the type this
+    /// nav-specific route (Setup &gt; Activities &gt; Declaration &gt; Insider trading / Conflict of
+    /// Interest) is scoped to.</summary>
+    private DeclarationType? FilterType => TypeSlug switch
+    {
+        "insider-trading" => DeclarationType.InsiderTrading,
+        "conflict-of-interest" => DeclarationType.ConflictOfInterest,
+        _ => null,
+    };
+
+    private string PageHeading => FilterType switch
+    {
+        DeclarationType.InsiderTrading => "Insider Trading declaration setup",
+        DeclarationType.ConflictOfInterest => "Conflict of Interest declaration setup",
+        _ => "Declaration setup",
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _newType = FilterType ?? DeclarationType.InsiderTrading;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var query = Db.DeclarationSetups.AsQueryable();
+        if (FilterType is { } type) query = query.Where(s => s.Type == type);
+        _setups = await query.OrderByDescending(s => s.Date).ToListAsync();
+    }
+
+    private async Task AddAsync()
+    {
+        if (_newDueDate < _newDate)
+        {
+            Toasts.ShowError("Due date must be on or after the declaration date.");
+            return;
+        }
+
+        var setup = new DeclarationSetup
+        {
+            Type = FilterType ?? _newType,
+            Date = DateOnly.FromDateTime(_newDate),
+            DueDate = DateOnly.FromDateTime(_newDueDate),
+            Active = true,
+        };
+        setup.Id = await SetupWriter.InsertAsync(setup);
+
+        var state = await AuthState.GetAuthenticationStateAsync();
+        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.Create, nameof(DeclarationSetup), setup.Id.ToString(), $"{setup.Type} due {setup.DueDate}");
+
+        Toasts.ShowSuccess("Declaration setup added.");
+        await LoadAsync();
+    }
+
+    private async Task SaveAsync(DeclarationSetup setup)
+    {
+        if (setup.DueDate < setup.Date)
+        {
+            Toasts.ShowError("Due date must be on or after the declaration date.");
+            return;
+        }
+
+        await SetupWriter.UpdateAsync(setup);
+        var state = await AuthState.GetAuthenticationStateAsync();
+        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.Update, nameof(DeclarationSetup), setup.Id.ToString(), $"{setup.Type} due {setup.DueDate}");
+        Toasts.ShowSuccess("Saved.");
+    }
+}

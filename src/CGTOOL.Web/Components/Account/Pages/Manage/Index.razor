@@ -1,0 +1,163 @@
+﻿@page "/Account/Manage"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using CGTOOL.Web.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityUserAccessor UserAccessor
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<Index> Logger
+
+<PageTitle>Profile</PageTitle>
+
+<h3>Profile</h3>
+<StatusMessage />
+
+<div class="row">
+    <div class="col-md-6">
+        <EditForm Model="ProfileInput" FormName="profile" OnValidSubmit="OnValidSubmitProfileAsync" method="post">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+            <div class="form-floating mb-3">
+                <input type="text" value="@username" class="form-control" placeholder="Please choose your username." disabled />
+                <label for="username" class="form-label">Username</label>
+            </div>
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="ProfileInput.PhoneNumber" class="form-control" placeholder="Please enter your phone number." />
+                <label for="phone-number" class="form-label">Phone number</label>
+                <ValidationMessage For="() => ProfileInput.PhoneNumber" class="text-danger" />
+            </div>
+            <button type="submit" class="w-100 btn btn-lg btn-primary">Save</button>
+        </EditForm>
+    </div>
+</div>
+
+@if (!hasPassword)
+{
+    <h3 class="mt-4">Password</h3>
+    <p class="text-info">
+        You do not have a local username/password for this site. <a href="Account/Manage/SetPassword">Add a local password</a> so you can log in without an external login.
+    </p>
+}
+else
+{
+    <h3 class="mt-4">Change password</h3>
+    <div class="row">
+        <div class="col-md-6">
+            <EditForm Model="PasswordInput" FormName="change-password" OnValidSubmit="OnValidSubmitPasswordAsync" method="post">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" role="alert" />
+                <div class="form-floating mb-3">
+                    <InputText type="password" @bind-Value="PasswordInput.OldPassword" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Please enter your old password." />
+                    <label for="old-password" class="form-label">Old password</label>
+                    <ValidationMessage For="() => PasswordInput.OldPassword" class="text-danger" />
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText type="password" @bind-Value="PasswordInput.NewPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="Please enter your new password." />
+                    <label for="new-password" class="form-label">New password</label>
+                    <ValidationMessage For="() => PasswordInput.NewPassword" class="text-danger" />
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText type="password" @bind-Value="PasswordInput.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="Please confirm your new password." />
+                    <label for="confirm-password" class="form-label">Confirm password</label>
+                    <ValidationMessage For="() => PasswordInput.ConfirmPassword" class="text-danger" />
+                </div>
+                <button type="submit" class="w-100 btn btn-lg btn-primary">Update password</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    private ApplicationUser user = default!;
+    private string? username;
+    private string? phoneNumber;
+    private bool hasPassword;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "profile")]
+    private ProfileInputModel ProfileInput { get; set; } = new();
+
+    [SupplyParameterFromForm(FormName = "change-password")]
+    private PasswordInputModel PasswordInput { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await UserAccessor.GetRequiredUserAsync(HttpContext);
+        username = await UserManager.GetUserNameAsync(user);
+        phoneNumber = await UserManager.GetPhoneNumberAsync(user);
+        hasPassword = await UserManager.HasPasswordAsync(user);
+
+        ProfileInput.PhoneNumber ??= phoneNumber;
+    }
+
+    private async Task OnValidSubmitProfileAsync()
+    {
+        if (ProfileInput.PhoneNumber != phoneNumber)
+        {
+            var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, ProfileInput.PhoneNumber);
+            if (!setPhoneResult.Succeeded)
+            {
+                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set phone number.", HttpContext);
+            }
+        }
+
+        await SignInManager.RefreshSignInAsync(user);
+        RedirectManager.RedirectToCurrentPageWithStatus("Your profile has been updated", HttpContext);
+    }
+
+    // Mirrors ChangePassword.razor's own logic -- that page is kept as-is (still reachable directly,
+    // and is where SetPassword.razor redirects an external-login-only user after they set their first
+    // password), this is just the same capability folded into the merged Profile page.
+    private async Task OnValidSubmitPasswordAsync()
+    {
+        if (!hasPassword)
+        {
+            RedirectManager.RedirectTo("Account/Manage/SetPassword");
+            return;
+        }
+
+        var changePasswordResult = await UserManager.ChangePasswordAsync(user, PasswordInput.OldPassword, PasswordInput.NewPassword);
+        if (!changePasswordResult.Succeeded)
+        {
+            RedirectManager.RedirectToCurrentPageWithStatus(
+                $"Error: {string.Join(",", changePasswordResult.Errors.Select(error => error.Description))}", HttpContext);
+            return;
+        }
+
+        await SignInManager.RefreshSignInAsync(user);
+        Logger.LogInformation("User changed their password successfully.");
+
+        RedirectManager.RedirectToCurrentPageWithStatus("Your password has been changed", HttpContext);
+    }
+
+    private sealed class ProfileInputModel
+    {
+        [Phone]
+        [Display(Name = "Phone number")]
+        public string? PhoneNumber { get; set; }
+    }
+
+    private sealed class PasswordInputModel
+    {
+        [Required]
+        [DataType(DataType.Password)]
+        [Display(Name = "Current password")]
+        public string OldPassword { get; set; } = "";
+
+        [Required]
+        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+        [DataType(DataType.Password)]
+        [Display(Name = "New password")]
+        public string NewPassword { get; set; } = "";
+
+        [DataType(DataType.Password)]
+        [Display(Name = "Confirm new password")]
+        [Compare("NewPassword", ErrorMessage = "The new password and confirmation password do not match.")]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}

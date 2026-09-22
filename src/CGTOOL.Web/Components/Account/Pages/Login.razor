@@ -1,0 +1,133 @@
+@page "/Account/Login"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using CGTOOL.Web.Data
+@using CGTOOL.Web.Data.Governance
+
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+@inject IActiveDirectoryAuthenticator DirectoryAuthenticator
+@inject ILogger<Login> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>DI Corporate Governance Tool — Sign In</PageTitle>
+
+<div class="cg-shell cg-narrow">
+    <img src="images/di-logo.jpg" alt="Dubai Investments" class="cg-login-logo" />
+    <h1>Trades and Transactions Monitoring Tool</h1>
+    <p class="cg-subtitle">Sign in with your existing corporate account.</p>
+
+    <ExternalLoginPicker />
+
+    <p class="cg-divider"><span>or, for external members without a Microsoft account</span></p>
+
+    <section>
+        <StatusMessage Message="@errorMessage" />
+        <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.UserName" class="form-control" autocomplete="username" aria-required="true" placeholder="Domain username" />
+                <label for="username" class="form-label">User Name</label>
+                <ValidationMessage For="() => Input.UserName" class="text-danger" />
+            </div>
+            <div class="form-floating mb-3">
+                <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+                <label for="password" class="form-label">Password</label>
+                <ValidationMessage For="() => Input.Password" class="text-danger" />
+            </div>
+            <div class="checkbox mb-3">
+                <label class="form-label">
+                    <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
+                    Remember me
+                </label>
+            </div>
+            <div>
+                <button type="submit" class="w-100 btn btn-lg btn-primary">Login</button>
+            </div>
+        </EditForm>
+    </section>
+</div>
+
+@code {
+    private string? errorMessage;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            // Clear the existing external cookie to ensure a clean login process
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+    }
+
+    public async Task LoginUser()
+    {
+        var result = await DirectoryAuthenticator.AuthenticateAsync(Input.UserName, Input.Password);
+        if (!result.Succeeded)
+        {
+            Logger.LogWarning("Corporate directory sign-in failed for {UserName}.", Input.UserName);
+            errorMessage = $"Error: {result.ErrorMessage ?? "Invalid corporate credentials."}";
+            return;
+        }
+
+        // IActiveDirectoryAuthenticator implementations may match an existing account by username
+        // OR email (see LocalIdentityAuthenticator), so this lookup must do the same -- otherwise a
+        // user who types their email address here ends up with a brand-new, picture-less duplicate
+        // ApplicationUser instead of signing into their existing (already-configured) account.
+        var user = await UserManager.FindByNameAsync(Input.UserName)
+            ?? await UserManager.FindByEmailAsync(Input.UserName);
+        if (user is null)
+        {
+            user = new ApplicationUser
+            {
+                UserName = Input.UserName,
+                Email = result.Email ?? $"{Input.UserName}@corporate.local",
+                EmailConfirmed = true,
+            };
+            var createResult = await UserManager.CreateAsync(user);
+            if (!createResult.Succeeded)
+            {
+                errorMessage = "Error: could not provision an account for these credentials.";
+                return;
+            }
+        }
+
+        if (await UserManager.IsLockedOutAsync(user))
+        {
+            Logger.LogWarning("Sign-in blocked for deactivated account {UserName}.", Input.UserName);
+            errorMessage = "Error: this account has been deactivated. Contact an administrator.";
+            return;
+        }
+
+        await SignInManager.SignInAsync(user, Input.RememberMe);
+        Logger.LogInformation("User {UserName} signed in via the corporate directory.", Input.UserName);
+        RedirectManager.RedirectTo(ReturnUrl);
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [Display(Name = "User Name")]
+        public string UserName { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Display(Name = "Remember me?")]
+        public bool RememberMe { get; set; }
+    }
+}

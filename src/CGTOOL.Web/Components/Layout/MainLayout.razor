@@ -1,0 +1,35 @@
+﻿@inherits LayoutComponentBase
+@inject ClientContext ClientContext
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu @rendermode="InteractiveServer" />
+    </div>
+
+    <main>
+        <AdminImpersonationBanner @rendermode="InteractiveServer" />
+        <ImpersonationBanner @rendermode="InteractiveServer" />
+        <article class="content">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+<IdleLockOverlay @rendermode="InteractiveServer" />
+<ToastContainer @rendermode="InteractiveServer" />
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    protected override void OnInitialized()
+    {
+        ClientContext.CaptureOnce(HttpContext);
+    }
+}

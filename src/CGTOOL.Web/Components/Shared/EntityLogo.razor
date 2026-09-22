@@ -1,0 +1,18 @@
+@using CGTOOL.Web.Data.Governance
+
+@if (Company is null)
+{
+    <span>—</span>
+}
+else if (!string.IsNullOrEmpty(Company.LogoPath))
+{
+    <img src="@Company.LogoPath" alt="@Company.Name" title="@Company.Name" class="cg-entity-logo" />
+}
+else
+{
+    <span title="@Company.Name">@(Company.ShortCode.Length > 0 ? Company.ShortCode : Company.Name)</span>
+}
+
+@code {
+    [Parameter] public Company? Company { get; set; }
+}

@@ -1,0 +1,244 @@
+@page "/my-declarations"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using System.Security.Claims
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+@inject ImpersonationContext Impersonation
+@inject IAuditLogger AuditLog
+@inject ToastService Toasts
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>Declarations</PageTitle>
+
+<div class="cg-shell cg-declarations-page">
+    <InsiderDeclarationBanner />
+
+    <h1>Declarations</h1>
+    @if (_isImpersonating)
+    {
+        <p class="cg-subtitle">Submitting on behalf of <b>@_effectiveMember?.FullName</b>.</p>
+    }
+    else
+    {
+        <p class="cg-subtitle">Submit your Insider Declaration and Related Party &amp; Conflict of Interest (COI) declaration for each open period.</p>
+    }
+
+    @if (_effectiveMember is null)
+    {
+        <p class="cg-subtitle">Your login isn't linked to a User record yet. Ask an Administrator to link your account on the User Management page.</p>
+    }
+    else
+    {
+        <div class="cg-declaration-options">
+            <a class="cg-declaration-option @(Option1Enabled ? "" : "disabled")"
+               href="@(Option1Enabled ? "/declarations/insider-trading" : null)">
+                <h2>1. Submit Insider Declaration</h2>
+                <p>@(Option1Enabled ? $"Due {_insiderRun!.DueDateUtc.ToLocalDisplay():dd MMM yyyy}." : "Not currently due.")</p>
+            </a>
+
+            <a class="cg-declaration-option @(Option2Enabled ? "" : "disabled")"
+               href="@(Option2Enabled ? "/declarations/related-party-coi" : null)">
+                <h2>2. Submit Related Party &amp; COI Declaration</h2>
+                <p>@(Option2Enabled ? $"Due {_coiRun!.DueDateUtc.ToLocalDisplay():dd MMM yyyy}." : (Option1Enabled ? "Insider Declaration is due first." : "Not currently due."))</p>
+            </a>
+        </div>
+
+        <h2 class="cg-section-heading">Insider Trading declaration history</h2>
+        @if (_insiderHistory is null)
+        {
+            <p class="cg-loading"><em>Loading…</em></p>
+        }
+        else if (_insiderHistory.Count == 0)
+        {
+            <div class="cg-empty-state">No Insider Trading declarations submitted yet.</div>
+        }
+        else
+        {
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Quarter</th>
+                            <th>Status</th>
+                            <th>Submitted</th>
+                            <th>Last modified</th>
+                            <th>Due date</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in _insiderHistory)
+                        {
+                            var editable = d.DeclarationCycleRun!.DueDateUtc.ToLocalDisplay().Date >= DateTime.Now.Date;
+                            <tr class="cg-data-row">
+                                <td class="mono">Q@(d.DeclarationCycleRun!.PeriodQuarter) @d.DeclarationCycleRun!.PeriodYear</td>
+                                <td><span class="cg-status-pill @(d.IsDraft ? "pending" : "cleared")">@(d.IsDraft ? "Draft" : "Submitted")</span></td>
+                                <td class="mono">@(d.IsDraft ? "—" : d.SubmittedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm"))</td>
+                                <td class="mono">@(d.ModifiedAtUtc?.ToLocalDisplay("dd/MM/yyyy HH:mm") ?? "—")</td>
+                                <td class="mono">@d.DeclarationCycleRun!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</td>
+                                <td>
+                                    <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printDeclaration = d"><span class="cg-icon-print-glyph"></span></button>
+                                    @if (editable)
+                                    {
+                                        <button type="button" class="cg-action-btn" @onclick="() => _confirmEditDeclaration = d">@(d.IsDraft ? "Continue" : "Edit")</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="cg-subtitle" style="margin:0;">Edit window closed</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <ConfirmPrompt Show="_confirmEditDeclaration is not null"
+                       Message="You are about to edit your declaration. Once you proceed, please make sure you re-submit your declaration after editing."
+                       ConfirmLabel="Confirm"
+                       OnConfirm="ConfirmEdit"
+                       OnCancel="() => _confirmEditDeclaration = null" />
+
+        <h2 class="cg-section-heading">Related Party &amp; COI declaration history</h2>
+        @if (_coiHistory is null)
+        {
+            <p class="cg-loading"><em>Loading…</em></p>
+        }
+        else if (_coiHistory.Count == 0)
+        {
+            <div class="cg-empty-state">No Related Party &amp; COI declarations submitted yet.</div>
+        }
+        else
+        {
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Quarter</th>
+                            <th>Status</th>
+                            <th>Submitted</th>
+                            <th>Last modified</th>
+                            <th>Due date</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in _coiHistory)
+                        {
+                            var editable = d.DeclarationCycleRun!.DueDateUtc.ToLocalDisplay().Date >= DateTime.Now.Date;
+                            <tr class="cg-data-row">
+                                <td class="mono">Q@(d.DeclarationCycleRun!.PeriodQuarter) @d.DeclarationCycleRun!.PeriodYear</td>
+                                <td><span class="cg-status-pill @(d.IsDraft ? "pending" : "cleared")">@(d.IsDraft ? "Draft" : "Submitted")</span></td>
+                                <td class="mono">@(d.IsDraft ? "—" : d.SubmittedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm"))</td>
+                                <td class="mono">@(d.ModifiedAtUtc?.ToLocalDisplay("dd/MM/yyyy HH:mm") ?? "—")</td>
+                                <td class="mono">@d.DeclarationCycleRun!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</td>
+                                <td>
+                                    @if (editable)
+                                    {
+                                        <button type="button" class="cg-action-btn" @onclick="() => _confirmEditCoiDeclaration = d">@(d.IsDraft ? "Continue" : "Edit")</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="cg-subtitle" style="margin:0;">Edit window closed</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <ConfirmPrompt Show="_confirmEditCoiDeclaration is not null"
+                       Message="You are about to edit your declaration. Once you proceed, please make sure you re-submit your declaration after editing."
+                       ConfirmLabel="Confirm"
+                       OnConfirm="ConfirmEditCoi"
+                       OnCancel="() => _confirmEditCoiDeclaration = null" />
+
+        @if (_printDeclaration is not null)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => _printDeclaration = null">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — Insider Trading Declaration</h2>
+                                <p>@_effectiveMember.FullName — Q@(_printDeclaration.DeclarationCycleRun!.PeriodQuarter) @_printDeclaration.DeclarationCycleRun!.PeriodYear</p>
+                            </div>
+                        </div>
+                        <PrintFooter />
+                        <div class="cg-table-wrap">
+                            <table>
+                                <tbody>
+                                    <tr><th>Status</th><td>@(_printDeclaration.IsDraft ? "Draft" : "Submitted")</td></tr>
+                                    <tr><th>Submitted</th><td>@(_printDeclaration.IsDraft ? "—" : _printDeclaration.SubmittedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm"))</td></tr>
+                                    <tr><th>Last modified</th><td>@(_printDeclaration.ModifiedAtUtc?.ToLocalDisplay("dd/MM/yyyy HH:mm") ?? "—")</td></tr>
+                                    <tr><th>Due date</th><td>@_printDeclaration.DeclarationCycleRun!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</td></tr>
+                                    <tr><th>Holds a NIN</th><td>@(_printDeclaration.HasNin ? $"Yes ({_printDeclaration.NinNumber})" : "No")</td></tr>
+                                    <tr><th>Relatives have a NIN</th><td>@(_printDeclaration.RelativesHaveNin ? "Yes" : "No")</td></tr>
+                                    <tr><th>Holds shares in DI (self or relatives)</th><td>@(_printDeclaration.HoldsShares ? "Yes" : "No")</td></tr>
+                                    <tr><th>Emirates ID</th><td>@(string.IsNullOrEmpty(_printDeclaration.EmiratesIdPath) ? "—" : $"{_printDeclaration.EmiratesIdNumber} — {_printDeclaration.EmiratesIdNameOnCard}, expires {_printDeclaration.EmiratesIdExpiryDate:dd/MM/yyyy}")</td></tr>
+                                    <tr><th>Passport</th><td>@(string.IsNullOrEmpty(_printDeclaration.PassportPath) ? "—" : $"{_printDeclaration.PassportNumber} ({_printDeclaration.PassportIssuingCountry}), expires {_printDeclaration.PassportExpiryDate:dd/MM/yyyy}")</td></tr>
+                                    @if (!string.IsNullOrEmpty(_printDeclaration.TradeLicencePath))
+                                    {
+                                        <tr><th>Trade Licence</th><td>@_printDeclaration.TradeLicenceNumber — @_printDeclaration.TradeLicenceLegalName@(_printDeclaration.TradeLicenceExpiryDate is null ? "" : $", expires {_printDeclaration.TradeLicenceExpiryDate:dd/MM/yyyy}")@(string.IsNullOrEmpty(_printDeclaration.TradeLicenceIssuingAuthority) ? "" : $" ({_printDeclaration.TradeLicenceIssuingAuthority})")</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        @if (_printDeclaration.RelativesHaveNin && _printDeclaration.NinHolders.Count > 0)
+                        {
+                            <h2 class="cg-section-heading">Relatives' NIN</h2>
+                            <div class="cg-table-wrap">
+                                <table>
+                                    <thead><tr><th>Share Held By</th><th>Name of Share Holder</th><th>NIN</th><th>Additional</th></tr></thead>
+                                    <tbody>
+                                        @foreach (var h in _printDeclaration.NinHolders)
+                                        {
+                                            <tr class="cg-data-row">
+                                                <td>@RelationshipLabel(h.Relationship)</td>
+                                                <td>@h.NameOfShareHolder</td>
+                                                <td>@h.NinNumber</td>
+                                                <td>@h.Additional</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+
+                        @if (_printDeclaration.HoldsShares && _printDeclaration.Relatives.Count > 0)
+                        {
+                            <h2 class="cg-section-heading">Shareholding</h2>
+                            <div class="cg-table-wrap">
+                                <table>
+                                    <thead><tr><th>Share Held By</th><th>Name of Share Holder</th><th>NIN</th><th>Additional</th></tr></thead>
+                                    <tbody>
+                                        @foreach (var r in _printDeclaration.Relatives)
+                                        {
+                                            <tr class="cg-data-row">
+                                                <td>@(r.IsSelf ? "Self" : RelationshipLabel(r.Relationship))</td>
+                                                <td>@(r.IsSelf ? _effectiveMember?.FullName : r.RelativeName)</td>
+                                                <td>@r.NinNumber</td>
+                                                <td>@r.Additional</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

@@ -1,0 +1,344 @@
+@page "/admin/user-management/member/{Id:int}"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@using System.Security.Claims
+@inject ApplicationDbContext Db
+@inject IMemberWriter MemberWriter
+@inject IMemberImpersonationApprovalWriter ImpersonationWriter
+@inject IMemberNotificationWriter NotificationWriter
+@inject IDirectoryEmployeeProvider DirectoryProvider
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<IdentityRole> RoleManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IMemberWelcomeEmailSender WelcomeEmailSender
+@inject NavigationManager Nav
+@inject ToastService Toasts
+@inject IWebHostEnvironment Env
+@inject IJSRuntime JS
+@inject ILogger<MemberDetail> Logger
+
+<PageTitle>@(Id == 0 ? "New User" : "Edit User")</PageTitle>
+
+<div class="cg-shell">
+    <p><a href="/admin/user-management">← Back to User Management</a></p>
+
+    @if (_editing is null || _companies is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <EditForm Model="_editing" OnValidSubmit="SaveAsync" class="cg-member-form cg-member-page">
+            <DataAnnotationsValidator />
+            <h1>
+                @(_editing.Id == 0 ? "New user" : $"Edit — {_editing.FullName}")
+                @if (_editing.Id != 0)
+                {
+                    <button type="button" class="cg-icon-btn" title="Notify user by email"
+                            disabled="@string.IsNullOrWhiteSpace(_editing.Email)"
+                            @onclick="ShowNotifyPrompt">
+                        <span class="cg-icon-mail-glyph" aria-hidden="true"></span>
+                    </button>
+                }
+            </h1>
+
+            <label class="cg-field">
+                <span>Entity</span>
+                <select class="cg-input" @bind="_editing.CompanyId" @bind:after="OnCompanyChangedAsync">
+                    <option value="0">Select entity…</option>
+                    @foreach (var c in _companies.Where(c => c.Active || c.Id == _editing.CompanyId))
+                    {
+                        <option value="@c.Id">@c.Name@(c.Active ? "" : " (inactive)")</option>
+                    }
+                </select>
+                <ValidationMessage For="() => _editing.CompanyId" class="cg-error" />
+            </label>
+
+            @if (_editing.CompanyId != 0)
+            {
+                @if (_adSynced)
+                {
+                    <div class="cg-ad-status cg-ad-ok">
+                        Azure AD sync available for this entity.
+                        <button type="button" class="cg-action-btn" @onclick="LoadFromDirectoryAsync">Load from Azure AD</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="cg-ad-status cg-ad-warn">This entity's Azure AD isn't synced — enter details manually below.</div>
+                }
+            }
+
+            <label class="cg-field">
+                <span>Full name</span>
+                <InputText class="cg-input" @bind-Value="_editing.FullName" maxlength="120" />
+                <ValidationMessage For="() => _editing.FullName" class="cg-error" />
+            </label>
+            <label class="cg-field"><span>Job title / designation</span><InputText class="cg-input" @bind-Value="_editing.JobTitle" maxlength="120" /></label>
+
+            <label class="cg-field">
+                <span>Department</span>
+                <select class="cg-input" @bind="_editing.DepartmentId">
+                    <option value="">No department</option>
+                    @foreach (var d in _departments!.Where(d => d.Active || d.Id == _editing.DepartmentId))
+                    {
+                        <option value="@d.Id">@d.Name@(d.Active ? "" : " (inactive)")</option>
+                    }
+                </select>
+            </label>
+
+            <label class="cg-field">
+                <span>Email</span>
+                <InputText class="cg-input" @bind-Value="_editing.Email" maxlength="160" />
+                <ValidationMessage For="() => _editing.Email" class="cg-error" />
+            </label>
+            <label class="cg-field"><span>System ID (Azure AD object ID)</span><input class="cg-input mono" @bind="_editing.AzureAdObjectId" readonly /></label>
+            <label class="cg-field"><span>Signature</span><InputText class="cg-input" @bind-Value="_editing.Signature" maxlength="160" placeholder="e.g. scanned signature reference" /></label>
+
+            <label class="cg-field">
+                <span>Reporting manager (optional)</span>
+                <select class="cg-input" @bind="_editing.ReportingManagerId">
+                    <option value="">None</option>
+                    @foreach (var m in _members!.Where(m => m.Id != _editing.Id && m.Active))
+                    {
+                        <option value="@m.Id">@m.FullName</option>
+                    }
+                </select>
+            </label>
+
+            <label class="cg-field">
+                <span>Login account</span>
+                <select class="cg-input" @bind="_editing.ApplicationUserId" @bind:after="LoadAuditAsync">
+                    <option value="">Not linked</option>
+                    @foreach (var u in _users!)
+                    {
+                        <option value="@u.Id">@u.Email</option>
+                    }
+                </select>
+            </label>
+
+            @if (!string.IsNullOrEmpty(_editing.ApplicationUserId))
+            {
+                <label class="cg-field">
+                    <span>Profile picture</span>
+                    <div class="cg-profile-upload">
+                        @if (!string.IsNullOrEmpty(_profilePicturePath))
+                        {
+                            <img src="@_profilePicturePath" alt="Profile picture" class="cg-profile-pic-preview" />
+                        }
+                        else
+                        {
+                            <span class="cg-profile-pic-placeholder">@(_editing.FullName.Length > 0 ? _editing.FullName[..1].ToUpperInvariant() : "?")</span>
+                        }
+                        <InputFile OnChange="OnProfilePictureSelectedAsync" accept="image/png,image/jpeg,image/webp" />
+                    </div>
+                    <p class="cg-subtitle">JPEG, PNG, or WebP, up to 2 MB.</p>
+                </label>
+            }
+
+            <label class="cg-field">
+                <span>Role assigned</span>
+                <select class="cg-input" multiple size="4" @onchange="OnRoleAssignedChanged">
+                    <option value="InsiderTrading" selected="@_editing.InsiderTradingAccess">Insider Trading</option>
+                    <option value="ConflictOfInterest" selected="@_editing.ConflictOfInterestAccess">Conflict of Interest</option>
+                    <option value="RelatedPartyRegister" selected="@_editing.RelatedPartyRegisterAccess">Related Party Register</option>
+                    <option value="RelatedPartyTransaction" selected="@_editing.RelatedPartyTransactionAccess">Related Party Transaction</option>
+                </select>
+                <p class="cg-subtitle">Ctrl/Cmd-click (or shift-click) to select more than one.</p>
+            </label>
+
+            <label class="cg-field">
+                <span>RP Transaction Role</span>
+                <select class="cg-input" @bind="_editing.RpTransactionRole">
+                    <option value="@RpTransactionRole.None">None</option>
+                    <option value="@RpTransactionRole.Ccao">CCAO</option>
+                    <option value="@RpTransactionRole.Cfo">CFO</option>
+                    <option value="@RpTransactionRole.Coo">COO</option>
+                    <option value="@RpTransactionRole.MdCeo">MD&amp;CEO</option>
+                </select>
+                <p class="cg-subtitle">Position in the Related Party Transaction approval workflow -- separate from System roles below.</p>
+            </label>
+
+            <fieldset class="cg-checkgroup">
+                <legend>Other flags</legend>
+                <label><input type="checkbox" @bind="_editing.IsBoardMember" /> Board member</label>
+                <label><input type="checkbox" @bind="_editing.IsExecutiveManagement" /> Executive Management</label>
+                <label><input type="checkbox" @bind="_editing.IsExternalMember" /> External member (not a direct DI Group employee)</label>
+                <label><input type="checkbox" @bind="_editing.CanBeImpersonated" /> Can be impersonated (Related Party Register / COI)</label>
+            </fieldset>
+
+            @if (_editing.CanBeImpersonated)
+            {
+                <label class="cg-field">
+                    <span>Approved impersonators</span>
+                    @if (_editing.Id == 0)
+                    {
+                        <p class="cg-subtitle">Save this user first, then choose who may impersonate them.</p>
+                    }
+                    else
+                    {
+                        <select class="cg-input" multiple size="6" @onchange="OnApprovedImpersonatorsChangedAsync">
+                            @foreach (var candidate in _members!.Where(m => m.Id != _editing.Id && m.Active))
+                            {
+                                <option value="@candidate.Id" selected="@_approvedImpersonatorIds.Contains(candidate.Id)">@candidate.FullName</option>
+                            }
+                        </select>
+                        <p class="cg-subtitle">Ctrl/Cmd-click (or shift-click) to select more than one.</p>
+                    }
+                </label>
+            }
+
+            <AuthorizeView Roles="@GovernanceRoles.Administrator" Context="rolesCtx">
+                <Authorized>
+                    @if (!string.IsNullOrEmpty(_editing.ApplicationUserId))
+                    {
+                        <label class="cg-field">
+                            <span>System roles for this login</span>
+                            <select class="cg-input" @bind="_systemRoleSelection" @bind:after="ApplySystemRoleAsync">
+                                <option value="">No role</option>
+                                @foreach (var role in _roles ?? [])
+                                {
+                                    <option value="@role.Name">@role.Name</option>
+                                }
+                            </select>
+                        </label>
+
+                        @if (_editing.ApplicationUserId != _currentUserId)
+                        {
+                            <div class="cg-ad-status cg-ad-warn">
+                                Support access: sign in as this user's account for troubleshooting or delegated access. Fully logged.
+                                <button type="button" class="cg-action-btn cg-critical" @onclick="LogInAsAsync">Log in as this user</button>
+                            </div>
+                        }
+                    }
+                </Authorized>
+            </AuthorizeView>
+
+            <div class="cg-actions">
+                <button type="submit" class="cg-action-btn cg-good" disabled="@_saving">@(_saving ? "Saving…" : "Save")</button>
+                <button type="button" class="cg-action-btn" @onclick="GoBack" disabled="@_saving">Cancel</button>
+            </div>
+
+            @if (_editing.Id != 0)
+            {
+                <div class="cg-actions" style="margin-top:16px;">
+                    <label style="display:flex; align-items:center; gap:8px;">
+                        <ToggleSwitch Value="_editing.Active" ValueChanged="() => _showDeactivateJustify = true" />
+                        @(_editing.Active ? "Active" : "Inactive")
+                    </label>
+                    <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+                </div>
+            }
+
+            @if (_showDeactivateJustify && _editing.Id != 0)
+            {
+                <JustificationPrompt Show="true"
+                                     Label="@($"Why are you {(_editing.Active ? "deactivating" : "reactivating")} {_editing.FullName}? (Deactivating blocks their login.)")"
+                                     Toasts="Toasts"
+                                     OnConfirm="DeactivateAsync"
+                                     OnCancel="() => _showDeactivateJustify = false" />
+            }
+
+            <NotifyUserPrompt Show="_showNotifyPrompt" UserName="@_editing.FullName" OnChoice="NotifyChoiceAsync" />
+
+            @if (_editing.Id != 0)
+            {
+                <details class="cg-audit-history">
+                    <summary>Audit history (@_auditEntries.Count)</summary>
+                    <div class="cg-table-wrap">
+                        <table>
+                            <thead><tr><th>When</th><th>Who</th><th>Action</th><th>How</th><th>Why</th><th>IP</th></tr></thead>
+                            <tbody>
+                                @foreach (var entry in _auditEntries)
+                                {
+                                    <tr class="cg-data-row">
+                                        <td class="mono">@entry.OccurredAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm:ss")</td>
+                                        <td>@entry.ActorDisplayName</td>
+                                        <td>@entry.Action</td>
+                                        <td>@entry.Details</td>
+                                        <td>@(entry.Justification ?? "—")</td>
+                                        <td class="mono">@(entry.IpAddress ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        @if (_auditEntries.Count == 0)
+                        {
+                            <div class="cg-empty-state">No audit events recorded for this user yet.</div>
+                        }
+                    </div>
+                </details>
+
+                <details class="cg-audit-history">
+                    <summary>Uploaded documents (@_documents.Count)</summary>
+                    <div class="cg-tabs" role="tablist">
+                        <button type="button" class="cg-tab @(_documentsTab == "latest" ? "active" : "")" role="tab" aria-selected="@(_documentsTab == "latest")" @onclick='() => _documentsTab = "latest"'>Latest (@LatestDocuments().Count)</button>
+                        <button type="button" class="cg-tab @(_documentsTab == "previous" ? "active" : "")" role="tab" aria-selected="@(_documentsTab == "previous")" @onclick='() => _documentsTab = "previous"'>Previous (@PreviousDocuments().Count)</button>
+                    </div>
+                    <div class="cg-table-wrap">
+                        <table>
+                            <thead><tr><th>Document</th><th>Period</th><th>Number</th><th>Expiry</th><th></th></tr></thead>
+                            <tbody>
+                                @foreach (var doc in DisplayedDocuments())
+                                {
+                                    <tr class="cg-data-row">
+                                        <td>@doc.DocumentType</td>
+                                        <td class="mono">@doc.PeriodLabel</td>
+                                        <td>@(doc.Number ?? "—")</td>
+                                        <td class="mono">@(doc.ExpiryDate is null ? "—" : doc.ExpiryDate.Value.ToString("dd/MM/yyyy"))</td>
+                                        <td><a href="@doc.Path" target="_blank">View</a></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        @if (DisplayedDocuments().Count == 0)
+                        {
+                            <div class="cg-empty-state">@(_documentsTab == "previous" ? "No previous (superseded) documents on file." : "No documents uploaded by this user yet.")</div>
+                        }
+                    </div>
+                </details>
+            }
+        </EditForm>
+
+        @if (_showPrintPreview)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = false">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — User Record</h2>
+                                <PrintFooter />
+                            </div>
+                        </div>
+                        <table class="cg-print-table">
+                            <tbody>
+                                <tr><th>Full name</th><td>@_editing.FullName</td></tr>
+                                <tr><th>Entity</th><td>@(_companies?.FirstOrDefault(c => c.Id == _editing.CompanyId)?.Name ?? "—")</td></tr>
+                                <tr><th>Department</th><td>@(_departments?.FirstOrDefault(d => d.Id == _editing.DepartmentId)?.Name ?? "—")</td></tr>
+                                <tr><th>Job title</th><td>@(_editing.JobTitle ?? "—")</td></tr>
+                                <tr><th>Email</th><td>@(_editing.Email ?? "—")</td></tr>
+                                <tr><th>Login account</th><td>@(_users?.FirstOrDefault(u => u.Id == _editing.ApplicationUserId)?.Email ?? "Not linked")</td></tr>
+                                <tr><th>Reporting manager</th><td>@(_members?.FirstOrDefault(m => m.Id == _editing.ReportingManagerId)?.FullName ?? "None")</td></tr>
+                                <tr><th>Role assigned</th><td>@RoleAssignedSummary</td></tr>
+                                <tr><th>Board member</th><td>@(_editing.IsBoardMember ? "Yes" : "No")</td></tr>
+                                <tr><th>Executive Management</th><td>@(_editing.IsExecutiveManagement ? "Yes" : "No")</td></tr>
+                                <tr><th>External member</th><td>@(_editing.IsExternalMember ? "Yes" : "No")</td></tr>
+                                <tr><th>Can be impersonated</th><td>@(_editing.CanBeImpersonated ? "Yes" : "No")</td></tr>
+                                <tr><th>Status</th><td>@(_editing.Active ? "Active" : "Inactive")</td></tr>
+                                <tr><th>Signature</th><td>@(_editing.Signature ?? "—")</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

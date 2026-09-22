@@ -1,0 +1,113 @@
+@page "/admin/pending-notifications"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IMemberNotificationWriter NotificationWriter
+@inject IMemberWelcomeEmailSender WelcomeEmailSender
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toasts
+@inject ILogger<PendingNotifications> Logger
+@inject IJSRuntime JS
+
+<PageTitle>Pending Notifications</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1>Pending notifications</h1>
+    <p class="cg-subtitle">FRD §2.2 — new-user notifications queued with "Send Message Later." Trigger them from here.</p>
+
+    @if (_pending is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else if (_pending.Count == 0)
+    {
+        <div class="cg-empty-state">Nothing pending — every queued notification has been sent.</div>
+    }
+    else
+    {
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+        </div>
+
+        <div class="cg-bulk-bar">
+            <button type="button" class="cg-action-btn" disabled="@(_selectedIds.Count == 0)" @onclick="DeselectAll">Deselect all</button>
+            @if (_selectedIds.Count > 0)
+            {
+                <span class="cg-result-count">@_selectedIds.Count selected</span>
+                <button type="button" class="cg-action-btn cg-good" disabled="@_bulkSending" @onclick="SendSelectedAsync">Send selected now</button>
+            }
+        </div>
+
+        <div class="cg-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="cg-select-col"><input type="checkbox" checked="@AllSelected" @onchange="e => ToggleSelectAll((bool)e.Value!)" aria-label="Select all" /></th>
+                        <SortableHeader Label="User" Column="User" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Recipient" Column="Recipient" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Queued" Column="Queued" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var n in SortedPending())
+                    {
+                        <tr class="cg-data-row">
+                            <td class="cg-select-col"><input type="checkbox" checked="@_selectedIds.Contains(n.Id)" @onchange="e => ToggleSelect(n.Id, (bool)e.Value!)" aria-label="Select row" /></td>
+                            <td>@(n.Member?.FullName ?? "—")</td>
+                            <td class="mono">@n.Recipient</td>
+                            <td class="mono">@n.CreatedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm:ss")</td>
+                            <td>
+                                <button type="button" class="cg-action-btn cg-good" disabled="@(_sendingId == n.Id)" @onclick="() => SendNowAsync(n)">Send now</button>
+                                <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = n"><span class="cg-icon-print-glyph"></span></button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (_showPrintPreview || _printSingleRecord is not null)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => { _showPrintPreview = false; _printSingleRecord = null; }">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — @(_printSingleRecord is not null ? $"Notification — {_printSingleRecord.Member?.FullName ?? _printSingleRecord.Recipient}" : "Pending Notifications")</h2>
+                                <PrintFooter />
+                            </div>
+                        </div>
+                        <div class="cg-table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Recipient</th>
+                                        <th>Queued</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var n in PrintRows())
+                                    {
+                                        <tr class="cg-data-row">
+                                            <td>@(n.Member?.FullName ?? "—")</td>
+                                            <td class="mono">@n.Recipient</td>
+                                            <td class="mono">@n.CreatedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm:ss")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

@@ -1,0 +1,83 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthState
+@inject IActiveDirectoryAuthenticator DirectoryAuthenticator
+@inject ToastService Toasts
+
+<AuthorizeView>
+    <Authorized>
+        @if (_locked)
+        {
+            <div class="cg-lock-overlay">
+                <div class="cg-lock-card">
+                    <h2>Session locked</h2>
+                    <p class="cg-subtitle">No activity for 15 minutes. Enter your password to continue where you left off.</p>
+                    <input type="password" class="cg-input" @bind="_password" @bind:event="oninput" placeholder="Password" />
+                    <button type="button" class="cg-action-btn cg-good" @onclick="UnlockAsync">Unlock</button>
+                </div>
+            </div>
+        }
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private const int IdleTimeoutMs = 15 * 60 * 1000;
+
+    private bool _locked;
+    private string _password = string.Empty;
+    private DotNetObjectReference<IdleLockOverlay>? _selfRef;
+    private bool _started;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_started)
+        {
+            var state = await AuthState.GetAuthenticationStateAsync();
+            if (state.User.Identity?.IsAuthenticated == true)
+            {
+                _started = true;
+                _selfRef = DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("cgtoolIdleLock.start", _selfRef, IdleTimeoutMs);
+            }
+        }
+    }
+
+    [JSInvokable]
+    public void OnIdleTimeout()
+    {
+        _locked = true;
+        _password = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task UnlockAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var username = state.User.Identity?.Name;
+        if (string.IsNullOrEmpty(username))
+        {
+            Toasts.ShowError("Could not resolve the current user.");
+            return;
+        }
+
+        var result = await DirectoryAuthenticator.AuthenticateAsync(username, _password);
+        if (!result.Succeeded)
+        {
+            Toasts.ShowError("Incorrect password.");
+            return;
+        }
+
+        _locked = false;
+        _password = string.Empty;
+        await JS.InvokeVoidAsync("cgtoolIdleLock.start", _selfRef, IdleTimeoutMs);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_selfRef is not null)
+        {
+            try { await JS.InvokeVoidAsync("cgtoolIdleLock.stop"); } catch { /* circuit may already be gone */ }
+            _selfRef.Dispose();
+        }
+    }
+}

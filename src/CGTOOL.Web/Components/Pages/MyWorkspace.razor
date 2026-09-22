@@ -1,0 +1,181 @@
+@page "/my-workspace"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>My Workspace</PageTitle>
+
+<div class="cg-shell">
+    <h1>My Workspace</h1>
+    <p class="cg-subtitle">Keep your family members and companies on file here — you can reuse this whenever a declaration asks for them.</p>
+
+    @if (_effectiveMember is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-tabs" role="tablist">
+            <button type="button" class="cg-tab @(_activeTab == "family" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "family")" @onclick='() => _activeTab = "family"'>
+                My Family
+            </button>
+            <button type="button" class="cg-tab @(_activeTab == "companies" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "companies")" @onclick='() => _activeTab = "companies"'>
+                My Companies
+            </button>
+        </div>
+
+        @if (_activeTab == "family")
+        {
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name of the Family Member</th>
+                            <th>Relation</th>
+                            <th>Emirates ID</th>
+                            <th>Passport</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="cg-data-row">
+                            <td><input class="cg-input" placeholder="Name" @bind="_newFamilyName" maxlength="120" /></td>
+                            <td>
+                                <select class="cg-input" @bind="_newFamilyRelationship">
+                                    @foreach (var opt in RelativeOptions)
+                                    {
+                                        <option value="@opt.Value">@opt.Label</option>
+                                    }
+                                </select>
+                            </td>
+                            <td class="cg-subtitle">Save first</td>
+                            <td class="cg-subtitle">Save first</td>
+                            <td><button type="button" class="cg-action-btn cg-good" @onclick="AddFamilyMemberAsync">Add family member</button></td>
+                        </tr>
+                        @foreach (var f in _familyMembers)
+                        {
+                            <tr class="cg-data-row">
+                                <td><input class="cg-input" @bind="f.Name" maxlength="120" /></td>
+                                <td>
+                                    <select class="cg-input" @bind="f.Relationship">
+                                        @foreach (var opt in RelativeOptions)
+                                        {
+                                            <option value="@opt.Value">@opt.Label</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <InputFile OnChange="e => OnEmiratesIdSelectedAsync(f, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploading(f.Id, "emirates-id")" />
+                                    @if (IsUploading(f.Id, "emirates-id"))
+                                    {
+                                        <span class="cg-subtitle">Uploading…</span>
+                                    }
+                                    else if (!string.IsNullOrEmpty(f.EmiratesIdPath))
+                                    {
+                                        <a href="@f.EmiratesIdPath" target="_blank" class="cg-subtitle">✓ view</a>
+                                    }
+                                </td>
+                                <td>
+                                    <InputFile OnChange="e => OnPassportSelectedAsync(f, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploading(f.Id, "passport")" />
+                                    @if (IsUploading(f.Id, "passport"))
+                                    {
+                                        <span class="cg-subtitle">Uploading…</span>
+                                    }
+                                    else if (!string.IsNullOrEmpty(f.PassportPath))
+                                    {
+                                        <a href="@f.PassportPath" target="_blank" class="cg-subtitle">✓ view</a>
+                                    }
+                                </td>
+                                <td>
+                                    <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveFamilyMemberAsync(f)">Save</button>
+                                    <button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveFamilyMemberAsync(f)">Remove</button>
+                                </td>
+                            </tr>
+                        }
+                        @if (_familyMembers.Count == 0)
+                        {
+                            <tr><td colspan="5" class="cg-subtitle">No family members added yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name of the Company</th>
+                            <th>Trade License Details</th>
+                            <th>Ownership %</th>
+                            <th>Trade License</th>
+                            <th>MOA</th>
+                            <th>POA <em class="cg-subtitle" style="margin:0;">(optional)</em></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="cg-data-row">
+                            <td><input class="cg-input" placeholder="Company name" @bind="_newCompanyName" maxlength="160" /></td>
+                            <td><input class="cg-input" placeholder="Trade license details" @bind="_newCompanyTradeLicenseDetails" maxlength="400" /></td>
+                            <td><input type="number" class="cg-input" placeholder="0-100" min="0" max="100" step="0.01" @bind="_newCompanyOwnership" /></td>
+                            <td class="cg-subtitle">Save first</td>
+                            <td class="cg-subtitle">Save first</td>
+                            <td class="cg-subtitle">Save first</td>
+                            <td><button type="button" class="cg-action-btn cg-good" @onclick="AddCompanyAsync">Add company</button></td>
+                        </tr>
+                        @foreach (var c in _companies)
+                        {
+                            <tr class="cg-data-row">
+                                <td><input class="cg-input" @bind="c.CompanyName" maxlength="160" /></td>
+                                <td><input class="cg-input" @bind="c.TradeLicenseDetails" maxlength="400" /></td>
+                                <td><input type="number" class="cg-input" min="0" max="100" step="0.01" @bind="c.OwnershipPercentage" /></td>
+                                <td>
+                                    <InputFile OnChange="e => OnTradeLicenseSelectedAsync(c, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploading(c.Id, "trade-license")" />
+                                    @if (IsUploading(c.Id, "trade-license"))
+                                    {
+                                        <span class="cg-subtitle">Uploading…</span>
+                                    }
+                                    else if (!string.IsNullOrEmpty(c.TradeLicensePath))
+                                    {
+                                        <a href="@c.TradeLicensePath" target="_blank" class="cg-subtitle">✓ view</a>
+                                    }
+                                </td>
+                                <td>
+                                    <InputFile OnChange="e => OnMoaSelectedAsync(c, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploading(c.Id, "moa")" />
+                                    @if (IsUploading(c.Id, "moa"))
+                                    {
+                                        <span class="cg-subtitle">Uploading…</span>
+                                    }
+                                    else if (!string.IsNullOrEmpty(c.MoaPath))
+                                    {
+                                        <a href="@c.MoaPath" target="_blank" class="cg-subtitle">✓ view</a>
+                                    }
+                                </td>
+                                <td>
+                                    <InputFile OnChange="e => OnPoaSelectedAsync(c, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploading(c.Id, "poa")" />
+                                    @if (IsUploading(c.Id, "poa"))
+                                    {
+                                        <span class="cg-subtitle">Uploading…</span>
+                                    }
+                                    else if (!string.IsNullOrEmpty(c.PoaPath))
+                                    {
+                                        <a href="@c.PoaPath" target="_blank" class="cg-subtitle">✓ view</a>
+                                    }
+                                </td>
+                                <td>
+                                    <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveCompanyAsync(c)">Save</button>
+                                    <button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveCompanyAsync(c)">Remove</button>
+                                </td>
+                            </tr>
+                        }
+                        @if (_companies.Count == 0)
+                        {
+                            <tr><td colspan="7" class="cg-subtitle">No companies added yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>

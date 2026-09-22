@@ -1,0 +1,256 @@
+@page "/reports/insider-declarations"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IJSRuntime JS
+
+<PageTitle>Insider Declaration Submission Report</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1>Insider Declaration Submission report</h1>
+    <p class="cg-subtitle">Everyone notified of an Insider Trading declaration, per quarter and entity, and whether they've completed it — for SCA/DFM/AGM reporting and historical comparison.</p>
+
+    @if (_rows is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-controls">
+            <div class="cg-search-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                <input type="search" placeholder="Search user…" @bind="_search" @bind:event="oninput" aria-label="Search user" />
+            </div>
+
+            <select class="cg-input" style="width:auto;" @bind="_yearFilter" aria-label="Filter by year">
+                <option value="0">All years</option>
+                @foreach (var y in AvailableYears())
+                {
+                    <option value="@y">@y</option>
+                }
+            </select>
+
+            <select class="cg-input" style="width:auto;" @bind="_quarterFilter" aria-label="Filter by quarter">
+                <option value="0">All quarters</option>
+                <option value="1">Q1</option>
+                <option value="2">Q2</option>
+                <option value="3">Q3</option>
+                <option value="4">Q4</option>
+            </select>
+
+            <select class="cg-input" style="width:auto;" @bind="_companyFilter" aria-label="Filter by entity">
+                <option value="0">All entities</option>
+                @foreach (var c in _companies ?? [])
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </select>
+
+            <select class="cg-input" style="width:auto;" @bind="_statusFilter" aria-label="Filter by submission status">
+                <option value="">All statuses</option>
+                <option value="complete">Complete</option>
+                <option value="pending">Pending</option>
+            </select>
+
+            <span class="cg-result-count">@FilteredRows().Count record(s)</span>
+        </div>
+
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+        </div>
+
+        <div class="cg-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <SortableHeader Label="Member" Column="Member" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <th>Department</th>
+                        <SortableHeader Label="Quarter" Column="Quarter" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <th>Submission</th>
+                        <th>Has NIN</th>
+                        <th>Holds shares</th>
+                        <th>Relatives</th>
+                        <SortableHeader Label="Submitted" Column="Submitted" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <th>On behalf of</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in FilteredRows())
+                    {
+                        <tr class="cg-data-row">
+                            <td>@r.MemberName</td>
+                            <td>@r.EntityShortCode</td>
+                            <td>@(r.DepartmentName ?? "—")</td>
+                            <td class="mono">Q@(r.Quarter) @r.Year</td>
+                            <td>
+                                @if (r.Submitted)
+                                {
+                                    <span class="cg-status-icon-good" title="Complete">✓</span>
+                                }
+                                else
+                                {
+                                    <span class="cg-status-icon-bad" title="Pending">✗</span>
+                                }
+                            </td>
+                            <td>@(r.Declaration is null ? "—" : (r.Declaration.HasNin ? $"Yes ({r.Declaration.NinNumber})" : "No"))</td>
+                            <td>@(r.Declaration is null ? "—" : (r.Declaration.HoldsShares ? $"Yes ({r.Declaration.NumberOfSharesHeld})" : "No"))</td>
+                            <td>@(r.Declaration is null ? "—" : (r.Declaration.RelativesHoldShares ? $"Yes ({r.Declaration.Relatives.Count})" : "No"))</td>
+                            <td class="mono">@(r.Declaration is not null ? r.Declaration.SubmittedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm") : "—")</td>
+                            <td>@(r.Declaration?.SubmittedOnBehalfOf ?? "—")</td>
+                            <td>
+                                <button type="button" class="cg-icon-btn" title="View uploaded documents" disabled="@(!HasAnyDocument(r))" @onclick="() => _viewDocumentsRecord = r"><span class="cg-icon-document-glyph"></span></button>
+                                <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = r"><span class="cg-icon-print-glyph"></span></button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (FilteredRows().Count == 0)
+            {
+                <div class="cg-empty-state">No records match these filters.</div>
+            }
+        </div>
+
+        @if (_showPrintPreview || _printSingleRecord is not null)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        <div class="cg-col-picker">
+                            <button type="button" class="cg-action-btn" @onclick="() => _showColumnPicker = !_showColumnPicker">Columns ▾</button>
+                            @if (_showColumnPicker)
+                            {
+                                <div class="cg-col-picker-panel">
+                                    @foreach (var col in PrintColumns)
+                                    {
+                                        <label class="cg-col-picker-item">
+                                            <input type="checkbox" checked="@IsColumnSelected(col.Key)" @onchange="e => ToggleColumn(col.Key, (bool)e.Value!)" />
+                                            @col.Label
+                                        </label>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => { _showPrintPreview = false; _printSingleRecord = null; _showColumnPicker = false; }">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — @(_printSingleRecord is not null ? $"Insider Declaration — {_printSingleRecord.MemberName}" : "Insider Declaration Submission Report")</h2>
+                                <PrintFooter />
+                            </div>
+                        </div>
+                        <div class="cg-table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        @if (IsColumnSelected("Member")) { <th>Member</th> }
+                                        @if (IsColumnSelected("Entity")) { <th>Entity</th> }
+                                        @if (IsColumnSelected("Department")) { <th>Department</th> }
+                                        @if (IsColumnSelected("Quarter")) { <th>Quarter</th> }
+                                        @if (IsColumnSelected("Submission")) { <th>Submission</th> }
+                                        @if (IsColumnSelected("HasNin")) { <th>Has NIN</th> }
+                                        @if (IsColumnSelected("HoldsShares")) { <th>Holds shares</th> }
+                                        @if (IsColumnSelected("Relatives")) { <th>Relatives</th> }
+                                        @if (IsColumnSelected("Submitted")) { <th>Submitted</th> }
+                                        @if (IsColumnSelected("OnBehalfOf")) { <th>On behalf of</th> }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var r in PrintRows())
+                                    {
+                                        <tr class="cg-data-row">
+                                            @if (IsColumnSelected("Member")) { <td>@r.MemberName</td> }
+                                            @if (IsColumnSelected("Entity")) { <td>@r.EntityShortCode</td> }
+                                            @if (IsColumnSelected("Department")) { <td>@(r.DepartmentName ?? "—")</td> }
+                                            @if (IsColumnSelected("Quarter")) { <td class="mono">Q@(r.Quarter) @r.Year</td> }
+                                            @if (IsColumnSelected("Submission"))
+                                            {
+                                                <td>
+                                                    @if (r.Submitted)
+                                                    {
+                                                        <span class="cg-status-icon-good" title="Complete">✓</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="cg-status-icon-bad" title="Pending">✗</span>
+                                                    }
+                                                </td>
+                                            }
+                                            @if (IsColumnSelected("HasNin")) { <td>@(r.Declaration is null ? "—" : (r.Declaration.HasNin ? $"Yes ({r.Declaration.NinNumber})" : "No"))</td> }
+                                            @if (IsColumnSelected("HoldsShares")) { <td>@(r.Declaration is null ? "—" : (r.Declaration.HoldsShares ? $"Yes ({r.Declaration.NumberOfSharesHeld})" : "No"))</td> }
+                                            @if (IsColumnSelected("Relatives")) { <td>@(r.Declaration is null ? "—" : (r.Declaration.RelativesHoldShares ? $"Yes ({r.Declaration.Relatives.Count})" : "No"))</td> }
+                                            @if (IsColumnSelected("Submitted")) { <td class="mono">@(r.Declaration is not null ? r.Declaration.SubmittedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm") : "—")</td> }
+                                            @if (IsColumnSelected("OnBehalfOf")) { <td>@(r.Declaration?.SubmittedOnBehalfOf ?? "—")</td> }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (_viewDocumentsRecord?.Declaration is { } viewedDeclaration)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn" @onclick="() => _viewDocumentsRecord = null">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <h2>Documents — @_viewDocumentsRecord.MemberName (Q@(_viewDocumentsRecord.Quarter) @_viewDocumentsRecord.Year)</h2>
+                        <div class="cg-table-wrap">
+                            <table>
+                                <thead><tr><th>Document</th><th>Number</th><th>Expiry</th><th></th></tr></thead>
+                                <tbody>
+                                    @if (!string.IsNullOrEmpty(viewedDeclaration.EmiratesIdPath))
+                                    {
+                                        <tr class="cg-data-row">
+                                            <td>Emirates ID</td>
+                                            <td>@(viewedDeclaration.EmiratesIdNumber ?? "—")</td>
+                                            <td class="mono">@(viewedDeclaration.EmiratesIdExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                            <td><a href="@viewedDeclaration.EmiratesIdPath" target="_blank">View</a></td>
+                                        </tr>
+                                    }
+                                    @if (!string.IsNullOrEmpty(viewedDeclaration.PassportPath))
+                                    {
+                                        <tr class="cg-data-row">
+                                            <td>Passport</td>
+                                            <td>@(viewedDeclaration.PassportNumber ?? "—")</td>
+                                            <td class="mono">@(viewedDeclaration.PassportExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                            <td><a href="@viewedDeclaration.PassportPath" target="_blank">View</a></td>
+                                        </tr>
+                                    }
+                                    @if (!string.IsNullOrEmpty(viewedDeclaration.TradeLicencePath))
+                                    {
+                                        <tr class="cg-data-row">
+                                            <td>Trade Licence</td>
+                                            <td>@(viewedDeclaration.TradeLicenceNumber ?? "—")</td>
+                                            <td class="mono">@(viewedDeclaration.TradeLicenceExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                            <td><a href="@viewedDeclaration.TradeLicencePath" target="_blank">View</a></td>
+                                        </tr>
+                                    }
+                                    @if (!string.IsNullOrEmpty(viewedDeclaration.OtherDocumentPath))
+                                    {
+                                        <tr class="cg-data-row">
+                                            <td>Other Document</td>
+                                            <td>—</td>
+                                            <td>—</td>
+                                            <td><a href="@viewedDeclaration.OtherDocumentPath" target="_blank">View</a></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

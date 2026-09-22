@@ -1,0 +1,108 @@
+@page "/rp-transactions/register"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IJSRuntime JS
+
+<PageTitle>RP Transaction Register</PageTitle>
+
+<div class="cg-shell">
+    <h1>RP Transaction Register</h1>
+    <p class="cg-subtitle">Register of Related Party Transactions (FRD §3.4) -- Released transactions, plus those still awaiting CCAO/Board review.</p>
+
+    <div class="cg-tabs" role="tablist">
+        <button type="button" class="cg-tab @(_activeTab == "register" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "register")" @onclick='() => SwitchTab("register")'>Register — @_released.Count</button>
+        <button type="button" class="cg-tab @(_activeTab == "pending" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "pending")" @onclick='() => SwitchTab("pending")'>Pending Approval (Escalated) — @_escalated.Count</button>
+    </div>
+
+    @if (_activeTab == "register")
+    {
+        <div class="cg-controls">
+            <label class="cg-field">
+                <span>Filter by</span>
+                <select class="cg-input" @bind="_dateFilterBasis">
+                    <option value="request">Date of request</option>
+                    <option value="ccaoApproval">Date of CCAO approval</option>
+                    <option value="release">Date of release to Register</option>
+                </select>
+            </label>
+            <label class="cg-field"><span>From</span><input type="date" class="cg-input" @bind="_fromDate" /></label>
+            <label class="cg-field"><span>To</span><input type="date" class="cg-input" @bind="_toDate" /></label>
+            <button type="button" class="cg-action-btn" @onclick="ApplyFilterAsync">Apply</button>
+            <button type="button" class="cg-action-btn" @onclick="ExportRegisterAsync">Export to Excel (CSV)</button>
+        </div>
+
+        @if (_released.Count == 0)
+        {
+            <div class="cg-empty-state">No transactions have been released to the Register yet.</div>
+        }
+        else
+        {
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Reference</th><th>Entity</th><th>Requestor</th><th>Counter-party</th><th>Value</th>
+                            <th>Date of request</th><th>Approver Action</th><th>Approver Date</th>
+                            <th>CCAO Action</th><th>CCAO Date</th><th>Released</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in _released)
+                        {
+                            <tr class="cg-data-row">
+                                <td class="mono">@RelatedPartyTransaction.DisplayReference(t.Id)</td>
+                                <td>@t.Company?.Name</td>
+                                <td>@t.Member?.FullName</td>
+                                <td>@t.CounterPartyName</td>
+                                <td class="mono">@t.TransactionValue.ToString("N2")</td>
+                                <td class="mono">@t.DateOfRequest.ToString("dd/MM/yyyy")</td>
+                                <td>@t.ApproverAction</td>
+                                <td class="mono">@(t.ApproverActionAtUtc?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td>@t.CcaoAction</td>
+                                <td class="mono">@(t.CcaoActionAtUtc?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td class="mono">@(t.ReleasedAtUtc?.ToString("dd/MM/yyyy") ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+    else
+    {
+        @if (_escalated.Count == 0)
+        {
+            <div class="cg-empty-state">No transactions currently escalated.</div>
+        }
+        else
+        {
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Reference</th><th>Entity</th><th>Requestor</th><th>Counter-party</th><th>Value</th>
+                            <th>Date of request</th><th>Approver Action</th><th>Approver Date</th><th>Approver Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in _escalated)
+                        {
+                            <tr class="cg-data-row">
+                                <td class="mono">@RelatedPartyTransaction.DisplayReference(t.Id)</td>
+                                <td>@t.Company?.Name</td>
+                                <td>@t.Member?.FullName</td>
+                                <td>@t.CounterPartyName</td>
+                                <td class="mono">@t.TransactionValue.ToString("N2")</td>
+                                <td class="mono">@t.DateOfRequest.ToString("dd/MM/yyyy")</td>
+                                <td>@(t.ApproverAction?.ToString() ?? "—")</td>
+                                <td class="mono">@(t.ApproverActionAtUtc?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td>@(t.ApproverRemarks ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>

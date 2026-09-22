@@ -1,0 +1,309 @@
+@page "/admin/investor-relations/share-register"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IShareholderRegisterWriter Writer
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toasts
+@inject IJSRuntime JS
+
+<PageTitle>Share Register</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1>Investor Relations — Share Register</h1>
+    <p class="cg-subtitle">DIC shareholder register, uploaded as dated snapshots -- view, filter and print any previously uploaded "as on" date, with the full upload history kept as the change log.</p>
+
+    @if (_uploads is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-tabs" role="tablist">
+            <button type="button" class="cg-tab @(_activeTab == "register" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "register")" @onclick='() => SwitchTab("register")'>Register</button>
+            <button type="button" class="cg-tab @(_activeTab == "upload" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "upload")" @onclick='() => SwitchTab("upload")'>Upload — @_uploads.Count</button>
+        </div>
+
+        @if (_activeTab == "register")
+        {
+            @if (_uploads.Count == 0)
+            {
+                <div class="cg-empty-state">No Share Register has been uploaded yet -- use the Upload tab.</div>
+            }
+            else
+            {
+                var overview = Overview();
+                <section class="cg-kpis" aria-label="Share Register overview">
+                    <div class="cg-kpi"><div class="cg-kpi-label">Total Shareholders</div><div class="cg-kpi-value mono">@overview.Holders.ToString("N0")</div></div>
+                    <div class="cg-kpi"><div class="cg-kpi-label">Total Qty</div><div class="cg-kpi-value mono">@overview.Qty.ToString("N0")</div></div>
+                    <div class="cg-kpi"><div class="cg-kpi-label">Total %Qty</div><div class="cg-kpi-value mono">@overview.QtyPercent.ToString("N4")</div></div>
+                    <div class="cg-kpi"><div class="cg-kpi-label">Total Frozen</div><div class="cg-kpi-value mono">@overview.Frozen.ToString("N0")</div></div>
+                    <div class="cg-kpi"><div class="cg-kpi-label">Transactions — This Week</div><div class="cg-kpi-value mono">@overview.ThisWeek</div></div>
+                    <div class="cg-kpi"><div class="cg-kpi-label">Transactions — Last Week</div><div class="cg-kpi-value mono">@overview.LastWeek</div></div>
+                    <div class="cg-kpi"><div class="cg-kpi-label">Transactions — This Month</div><div class="cg-kpi-value mono">@overview.ThisMonth</div></div>
+                </section>
+                <p class="cg-subtitle">Transaction counts are based on each shareholder's Last Trans. Date, measured relative to the selected snapshot's as-on date (not today's date).</p>
+
+                <div class="cg-controls">
+                    <label class="cg-field" style="width:auto;">
+                        <span>As on date</span>
+                        <select class="cg-input" style="width:auto;" @onchange="OnUploadSelectedAsync">
+                            @foreach (var u in _uploads)
+                            {
+                                <option value="@u.Id" selected="@(u.Id == _selectedUploadId)">@u.AsOnDate.ToString("dd/MM/yyyy") — @u.RecordCount.ToString("N0") holder(s)</option>
+                            }
+                        </select>
+                    </label>
+
+                    <div class="cg-search-wrap">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                        <input type="search" placeholder="Search NIN or English Name…" @bind="_search" @bind:event="oninput" aria-label="Search" />
+                    </div>
+
+                    <select class="cg-input" style="width:auto;" @bind="_clientTypeFilter" aria-label="Filter by client type">
+                        <option value="">All client types</option>
+                        @foreach (var c in AvailableClientTypes())
+                        {
+                            <option value="@c">@c</option>
+                        }
+                    </select>
+
+                    <select class="cg-input" style="width:auto;" @bind="_lifeStatusFilter" aria-label="Filter by life status">
+                        <option value="">All life statuses</option>
+                        @foreach (var s in AvailableLifeStatuses())
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+
+                    <span class="cg-result-count">@FilteredRecords().Count record(s)</span>
+                </div>
+
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+                </div>
+
+                <div class="cg-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Serial No.</th>
+                                <th>NIN</th>
+                                <th>Name</th>
+                                <th>English Name</th>
+                                <th>Client Type</th>
+                                <th>Life Status</th>
+                                <th>Qty.</th>
+                                <th>%Qty</th>
+                                <th>Frozen</th>
+                                <th>Last Trans. Date</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in PagedRecords())
+                            {
+                                <tr class="cg-data-row">
+                                    <td class="mono">@(r.SerialNo?.ToString() ?? "—")</td>
+                                    <td class="mono">@r.Nin</td>
+                                    <td>@(r.Name ?? "—")</td>
+                                    <td>@(r.EnglishName ?? "—")</td>
+                                    <td>@(r.ClientType ?? "—")</td>
+                                    <td>@(r.LifeStatus ?? "—")</td>
+                                    <td class="mono">@r.Qty.ToString("N0")</td>
+                                    <td class="mono">@r.QtyPercent.ToString("N4")</td>
+                                    <td class="mono">@r.Frozen.ToString("N0")</td>
+                                    <td class="mono">@(r.LastTransDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                    <td><button type="button" class="cg-icon-btn" title="View full record" @onclick="() => ViewRecordAsync(r.Id)"><span class="cg-icon-document-glyph"></span></button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (FilteredRecords().Count == 0)
+                    {
+                        <div class="cg-empty-state">No records match these filters.</div>
+                    }
+                </div>
+
+                @if (TotalPages > 1)
+                {
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn" disabled="@(_page <= 1)" @onclick="() => GoToPage(_page - 1)">‹ Previous</button>
+                        <span class="cg-result-count">Page @_page of @TotalPages</span>
+                        <button type="button" class="cg-action-btn" disabled="@(_page >= TotalPages)" @onclick="() => GoToPage(_page + 1)">Next ›</button>
+                    </div>
+                }
+            }
+        }
+        else
+        {
+            <h2>Upload Share Register</h2>
+            <p class="cg-subtitle">Every upload is kept as its own dated snapshot -- nothing is overwritten, so this list is also the complete upload history / change log.</p>
+
+            <label class="cg-field" style="max-width:260px;">
+                <span>As on date</span>
+                <input type="date" class="cg-input" value="@_uploadAsOnDate.ToString("yyyy-MM-dd")" @onchange="e => _uploadAsOnDate = DateOnly.Parse((string)e.Value!)" />
+            </label>
+
+            <label class="cg-field">
+                <span>Share Register file (.xlsx)</span>
+                <InputFile OnChange="OnFileSelectedAsync" accept=".xlsx" disabled="@(_reading || _uploading)" />
+            </label>
+
+            @if (_reading)
+            {
+                <p class="cg-subtitle">Reading file… @_readProgress%</p>
+                <progress class="cg-upload-progress" max="100" value="@_readProgress"></progress>
+            }
+
+            @if (_parseError is not null)
+            {
+                <p class="cg-error">@_parseError</p>
+            }
+
+            @if (_parsedRecords is { Count: > 0 })
+            {
+                <p class="cg-subtitle">Parsed <b>@_parsedRecords.Count.ToString("N0")</b> shareholder(s) from <b>@_parsedFileName</b>@(_parsedSkipped > 0 ? $" ({_parsedSkipped} row(s) skipped -- missing NIN)." : ".")</p>
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn cg-good" disabled="@_uploading" @onclick="ConfirmUploadAsync">@(_uploading ? "Saving…" : "Confirm & Save")</button>
+                </div>
+                @if (_uploading)
+                {
+                    <progress class="cg-upload-progress" max="100" value="@_saveProgress"></progress>
+                }
+            }
+
+            <h2>Upload History</h2>
+            <div class="cg-table-wrap">
+                <table>
+                    <thead><tr><th>As on Date</th><th>File</th><th>Records</th><th>Uploaded</th><th>Uploaded By</th></tr></thead>
+                    <tbody>
+                        @foreach (var u in _uploads)
+                        {
+                            <tr class="cg-data-row">
+                                <td class="mono">@u.AsOnDate.ToString("dd/MM/yyyy")</td>
+                                <td>@u.FileName</td>
+                                <td class="mono">@u.RecordCount.ToString("N0")</td>
+                                <td class="mono">@u.UploadedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm")</td>
+                                <td>@u.UploadedByName</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (_uploads.Count == 0)
+                {
+                    <div class="cg-empty-state">No uploads yet.</div>
+                }
+            </div>
+        }
+
+        @if (_showPrintPreview)
+        {
+            var printUpload = _uploads.FirstOrDefault(u => u.Id == _selectedUploadId);
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal cg-print-modal-wide">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = false">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <div class="cg-print-header">
+                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
+                            <div>
+                                <h2>Corporate Governance Tool — Share Register as on @(printUpload?.AsOnDate.ToString("dd/MM/yyyy") ?? "—")</h2>
+                                <PrintFooter />
+                            </div>
+                        </div>
+                        <div class="cg-table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Serial No.</th>
+                                        <th>NIN</th>
+                                        <th>Name</th>
+                                        <th>English Name</th>
+                                        <th>Client Type</th>
+                                        <th>Life Status</th>
+                                        <th>Citizenship</th>
+                                        <th>City</th>
+                                        <th>Qty.</th>
+                                        <th>%Qty</th>
+                                        <th>Frozen</th>
+                                        <th>Last Trans. Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var r in FilteredRecords())
+                                    {
+                                        <tr class="cg-data-row">
+                                            <td class="mono">@(r.SerialNo?.ToString() ?? "—")</td>
+                                            <td class="mono">@r.Nin</td>
+                                            <td>@(r.Name ?? "—")</td>
+                                            <td>@(r.EnglishName ?? "—")</td>
+                                            <td>@(r.ClientType ?? "—")</td>
+                                            <td>@(r.LifeStatus ?? "—")</td>
+                                            <td>@(r.CitizenshipDescription ?? r.Citizenship ?? "—")</td>
+                                            <td>@(r.City ?? "—")</td>
+                                            <td class="mono">@r.Qty.ToString("N0")</td>
+                                            <td class="mono">@r.QtyPercent.ToString("N4")</td>
+                                            <td class="mono">@r.Frozen.ToString("N0")</td>
+                                            <td class="mono">@(r.LastTransDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (_viewRecord is { } v)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-print-modal">
+                    <div class="cg-print-modal-actions no-print">
+                        <button type="button" class="cg-action-btn" @onclick="() => _viewRecord = null">Close</button>
+                    </div>
+                    <div class="cg-print-area">
+                        <h2>Shareholder — @(v.EnglishName ?? v.Name ?? v.Nin)</h2>
+                        <div class="cg-table-wrap">
+                            <table>
+                                <tbody>
+                                    <tr><th>Serial No.</th><td>@(v.SerialNo?.ToString() ?? "—")</td></tr>
+                                    <tr><th>NIN</th><td>@v.Nin</td></tr>
+                                    <tr><th>CDS-Updated?</th><td>@(v.CdsUpdated ?? "—")</td></tr>
+                                    <tr><th>Name</th><td>@(v.Name ?? "—")</td></tr>
+                                    <tr><th>English Name</th><td>@(v.EnglishName ?? "—")</td></tr>
+                                    <tr><th>Life Status</th><td>@(v.LifeStatus ?? "—")</td></tr>
+                                    <tr><th>Client Type</th><td>@(v.ClientType ?? "—")</td></tr>
+                                    <tr><th>Passport No.</th><td>@(v.PassportNo ?? "—")</td></tr>
+                                    <tr><th>Family ID</th><td>@(v.FamilyId ?? "—")</td></tr>
+                                    <tr><th>National ID</th><td>@(v.NationalId ?? "—")</td></tr>
+                                    <tr><th>Visa No.</th><td>@(v.VisaNo ?? "—")</td></tr>
+                                    <tr><th>Commercial License No.</th><td>@(v.CommercialLicenseNo ?? "—")</td></tr>
+                                    <tr><th>Trade Registration No.</th><td>@(v.TradeRegistrationNo ?? "—")</td></tr>
+                                    <tr><th>Citizenship</th><td>@(v.Citizenship ?? "—") @(v.CitizenshipDescription is null ? "" : $"({v.CitizenshipDescription})")</td></tr>
+                                    <tr><th>P.O.Box</th><td>@(v.PoBox ?? "—")</td></tr>
+                                    <tr><th>City</th><td>@(v.City ?? "—")</td></tr>
+                                    <tr><th>Country</th><td>@(v.CountryName ?? "—") @(v.CountryCode is null ? "" : $"({v.CountryCode})")</td></tr>
+                                    <tr><th>Address</th><td>@(string.Join(", ", new[] { v.Address1, v.Address2, v.Address3 }.Where(a => !string.IsNullOrWhiteSpace(a))))</td></tr>
+                                    <tr><th>Phone</th><td>@(string.Join(" / ", new[] { v.Phone1, v.Phone2 }.Where(p => !string.IsNullOrWhiteSpace(p))))</td></tr>
+                                    <tr><th>Fax</th><td>@(v.Fax ?? "—")</td></tr>
+                                    <tr><th>Email</th><td>@(v.Email ?? "—")</td></tr>
+                                    <tr><th>Qty.</th><td class="mono">@v.Qty.ToString("N0")</td></tr>
+                                    <tr><th>%Qty</th><td class="mono">@v.QtyPercent.ToString("N4")</td></tr>
+                                    <tr><th>Frozen</th><td class="mono">@v.Frozen.ToString("N0")</td></tr>
+                                    <tr><th>Last Trans. Date</th><td class="mono">@(v.LastTransDate?.ToString("dd/MM/yyyy") ?? "—")</td></tr>
+                                    <tr><th>Payment Preference</th><td>@(v.PaymentPreference ?? "—")</td></tr>
+                                    <tr><th>Linked NINs</th><td>@(v.LinkedNins ?? "—") @(v.LinkedNinsReference is null ? "" : $"(Ref: {v.LinkedNinsReference})")</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

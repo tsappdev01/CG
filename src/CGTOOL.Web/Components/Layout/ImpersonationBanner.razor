@@ -1,0 +1,32 @@
+@implements IDisposable
+@inject ImpersonationContext Impersonation
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+
+@if (Impersonation.ActingMemberId is not null)
+{
+    <div class="cg-impersonation-banner">
+        Acting on behalf of <b>@Impersonation.ActingMemberName</b>
+        <button type="button" class="cg-action-btn" @onclick="EndAsync">End impersonation</button>
+    </div>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        Impersonation.Changed += StateHasChanged;
+    }
+
+    private async Task EndAsync()
+    {
+        var name = Impersonation.ActingMemberName;
+        var state = await AuthState.GetAuthenticationStateAsync();
+        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.ImpersonationEnd, "Member", null, $"Ended acting on behalf of {name}");
+        Impersonation.End();
+    }
+
+    public void Dispose()
+    {
+        Impersonation.Changed -= StateHasChanged;
+    }
+}

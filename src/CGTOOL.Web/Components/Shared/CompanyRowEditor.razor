@@ -1,0 +1,136 @@
+@using CGTOOL.Web.Components.Pages
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="cg-coi-company-row">
+    <div class="cg-field-row">
+        <label class="cg-field">
+            <span>Legal Name of Company <em class="cg-subtitle" style="margin:0;">(as per Trade License)</em></span>
+            <input class="cg-input" list="@ListId" value="@Row.LegalCompanyName" @oninput="OnLegalNameInput" maxlength="160" />
+            @if (EarlierCompanies.Count > 0)
+            {
+                <datalist id="@ListId">
+                    @foreach (var name in EarlierCompanies.Select(c => c.LegalCompanyName).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct())
+                    {
+                        <option value="@name"></option>
+                    }
+                </datalist>
+                <em class="cg-subtitle" style="margin:0;">Already entered above? Pick it from the list to reuse its trade license details.</em>
+            }
+        </label>
+        <label class="cg-field">
+            <span>Principal Business Activity</span>
+            <input class="cg-input" @bind="Row.PrincipalBusinessActivity" maxlength="400" />
+        </label>
+        @if (ShowRelativeLink)
+        {
+            <label class="cg-field">
+                <span>Relative</span>
+                <select class="cg-input" @bind="RelativeKeyString">
+                    <option value="">Select relative…</option>
+                    @foreach (var r in Relatives)
+                    {
+                        <option value="@r.Key">@(string.IsNullOrWhiteSpace(r.Name) ? "(unnamed)" : r.Name)</option>
+                    }
+                </select>
+            </label>
+        }
+    </div>
+
+    <div class="cg-field-row">
+        <label class="cg-field">
+            <span>Trade License Number</span>
+            <input class="cg-input" @bind="Row.TradeLicenseNumber" maxlength="40" />
+        </label>
+        <label class="cg-field">
+            <span>Trade License Expiry Date</span>
+            <input type="date" class="cg-input" @bind="Row.TradeLicenseExpiryDate" />
+            @if (Row.TradeLicenseExpiryDate is not null)
+            {
+                <span class="cg-status-pill @ExpiryPillClass(Row.TradeLicenseExpiryDate)">@SubmitRelatedPartyCoiDeclaration.ExpiryLabel(Row.TradeLicenseExpiryDate)</span>
+            }
+        </label>
+        <label class="cg-field">
+            <span>License Activities</span>
+            <input class="cg-input" @bind="Row.LicenseActivities" maxlength="400" placeholder="As printed on the trade license" />
+        </label>
+    </div>
+
+    <label class="cg-field">
+        <span>Trade License Document(s) <em class="cg-subtitle" style="margin:0;">(PDF, JPG, or PNG — up to 10 MB each)</em></span>
+        <InputFile OnChange="e => OnFileSelected.InvokeAsync(e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@Row.Uploading" />
+        @if (Row.Uploading)
+        {
+            <progress class="cg-upload-progress" max="100" value="@Row.UploadProgress"></progress>
+            <span class="cg-subtitle">Uploading… @Row.UploadProgress%</span>
+        }
+        @if (Row.Documents.Count > 0)
+        {
+            <ul class="cg-coi-document-list">
+                @foreach (var doc in Row.Documents)
+                {
+                    <li>
+                        <a href="@doc.Path" target="_blank">@doc.FileName</a>
+                        <button type="button" class="cg-icon-btn" title="Remove file" @onclick="() => OnFileRemove.InvokeAsync(doc)">×</button>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <span class="cg-subtitle">No documents uploaded yet.</span>
+        }
+    </label>
+
+    <div class="cg-actions">
+        <button type="button" class="cg-action-btn cg-critical" @onclick="() => OnRemove.InvokeAsync()">Remove company</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SubmitRelatedPartyCoiDeclaration.CompanyRow Row { get; set; } = null!;
+    [Parameter, EditorRequired] public List<SubmitRelatedPartyCoiDeclaration.RelativeRow> Relatives { get; set; } = [];
+    [Parameter] public bool ShowRelativeLink { get; set; }
+    // Companies already entered in an earlier section (I.B before I.C, I.B+I.C before I.D) --
+    // suggested here so the same company doesn't need its trade license details retyped when it
+    // recurs across sections (e.g. a company the declarant owns ≥30% of where they also sit on the
+    // board). Empty for the first section (I.B), since nothing precedes it.
+    [Parameter] public List<SubmitRelatedPartyCoiDeclaration.CompanyRow> EarlierCompanies { get; set; } = [];
+    [Parameter, EditorRequired] public EventCallback OnRemove { get; set; }
+    [Parameter, EditorRequired] public EventCallback<InputFileChangeEventArgs> OnFileSelected { get; set; }
+    [Parameter, EditorRequired] public EventCallback<SubmitRelatedPartyCoiDeclaration.UploadedFileRow> OnFileRemove { get; set; }
+
+    private string ListId => $"company-names-{Row.Key:N}";
+
+    private string RelativeKeyString
+    {
+        get => Row.LinkedRelativeKey?.ToString() ?? string.Empty;
+        set => Row.LinkedRelativeKey = string.IsNullOrEmpty(value) ? null : Guid.Parse(value);
+    }
+
+    // A plain @bind can't also copy the other fields when the typed text lands on an existing
+    // entry, so this handles the input manually: always keep typing, and once the text exactly
+    // matches an EarlierCompanies name (as it will right after picking a <datalist> suggestion),
+    // copy that row's trade license details across too.
+    private void OnLegalNameInput(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? string.Empty;
+        Row.LegalCompanyName = value;
+
+        var match = EarlierCompanies.FirstOrDefault(c => string.Equals(c.LegalCompanyName, value, StringComparison.OrdinalIgnoreCase));
+        if (match is not null)
+        {
+            Row.PrincipalBusinessActivity = match.PrincipalBusinessActivity;
+            Row.TradeLicenseNumber = match.TradeLicenseNumber;
+            Row.TradeLicenseExpiryDate = match.TradeLicenseExpiryDate;
+            Row.LicenseActivities = match.LicenseActivities;
+        }
+    }
+
+    private static string ExpiryPillClass(DateTime? expiry) => SubmitRelatedPartyCoiDeclaration.ExpiryStatus(expiry) switch
+    {
+        "expired" => "flagged",
+        "expiring-soon" => "pending",
+        "valid" => "cleared",
+        _ => "pending",
+    };
+}

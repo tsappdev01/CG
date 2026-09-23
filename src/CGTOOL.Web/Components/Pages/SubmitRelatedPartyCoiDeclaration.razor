@@ -21,7 +21,7 @@
 
 <div class="cg-shell cg-declaration-wizard">
     <p><a href="/my-declarations">← Back to Declarations</a></p>
-    <h1>@(IsBod ? "BOD Member Declaration" : "Executive Management Declaration")</h1>
+    <h1 data-icon="doc">@(IsBod ? "BOD Member Declaration" : "Executive Management Declaration")</h1>
     <p class="cg-subtitle">I, @_effectiveMember?.FullName, the undersigned, declare the following in respect of Related Party and Conflict of Interest matters.</p>
     @if (Impersonation.ActingMemberId is not null)
     {

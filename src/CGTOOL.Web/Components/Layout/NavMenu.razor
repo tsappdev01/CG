@@ -24,7 +24,7 @@
             {
                 <span class="cg-profile-pic-placeholder">@InitialFor(_profileFullName ?? context.User.Identity?.Name)</span>
             }
-            <span class="cg-profile-name">@(_profileFullName ?? context.User.Identity?.Name)</span>
+            <span class="cg-profile-name">@(context.User.Identity?.Name ?? _profileFullName)</span>
         </a>
         <div class="cg-profile-icon-actions">
             <form action="Account/Logout" method="post">
@@ -141,7 +141,7 @@
             <Authorized>
                 <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup");">
                     <button type="button" class="nav-link cg-nav-group-toggle" @onclick='() => ToggleGroup("DeclarationSetup")'>
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> @LabelOf("DeclarationSetup")
+                        <span class="bi bi-doc-nav-menu" aria-hidden="true"></span> @LabelOf("DeclarationSetup")
                         <span class="cg-nav-caret @(IsExpanded("DeclarationSetup") ? "cg-nav-caret-open" : "")">▸</span>
                     </button>
                 </div>
@@ -162,7 +162,7 @@
             <Authorized>
                 <div class="nav-item px-3" style="order:@OrderOf("Reports");">
                     <button type="button" class="nav-link cg-nav-group-toggle" @onclick='() => ToggleGroup("Reports")'>
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> @LabelOf("Reports")
+                        <span class="bi bi-report-nav-menu" aria-hidden="true"></span> @LabelOf("Reports")
                         <span class="cg-nav-caret @(IsExpanded("Reports") ? "cg-nav-caret-open" : "")">▸</span>
                     </button>
                 </div>
@@ -181,7 +181,7 @@
             <Authorized>
                 <div class="nav-item px-3" style="order:@OrderOf("InvestorRelations");">
                     <button type="button" class="nav-link cg-nav-group-toggle" @onclick='() => ToggleGroup("InvestorRelations")'>
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> @LabelOf("InvestorRelations")
+                        <span class="bi bi-bank-nav-menu" aria-hidden="true"></span> @LabelOf("InvestorRelations")
                         <span class="cg-nav-caret @(IsExpanded("InvestorRelations") ? "cg-nav-caret-open" : "")">▸</span>
                     </button>
                 </div>
@@ -201,7 +201,7 @@
                 {
                     <div class="nav-item px-3" style="order:@OrderOf("RpTransactions");">
                         <button type="button" class="nav-link cg-nav-group-toggle" @onclick='() => ToggleGroup("RpTransactions")'>
-                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> @LabelOf("RpTransactions")
+                            <span class="bi bi-swap-nav-menu" aria-hidden="true"></span> @LabelOf("RpTransactions")
                             <span class="cg-nav-caret @(IsExpanded("RpTransactions") ? "cg-nav-caret-open" : "")">▸</span>
                         </button>
                     </div>

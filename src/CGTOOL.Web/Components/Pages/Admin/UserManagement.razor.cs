@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
@@ -8,7 +9,7 @@ namespace CGTOOL.Web.Components.Pages.Admin;
 
 public partial class UserManagement
 {
-    private const int PageSize = 10;
+    private static readonly int[] PageSizeOptions = [10, 25, 50, 100];
 
     public enum StatusFilter { Active, Recent, Inactive }
 
@@ -20,6 +21,17 @@ public partial class UserManagement
     private List<ApplicationUser>? _users;
     private List<IdentityRole>? _roles;
     private List<Company>? _companies;
+    private List<Department>? _departments;
+    // Role names per login account, read straight from the Identity join tables in one pass --
+    // UserManager.GetRolesAsync would be a query per row.
+    private Dictionary<string, List<string>> _userRoles = [];
+    private int _departmentFilter;
+    private string _roleFilter = string.Empty;
+    private int _pageSize = 10;
+
+    /// <summary>Seeds the search box from the top bar's global search (?q=...).</summary>
+    [SupplyParameterFromQuery(Name = "q")]
+    private string? Query { get; set; }
     private string? _roleToDelete;
     private string _search = string.Empty;
     private string _newRoleName = string.Empty;
@@ -36,7 +48,11 @@ public partial class UserManagement
 
     private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Query)) _search = Query.Trim();
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
@@ -44,6 +60,51 @@ public partial class UserManagement
         _users = await UserManager.Users.OrderBy(u => u.Email).ToListAsync();
         _roles = await RoleManager.Roles.OrderBy(r => r.Name).ToListAsync();
         _companies = await Db.Companies.OrderBy(c => c.Name).ToListAsync();
+        _departments = await Db.Departments.OrderBy(d => d.Name).ToListAsync();
+
+        var roleNamesById = await Db.Roles.AsNoTracking().ToDictionaryAsync(r => r.Id, r => r.Name ?? string.Empty);
+        _userRoles = (await Db.UserRoles.AsNoTracking().ToListAsync())
+            .GroupBy(ur => ur.UserId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(ur => roleNamesById.TryGetValue(ur.RoleId, out var n) ? n : string.Empty)
+                      .Where(n => n.Length > 0)
+                      .OrderBy(n => n)
+                      .ToList());
+    }
+
+    /// <summary>System roles held by the member's linked login account, if it has one.</summary>
+    private List<string> RolesOf(Member m) =>
+        m.ApplicationUserId is not null && _userRoles.TryGetValue(m.ApplicationUserId, out var r) ? r : [];
+
+    private bool HasActiveFilters =>
+        !string.IsNullOrWhiteSpace(_search) || _companyFilter != 0 || _departmentFilter != 0 || _roleFilter.Length > 0;
+
+    private void ClearFilters()
+    {
+        _search = string.Empty;
+        _companyFilter = 0;
+        _departmentFilter = 0;
+        _roleFilter = string.Empty;
+        ResetToFirstPage();
+    }
+
+    private void SetDepartmentFilter(int departmentId)
+    {
+        _departmentFilter = departmentId;
+        ResetToFirstPage();
+    }
+
+    private void SetRoleFilter(string role)
+    {
+        _roleFilter = role;
+        ResetToFirstPage();
+    }
+
+    private void SetPageSize(int size)
+    {
+        _pageSize = size;
+        ResetToFirstPage();
     }
 
     private List<Member> FilteredMembers()
@@ -62,6 +123,16 @@ public partial class UserManagement
         if (_companyFilter != 0)
         {
             query = query.Where(m => m.CompanyId == _companyFilter);
+        }
+
+        if (_departmentFilter != 0)
+        {
+            query = query.Where(m => m.DepartmentId == _departmentFilter);
+        }
+
+        if (_roleFilter.Length > 0)
+        {
+            query = query.Where(m => RolesOf(m).Contains(_roleFilter));
         }
 
         if (!string.IsNullOrWhiteSpace(_search))
@@ -86,9 +157,48 @@ public partial class UserManagement
     }
 
     private List<Member> PagedMembers() =>
-        FilteredMembers().Skip((_page - 1) * PageSize).Take(PageSize).ToList();
+        FilteredMembers().Skip((_page - 1) * _pageSize).Take(_pageSize).ToList();
 
-    private int TotalPages => Math.Max(1, (int)Math.Ceiling(FilteredMembers().Count / (double)PageSize));
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(FilteredMembers().Count / (double)_pageSize));
+
+    private int FirstRowOnPage => FilteredMembers().Count == 0 ? 0 : ((_page - 1) * _pageSize) + 1;
+
+    private int LastRowOnPage => Math.Min(_page * _pageSize, FilteredMembers().Count);
+
+    /// <summary>At most seven page buttons, centred on the current page, so the pager stays a fixed
+    /// width however many users there are.</summary>
+    private IEnumerable<int> PageNumbers()
+    {
+        const int window = 7;
+        var total = TotalPages;
+        if (total <= window) return Enumerable.Range(1, total);
+
+        var start = Math.Max(1, Math.Min(_page - window / 2, total - window + 1));
+        return Enumerable.Range(start, window);
+    }
+
+    /// <summary>Stable tint per person so the same name always gets the same avatar colour.</summary>
+    private static string AvatarTint(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "cg-av-1";
+        var sum = name.Sum(c => (int)c);
+        return $"cg-av-{(sum % 6) + 1}";
+    }
+
+    /// <summary>Administrator is the emphasised pill in the design; everything else cycles through
+    /// the remaining tints so custom roles are still told apart at a glance.</summary>
+    private static string RolePillClass(string? role) => role switch
+    {
+        null or "" => "cg-pill-neutral",
+        GovernanceRoles.Administrator => "cg-pill-blue",
+        GovernanceRoles.NormalUser => "cg-pill-neutral",
+        _ => (role.Sum(c => (int)c) % 3) switch
+        {
+            0 => "cg-pill-violet",
+            1 => "cg-pill-green",
+            _ => "cg-pill-amber",
+        },
+    };
 
     private void Sort(string column)
     {

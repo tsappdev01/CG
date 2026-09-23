@@ -94,3 +94,26 @@ main {
         right: 0.75rem;
         top: 0.5rem;
     }
+
+/* ===== 2026 design refresh ===== */
+main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--cg-bg);
+}
+.content {
+    padding: 26px 26px 48px;
+}
+@media (min-width: 641px) {
+    .sidebar {
+        width: 268px;
+    }
+    article {
+        padding-left: 26px !important;
+        padding-right: 26px !important;
+    }
+}
+@media (max-width: 640.98px) {
+    .content { padding: 16px 16px 40px; }
+}

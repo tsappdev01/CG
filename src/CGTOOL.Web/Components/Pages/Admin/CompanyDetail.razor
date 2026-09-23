@@ -23,7 +23,7 @@
     {
         <EditForm Model="_editing" OnValidSubmit="SaveAsync" class="cg-member-form cg-member-page">
             <DataAnnotationsValidator />
-            <h1>@(_editing.Id == 0 ? "New company" : $"Edit — {_editing.Name}")</h1>
+            <h1 data-icon="building">@(_editing.Id == 0 ? "New company" : $"Edit — {_editing.Name}")</h1>
 
             <label class="cg-field"><span>Short code</span><InputText class="cg-input" @bind-Value="_editing.ShortCode" maxlength="20" /><ValidationMessage For="() => _editing.ShortCode" class="cg-error" /></label>
             <label class="cg-field"><span>Company name</span><InputText class="cg-input" @bind-Value="_editing.Name" maxlength="160" /><ValidationMessage For="() => _editing.Name" class="cg-error" /></label>

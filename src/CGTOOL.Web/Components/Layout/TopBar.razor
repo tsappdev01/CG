@@ -1,0 +1,127 @@
+@implements IDisposable
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Web
+
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthState
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+<AuthorizeView>
+    <Authorized>
+        <header class="cg-appbar">
+            <div class="cg-appbar-search">
+                <input class="cg-input" type="search" placeholder="Search users, roles, or modules…"
+                       @bind="_term" @bind:event="oninput" @onkeydown="OnSearchKeyDown"
+                       aria-label="Search users, roles, or modules" />
+            </div>
+
+            <div class="cg-appbar-actions">
+                @if (_showNotifications)
+                {
+                    <a class="cg-appbar-bell" href="admin/pending-notifications"
+                       title="@(_pendingCount == 0 ? "No pending notifications" : $"{_pendingCount} pending notification(s)")">
+                        <span class="cg-appbar-bell-glyph" aria-hidden="true"></span>
+                        @if (_pendingCount > 0)
+                        {
+                            <span class="cg-appbar-badge">@(_pendingCount > 99 ? "99+" : _pendingCount.ToString())</span>
+                        }
+                        <span class="cg-visually-hidden">Pending notifications</span>
+                    </a>
+                }
+
+                <a class="cg-appbar-user" href="Account/Manage">
+                    @if (!string.IsNullOrEmpty(_picturePath))
+                    {
+                        <img src="@_picturePath" alt="" class="cg-appbar-avatar" />
+                    }
+                    else
+                    {
+                        <span class="cg-appbar-avatar cg-appbar-avatar-initials">@Initials(_displayName)</span>
+                    }
+                    <span class="cg-appbar-user-text">
+                        <span class="cg-appbar-user-name">@_displayName</span>
+                        <span class="cg-appbar-user-role">@_roleLabel</span>
+                    </span>
+                    <span class="cg-appbar-caret" aria-hidden="true"></span>
+                </a>
+            </div>
+        </header>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private string? _term;
+    private string? _displayName;
+    private string? _roleLabel;
+    private string? _picturePath;
+    private bool _showNotifications;
+    private int _pendingCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        NavigationManager.LocationChanged += OnLocationChanged;
+        await RefreshAsync();
+    }
+
+    // The top bar is a persistent layout component, so it uses its own short-lived DbContext rather
+    // than the circuit-scoped one -- exactly the same reason as NavMenu.RefreshProfilePictureAsync:
+    // sharing it would race whichever page is loading at the same time.
+    private async Task RefreshAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var user = state.User;
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            _displayName = null;
+            return;
+        }
+
+        _roleLabel = user.IsInRole(GovernanceRoles.Administrator)
+            ? GovernanceRoles.Administrator
+            : user.FindFirst(ClaimTypes.Role)?.Value ?? GovernanceRoles.NormalUser;
+
+        // Only people who can actually open Pending Notifications get the bell.
+        _showNotifications = !GovernanceRoles.IsNormalStaffOnly(user);
+
+        var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId is null) return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var path = await db.Users.Where(u => u.Id == userId).Select(u => u.ProfilePicturePath).FirstOrDefaultAsync();
+        _picturePath = string.IsNullOrEmpty(path) ? path : $"{path}?v={DateTime.UtcNow.Ticks}";
+
+        _displayName = await db.Members.Where(m => m.ApplicationUserId == userId).Select(m => m.FullName).FirstOrDefaultAsync()
+                       ?? user.Identity?.Name;
+
+        if (_showNotifications)
+        {
+            _pendingCount = await db.MemberNotifications.CountAsync(n => n.Status == MemberNotificationStatus.Pending);
+        }
+    }
+
+    // Enter hands the term to User Management, which seeds its own search box from ?q= -- the search
+    // is a jump-off point, not a second search implementation.
+    private void OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter" || string.IsNullOrWhiteSpace(_term)) return;
+        NavigationManager.NavigateTo($"admin/user-management?q={Uri.EscapeDataString(_term.Trim())}");
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        await RefreshAsync();
+        StateHasChanged();
+    }
+
+    private static string Initials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split([' ', '.', ','], StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return "?";
+        if (parts.Length == 1) return parts[0][..1].ToUpperInvariant();
+        return (parts[0][..1] + parts[^1][..1]).ToUpperInvariant();
+    }
+
+    public void Dispose() => NavigationManager.LocationChanged -= OnLocationChanged;
+}

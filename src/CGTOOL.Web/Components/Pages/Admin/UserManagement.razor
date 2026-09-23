@@ -14,28 +14,43 @@
 <PageTitle>User Management</PageTitle>
 
 <div class="cg-shell cg-shell-full">
-    <h1>User management</h1>
-    <p class="cg-subtitle">Users, login accounts, roles, and audit history — all in one place.</p>
+    <h1 data-icon="users">User Management</h1>
+    <p class="cg-subtitle">Manage users, assign roles and control access across the system.</p>
 
     <AuthorizeView Roles="@GovernanceRoles.Administrator" Context="adminCtx">
         <Authorized>
             <div class="cg-member-form cg-um-roles">
-                <h2>Roles</h2>
-                <div class="cg-role-chip-row">
-                    @foreach (var role in _roles ?? [])
-                    {
-                        <span class="cg-role-chip">
-                            @role.Name
-                            @if (!GovernanceRoles.All.Contains(role.Name))
+                <div class="cg-roles-bar">
+                    <div class="cg-roles-main">
+                        <h2>Roles</h2>
+                        <div class="cg-role-chip-row">
+                            @foreach (var role in _roles ?? [])
                             {
-                                <button type="button" class="cg-role-chip-remove" title="Delete role" @onclick="() => _roleToDelete = role.Name">×</button>
+                                <span class="cg-role-chip @RolePillClass(role.Name)">
+                                    <span class="cg-role-chip-icon @(role.Name == GovernanceRoles.Administrator ? "cg-role-icon-shield" : "cg-role-icon-user")" aria-hidden="true"></span>
+                                    @role.Name
+                                    @if (!GovernanceRoles.All.Contains(role.Name))
+                                    {
+                                        <button type="button" class="cg-role-chip-remove" title="Delete role" @onclick="() => _roleToDelete = role.Name">×</button>
+                                    }
+                                </span>
                             }
-                        </span>
-                    }
-                </div>
-                <div class="cg-actions">
-                    <input class="cg-input" style="width:220px;" placeholder="New role name" @bind="_newRoleName" />
-                    <button type="button" class="cg-action-btn cg-good" @onclick="CreateRoleAsync">+ Create role</button>
+                            <input class="cg-input cg-role-new-input" placeholder="New role name" @bind="_newRoleName" aria-label="New role name" />
+                            <button type="button" class="cg-action-btn" @onclick="CreateRoleAsync">+ Create Role</button>
+                        </div>
+                    </div>
+
+                    <div class="cg-roles-stats">
+                        <span class="cg-roles-stats-icon" aria-hidden="true"></span>
+                        <div class="cg-roles-stat">
+                            <span class="cg-roles-stat-label">Total Users</span>
+                            <span class="cg-roles-stat-value">@(_members?.Count ?? 0)</span>
+                        </div>
+                        <div class="cg-roles-stat">
+                            <span class="cg-roles-stat-label"><span class="cg-dot-good"></span> Active Users</span>
+                            <span class="cg-roles-stat-value">@(_members?.Count(m => m.Active) ?? 0)</span>
+                        </div>
+                    </div>
                 </div>
 
                 @if (_roleToDelete is not null)
@@ -56,7 +71,7 @@
     }
     else
     {
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div>
             <div class="cg-tabs" role="tablist">
                 <button type="button" class="cg-tab @(_statusFilter == StatusFilter.Active ? "active" : "")" role="tab" aria-selected="@(_statusFilter == StatusFilter.Active)" @onclick="() => SetStatusFilter(StatusFilter.Active)">
                     Active
@@ -68,7 +83,6 @@
                     Inactive
                 </button>
             </div>
-            <button type="button" class="cg-action-btn cg-good" @onclick="AddNew">+ Add user</button>
         </div>
 
         @if (_statusFilter == StatusFilter.Recent)
@@ -82,13 +96,12 @@
             </div>
         }
 
-        <div class="cg-controls">
+        <div class="cg-controls cg-filter-bar">
             <div class="cg-search-wrap">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
-                <input type="search" placeholder="Search users…" @bind="_search" @bind:event="oninput" @bind:after="ResetToFirstPage" aria-label="Search users" />
+                <input class="cg-input" type="search" placeholder="Search users by name, email or role…" @bind="_search" @bind:event="oninput" @bind:after="ResetToFirstPage" aria-label="Search users" />
             </div>
 
-            <select class="cg-input" style="width:auto;" value="@_companyFilter" @onchange="e => SetCompanyFilter(int.Parse((string)e.Value!))" aria-label="Filter by company">
+            <select class="cg-input cg-filter-select" value="@_companyFilter" @onchange="e => SetCompanyFilter(int.Parse((string)e.Value!))" aria-label="Filter by entity">
                 <option value="0">All entities</option>
                 @foreach (var c in _companies ?? [])
                 {
@@ -96,14 +109,24 @@
                 }
             </select>
 
-            <span class="cg-result-count">@FilteredMembers().Count @StatusFilterLabel() user(s)</span>
+            <select class="cg-input cg-filter-select" value="@_departmentFilter" @onchange="e => SetDepartmentFilter(int.Parse((string)e.Value!))" aria-label="Filter by department">
+                <option value="0">All Departments</option>
+                @foreach (var d in _departments ?? [])
+                {
+                    <option value="@d.Id">@d.Name</option>
+                }
+            </select>
 
-            @if (TotalPages > 1)
-            {
-                <button type="button" class="cg-action-btn" disabled="@(_page <= 1)" @onclick="() => GoToPage(_page - 1)">‹ Previous</button>
-                <span class="cg-result-count">Page @_page of @TotalPages</span>
-                <button type="button" class="cg-action-btn" disabled="@(_page >= TotalPages)" @onclick="() => GoToPage(_page + 1)">Next ›</button>
-            }
+            <select class="cg-input cg-filter-select" value="@_roleFilter" @onchange="e => SetRoleFilter((string)e.Value!)" aria-label="Filter by role">
+                <option value="">All Roles</option>
+                @foreach (var r in _roles ?? [])
+                {
+                    <option value="@r.Name">@r.Name</option>
+                }
+            </select>
+
+            <button type="button" class="cg-action-btn cg-btn-filter" disabled="@(!HasActiveFilters)" @onclick="ClearFilters">Clear Filters</button>
+            <button type="button" class="cg-action-btn cg-good cg-btn-add" @onclick="AddNew">Add User</button>
         </div>
 
         <div class="cg-bulk-bar">
@@ -131,8 +154,9 @@
                     <thead>
                         <tr>
                             <th class="cg-select-col"><input type="checkbox" checked="@AllVisibleSelected" @onchange="e => ToggleSelectAllVisible((bool)e.Value!)" aria-label="Select all visible" /></th>
-                            <th></th>
-                            <SortableHeader Label="Name" Column="Name" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th class="cg-num-col">#</th>
+                            <SortableHeader Label="User" Column="Name" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Role</th>
                             <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <SortableHeader Label="Department" Column="Department" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <SortableHeader Label="Created on" Column="CreatedOn" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
@@ -141,27 +165,48 @@
                             {
                                 <th>Recency</th>
                             }
-                            <SortableHeader Label="Active" Column="Active" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                            <th></th>
+                            <SortableHeader Label="Status" Column="Active" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @{ var rowNumber = (_page - 1) * _pageSize; }
                         @foreach (var m in PagedMembers())
                         {
+                            rowNumber++;
                             <tr class="cg-data-row">
                                 <td class="cg-select-col"><input type="checkbox" checked="@_selectedIds.Contains(m.Id)" @onchange="e => ToggleSelect(m.Id, (bool)e.Value!)" aria-label="Select @m.FullName" /></td>
+                                <td class="cg-num-col">@rowNumber</td>
                                 <td>
-                                    @{ var photo = _users?.FirstOrDefault(u => u.Id == m.ApplicationUserId)?.ProfilePicturePath; }
-                                    @if (!string.IsNullOrEmpty(photo))
+                                    <div class="cg-user-cell">
+                                        @{ var photo = _users?.FirstOrDefault(u => u.Id == m.ApplicationUserId)?.ProfilePicturePath; }
+                                        @if (!string.IsNullOrEmpty(photo))
+                                        {
+                                            <img src="@photo" alt="" class="cg-table-avatar" />
+                                        }
+                                        else
+                                        {
+                                            <span class="cg-table-avatar-placeholder @AvatarTint(m.FullName)">@(m.FullName.Length > 0 ? m.FullName[..1].ToUpperInvariant() : "?")</span>
+                                        }
+                                        <span>
+                                            <span class="cg-user-cell-name">@m.FullName</span><br />
+                                            <span class="cg-user-cell-sub">@m.JobTitle</span>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    @foreach (var roleName in RolesOf(m))
                                     {
-                                        <img src="@photo" alt="" class="cg-table-avatar" />
+                                        <span class="cg-pill @RolePillClass(roleName)">
+                                            <span class="cg-role-chip-icon @(roleName == GovernanceRoles.Administrator ? "cg-role-icon-shield" : "cg-role-icon-user")" aria-hidden="true"></span>
+                                            @roleName
+                                        </span>
                                     }
-                                    else
+                                    @if (RolesOf(m).Count == 0)
                                     {
-                                        <span class="cg-table-avatar-placeholder">@(m.FullName.Length > 0 ? m.FullName[..1].ToUpperInvariant() : "?")</span>
+                                        <span class="cg-subtitle">—</span>
                                     }
                                 </td>
-                                <td>@m.FullName<span class="cg-cell-role">@m.JobTitle</span></td>
                                 <td><EntityLogo Company="m.Company" /></td>
                                 <td>@m.Department?.Name</td>
                                 <td class="mono">@m.CreatedAtUtc.ToLocalDisplay("dd/MM/yyyy")</td>
@@ -170,15 +215,42 @@
                                 {
                                     <td class="mono">@RecencyLabel(m)</td>
                                 }
-                                <td><ToggleSwitch Value="m.Active" ValueChanged="() => _pendingJustify = m" /></td>
                                 <td>
-                                    <button type="button" class="cg-action-btn" @onclick="() => Edit(m)">Edit</button>
-                                    <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = m"><span class="cg-icon-print-glyph"></span></button>
+                                    <span class="cg-status-cell">
+                                        <ToggleSwitch Value="m.Active" ValueChanged="() => _pendingJustify = m" />
+                                        <span class="cg-status-text @(m.Active ? "on" : "off")">@(m.Active ? "Active" : "Inactive")</span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="cg-row-actions">
+                                        <button type="button" class="cg-icon-btn" title="Edit @m.FullName" @onclick="() => Edit(m)"><span class="cg-ico cg-ico-pencil" aria-hidden="true"></span></button>
+                                        <button type="button" class="cg-icon-btn" title="View @m.FullName" @onclick="() => Edit(m)"><span class="cg-ico cg-ico-eye" aria-hidden="true"></span></button>
+                                        <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = m"><span class="cg-ico cg-ico-print" aria-hidden="true"></span></button>
+                                    </span>
                                 </td>
                             </tr>
                         }
                     </tbody>
                 </table>
+            </div>
+
+            <div class="cg-table-foot">
+                <span>Showing @FirstRowOnPage to @LastRowOnPage of @FilteredMembers().Count users</span>
+                <div class="cg-pager">
+                    <button type="button" title="Previous page" disabled="@(_page <= 1)" @onclick="() => GoToPage(_page - 1)">‹</button>
+                    @foreach (var p in PageNumbers())
+                    {
+                        var target = p;
+                        <button type="button" class="@(target == _page ? "active" : "")" @onclick="() => GoToPage(target)">@target</button>
+                    }
+                    <button type="button" title="Next page" disabled="@(_page >= TotalPages)" @onclick="() => GoToPage(_page + 1)">›</button>
+                    <select class="cg-input cg-page-size" value="@_pageSize" @onchange="e => SetPageSize(int.Parse((string)e.Value!))" aria-label="Rows per page">
+                        @foreach (var size in PageSizeOptions)
+                        {
+                            <option value="@size">@size / page</option>
+                        }
+                    </select>
+                </div>
             </div>
 
             @if (_pendingJustify is not null)

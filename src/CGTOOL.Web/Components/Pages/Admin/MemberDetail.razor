@@ -32,7 +32,7 @@
     {
         <EditForm Model="_editing" OnValidSubmit="SaveAsync" class="cg-member-form cg-member-page">
             <DataAnnotationsValidator />
-            <h1>
+            <h1 data-icon="user">
                 @(_editing.Id == 0 ? "New user" : $"Edit — {_editing.FullName}")
                 @if (_editing.Id != 0)
                 {

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-CGTOOL.Web-4f4b3449-bec2-4783-a837-a092d50f1068</UserSecretsId>
@@ -9,17 +9,24 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.AI.DocumentIntelligence" Version="1.0.0" />
-    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
-    <PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.19" />
-    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.29" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.29" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.29" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.29" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.7" />
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.66.2" />
-    <PackageReference Include="PdfSharpCore" Version="1.3.67" />
-    <PackageReference Include="System.DirectoryServices.Protocols" Version="8.0.0" />
+    <PackageReference Include="ExcelDataReader" Version="3.9.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.9.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.12" />
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.12" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.12" />
+    <!-- Kept in step with the version Microsoft.EntityFrameworkCore.SqlServer 10.0.12 itself
+         depends on. The app references SqlClient directly (StoredProcedureExecutor and the
+         call sites that switch on SqlException.Number), so the reference is deliberate, but
+         it must not drift ahead of the provider's own dependency. -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.90.0" />
+    <!-- Official PDFsharp, not the PdfSharpCore fork: the fork pins SixLabors.ImageSharp
+         1.0.4, which carries unpatched high-severity advisories and has no fixed 1.x.
+         PDFsharp 6 draws its own images and has no ImageSharp dependency at all. -->
+    <PackageReference Include="PDFsharp" Version="6.2.4" />
+    <PackageReference Include="System.DirectoryServices.Protocols" Version="10.0.12" />
   </ItemGroup>
 
 </Project>

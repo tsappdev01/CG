@@ -1,5 +1,5 @@
-using PdfSharpCore.Drawing;
-using PdfSharpCore.Pdf;
+using PdfSharp.Drawing;
+using PdfSharp.Pdf;
 
 namespace CGTOOL.Web.Data.Governance;
 
@@ -104,14 +104,14 @@ public static class InsiderDeclarationPdfBuilder
     /// still being written to.</summary>
     private class Writer(PdfDocument document, XImage? logo)
     {
-        private readonly XFont _title = new("DejaVu Sans", 15, XFontStyle.Bold);
-        private readonly XFont _subtitle = new("DejaVu Sans", 9.5, XFontStyle.Regular);
-        private readonly XFont _sectionHeading = new("DejaVu Sans", 11.5, XFontStyle.Bold);
-        private readonly XFont _label = new("DejaVu Sans", 9, XFontStyle.Bold);
-        private readonly XFont _value = new("DejaVu Sans", 9, XFontStyle.Regular);
-        private readonly XFont _tableHeader = new("DejaVu Sans", 8.5, XFontStyle.Bold);
-        private readonly XFont _tableCell = new("DejaVu Sans", 8.5, XFontStyle.Regular);
-        private readonly XFont _footer = new("DejaVu Sans", 7, XFontStyle.Regular);
+        private readonly XFont _title = new("DejaVu Sans", 15, XFontStyleEx.Bold);
+        private readonly XFont _subtitle = new("DejaVu Sans", 9.5, XFontStyleEx.Regular);
+        private readonly XFont _sectionHeading = new("DejaVu Sans", 11.5, XFontStyleEx.Bold);
+        private readonly XFont _label = new("DejaVu Sans", 9, XFontStyleEx.Bold);
+        private readonly XFont _value = new("DejaVu Sans", 9, XFontStyleEx.Regular);
+        private readonly XFont _tableHeader = new("DejaVu Sans", 8.5, XFontStyleEx.Bold);
+        private readonly XFont _tableCell = new("DejaVu Sans", 8.5, XFontStyleEx.Regular);
+        private readonly XFont _footer = new("DejaVu Sans", 7, XFontStyleEx.Regular);
 
         private double _pageWidth;
         private double _pageHeight;
@@ -127,7 +127,7 @@ public static class InsiderDeclarationPdfBuilder
             _gfx?.Dispose();
 
             var page = document.AddPage();
-            page.Size = PdfSharpCore.PageSize.A4;
+            page.Size = PdfSharp.PageSize.A4;
             _pageWidth = page.Width.Point;
             _pageHeight = page.Height.Point;
             _contentWidth = _pageWidth - (2 * Margin);

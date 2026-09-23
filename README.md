@@ -9,12 +9,19 @@ impersonation).
 
 ## Stack
 
-- .NET 8, Blazor Web App (Server interactivity)
+- .NET 10 (LTS), Blazor Web App (Server interactivity)
 - ASP.NET Core Identity (roles: `Administrator`, `ComplianceOfficer`, `Normal Staff`,
   plus any custom roles created from User Management)
 - Login: Azure AD SSO (primary) or the corporate-directory form (secondary, for
   External Members and Development) — see **Authentication** below
-- EF Core 8 + SQL Server (`Microsoft.EntityFrameworkCore.SqlServer`)
+- EF Core 10 + SQL Server (`Microsoft.EntityFrameworkCore.SqlServer`)
+
+### Toolchain
+
+The SDK is pinned in `global.json` to the 10.0.1xx band (`rollForward: latestFeature`), so every
+machine and build agent compiles against the same major SDK. Install the .NET 10 SDK, or use
+Visual Studio 2026, which ships with it. Visual Studio 2022 cannot build this project — it does not
+carry a .NET 10 SDK.
 
 ## Project layout
 
@@ -134,7 +141,7 @@ email above), built by `SubmitInsiderDeclaration.razor.cs`'s
 `BuildConfirmationEmail`.
 
 The declaration itself is rendered as a branded PDF (`InsiderDeclarationPdfBuilder`,
-using `PdfSharpCore`) and attached via `SqlDbMailSender.SendWithFileAttachmentAsync`.
+using `PDFsharp`) and attached via `SqlDbMailSender.SendWithFileAttachmentAsync`.
 This needs `Smtp:DatabaseMailAttachmentFolder` set to a folder path that **both**
 this app *and* the SQL Server instance running Database Mail can read/write —
 `sp_send_dbmail`'s `@file_attachments` parameter is resolved by the SQL Server
@@ -161,7 +168,7 @@ declaration from **My Declarations** instead.
 The PDF's text is rendered with the bundled DejaVu Sans font
 (`wwwroot/fonts/DejaVuSans*.ttf`, Bitstream Vera license — freely
 redistributable) rather than relying on fonts installed on the host OS, since
-PdfSharpCore has no GDI to fall back on for font resolution on .NET
+PDFsharp has no GDI to fall back on for font resolution on .NET
 (`PdfFontResolver`, registered once via `GlobalFontSettings.FontResolver` in
 `Program.cs`).
 

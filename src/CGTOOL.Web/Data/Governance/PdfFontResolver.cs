@@ -1,8 +1,8 @@
-using PdfSharpCore.Fonts;
+using PdfSharp.Fonts;
 
 namespace CGTOOL.Web.Data.Governance;
 
-/// <summary>PdfSharpCore has no GDI to fall back on for font resolution on .NET (unlike the original
+/// <summary>PDFsharp has no GDI to fall back on for font resolution on .NET (unlike the original
 /// Windows-only PDFsharp), so it needs an explicit IFontResolver or every XFont construction throws.
 /// Uses the DejaVu Sans family bundled under wwwroot/fonts (Bitstream Vera license -- free to embed
 /// and redistribute) rather than depending on whatever fonts happen to be installed on the host OS,

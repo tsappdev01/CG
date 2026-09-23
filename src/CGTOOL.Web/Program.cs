@@ -10,9 +10,9 @@ using CGTOOL.Web.Data.Governance;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// PdfSharpCore has no GDI to resolve fonts from on .NET -- must be set once, globally, before any
+// PDFsharp has no GDI to resolve fonts from on .NET -- must be set once, globally, before any
 // XFont is constructed (used by InsiderDeclarationPdfBuilder for the confirmation-email attachment).
-PdfSharpCore.Fonts.GlobalFontSettings.FontResolver = new PdfFontResolver(builder.Environment);
+PdfSharp.Fonts.GlobalFontSettings.FontResolver = new PdfFontResolver(builder.Environment);
 
 // ExcelDataReader needs this registered before the first CreateReader call to read legacy code-page
 // text some .xlsx exports still carry (Investor Relations uploads) -- otherwise it throws

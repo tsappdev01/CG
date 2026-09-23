@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components;
 
@@ -15,6 +16,14 @@ internal sealed class IdentityRedirectManager(NavigationManager navigationManage
         MaxAge = TimeSpan.FromSeconds(5),
     };
 
+    // NavigateTo below throws NavigationException by design, and the framework catches it to
+    // perform the redirect (see the comment at the call site). Because the throw site sits in our
+    // code, the debugger otherwise reports it as "Exception User-Unhandled" and halts on every
+    // sign-in, registration, sign-out and Manage redirect -- which looks exactly like a hung login.
+    // This attribute tells the debugger not to break here. It is debugger metadata only: it has no
+    // effect at runtime, and none on a build that is not being debugged. It needs .NET 9 or later,
+    // so it could not be used while this project targeted net8.0.
+    [DebuggerDisableUserUnhandledExceptions]
     [DoesNotReturn]
     public void RedirectTo(string? uri)
     {

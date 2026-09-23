@@ -10,6 +10,7 @@
 @inject NavigationManager Nav
 @inject ToastService Toasts
 @inject IJSRuntime JS
+@inject IEntraDirectorySync EntraSync
 
 <PageTitle>User Management</PageTitle>
 
@@ -126,6 +127,10 @@
             </select>
 
             <button type="button" class="cg-action-btn cg-btn-filter" disabled="@(!HasActiveFilters)" @onclick="ClearFilters">Clear Filters</button>
+            <button type="button" class="cg-action-btn cg-btn-sync" disabled="@_syncing" @onclick="SyncFromEntraAsync"
+                    title="@(EntraSync.IsConfigured ? "Load users from Entra ID" : "Entra ID is not configured for this deployment")">
+                @(_syncing ? "Syncing…" : "Sync from Entra ID")
+            </button>
             <button type="button" class="cg-action-btn cg-good cg-btn-add" @onclick="AddNew">Add User</button>
         </div>
 

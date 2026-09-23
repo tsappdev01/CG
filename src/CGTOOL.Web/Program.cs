@@ -160,10 +160,14 @@ var graphConfigured = !string.IsNullOrWhiteSpace(azureAdSection["ClientSecret"])
 if (graphConfigured)
 {
     builder.Services.AddSingleton<IDirectoryEmployeeProvider, GraphDirectoryEmployeeProvider>();
+    // Loads the whole tenant into the member directory -- see EntraDirectorySync. Scoped, not
+    // singleton: it writes through the stored-procedure writers on the current DbContext.
+    builder.Services.AddScoped<IEntraDirectorySync, EntraDirectorySync>();
 }
 else
 {
     builder.Services.AddSingleton<IDirectoryEmployeeProvider, NotConfiguredDirectoryEmployeeProvider>();
+    builder.Services.AddScoped<IEntraDirectorySync, NotConfiguredEntraDirectorySync>();
 }
 
 // Insider Trading declaration wizard's ID document auto-capture (Functional Spec §3.3). Configure
@@ -219,7 +223,22 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    await GovernanceSeeder.SeedAsync(db);
+    // A brand new deployment has no accounts at all, so nobody could sign in to create the first
+    // one. This provisions a bootstrap administrator, and retires it again as soon as a real
+    // administrator exists -- see DefaultAdminProvisioner for the full rule.
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+    await DefaultAdminProvisioner.EnsureAsync(
+        scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>(),
+        builder.Configuration,
+        startupLogger);
+
+    // Demo fixture data (sample entities, departments, members and transactions). Off unless a
+    // deployment asks for it, so a real database is never populated with invented people.
+    if (builder.Configuration.GetValue("Seed:DemoData", false))
+    {
+        startupLogger.LogWarning("Seed:DemoData is enabled -- seeding demonstration entities, departments, members and transactions.");
+        await GovernanceSeeder.SeedAsync(db);
+    }
 }
 
 // Configure the HTTP request pipeline.

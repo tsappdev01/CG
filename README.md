@@ -365,3 +365,75 @@ parameter list was checked against its procedure's signature; the SQL itself
 has not run against a live SQL Server engine. Run it against a real UAT/dev
 database and exercise Save/Add/Deactivate on each admin screen before
 trusting it in production.
+
+## First sign-in, and where users come from
+
+People sign in with **Entra ID single sign-on**. There is no self-registration — the register
+screens were removed — and the member directory is loaded from Entra rather than typed in.
+
+### The setup account
+
+A brand new deployment has no accounts at all, so nobody could sign in to load any. Startup
+provisions a single bootstrap administrator for exactly that gap
+(`Data/Governance/DefaultAdminProvisioner.cs`), and the sign-in page offers its password form while
+the deployment has no real users. Once real users exist the page signs in with Entra instead.
+
+```json
+"DefaultAdmin": {
+  "Enabled": true,
+  "UserName": "admin@cgtool.local",
+  "Password": ""
+}
+```
+
+Leave `Password` empty and a documented fallback (`Admin@12345`) is used and logged as a warning —
+fine for a first run on a closed network, not for anything reachable. Set a real one through
+user-secrets, an environment variable or Key Vault before the deployment is exposed:
+
+```bash
+dotnet user-secrets set "DefaultAdmin:Password" "<a real password>"
+```
+
+The rule that governs the account is a single invariant, applied at startup and again whenever the
+Administrator role is granted: **it is enabled only while the deployment has no other
+administrator.** So it retires itself the moment a real administrator exists, and comes back if
+every real administrator is later removed — otherwise losing the last administrator would lock the
+deployment out entirely. While it is in use, a banner across every screen says so.
+
+`DefaultAdmin:Enabled: false` turns the whole mechanism off for a deployment that provisions its
+first administrator some other way.
+
+### Loading users from Entra ID
+
+**User Management → Sync from Entra ID** reads every user in the tenant through Microsoft Graph and
+writes them into the member directory (`Data/Governance/EntraDirectorySync.cs`), capturing the
+profile fields the governance screens display:
+
+| Entra ID attribute | Becomes |
+|---|---|
+| `displayName` | Member full name |
+| `mail` (or `userPrincipalName`) | Email, and the login account's user name |
+| `companyName` | Entity — matched to a Company by name, created if new |
+| `department` | Department — matched by name, created if new |
+| `jobTitle` | Designation |
+| `/photo/$value` | Profile picture under `wwwroot/uploads/profile-pictures` |
+| `accountEnabled` | Active, and the login account's lockout |
+
+It is a one-way import: Entra is the system of record for who exists and what their profile says, so
+those fields are refreshed on every run. Everything the governance process owns — declaration access
+flags, RP Transaction role, reporting manager, impersonation approvals — is left exactly as an
+administrator set it. A user with no `companyName` is reported rather than guessed at, since every
+member has to belong to an entity.
+
+It needs the same app registration as SSO, with the **application** `User.Read.All` Graph permission
+and admin consent. Writes go through the stored-procedure writers like every other write here.
+
+> Entra ID is only reachable from the organization's real tenant, so the sync has been verified by
+> build and by review against the Graph API contract, not against a live directory. Run it once
+> against the real tenant and check the first few members before relying on it.
+
+### Demo data
+
+`Seed:DemoData` (default **false**) controls `GovernanceSeeder`, which invents sample entities,
+departments, members and transactions. It is off so that a real database is never populated with
+people who do not exist; turn it on only for a demonstration environment.

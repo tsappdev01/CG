@@ -45,8 +45,46 @@ public partial class UserManagement
     private bool? _bulkSetActive;
     private Member? _pendingJustify;
     private Member? _printSingleRecord;
+    private bool _syncing;
 
     private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    /// <summary>Reloads the member directory from Entra ID. Entra is the system of record for who
+    /// exists and what their profile says, so this refreshes names, addresses, entities,
+    /// departments, designations and photos; the governance flags an administrator set here are
+    /// left alone.</summary>
+    private async Task SyncFromEntraAsync()
+    {
+        if (_syncing) return;
+        _syncing = true;
+        try
+        {
+            var state = await AuthState.GetAuthenticationStateAsync();
+            var result = await EntraSync.SyncAsync(state.User.Identity?.Name ?? "unknown");
+
+            if (result.Total == 0 && result.Problems.Count > 0)
+            {
+                Toasts.ShowError(result.Problems[0]);
+            }
+            else
+            {
+                Toasts.ShowSuccess(
+                    $"Entra ID sync complete — {result.Created} added, {result.Updated} updated, " +
+                    $"{result.PhotosStored} photo(s), {result.Skipped} skipped.");
+
+                foreach (var problem in result.Problems.Take(3))
+                {
+                    Toasts.ShowWarning(problem);
+                }
+            }
+
+            await LoadAsync();
+        }
+        finally
+        {
+            _syncing = false;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

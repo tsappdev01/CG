@@ -5,6 +5,7 @@
 @using Microsoft.AspNetCore.Identity
 @using CGTOOL.Web.Data
 @using CGTOOL.Web.Data.Governance
+@using Microsoft.EntityFrameworkCore
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
@@ -15,41 +16,62 @@
 
 <PageTitle>DI Corporate Governance Tool — Sign In</PageTitle>
 
-<div class="cg-shell cg-narrow">
-    <img src="images/di-logo.jpg" alt="Dubai Investments" class="cg-login-logo" />
-    <h1>Trades and Transactions Monitoring Tool</h1>
-    <p class="cg-subtitle">Sign in with your existing corporate account.</p>
+<div class="cg-shell cg-narrow cg-signin">
+    <img src="images/di-logo-en.png" alt="Dubai Investments" class="cg-login-logo" />
+    <h1>Corporate Governance Tool</h1>
 
-    <ExternalLoginPicker />
+    @if (_useSingleSignOn)
+    {
+        <p class="cg-subtitle">Sign in with your Dubai Investments account.</p>
+        <ExternalLoginPicker />
+    }
+    else
+    {
+        @if (_ssoConfigured)
+        {
+            <div class="cg-info-callout">
+                <b>First-time setup.</b>
+                No users have been loaded from Entra ID yet, so sign in with the built-in setup
+                account to get started. Once real users exist, this page signs in with single
+                sign-on instead.
+            </div>
+        }
+        else
+        {
+            <div class="cg-info-callout">
+                <b>Single sign-on is not configured for this deployment.</b>
+                Set <code>AzureAd:TenantId</code> and <code>AzureAd:ClientId</code> to sign in with
+                Entra ID. Until then, use the setup account below.
+            </div>
+        }
 
-    <p class="cg-divider"><span>or, for external members without a Microsoft account</span></p>
-
-    <section>
-        <StatusMessage Message="@errorMessage" />
-        <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.UserName" class="form-control" autocomplete="username" aria-required="true" placeholder="Domain username" />
-                <label for="username" class="form-label">User Name</label>
-                <ValidationMessage For="() => Input.UserName" class="text-danger" />
-            </div>
-            <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
-                <label for="password" class="form-label">Password</label>
-                <ValidationMessage For="() => Input.Password" class="text-danger" />
-            </div>
-            <div class="checkbox mb-3">
-                <label class="form-label">
-                    <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
-                    Remember me
-                </label>
-            </div>
-            <div>
-                <button type="submit" class="w-100 btn btn-lg btn-primary">Login</button>
-            </div>
-        </EditForm>
-    </section>
+        <section>
+            <StatusMessage Message="@errorMessage" />
+            <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" role="alert" />
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.UserName" class="form-control" autocomplete="username" aria-required="true" placeholder="User name" />
+                    <label for="username" class="form-label">User Name</label>
+                    <ValidationMessage For="() => Input.UserName" class="text-danger" />
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+                    <label for="password" class="form-label">Password</label>
+                    <ValidationMessage For="() => Input.Password" class="text-danger" />
+                </div>
+                <div class="checkbox mb-3">
+                    <label class="form-label">
+                        <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
+                        Remember me
+                    </label>
+                </div>
+                <div>
+                    <button type="submit" class="w-100 btn btn-lg btn-primary">Sign in</button>
+                </div>
+            </EditForm>
+        </section>
+    }
 </div>
 
 @code {
@@ -64,6 +86,9 @@
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 
+    private bool _ssoConfigured;
+    private bool _useSingleSignOn;
+
     protected override async Task OnInitializedAsync()
     {
         if (HttpMethods.IsGet(HttpContext.Request.Method))
@@ -71,6 +96,15 @@
             // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
         }
+
+        _ssoConfigured = (await SignInManager.GetExternalAuthenticationSchemesAsync()).Any();
+
+        // Everyone signs in through Entra ID. The one exception is a deployment that has no real
+        // users yet: nobody could sign in through SSO to load them, so the setup account's password
+        // form is offered instead. The moment real users exist this flips to single sign-on, and if
+        // SSO is not configured at all the form stays as the only way in.
+        var hasRealUsers = await UserManager.Users.AnyAsync(u => !u.IsDefaultAdmin);
+        _useSingleSignOn = _ssoConfigured && hasRealUsers;
     }
 
     public async Task LoginUser()

@@ -2,6 +2,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CGTOOL.Web.Data.Governance;
 
+/// <summary>
+/// Demonstration fixture data -- invented entities, departments, members and transactions used to
+/// show the product with something on the screen. It is NOT reference data and NOT part of a normal
+/// deployment: Program.cs only calls this when <c>Seed:DemoData</c> is explicitly turned on, so a
+/// real database is never populated with people who do not exist.
+/// </summary>
 public static class GovernanceSeeder
 {
     public static async Task SeedAsync(ApplicationDbContext db)

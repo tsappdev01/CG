@@ -5,13 +5,9 @@
 @inject AuthenticationStateProvider AuthState
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">
-            <img src="images/di-logo.jpg" alt="Dubai Investments" class="cg-brand-logo" />
-        </a>
-    </div>
-</div>
+<a class="cg-brand" href="">
+    <img src="images/di-logo-en.png" alt="Dubai Investments" class="cg-brand-logo" />
+</a>
 
 <AuthorizeView>
     <Authorized>
@@ -224,11 +220,6 @@
 
         <AuthorizeView>
             <NotAuthorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Register">
-                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
-                    </NavLink>
-                </div>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="Account/Login">
                         <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login

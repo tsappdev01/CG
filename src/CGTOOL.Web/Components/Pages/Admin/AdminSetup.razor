@@ -5,6 +5,7 @@
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 @inject ToastService Toasts
+@inject ILogger<AdminSetup> Logger
 
 <PageTitle>Administrator Setup</PageTitle>
 
@@ -55,6 +56,10 @@
         }
 
         await UserManager.AddToRoleAsync(user, GovernanceRoles.Administrator);
+
+        // This deployment now has a real administrator, so the bootstrap account stands down.
+        await DefaultAdminProvisioner.RetireIfSupersededAsync(UserManager, Logger);
+
         Nav.NavigateTo("/admin/user-management", forceLoad: true);
     }
 }

@@ -1,0 +1,34 @@
+@using System.Security.Claims
+
+@inject AuthenticationStateProvider AuthState
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+@if (_isDefaultAdmin)
+{
+    <div class="cg-bootstrap-banner" role="status">
+        <span class="cg-bootstrap-banner-icon" aria-hidden="true"></span>
+        <div>
+            <b>You are signed in with the built-in setup account.</b>
+            It exists only so a new deployment can be reached at all, and it uses a password that is
+            documented in the repository. Create a real administrator from
+            <a href="admin/user-management">User Management</a> — this account disables itself the
+            moment one exists.
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isDefaultAdmin;
+
+    // A persistent layout component, so it takes its own short-lived context rather than sharing the
+    // circuit-scoped one with whichever page is loading (same reason as NavMenu and TopBar).
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId is null) return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _isDefaultAdmin = await db.Users.Where(u => u.Id == userId).Select(u => u.IsDefaultAdmin).FirstOrDefaultAsync();
+    }
+}

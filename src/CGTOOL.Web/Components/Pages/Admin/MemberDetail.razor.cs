@@ -400,6 +400,13 @@ public partial class MemberDetail
             _selectedUserRoles.Remove(role);
         }
 
+        // Granting or removing Administrator changes whether the deployment still needs its
+        // bootstrap account, so re-apply that rule now rather than at the next restart.
+        if (role == GovernanceRoles.Administrator)
+        {
+            await DefaultAdminProvisioner.RetireIfSupersededAsync(UserManager, Logger);
+        }
+
         await AuditLog.LogAsync(
             await CurrentActorAsync(),
             AuditAction.RoleChange,

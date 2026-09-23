@@ -1987,3 +1987,32 @@ select.cg-input {
 .cg-role-chip.cg-pill-blue .cg-role-icon-shield {
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z'/></svg>");
 }
+
+/* ---------- built-in setup account warning ---------- */
+.cg-bootstrap-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0;
+    padding: 12px 26px;
+    background: var(--cg-warning-tint);
+    border-bottom: 1px solid #F3D9AE;
+    color: #7A4A08;
+    font-size: 13px;
+    line-height: 1.5;
+}
+.cg-bootstrap-banner a { color: #7A4A08; font-weight: 600; }
+.cg-bootstrap-banner-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B45309' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'/><path d='M12 9v4M12 17h.01'/></svg>") center/18px no-repeat;
+}
+
+.cg-btn-sync::before {
+    content: "";
+    width: 15px;
+    height: 15px;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 12a9 9 0 0 1-9 9 9 9 0 0 1-7.5-4M3 12a9 9 0 0 1 9-9 9 9 0 0 1 7.5 4'/><path d='M3 4v5h5M21 20v-5h-5'/></svg>") center/15px no-repeat;
+}

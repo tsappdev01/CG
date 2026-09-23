@@ -32,9 +32,15 @@
             <div class="cg-info-callout">
                 <b>First-time setup.</b>
                 No users have been loaded from Entra ID yet, so sign in with the built-in setup
-                account to get started. Once real users exist, this page signs in with single
-                sign-on instead.
+                account, then load the directory from <b>User Management &rarr; Sync from Entra ID</b>.
+                Once real users exist this page signs in with single sign-on only.
             </div>
+
+            @* Offered here too, not just once real users exist: otherwise single sign-on could
+               never be exercised on a fresh deployment (or a developer machine) until the
+               directory had already been synced through it. *@
+            <ExternalLoginPicker />
+            <p class="cg-divider"><span>or use the setup account</span></p>
         }
         else
         {

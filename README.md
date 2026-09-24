@@ -428,6 +428,38 @@ member has to belong to an entity.
 It needs the same app registration as SSO, with the **application** `User.Read.All` Graph permission
 and admin consent. Writes go through the stored-procedure writers like every other write here.
 
+### Configuring Entra ID
+
+The settings live in `appsettings.json`, alongside the other deployment settings:
+
+```json
+"AzureAd": {
+  "Instance": "https://login.microsoftonline.com/",
+  "TenantId": "<directory (tenant) id>",
+  "ClientId": "<application (client) id>",
+  "ClientSecret": "<client secret value>"
+}
+```
+
+Single sign-on is registered only when **both** `TenantId` and `ClientId` are filled in; the
+directory sync additionally needs `ClientSecret`. `Instance` only changes for a sovereign cloud.
+
+In the app registration, add a **Web** redirect URI ending in `/signin-oidc-azuread` — the callback
+path is fixed in `Program.cs`. For a developer machine running the `https` launch profile that is:
+
+```
+https://localhost:7184/signin-oidc-azuread
+```
+
+Two different permissions are needed, and they are easy to confuse: **delegated** `User.Read` for
+signing in, and **application** `User.Read.All`, with admin consent, for the directory sync.
+
+Anything set here can still be overridden per machine or per environment without editing the file —
+`dotnet user-secrets set "AzureAd:ClientSecret" "…"` on a developer machine, or the environment
+variable `AzureAd__ClientSecret` in a deployment. That is worth doing for the client secret in
+particular, since a value in `appsettings.json` is committed to the repository and readable by
+anyone who can read it; rotating it then means a commit rather than a setting change.
+
 > Entra ID is only reachable from the organization's real tenant, so the sync has been verified by
 > build and by review against the Graph API contract, not against a live directory. Run it once
 > against the real tenant and check the first few members before relying on it.

@@ -528,6 +528,48 @@ member has to belong to an entity.
 It needs the same app registration as SSO, with the **application** `User.Read.All` Graph permission
 and admin consent. Writes go through the stored-procedure writers like every other write here.
 
+### Loading users from a spreadsheet instead
+
+Where a deployment has no tenant connection, **Upload user list** on User Management does the same
+job from a file — the same import, so what lands is what the tenant sync would have produced. Both
+routes end in `DirectoryImporter`; only the reading differs.
+
+Take **Download template** next to the upload box for a file with the right headings. `.xlsx`,
+`.xls` and `.csv` all work.
+
+| Column | Goes to | Required |
+| --- | --- | --- |
+| Display Name | `Member.FullName` | **Yes** |
+| Email Address | `Member.Email`, and the login username | **Yes** |
+| Company Name | the entity, created if it does not exist | **Yes** |
+| Department | the department, created if it does not exist | No |
+| Title | `Member.JobTitle` | No |
+| Role | `Administrator` or `Normal User` | No — defaults to Normal User |
+| Reporting Manager | the manager's **email address**, or `None` | No |
+| Windows User ID | nothing — see below | No |
+
+Columns are matched by heading, not position, so a reordered or slightly re-worded export still
+parses: `Full Name` and `Name` work as well as `Display Name`, `Email` and `User Principal Name` as
+well as `Email Address`, `Designation` as well as `Title`. Banner rows above the header are skipped.
+
+**Email address is the identity.** Single sign-on finds an account by email and links the external
+login on first sign-in, and a re-upload matches on it too, so the same file run twice updates rather
+than duplicates. It must therefore be unique within the file — a repeat is reported and ignored.
+`Windows User ID` is read and has nowhere to go: nothing in the schema stores it. It is in the
+template because the AD export carries it, not because it is used.
+
+Reporting managers are linked in a second pass once everyone exists, since the manager is often a
+row further down. A manager in neither the file nor the directory is reported and that person is
+left without one, rather than the row failing.
+
+Every row that cannot be imported is listed with its spreadsheet row number, and the rest of the
+file still goes in. Accounts are created with no password — sign-in is through Entra, exactly as
+with the tenant sync. What the file cannot carry is the profile photo, which only Graph has.
+
+The three rules the tenant sync applies apply here too: it is one-way, a person with no company is
+skipped because there is no entity to file them under, and the governance flags on an existing
+member — declaration access, RP transaction role, impersonation approvals — are never touched.
+
 ### Configuring Entra ID
 
 The settings live in `appsettings.json`, alongside the other deployment settings:

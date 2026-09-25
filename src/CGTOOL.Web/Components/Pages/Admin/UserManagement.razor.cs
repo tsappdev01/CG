@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -46,6 +47,10 @@ public partial class UserManagement
     private Member? _pendingJustify;
     private Member? _printSingleRecord;
     private bool _syncing;
+    private bool _showUpload;
+    private bool _importing;
+    private string? _importResult;
+    private List<string> _importProblems = [];
 
     private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
@@ -53,6 +58,75 @@ public partial class UserManagement
     /// exists and what their profile says, so this refreshes names, addresses, entities,
     /// departments, designations and photos; the governance flags an administrator set here are
     /// left alone.</summary>
+    /// <summary>
+    /// The spreadsheet route into the same import Entra ID uses, for a deployment with no tenant
+    /// connection. Parsing problems and import problems are shown together, per row, because a file
+    /// assembled by hand is usually half right and saying which half is the useful part.
+    /// </summary>
+    private async Task OnUserListSelectedAsync(InputFileChangeEventArgs e)
+    {
+        if (_importing) return;
+
+        var file = e.File;
+        if (file is null) return;
+
+        _importing = true;
+        _importResult = null;
+        _importProblems = [];
+
+        try
+        {
+            UserListParseResult parsed;
+            try
+            {
+                // Read fully into memory first: ExcelDataReader seeks, and the browser file stream
+                // does not. 10 MB is far beyond any plausible staff list.
+                using var buffer = new MemoryStream();
+                await using (var source = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024))
+                {
+                    await source.CopyToAsync(buffer);
+                }
+                buffer.Position = 0;
+
+                parsed = UserListWorkbookParser.Parse(buffer, file.Name);
+            }
+            catch (Exception ex)
+            {
+                // A file that cannot be read at all fails here, before anything is written.
+                Toasts.ShowError($"Could not read {file.Name}: {ex.Message}");
+                _importResult = $"{file.Name} could not be read.";
+                return;
+            }
+
+            if (parsed.People.Count == 0)
+            {
+                _importProblems = parsed.Problems;
+                _importResult = $"No usable rows in {file.Name} — nothing was imported.";
+                Toasts.ShowError(_importResult);
+                return;
+            }
+
+            var state = await AuthState.GetAuthenticationStateAsync();
+            var result = await DirectoryImporter.ImportAsync(
+                parsed.People,
+                state.User.Identity?.Name ?? "unknown",
+                $"User list upload ({file.Name})");
+
+            _importProblems = [.. parsed.Problems, .. result.Problems];
+            _importResult =
+                $"{file.Name}: {result.Created} added, {result.Updated} updated, {result.Skipped} skipped.";
+
+            Toasts.ShowSuccess(_importResult);
+            foreach (var problem in _importProblems.Take(3)) Toasts.ShowWarning(problem);
+
+            await LoadAsync();
+        }
+        finally
+        {
+            _importing = false;
+        }
+    }
+
     private async Task SyncFromEntraAsync()
     {
         if (_syncing) return;

@@ -2606,3 +2606,64 @@ button.cg-appbar-user {
     -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/><path d='M16 17l5-5-5-5'/><path d='M21 12H9'/></svg>") center/contain no-repeat;
     mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/><path d='M16 17l5-5-5-5'/><path d='M21 12H9'/></svg>") center/contain no-repeat;
 }
+
+/* ===========================================================================
+   User Management > Upload a user list
+   The spreadsheet route into the directory import, for deployments with no
+   Entra tenant connection.
+   =========================================================================== */
+
+.cg-upload-panel {
+    margin: 4px 0 14px;
+    padding: 18px 22px 20px;
+    background: var(--cg-surface);
+    border: 1px solid var(--cg-line);
+    border-radius: var(--cg-radius);
+    box-shadow: var(--cg-shadow-sm);
+}
+.cg-upload-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.cg-upload-head h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.cg-upload-panel .cg-subtitle { margin: 6px 0 0; max-width: 78ch; }
+
+.cg-upload-row {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.cg-upload-row input[type="file"] {
+    font-size: 13px;
+    padding: 9px 12px;
+    border: 1px dashed var(--cg-line-strong);
+    border-radius: var(--cg-radius-sm);
+    background: var(--cg-surface-sunken);
+    max-width: 100%;
+}
+
+.cg-upload-result {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: var(--cg-radius-sm);
+    background: var(--cg-surface-sunken);
+    border: 1px solid var(--cg-line);
+    font-size: 13px;
+}
+.cg-upload-result details { margin-top: 8px; }
+.cg-upload-result summary { cursor: pointer; color: var(--cg-warning); font-weight: 600; }
+.cg-upload-result ul { margin: 8px 0 0; padding-left: 20px; color: var(--cg-ink-muted); }
+.cg-upload-result li { margin-bottom: 3px; }
+
+.cg-btn-upload::before {
+    content: "";
+    width: 15px;
+    height: 15px;
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><path d='M17 8l-5-5-5 5'/><path d='M12 3v13'/></svg>") center/contain no-repeat;
+    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><path d='M17 8l-5-5-5 5'/><path d='M12 3v13'/></svg>") center/contain no-repeat;
+}

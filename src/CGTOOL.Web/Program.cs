@@ -104,6 +104,7 @@ builder.Services.AddScoped<IPolicyDocumentVersionWriter, PolicyDocumentVersionWr
 builder.Services.AddScoped<INavMenuItemOrderWriter, NavMenuItemOrderWriter>();
 builder.Services.AddScoped<INavMenuItemLabelWriter, NavMenuItemLabelWriter>();
 builder.Services.AddScoped<INavMenuItemVisibilityWriter, NavMenuItemVisibilityWriter>();
+builder.Services.AddScoped<IDirectoryImporter, DirectoryImporter>();
 builder.Services.AddScoped<NavMenuStateNotifier>();
 builder.Services.AddScoped<IShareholderRegisterWriter, ShareholderRegisterWriter>();
 builder.Services.AddScoped<IShareTradingWriter, ShareTradingWriter>();
@@ -272,6 +273,21 @@ app.MapAdditionalIdentityEndpoints();
 // tears down the originating Blazor circuit, so there's no component instance left to resume; "state"
 // (an IDataProtector-protected declarationId) is how the callback recovers which declaration this
 // login was for without needing server-side session storage.
+// The template for the user-list upload, generated from the parser's own list of headings so the
+// two cannot drift apart. A sample row is included because the shape of Role and Reporting Manager
+// is easier to show than to describe.
+app.MapGet("/admin/user-list-template.csv", () =>
+{
+    var headers = string.Join(",", UserListWorkbookParser.TemplateHeaders);
+    var sample = string.Join("\n", new[]
+    {
+        "Jane Smith,jsmith,Finance,Manager - Operations,jane.smith@example.com,Example Entity,Normal User,",
+        "Sam Patel,spatel,Finance,Financial Controller,sam.patel@example.com,Example Entity,Administrator,jane.smith@example.com",
+    });
+
+    return Results.Text($"{headers}\n{sample}\n", "text/csv", System.Text.Encoding.UTF8);
+}).RequireAuthorization(policy => policy.RequireRole(GovernanceRoles.Administrator));
+
 app.MapGet("/uaepass/callback", async (
     string? code,
     string? state,

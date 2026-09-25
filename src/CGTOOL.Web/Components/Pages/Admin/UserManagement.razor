@@ -11,6 +11,7 @@
 @inject ToastService Toasts
 @inject IJSRuntime JS
 @inject IEntraDirectorySync EntraSync
+@inject IDirectoryImporter DirectoryImporter
 
 <PageTitle>User Management</PageTitle>
 
@@ -131,8 +132,60 @@
                     title="@(EntraSync.IsConfigured ? "Load users from Entra ID" : "Entra ID is not configured for this deployment")">
                 @(_syncing ? "Syncing…" : "Sync from Entra ID")
             </button>
+            <button type="button" class="cg-action-btn cg-btn-upload" disabled="@_importing" @onclick="() => _showUpload = !_showUpload"
+                    title="Load users from a spreadsheet instead of Entra ID">
+                @(_importing ? "Importing…" : "Upload user list")
+            </button>
             <button type="button" class="cg-action-btn cg-good cg-btn-add" @onclick="AddNew">Add User</button>
         </div>
+
+        @* Stands in for Sync from Entra ID where a deployment has no tenant connection. It runs the
+           same import, so what lands is the same thing the tenant sync would have produced. *@
+        @if (_showUpload)
+        {
+            <section class="cg-upload-panel">
+                <div class="cg-upload-head">
+                    <h2>Upload a user list</h2>
+                    <button type="button" class="cg-icon-btn" title="Close" @onclick="() => _showUpload = false">×</button>
+                </div>
+
+                <p class="cg-subtitle">
+                    A spreadsheet (.xlsx or .csv) with one row per person. <b>Display Name</b>,
+                    <b>Email Address</b> and <b>Company Name</b> are required; Department, Title, Role
+                    and Reporting Manager are optional. Columns are matched by heading, so their order
+                    does not matter. Someone already here is updated rather than duplicated — matched
+                    on their email address.
+                </p>
+
+                <div class="cg-upload-row">
+                    <InputFile OnChange="OnUserListSelectedAsync" accept=".xlsx,.xls,.csv" disabled="@_importing" />
+                    <a class="cg-action-btn" href="/admin/user-list-template.csv" download>Download template</a>
+                </div>
+
+                @if (_importResult is not null)
+                {
+                    <div class="cg-upload-result">
+                        <b>@_importResult</b>
+                        @if (_importProblems.Count > 0)
+                        {
+                            <details open>
+                                <summary>@_importProblems.Count row(s) need attention</summary>
+                                <ul>
+                                    @foreach (var problem in _importProblems.Take(25))
+                                    {
+                                        <li>@problem</li>
+                                    }
+                                </ul>
+                                @if (_importProblems.Count > 25)
+                                {
+                                    <p class="cg-subtitle">…and @(_importProblems.Count - 25) more.</p>
+                                }
+                            </details>
+                        }
+                    </div>
+                }
+            </section>
+        }
 
         <div class="cg-bulk-bar">
             <button type="button" class="cg-action-btn" disabled="@(_selectedIds.Count == 0)" @onclick="DeselectAll">Deselect all</button>

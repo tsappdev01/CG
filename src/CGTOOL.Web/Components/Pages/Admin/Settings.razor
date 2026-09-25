@@ -2,7 +2,6 @@
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
-@inject IPolicyDocumentVersionWriter VersionWriter
 @inject INavMenuItemOrderWriter NavOrderWriter
 @inject INavMenuItemLabelWriter NavLabelWriter
 @inject INavMenuItemVisibilityWriter NavVisibilityWriter
@@ -11,72 +10,14 @@
 @inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState
 @inject ToastService Toasts
-@inject IWebHostEnvironment Env
 
 <PageTitle>Settings</PageTitle>
 
 <div class="cg-shell">
     <h1 data-icon="settings">Settings</h1>
-    <p class="cg-subtitle">Control Panel — application-wide documents and configuration.</p>
+    <p class="cg-subtitle">Control Panel — application-wide configuration.</p>
 
     <div class="cg-member-form" style="max-width:720px;">
-        <h2>Policy Document</h2>
-        <p class="cg-subtitle">Uploaded here as <code>/assets/policy.pdf</code>, linked wherever the app references the corporate policy document. Every replacement backs up the previous copy before overwriting it.</p>
-
-        @if (_currentDocumentExists)
-        {
-            <p><a href="/assets/policy.pdf" target="_blank">View current policy document</a></p>
-        }
-        else
-        {
-            <p class="cg-subtitle">No policy document has been uploaded yet.</p>
-        }
-
-        <label class="cg-field">
-            <span>Upload new version (PDF only)</span>
-            <InputFile OnChange="OnFileSelectedAsync" accept="application/pdf" disabled="@_uploading" />
-        </label>
-        @if (_uploading)
-        {
-            <p class="cg-subtitle">Uploading…</p>
-        }
-
-        @if (_versions is null)
-        {
-            <p class="cg-loading"><em>Loading…</em></p>
-        }
-        else
-        {
-            <details class="cg-audit-history">
-                <summary>Version history (@_versions.Count)</summary>
-                @if (_versions.Count == 0)
-                {
-                    <div class="cg-empty-state">No previous versions have been backed up yet.</div>
-                }
-                else
-                {
-                    <div class="cg-table-wrap">
-                        <table>
-                            <thead><tr><th>Replaced on</th><th>Replaced by</th><th>Original file name</th><th>Backup</th></tr></thead>
-                            <tbody>
-                                @foreach (var v in _versions)
-                                {
-                                    <tr class="cg-data-row">
-                                        <td class="mono">@v.UploadedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm")</td>
-                                        <td>@v.UploadedByName</td>
-                                        <td>@v.OriginalFileName</td>
-                                        <td><a href="@v.FilePath" target="_blank">View backup</a></td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </details>
-        }
-    </div>
-
-    <div class="cg-member-form" style="max-width:720px; margin-top:24px;">
         <h2>Related Party Transaction Roles</h2>
         <p class="cg-subtitle">
             CCAO, CFO, COO, and MD&amp;CEO are positions in the RP Transaction workflow -- separate from the System

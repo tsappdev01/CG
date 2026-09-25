@@ -1,3 +1,4 @@
+@page "/admin/declarations-setup"
 @page "/admin/declarations-setup/{TypeSlug}"
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
@@ -10,13 +11,38 @@
 @inject AuthenticationStateProvider AuthState
 @inject ToastService Toasts
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
 <PageTitle>@PageHeading</PageTitle>
 
 <div class="cg-shell cg-shell-full">
     <p><a href="/admin/user-management">← Back to Admin</a></p>
-    <h1 data-icon="doc">@PageHeading</h1>
-    <p class="cg-subtitle">Data Management — Declarations Setup. Configure the template, then Send Now or Schedule Send for a future date.</p>
+    <h1 data-icon="doc">@(IsDeclaration ? "Declaration Notifications" : PageHeading)</h1>
+    @if (IsDeclaration)
+    {
+        <p class="cg-subtitle">Data Management — Declarations Setup. Choose a declaration, configure its template, then Send Now or Schedule Send for a future date.</p>
+
+        @* One screen for the four declarations that used to have a menu item each. Choosing one is a
+           navigation to its own route, so links still work and everything below reloads exactly as it
+           did before. The badge is the latest run already in history. *@
+        <div class="cg-decl-picker">
+            @foreach (var (slug, label) in Declarations)
+            {
+                var current = slug;
+                var badge = BadgeFor(current);
+                <button type="button" class="cg-audit-pill @(EffectiveSlug == current ? "active" : "")"
+                        aria-current="@(EffectiveSlug == current ? "page" : null)"
+                        @onclick="() => SelectDeclaration(current)">
+                    @label
+                    <span class="cg-decl-badge @badge.Tone">@badge.Text</span>
+                </button>
+            }
+        </div>
+    }
+    else
+    {
+        <p class="cg-subtitle">Data Management — Declarations Setup. Configure the template, then Send Now or Schedule Send for a future date.</p>
+    }
 
     @if (_setup is null)
     {
@@ -40,6 +66,13 @@
         {
             <EditForm Model="_setup" OnValidSubmit="SaveAsync" class="cg-member-form cg-member-page">
                 <DataAnnotationsValidator />
+
+                @if (IsDeclaration)
+                {
+                    @* The page title names the screen now, so the card has to name the declaration. *@
+                    <h2>@PageHeading</h2>
+                    <p class="cg-subtitle">These settings apply to this declaration only. Each keeps its own template, reminders and history.</p>
+                }
 
                 <label class="cg-field">
                     <span>No. of reminders</span>

@@ -1,5 +1,6 @@
 @implements IDisposable
 @using System.Security.Claims
+@using CGTOOL.Web.Components.Pages.Admin
 
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthState
@@ -116,10 +117,7 @@
                 @if (IsExpanded("DeclarationSetup"))
                 {
                     <div class="cg-nav-submenu" style="order:@OrderOf("DeclarationSetup");@HideOf("DeclarationSetup")">
-                        <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup.InsiderTrading");@HideOf("DeclarationSetup.InsiderTrading")"><NavLink class="nav-link" href="admin/declarations-setup/insider-trading">@LabelOf("DeclarationSetup.InsiderTrading")</NavLink></div>
-                        <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup.ConflictOfInterest");@HideOf("DeclarationSetup.ConflictOfInterest")"><NavLink class="nav-link" href="admin/declarations-setup/conflict-of-interest">@LabelOf("DeclarationSetup.ConflictOfInterest")</NavLink></div>
-                        <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup.RelatedPartyRegister");@HideOf("DeclarationSetup.RelatedPartyRegister")"><NavLink class="nav-link" href="admin/declarations-setup/related-party-register">@LabelOf("DeclarationSetup.RelatedPartyRegister")</NavLink></div>
-                        <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup.BlackoutPeriods");@HideOf("DeclarationSetup.BlackoutPeriods")"><NavLink class="nav-link" href="admin/declarations-setup/blackout-periods">@LabelOf("DeclarationSetup.BlackoutPeriods")</NavLink></div>
+                        <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup.Notifications");@HideOf("DeclarationSetup.Notifications")"><NavLink class="@NotificationsLinkClass" Match="NavLinkMatch.All" href="admin/declarations-setup">@LabelOf("DeclarationSetup.Notifications")</NavLink></div>
                         <div class="nav-item px-3" style="order:@OrderOf("DeclarationSetup.ScheduledMaintenance");@HideOf("DeclarationSetup.ScheduledMaintenance")"><NavLink class="nav-link" href="admin/declarations-setup/scheduled-maintenance">@LabelOf("DeclarationSetup.ScheduledMaintenance")</NavLink></div>
                     </div>
                 }
@@ -203,6 +201,20 @@
 </div>
 
 @code {
+    /// <summary>The four declarations keep their own routes, so the single menu entry lights up on
+    /// any of them -- NavLink alone would only match the bare route, or would also match
+    /// Scheduled Maintenance if it matched by prefix.</summary>
+    private string NotificationsLinkClass => OnDeclarationNotifications ? "nav-link active" : "nav-link";
+
+    private bool OnDeclarationNotifications
+    {
+        get
+        {
+            var path = NavigationManager.ToBaseRelativePath(NavigationManager.Uri).Split('?')[0].TrimEnd('/');
+            return DeclarationsSetupPage.Declarations.Any(d => path == $"admin/declarations-setup/{d.Slug}");
+        }
+    }
+
     private bool _hasRelatedPartyTransactionAccess;
     private readonly HashSet<string> _expandedGroups = [];
     private Dictionary<string, int> _navOrder = [];

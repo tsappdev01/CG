@@ -10,6 +10,26 @@ public partial class DeclarationsSetupPage
 {
     [Parameter] public string TypeSlug { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The declarations this screen covers, in the order the pills show them. Scheduled Maintenance
+    /// is deliberately absent: it uses the same machinery but is not a declaration, and keeps its
+    /// own menu entry.
+    ///
+    /// The old per-declaration routes still resolve, so existing links and bookmarks keep working --
+    /// choosing a pill navigates to one, which is the same thing the four menu items used to do.
+    /// </summary>
+    public static readonly (string Slug, string Label)[] Declarations =
+    [
+        ("insider-trading", "Insider Trading"),
+        ("conflict-of-interest", "Conflict of Interest"),
+        ("related-party-register", "Related Party Register"),
+        ("blackout-periods", "Blackout Periods"),
+    ];
+
+    /// <summary>Latest run per declaration, for the badge on each pill. Read from the history that
+    /// is already stored -- the badge says something only because the data was there all along.</summary>
+    private Dictionary<DeclarationCycleType, DeclarationCycleRun> _latestByType = [];
+
     private string _activeTab = "template";
 
     private DeclarationCycleSetup? _setup;
@@ -63,7 +83,13 @@ public partial class DeclarationsSetupPage
         .OrderByDescending(r => r.SentAtUtc)
         .ToList();
 
-    private DeclarationCycleType Type => TypeSlug switch
+    private string EffectiveSlug => string.IsNullOrWhiteSpace(TypeSlug) ? Declarations[0].Slug : TypeSlug;
+
+    /// <summary>Scheduled Maintenance shares this component but is not a declaration: it keeps its
+    /// own menu entry, its own heading, and no picker.</summary>
+    private bool IsDeclaration => Declarations.Any(d => d.Slug == EffectiveSlug);
+
+    private DeclarationCycleType Type => EffectiveSlug switch
     {
         "insider-trading" => DeclarationCycleType.InsiderTrading,
         "conflict-of-interest" => DeclarationCycleType.ConflictOfInterest,
@@ -97,7 +123,51 @@ public partial class DeclarationsSetupPage
         _companies = await db.Companies.Where(c => c.Active).OrderBy(c => c.Name).ToListAsync();
 
         await LoadRunsAsync();
+        if (IsDeclaration) await LoadPillBadgesAsync();
         EnsureValidSelectedPeriod();
+    }
+
+    /// <summary>One row per declaration: its most recent run, sent or still scheduled.</summary>
+    private async Task LoadPillBadgesAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var types = Declarations.Select(d => SlugToType(d.Slug)).ToList();
+
+        _latestByType = (await db.DeclarationCycleRuns
+                .AsNoTracking()
+                .Where(r => types.Contains(r.Type) && !r.Recalled)
+                .ToListAsync())
+            .GroupBy(r => r.Type)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.SentAtUtc).First());
+    }
+
+    public static DeclarationCycleType SlugToType(string slug) => slug switch
+    {
+        "insider-trading" => DeclarationCycleType.InsiderTrading,
+        "conflict-of-interest" => DeclarationCycleType.ConflictOfInterest,
+        "related-party-register" => DeclarationCycleType.RelatedPartyRegister,
+        "blackout-periods" => DeclarationCycleType.BlackoutPeriod,
+        "scheduled-maintenance" => DeclarationCycleType.ScheduledMaintenance,
+        _ => DeclarationCycleType.InsiderTrading,
+    };
+
+    /// <summary>What the pill's badge says, and which tint it takes.</summary>
+    private (string Text, string Tone) BadgeFor(string slug)
+    {
+        if (!_latestByType.TryGetValue(SlugToType(slug), out var run)) return ("Not sent", "none");
+
+        return run.Sent
+            ? ($"Q{run.PeriodQuarter} {run.PeriodYear} sent", "ok")
+            : ($"Scheduled {run.SentAtUtc.ToLocalDisplay("dd/MM")}", "warn");
+    }
+
+    /// <summary>Changing declaration is a navigation, exactly as picking a menu item used to be --
+    /// so the URL stays shareable and OnParametersSetAsync reloads everything as it always did.</summary>
+    private void SelectDeclaration(string slug)
+    {
+        if (slug == EffectiveSlug) return;
+        Nav.NavigateTo($"/admin/declarations-setup/{slug}");
     }
 
     // AsNoTracking: this DbContext is scoped to the whole circuit, and both settings and run rows

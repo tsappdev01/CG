@@ -36,10 +36,10 @@ public static class NavMenuCatalog
         new("AdminPanel.AuditLogs.Detailed", "Detailed Log", "AdminPanel.AuditLogs"),
         new("AdminPanel.AuditLogs.Periodic", "Periodic Review by Date filter", "AdminPanel.AuditLogs"),
 
-        new("DeclarationSetup.InsiderTrading", "Insider Trading", "DeclarationSetup"),
-        new("DeclarationSetup.ConflictOfInterest", "Conflict of Interest", "DeclarationSetup"),
-        new("DeclarationSetup.RelatedPartyRegister", "Related Party Register", "DeclarationSetup"),
-        new("DeclarationSetup.BlackoutPeriods", "Blackout Periods", "DeclarationSetup"),
+        // One entry for the four declarations, which now share a screen and pick between
+        // themselves on it. Scheduled Maintenance keeps its own entry: it uses the same
+        // machinery but is not a declaration.
+        new("DeclarationSetup.Notifications", "Notifications", "DeclarationSetup"),
         new("DeclarationSetup.ScheduledMaintenance", "Scheduled Maintenance", "DeclarationSetup"),
 
         new("Reports.InsiderSubmission", "Insider Submission", "Reports"),

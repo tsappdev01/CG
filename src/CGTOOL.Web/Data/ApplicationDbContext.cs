@@ -187,6 +187,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .Property(o => o.OwnershipPercentage)
             .HasPrecision(5, 2);
 
+        // Same shape as OwnedCompany's, and as the stored procedure's decimal(5,2) parameter.
+        builder.Entity<FamilyMember>()
+            .Property(f => f.OwnershipPercentage)
+            .HasPrecision(5, 2);
+
         builder.Entity<JobTitle>()
             .HasIndex(j => j.Name)
             .IsUnique();

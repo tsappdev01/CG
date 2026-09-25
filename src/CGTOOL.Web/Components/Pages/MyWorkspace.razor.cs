@@ -33,6 +33,20 @@ public partial class MyWorkspace : ComponentBase
     private string _newFamilyName = string.Empty;
     private RelativeRelationship _newFamilyRelationship = RelativeRelationship.Spouse;
 
+    // Relatives table: search, relation filter, paging and which row is open for editing.
+    private string _search = string.Empty;
+    private RelativeRelationship? _relationFilter;
+    private int _page = 1;
+    private const int RelativesPageSize = 10;
+    private int? _editingId;
+    private bool _addingRow;
+
+    // Declaration summary strip.
+    private string? _lastDeclared;
+    private bool _hasSubmitted;
+    private string? _declarationPeriod;
+    private string? _nextDueDate;
+
     private string _newCompanyName = string.Empty;
     private string _newCompanyTradeLicenseDetails = string.Empty;
     private decimal? _newCompanyOwnership;
@@ -93,7 +107,85 @@ public partial class MyWorkspace : ComponentBase
             .Where(c => c.MemberId == _effectiveMember.Id)
             .OrderBy(c => c.Id)
             .ToListAsync());
+
+        await LoadDeclarationSummaryAsync();
     }
+
+    /// <summary>The summary strip reads the member's latest Insider Trading declaration and the run
+    /// it answered, so the period and due date shown are the ones the member is actually being asked
+    /// for rather than a calendar quarter worked out here.</summary>
+    private async Task LoadDeclarationSummaryAsync()
+    {
+        if (_effectiveMember is null) return;
+
+        var latest = await Db.InsiderDeclarations
+            .Include(d => d.DeclarationCycleRun)
+            .Where(d => d.MemberId == _effectiveMember.Id && !d.IsDraft)
+            .OrderByDescending(d => d.SubmittedAtUtc)
+            .FirstOrDefaultAsync();
+
+        if (latest is not null)
+        {
+            _hasSubmitted = true;
+            _lastDeclared = latest.SubmittedAtUtc.ToLocalDisplay("MMM dd, yyyy");
+            _declarationPeriod = latest.DeclarationCycleRun is { } run ? $"Q{run.PeriodQuarter} {run.PeriodYear}" : null;
+            _nextDueDate = latest.DeclarationCycleRun?.DueDateUtc.ToLocalDisplay("MMM dd, yyyy");
+            return;
+        }
+
+        // Nothing submitted yet: fall back to the open run so the member can still see what is due.
+        var open = await Db.DeclarationCycleRuns
+            .Where(r => r.Type == DeclarationCycleType.InsiderTrading && r.Sent && !r.Recalled)
+            .OrderByDescending(r => r.PeriodYear).ThenByDescending(r => r.PeriodQuarter)
+            .FirstOrDefaultAsync();
+
+        _hasSubmitted = false;
+        _declarationPeriod = open is null ? null : $"Q{open.PeriodQuarter} {open.PeriodYear}";
+        _nextDueDate = open?.DueDateUtc.ToLocalDisplay("MMM dd, yyyy");
+    }
+
+    private IEnumerable<FamilyMember> FilteredRelatives()
+    {
+        IEnumerable<FamilyMember> query = _familyMembers;
+
+        if (_relationFilter is { } relation)
+        {
+            query = query.Where(f => f.Relationship == relation);
+        }
+
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            var q = _search.Trim();
+            query = query.Where(f =>
+                f.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || (f.Organization?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (f.IdentificationNumber?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (f.Occupation?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        return query;
+    }
+
+    private List<FamilyMember> PagedRelatives() =>
+        FilteredRelatives().Skip((_page - 1) * RelativesPageSize).Take(RelativesPageSize).ToList();
+
+    private int RelativesTotal => FilteredRelatives().Count();
+
+    private int RelativesPages => Math.Max(1, (int)Math.Ceiling(RelativesTotal / (double)RelativesPageSize));
+
+    private int FirstRelativeOnPage => RelativesTotal == 0 ? 0 : ((_page - 1) * RelativesPageSize) + 1;
+
+    private int LastRelativeOnPage => Math.Min(_page * RelativesPageSize, RelativesTotal);
+
+    private void ResetRelativesPage() => _page = 1;
+
+    private void GoToRelativesPage(int page) => _page = Math.Clamp(page, 1, RelativesPages);
+
+    private static string RelationLabel(RelativeRelationship relationship) =>
+        RelativeOptions.FirstOrDefault(o => o.Value == relationship).Label ?? relationship.ToString();
+
+    private static string InterestLabel(RelatedPartyInterestType interest) =>
+        interest == RelatedPartyInterestType.None ? "—" : interest.ToString();
 
     private async Task<string> CurrentActorNameAsync()
     {
@@ -101,37 +193,63 @@ public partial class MyWorkspace : ComponentBase
         return state.User.Identity?.Name ?? "unknown";
     }
 
-    private async Task AddFamilyMemberAsync()
+    private FamilyMember? _draft;
+
+    /// <summary>Opens a blank row at the top of the table. The row is only written once it is saved,
+    /// so an abandoned "Add Declaration" leaves nothing behind.</summary>
+    private void StartAddRelative()
     {
         if (_effectiveMember is null) return;
-
-        if (string.IsNullOrWhiteSpace(_newFamilyName))
+        _editingId = null;
+        _addingRow = true;
+        _draft = new FamilyMember
         {
-            Toasts.ShowError("Enter the family member's name.");
+            MemberId = _effectiveMember.Id,
+            Relationship = RelativeRelationship.Spouse,
+        };
+    }
+
+    private void CancelAddRelative()
+    {
+        _addingRow = false;
+        _draft = null;
+    }
+
+    private async Task AddFamilyMemberAsync()
+    {
+        if (_effectiveMember is null || _draft is null) return;
+
+        if (string.IsNullOrWhiteSpace(_draft.Name))
+        {
+            Toasts.ShowError("Enter the related party's name.");
             return;
         }
 
-        var familyMember = new FamilyMember
-        {
-            MemberId = _effectiveMember.Id,
-            Name = _newFamilyName.Trim(),
-            Relationship = _newFamilyRelationship,
-        };
-        var id = await FamilyMemberWriter.InsertAsync(familyMember);
-        familyMember.Id = id;
-        _familyMembers.Add(familyMember);
+        _draft.Name = _draft.Name.Trim();
+        var id = await FamilyMemberWriter.InsertAsync(_draft);
+        _draft.Id = id;
+        _familyMembers.Add(_draft);
 
         var actorName = await CurrentActorNameAsync();
         await AuditLog.LogAsync(actorName, AuditAction.Create, nameof(FamilyMember), _effectiveMember.Id.ToString(),
-            $"Added family member: {familyMember.Name} ({RelationshipLabel(familyMember.Relationship)}).");
+            $"Added related party: {_draft.Name} ({RelationshipLabel(_draft.Relationship)}).");
 
-        _newFamilyName = string.Empty;
-        _newFamilyRelationship = RelativeRelationship.Spouse;
-        Toasts.ShowSuccess("Family member added.");
+        _addingRow = false;
+        _draft = null;
+        Toasts.ShowSuccess("Related party added.");
     }
+
+    private void StartEditRelative(FamilyMember familyMember)
+    {
+        CancelAddRelative();
+        _editingId = familyMember.Id;
+    }
+
+    private void CancelEditRelative() => _editingId = null;
 
     private async Task SaveFamilyMemberAsync(FamilyMember familyMember)
     {
+        _editingId = null;
         if (_effectiveMember is null) return;
 
         if (string.IsNullOrWhiteSpace(familyMember.Name))

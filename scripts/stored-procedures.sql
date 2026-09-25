@@ -1505,13 +1505,24 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMember_Insert
     @MemberId int,
     @Name nvarchar(120),
     @Relationship int,
+    @IdentificationNumber nvarchar(60) = NULL,
+    @DateOfBirth date = NULL,
+    @Nationality nvarchar(80) = NULL,
+    @Occupation nvarchar(160) = NULL,
+    @Organization nvarchar(160) = NULL,
+    @InterestType int = 0,
+    @OwnershipPercentage decimal(5,2) = NULL,
     @NewId int OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.FamilyMembers (MemberId, Name, Relationship)
-    VALUES (@MemberId, @Name, @Relationship);
+    INSERT INTO dbo.FamilyMembers
+        (MemberId, Name, Relationship, IdentificationNumber, DateOfBirth, Nationality,
+         Occupation, Organization, InterestType, OwnershipPercentage)
+    VALUES
+        (@MemberId, @Name, @Relationship, @IdentificationNumber, @DateOfBirth, @Nationality,
+         @Occupation, @Organization, @InterestType, @OwnershipPercentage);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1522,12 +1533,29 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMember_Update
     @Name nvarchar(120),
     @Relationship int,
     @EmiratesIdPath nvarchar(260) = NULL,
-    @PassportPath nvarchar(260) = NULL
+    @PassportPath nvarchar(260) = NULL,
+    @IdentificationNumber nvarchar(60) = NULL,
+    @DateOfBirth date = NULL,
+    @Nationality nvarchar(80) = NULL,
+    @Occupation nvarchar(160) = NULL,
+    @Organization nvarchar(160) = NULL,
+    @InterestType int = 0,
+    @OwnershipPercentage decimal(5,2) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     UPDATE dbo.FamilyMembers
-    SET Name = @Name, Relationship = @Relationship, EmiratesIdPath = @EmiratesIdPath, PassportPath = @PassportPath
+    SET Name = @Name,
+        Relationship = @Relationship,
+        EmiratesIdPath = @EmiratesIdPath,
+        PassportPath = @PassportPath,
+        IdentificationNumber = @IdentificationNumber,
+        DateOfBirth = @DateOfBirth,
+        Nationality = @Nationality,
+        Occupation = @Occupation,
+        Organization = @Organization,
+        InterestType = @InterestType,
+        OwnershipPercentage = @OwnershipPercentage
     WHERE Id = @Id;
 END
 GO

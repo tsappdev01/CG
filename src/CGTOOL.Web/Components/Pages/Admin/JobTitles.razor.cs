@@ -19,6 +19,8 @@ public partial class JobTitles
     private bool? _bulkSetActive;
     private string _search = string.Empty;
     private string _statusFilter = "all";
+    private int _page = 1;
+    private int _pageSize = 10;
 
     // Member.JobTitle is free text rather than a foreign key, so the count matches on the name.
     private Dictionary<string, int> _memberCounts = [];
@@ -29,7 +31,11 @@ public partial class JobTitles
     {
         _search = string.Empty;
         _statusFilter = "all";
+        _page = 1;
     }
+
+    private List<JobTitle> PagedJobTitles() =>
+        VisibleJobTitles().Skip((_page - 1) * _pageSize).Take(_pageSize).ToList();
 
     private int MemberCount(string name) => _memberCounts.GetValueOrDefault(name);
 

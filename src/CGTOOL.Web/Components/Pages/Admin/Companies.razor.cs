@@ -16,6 +16,11 @@ public partial class Companies
     private bool _sortAscending = true;
     private HashSet<int> _selectedIds = [];
     private bool? _bulkSetActive;
+    private int _page = 1;
+    private int _pageSize = 10;
+
+    private List<Company> PagedCompanies() =>
+        SortedCompanies().Skip((_page - 1) * _pageSize).Take(_pageSize).ToList();
 
     private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 

@@ -31,11 +31,11 @@
             <div class="cg-controls cg-filter-bar">
                 <div class="cg-search-wrap">
                     <input class="cg-input" type="search" placeholder="Search departments by code or name…"
-                           @bind="_search" @bind:event="oninput" aria-label="Search departments" />
+                           @bind="_search" @bind:event="oninput" @bind:after="() => _page = 1" aria-label="Search departments" />
                 </div>
 
                 <select class="cg-input cg-filter-select" value="@_statusFilter"
-                        @onchange="e => _statusFilter = (string)e.Value!" aria-label="Filter by status">
+                        @onchange="e => { _statusFilter = (string)e.Value!; _page = 1; }" aria-label="Filter by status">
                     <option value="all">All statuses</option>
                     <option value="active">Active only</option>
                     <option value="inactive">Inactive only</option>
@@ -95,7 +95,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var d in VisibleDepartments())
+                        @foreach (var d in PagedDepartments())
                         {
                             <tr class="cg-data-row">
                                 <td class="cg-select-col"><input type="checkbox" checked="@_selectedIds.Contains(d.Id)" @onchange="e => ToggleSelect(d.Id, (bool)e.Value!)" aria-label="Select @d.Name" /></td>
@@ -112,6 +112,10 @@
                     </tbody>
                 </table>
             </div>
+
+            <TablePager TotalItems="VisibleDepartments().Count" ItemNoun="departments"
+                        Page="_page" PageChanged="p => _page = p"
+                        PageSize="_pageSize" PageSizeChanged="s => _pageSize = s" />
         }
 
         @if (_pendingJustify is not null)

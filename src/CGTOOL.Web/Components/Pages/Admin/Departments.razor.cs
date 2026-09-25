@@ -20,6 +20,8 @@ public partial class Departments
     private bool? _bulkSetActive;
     private string _search = string.Empty;
     private string _statusFilter = "all";
+    private int _page = 1;
+    private int _pageSize = 10;
 
 
 
@@ -29,7 +31,14 @@ public partial class Departments
     {
         _search = string.Empty;
         _statusFilter = "all";
+        _page = 1;
     }
+
+    /// <summary>The rows actually on screen. Selection and the select-all checkbox work off
+    /// VisibleDepartments, not this, so a filter narrows what can be selected but paging through
+    /// the results does not silently drop a selection made on an earlier page.</summary>
+    private List<Department> PagedDepartments() =>
+        VisibleDepartments().Skip((_page - 1) * _pageSize).Take(_pageSize).ToList();
 
 
 

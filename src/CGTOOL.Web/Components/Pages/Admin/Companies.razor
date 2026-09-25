@@ -62,7 +62,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var c in SortedCompanies())
+                        @foreach (var c in PagedCompanies())
                         {
                             <tr class="cg-data-row">
                                 <td class="cg-select-col"><input type="checkbox" checked="@_selectedIds.Contains(c.Id)" @onchange="e => ToggleSelect(c.Id, (bool)e.Value!)" aria-label="Select @c.Name" /></td>
@@ -82,6 +82,10 @@
                     </tbody>
                 </table>
             </div>
+
+            <TablePager TotalItems="SortedCompanies().Count" ItemNoun="companies"
+                        Page="_page" PageChanged="p => _page = p"
+                        PageSize="_pageSize" PageSizeChanged="s => _pageSize = s" />
 
             @if (_pendingJustify is not null)
             {

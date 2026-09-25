@@ -268,7 +268,7 @@
                     <h3>From where</h3>
                     <dl class="cg-audit-dl">
                         <div><dt>IP address</dt><dd class="mono">@(sel.IpAddress ?? "— not recorded")</dd></div>
-                        <div><dt>Device · browser</dt><dd>@(sel.UserAgent ?? "— not recorded")</dd></div>
+                        <div><dt>Device · browser</dt><dd title="@sel.UserAgent">@DeviceLabel(sel.UserAgent)</dd></div>
                     </dl>
 
                     <h3>Integrity</h3>

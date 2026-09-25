@@ -1,0 +1,20 @@
+@implements IDisposable
+@inject PersistentComponentState AppState
+@inject ClientContext ClientContext
+
+@* Renders nothing. It exists to carry the originating request's IP and user agent from the static
+   render into the circuit, which are separate DI scopes -- see ClientContext for why that is
+   necessary. Exactly one component may do this: TryTakeFromJson removes what it reads. *@
+
+@code {
+    protected override void OnInitialized()
+    {
+        if (AppState.TryTakeFromJson<ClientContextSnapshot>(ClientContextSnapshot.PersistenceKey, out var snapshot)
+            && snapshot is not null)
+        {
+            ClientContext.Restore(snapshot.IpAddress, snapshot.UserAgent);
+        }
+    }
+
+    public void Dispose() { }
+}

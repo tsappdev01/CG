@@ -1,5 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @inject ClientContext ClientContext
+@inject PersistentComponentState AppState
+@implements IDisposable
 
 <div class="page">
     <div class="sidebar">
@@ -24,14 +26,26 @@
 </div>
 
 <IdleLockOverlay @rendermode="InteractiveServer" />
+<ClientContextRestore @rendermode="InteractiveServer" />
 <ToastContainer @rendermode="InteractiveServer" />
 
 @code {
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 
+    private PersistingComponentStateSubscription _persisting;
+
     protected override void OnInitialized()
     {
         ClientContext.CaptureOnce(HttpContext);
+
+        // Handed to the circuit, which cannot read HttpContext itself and does not share this scope.
+        _persisting = AppState.RegisterOnPersisting(() =>
+        {
+            AppState.PersistAsJson(ClientContextSnapshot.PersistenceKey, ClientContext.Snapshot());
+            return Task.CompletedTask;
+        });
     }
+
+    public void Dispose() => _persisting.Dispose();
 }

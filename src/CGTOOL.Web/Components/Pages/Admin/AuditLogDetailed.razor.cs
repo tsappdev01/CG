@@ -300,6 +300,42 @@ public partial class AuditLogDetailed
         await LoadAsync();
     }
 
+    /// <summary>
+    /// A user agent string as a person would describe it -- "Chrome 141 · Windows 11" rather than
+    /// eighty characters of Mozilla/5.0 compatibility fiction. The raw string is what is stored and
+    /// exported; this is only how it reads on screen, and anything unrecognised falls back to it.
+    /// </summary>
+    public static string DeviceLabel(string? userAgent)
+    {
+        if (string.IsNullOrWhiteSpace(userAgent)) return "— not recorded";
+
+        var browser =
+            Match(userAgent, @"Edg/(\d+)") is { } edge ? $"Edge {edge}"
+            : Match(userAgent, @"OPR/(\d+)") is { } opera ? $"Opera {opera}"
+            : userAgent.Contains("Chrome/") && !userAgent.Contains("Chromium") && Match(userAgent, @"Chrome/(\d+)") is { } chrome ? $"Chrome {chrome}"
+            : Match(userAgent, @"Firefox/(\d+)") is { } firefox ? $"Firefox {firefox}"
+            : userAgent.Contains("Safari") && Match(userAgent, @"Version/(\d+)") is { } safari ? $"Safari {safari}"
+            : null;
+
+        var platform =
+            userAgent.Contains("Windows NT 10.0") ? "Windows 10/11"
+            : userAgent.Contains("Windows") ? "Windows"
+            : userAgent.Contains("Mac OS X") ? "macOS"
+            : userAgent.Contains("Android") ? "Android"
+            : userAgent.Contains("iPhone") || userAgent.Contains("iPad") ? "iOS"
+            : userAgent.Contains("Linux") ? "Linux"
+            : null;
+
+        if (browser is null && platform is null) return userAgent;
+        return string.Join(" · ", new[] { browser, platform }.Where(x => x is not null));
+    }
+
+    private static string? Match(string input, string pattern)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(input, pattern);
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
     /// <summary>The reference for a chain position, for naming a problem the verify reported.</summary>
     private static string EventRefFor(long sequence) => $"AUD-{sequence:000000}";
 

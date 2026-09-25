@@ -1,7 +1,7 @@
 @page "/admin/companies"
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject ICompanyWriter CompanyWriter
 @inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState
@@ -24,6 +24,23 @@
         <div class="cg-actions">
             <button type="button" class="cg-action-btn cg-good" @onclick="AddNew">+ Add company</button>
             <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
+        </div>
+
+        <div class="cg-controls cg-filter-bar">
+            <div class="cg-search-wrap">
+                <input class="cg-input" type="search" placeholder="Search by name, short code, city or country…"
+                       @bind="_search" @bind:event="oninput" @bind:after="() => _page = 1" aria-label="Search companies" />
+            </div>
+
+            <select class="cg-input cg-filter-select" value="@_statusFilter"
+                    @onchange="e => { _statusFilter = (string)e.Value!; _page = 1; }" aria-label="Filter by status">
+                <option value="all">All statuses</option>
+                <option value="active">Active only</option>
+                <option value="inactive">Inactive only</option>
+            </select>
+
+            <button type="button" class="cg-action-btn cg-btn-filter" disabled="@(!HasActiveFilters)" @onclick="ClearFilters">Clear Filters</button>
+            <span class="cg-result-count">@VisibleCompanies().Count of @_companies.Count shown</span>
         </div>
 
         <div class="cg-bulk-bar">
@@ -79,11 +96,29 @@
                                 </td>
                             </tr>
                         }
+                        @if (_companies.Count == 0)
+                        {
+                            <tr><td colspan="9">
+                                <div class="cg-empty-state">
+                                    <h3>No companies yet</h3>
+                                    <p>Use <b>+ Add company</b> above. Companies are the legal entities a user can belong to.</p>
+                                </div>
+                            </td></tr>
+                        }
+                        else if (VisibleCompanies().Count == 0)
+                        {
+                            <tr><td colspan="9">
+                                <div class="cg-empty-state">
+                                    <h3>Nothing matches those filters</h3>
+                                    <p>All @_companies.Count companies are hidden by the current search or status filter.</p>
+                                </div>
+                            </td></tr>
+                        }
                     </tbody>
                 </table>
             </div>
 
-            <TablePager TotalItems="SortedCompanies().Count" ItemNoun="companies"
+            <TablePager TotalItems="VisibleCompanies().Count" ItemNoun="companies"
                         Page="_page" PageChanged="p => _page = p"
                         PageSize="_pageSize" PageSizeChanged="s => _pageSize = s" />
 

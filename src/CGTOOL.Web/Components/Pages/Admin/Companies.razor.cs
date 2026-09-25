@@ -18,20 +18,60 @@ public partial class Companies
     private bool? _bulkSetActive;
     private int _page = 1;
     private int _pageSize = 10;
+    private string _search = string.Empty;
+    private string _statusFilter = "all";
+
+    private bool HasActiveFilters => !string.IsNullOrWhiteSpace(_search) || _statusFilter != "all";
+
+    private void ClearFilters()
+    {
+        _search = string.Empty;
+        _statusFilter = "all";
+        _page = 1;
+    }
+
+    /// <summary>Everything the filters leave, in sort order. Selection and the counts work off this
+    /// rather than the page, so paging never silently drops a selection.</summary>
+    private List<Company> VisibleCompanies()
+    {
+        IEnumerable<Company> rows = SortedCompanies();
+
+        if (_statusFilter == "active") rows = rows.Where(c => c.Active);
+        else if (_statusFilter == "inactive") rows = rows.Where(c => !c.Active);
+
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            // Name, short code, city and country -- every text column on the table, so what you can
+            // see is what you can search for.
+            var term = _search.Trim();
+            rows = rows.Where(c =>
+                c.Name.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || c.ShortCode.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || (c.City ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase)
+                || (c.Country ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return rows.ToList();
+    }
 
     private List<Company> PagedCompanies() =>
-        SortedCompanies().Skip((_page - 1) * _pageSize).Take(_pageSize).ToList();
+        VisibleCompanies().Skip((_page - 1) * _pageSize).Take(_pageSize).ToList();
 
     private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
-    private List<Company> PrintRows() => _printSingleRecord is not null ? [_printSingleRecord] : SortedCompanies();
+    // The print preview follows the filters -- printing rows the screen is hiding would surprise.
+    private List<Company> PrintRows() => _printSingleRecord is not null ? [_printSingleRecord] : VisibleCompanies();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
-        _companies = await Db.Companies.OrderBy(c => c.Name).ToListAsync();
-        _memberCounts = await Db.Members
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext: sharing
+        // that one lets this race, or outlive, whatever else in the circuit is using it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _companies = await db.Companies.OrderBy(c => c.Name).ToListAsync();
+        _memberCounts = await db.Members
             .GroupBy(m => m.CompanyId)
             .Select(g => new { CompanyId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.CompanyId, x => x.Count);
@@ -60,11 +100,11 @@ public partial class Companies
         else { _sortColumn = column; _sortAscending = true; }
     }
 
-    private bool AllSelected => _companies is { Count: > 0 } && _companies.All(c => _selectedIds.Contains(c.Id));
+    private bool AllSelected => VisibleCompanies() is { Count: > 0 } visible && visible.All(c => _selectedIds.Contains(c.Id));
 
     private void ToggleSelectAll(bool select)
     {
-        if (select) _selectedIds = _companies!.Select(c => c.Id).ToHashSet();
+        if (select) _selectedIds = VisibleCompanies().Select(c => c.Id).ToHashSet();
         else _selectedIds.Clear();
     }
 

@@ -8,9 +8,16 @@
     <h1 data-icon="folder">My Workspace</h1>
     <p class="cg-subtitle">Keep your family members and companies on file here — you can reuse this whenever a declaration asks for them.</p>
 
-    @if (_effectiveMember is null)
+    @if (!_loaded)
     {
         <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else if (_effectiveMember is null)
+    {
+        <div class="cg-empty-state">
+            Your login isn't linked to a User record yet, so there is nothing to show here.
+            Ask an Administrator to link your account on the User Management page.
+        </div>
     }
     else
     {

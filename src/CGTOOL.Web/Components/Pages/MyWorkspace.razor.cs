@@ -20,6 +20,11 @@ public partial class MyWorkspace : ComponentBase
     [Inject] private IWebHostEnvironment Env { get; set; } = default!;
 
     private string _activeTab = "family";
+    private bool _loaded;
+
+    /// <summary>Separates "still loading" from "this login has no member record". Without it, a
+    /// login that is not linked to a Member -- the built-in setup account, for one -- sat on the
+    /// loading message for ever, which reads as a page that never finishes loading.</summary>
     private Member? _effectiveMember;
 
     private readonly List<FamilyMember> _familyMembers = [];
@@ -52,7 +57,11 @@ public partial class MyWorkspace : ComponentBase
         (RelativeRelationship.Stepchildren, "Stepchildren"),
     ];
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        try { await LoadAsync(); }
+        finally { _loaded = true; }
+    }
 
     private async Task LoadAsync()
     {

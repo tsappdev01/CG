@@ -1,163 +1,262 @@
-﻿@page "/Account/Manage"
+@page "/Account/Manage"
 
-@using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
 @using CGTOOL.Web.Data
+@using CGTOOL.Web.Data.Governance
 
 @inject UserManager<ApplicationUser> UserManager
-@inject SignInManager<ApplicationUser> SignInManager
 @inject IdentityUserAccessor UserAccessor
-@inject IdentityRedirectManager RedirectManager
-@inject ILogger<Index> Logger
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject IConfiguration Configuration
 
 <PageTitle>Profile</PageTitle>
 
-<h3>Profile</h3>
-<StatusMessage />
+<div class="cg-shell cg-shell-full cg-account">
+    <div class="cg-account-head">
+        <div>
+            <h1>Manage your account</h1>
+            <p class="cg-subtitle">View and manage your profile and sign-in &amp; security settings.</p>
+        </div>
+        <div class="cg-account-chips">
+            @if (_isSingleSignOn)
+            {
+                <span class="cg-chip">
+                    <span class="cg-chip-ico cg-ico-ms" aria-hidden="true"></span>
+                    SSO
+                    <span class="cg-chip-check" aria-hidden="true"></span>
+                </span>
+                <span class="cg-chip">
+                    <span class="cg-chip-ico cg-ico-shield-blue" aria-hidden="true"></span>
+                    Organization-managed account
+                </span>
+            }
+            else
+            {
+                <span class="cg-chip">
+                    <span class="cg-chip-ico cg-ico-key" aria-hidden="true"></span>
+                    Password sign-in
+                </span>
+            }
+        </div>
+    </div>
 
-<div class="row">
-    <div class="col-md-6">
-        <EditForm Model="ProfileInput" FormName="profile" OnValidSubmit="OnValidSubmitProfileAsync" method="post">
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <input type="text" value="@username" class="form-control" placeholder="Please choose your username." disabled />
-                <label for="username" class="form-label">Username</label>
+    <StatusMessage />
+
+    <div class="cg-account-grid">
+        <section class="cg-card cg-account-card">
+            <div class="cg-account-card-head">
+                <h2>Profile</h2>
+                @* Profile details are owned by Entra ID and refreshed by the directory sync, so there
+                   is nothing to edit here -- the button is kept for continuity and disabled. *@
+                <button type="button" class="cg-action-btn cg-good cg-btn-edit" disabled
+                        title="Your profile is managed in Entra ID and cannot be edited here">
+                    Edit Profile
+                </button>
             </div>
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="ProfileInput.PhoneNumber" class="form-control" placeholder="Please enter your phone number." />
-                <label for="phone-number" class="form-label">Phone number</label>
-                <ValidationMessage For="() => ProfileInput.PhoneNumber" class="text-danger" />
+
+            <div class="cg-account-identity">
+                @if (!string.IsNullOrEmpty(_picturePath))
+                {
+                    <img src="@_picturePath" alt="" class="cg-account-avatar" />
+                }
+                else
+                {
+                    <span class="cg-account-avatar cg-account-avatar-initials">@Initials(_displayName ?? _userName)</span>
+                }
+                <div class="cg-account-identity-fields">
+                    <div class="cg-account-field">
+                        <span class="cg-account-label">Username</span>
+                        <span class="cg-account-value">@_userName</span>
+                    </div>
+                    <div class="cg-account-field">
+                        <span class="cg-account-label">Display name</span>
+                        <span class="cg-account-value">@(_displayName ?? "—")</span>
+                    </div>
+                </div>
             </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Save</button>
-        </EditForm>
+
+            <div class="cg-account-row cg-account-row-split">
+                <div class="cg-account-detail">
+                    <span class="cg-account-ico cg-ico-phone" aria-hidden="true"></span>
+                    <div>
+                        <span class="cg-account-label">Phone number</span>
+                        <span class="cg-account-value">@(string.IsNullOrWhiteSpace(_phoneNumber) ? "—" : _phoneNumber)</span>
+                    </div>
+                </div>
+                <div class="cg-account-detail">
+                    <span class="cg-account-ico cg-ico-case" aria-hidden="true"></span>
+                    <div>
+                        <span class="cg-account-label">Department</span>
+                        <span class="cg-account-value">@(_department ?? "—")</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cg-account-row">
+                <div class="cg-account-detail">
+                    <span class="cg-account-ico cg-ico-case" aria-hidden="true"></span>
+                    <div>
+                        <span class="cg-account-label">Job title</span>
+                        <span class="cg-account-value">@(_jobTitle ?? "—")</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="cg-card cg-account-card">
+            <div class="cg-account-card-head">
+                <h2><span class="cg-account-head-ico cg-ico-shield-blue" aria-hidden="true"></span> Sign-in &amp; Security</h2>
+            </div>
+
+            <dl class="cg-account-security">
+                <div class="cg-account-secrow">
+                    <span class="cg-account-ico cg-ico-link" aria-hidden="true"></span>
+                    <dt>Authentication method</dt>
+                    <dd>@(_isSingleSignOn ? "Single Sign-On (SSO)" : "Password")</dd>
+                </div>
+                <div class="cg-account-secrow">
+                    <span class="cg-account-ico cg-ico-entra" aria-hidden="true"></span>
+                    <dt>Identity Provider</dt>
+                    <dd>@(_isSingleSignOn ? "Microsoft Entra ID" : "This application")</dd>
+                </div>
+                <div class="cg-account-secrow">
+                    <span class="cg-account-ico cg-ico-person-check" aria-hidden="true"></span>
+                    <dt>Account status</dt>
+                    <dd>
+                        <span class="cg-account-status @(_isActive ? "on" : "off")">
+                            <span class="cg-account-status-dot" aria-hidden="true"></span>
+                            @(_isActive ? "Active" : "Deactivated")
+                        </span>
+                    </dd>
+                </div>
+                <div class="cg-account-secrow">
+                    <span class="cg-account-ico cg-ico-mfa" aria-hidden="true"></span>
+                    <dt>MFA</dt>
+                    <dd>
+                        @if (_isSingleSignOn)
+                        {
+                            <span class="cg-account-ico-inline cg-ico-shield-grey" aria-hidden="true"></span>
+                            <span>Managed by your organization</span>
+                        }
+                        else
+                        {
+                            <span>@(_twoFactorEnabled ? "Enabled" : "Not enabled")</span>
+                        }
+                    </dd>
+                </div>
+                <div class="cg-account-secrow">
+                    <span class="cg-account-ico cg-ico-clock" aria-hidden="true"></span>
+                    <dt>Last sign-in</dt>
+                    <dd>@_lastSignIn</dd>
+                </div>
+            </dl>
+
+            <div class="cg-info-callout cg-account-note">
+                @if (_isSingleSignOn)
+                {
+                    <span>
+                        Your password and MFA are managed by your organization. To update authentication
+                        settings, use your organization's Microsoft Entra account.
+                    </span>
+                }
+                else
+                {
+                    <span>
+                        This account signs in with a password held by the application rather than through
+                        Entra ID. Once users are loaded from Entra ID, sign-in moves to single sign-on.
+                    </span>
+                }
+            </div>
+
+            <div class="cg-account-actions">
+                @if (_isSingleSignOn)
+                {
+                    <a class="cg-action-btn cg-btn-external" href="@_signInActivityUrl" target="_blank" rel="noopener">
+                        View sign-in activity
+                    </a>
+                }
+                else
+                {
+                    @* Without this the setup account would have no way to change its own password,
+                       since the Entra link does not apply to it. *@
+                    <a class="cg-action-btn" href="Account/Manage/ChangePassword">Change password</a>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_supportContact))
+                {
+                    <a class="cg-account-support" href="@_supportContact">
+                        <span class="cg-account-ico-inline cg-ico-help" aria-hidden="true"></span>
+                        Contact IT Support
+                    </a>
+                }
+            </div>
+        </section>
     </div>
 </div>
 
-@if (!hasPassword)
-{
-    <h3 class="mt-4">Password</h3>
-    <p class="text-info">
-        You do not have a local username/password for this site. <a href="Account/Manage/SetPassword">Add a local password</a> so you can log in without an external login.
-    </p>
-}
-else
-{
-    <h3 class="mt-4">Change password</h3>
-    <div class="row">
-        <div class="col-md-6">
-            <EditForm Model="PasswordInput" FormName="change-password" OnValidSubmit="OnValidSubmitPasswordAsync" method="post">
-                <DataAnnotationsValidator />
-                <ValidationSummary class="text-danger" role="alert" />
-                <div class="form-floating mb-3">
-                    <InputText type="password" @bind-Value="PasswordInput.OldPassword" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Please enter your old password." />
-                    <label for="old-password" class="form-label">Old password</label>
-                    <ValidationMessage For="() => PasswordInput.OldPassword" class="text-danger" />
-                </div>
-                <div class="form-floating mb-3">
-                    <InputText type="password" @bind-Value="PasswordInput.NewPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="Please enter your new password." />
-                    <label for="new-password" class="form-label">New password</label>
-                    <ValidationMessage For="() => PasswordInput.NewPassword" class="text-danger" />
-                </div>
-                <div class="form-floating mb-3">
-                    <InputText type="password" @bind-Value="PasswordInput.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="Please confirm your new password." />
-                    <label for="confirm-password" class="form-label">Confirm password</label>
-                    <ValidationMessage For="() => PasswordInput.ConfirmPassword" class="text-danger" />
-                </div>
-                <button type="submit" class="w-100 btn btn-lg btn-primary">Update password</button>
-            </EditForm>
-        </div>
-    </div>
-}
-
 @code {
-    private ApplicationUser user = default!;
-    private string? username;
-    private string? phoneNumber;
-    private bool hasPassword;
+    private const string DefaultSignInActivityUrl = "https://mysignins.microsoft.com/";
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
 
-    [SupplyParameterFromForm(FormName = "profile")]
-    private ProfileInputModel ProfileInput { get; set; } = new();
-
-    [SupplyParameterFromForm(FormName = "change-password")]
-    private PasswordInputModel PasswordInput { get; set; } = new();
+    private string? _userName;
+    private string? _displayName;
+    private string? _phoneNumber;
+    private string? _department;
+    private string? _jobTitle;
+    private string? _picturePath;
+    private bool _isSingleSignOn;
+    private bool _isActive;
+    private bool _twoFactorEnabled;
+    private string _lastSignIn = "—";
+    private string? _signInActivityUrl;
+    private string? _supportContact;
 
     protected override async Task OnInitializedAsync()
     {
-        user = await UserAccessor.GetRequiredUserAsync(HttpContext);
-        username = await UserManager.GetUserNameAsync(user);
-        phoneNumber = await UserManager.GetPhoneNumberAsync(user);
-        hasPassword = await UserManager.HasPasswordAsync(user);
+        var user = await UserAccessor.GetRequiredUserAsync(HttpContext);
 
-        ProfileInput.PhoneNumber ??= phoneNumber;
+        _userName = await UserManager.GetUserNameAsync(user);
+        _phoneNumber = await UserManager.GetPhoneNumberAsync(user);
+        _picturePath = string.IsNullOrEmpty(user.ProfilePicturePath)
+            ? null
+            : $"{user.ProfilePicturePath}?v={DateTime.UtcNow.Ticks}";
+
+        // An account with an external login signs in through Entra; the setup account does not.
+        _isSingleSignOn = (await UserManager.GetLoginsAsync(user)).Count > 0;
+        _isActive = !await UserManager.IsLockedOutAsync(user);
+        _twoFactorEnabled = await UserManager.GetTwoFactorEnabledAsync(user);
+
+        _lastSignIn = user.LastSignInUtc is { } at
+            ? $"{at.ToLocalDisplay("MMM d, yyyy, h:mm tt")} ({TimeZoneInfo.Local.StandardName})"
+            : "—";
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var member = await db.Members
+            .Include(m => m.Department)
+            .FirstOrDefaultAsync(m => m.ApplicationUserId == user.Id);
+
+        _displayName = member?.FullName;
+        _department = member?.Department?.Name;
+        _jobTitle = member?.JobTitle;
+
+        _signInActivityUrl = Configuration["Support:SignInActivityUrl"] is { Length: > 0 } url
+            ? url
+            : DefaultSignInActivityUrl;
+
+        // Rendered only when a deployment has said where support requests go.
+        var support = Configuration["Support:Email"];
+        _supportContact = string.IsNullOrWhiteSpace(support) ? null : $"mailto:{support}";
     }
 
-    private async Task OnValidSubmitProfileAsync()
+    private static string Initials(string? name)
     {
-        if (ProfileInput.PhoneNumber != phoneNumber)
-        {
-            var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, ProfileInput.PhoneNumber);
-            if (!setPhoneResult.Succeeded)
-            {
-                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set phone number.", HttpContext);
-            }
-        }
-
-        await SignInManager.RefreshSignInAsync(user);
-        RedirectManager.RedirectToCurrentPageWithStatus("Your profile has been updated", HttpContext);
-    }
-
-    // Mirrors ChangePassword.razor's own logic -- that page is kept as-is (still reachable directly,
-    // and is where SetPassword.razor redirects an external-login-only user after they set their first
-    // password), this is just the same capability folded into the merged Profile page.
-    private async Task OnValidSubmitPasswordAsync()
-    {
-        if (!hasPassword)
-        {
-            RedirectManager.RedirectTo("Account/Manage/SetPassword");
-            return;
-        }
-
-        var changePasswordResult = await UserManager.ChangePasswordAsync(user, PasswordInput.OldPassword, PasswordInput.NewPassword);
-        if (!changePasswordResult.Succeeded)
-        {
-            RedirectManager.RedirectToCurrentPageWithStatus(
-                $"Error: {string.Join(",", changePasswordResult.Errors.Select(error => error.Description))}", HttpContext);
-            return;
-        }
-
-        await SignInManager.RefreshSignInAsync(user);
-        Logger.LogInformation("User changed their password successfully.");
-
-        RedirectManager.RedirectToCurrentPageWithStatus("Your password has been changed", HttpContext);
-    }
-
-    private sealed class ProfileInputModel
-    {
-        [Phone]
-        [Display(Name = "Phone number")]
-        public string? PhoneNumber { get; set; }
-    }
-
-    private sealed class PasswordInputModel
-    {
-        [Required]
-        [DataType(DataType.Password)]
-        [Display(Name = "Current password")]
-        public string OldPassword { get; set; } = "";
-
-        [Required]
-        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
-        [DataType(DataType.Password)]
-        [Display(Name = "New password")]
-        public string NewPassword { get; set; } = "";
-
-        [DataType(DataType.Password)]
-        [Display(Name = "Confirm new password")]
-        [Compare("NewPassword", ErrorMessage = "The new password and confirmation password do not match.")]
-        public string ConfirmPassword { get; set; } = "";
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split([' ', '.', ',', '@'], StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return "?";
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return (parts[0][..1] + parts[1][..1]).ToUpperInvariant();
     }
 }

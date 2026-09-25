@@ -14,5 +14,10 @@ public class ApplicationUser : IdentityUser
     /// cannot orphan it, and so nothing else can impersonate the bootstrap identity by taking that
     /// name. It is retired the moment a real administrator exists.</summary>
     public bool IsDefaultAdmin { get; set; }
+
+    /// <summary>When this account last signed in successfully, stamped by both sign-in paths (the
+    /// Entra ID callback and the setup account's password form). Identity does not record this, and
+    /// the profile page shows it.</summary>
+    public DateTime? LastSignInUtc { get; set; }
 }
 

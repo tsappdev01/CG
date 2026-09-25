@@ -33,6 +33,36 @@
 */
 
 /*
+    Schema guard -- the first thing this file runs.
+
+    Two things have to be true before any of this deploys: the connection has to be on the CGTOOL
+    database, and that database's schema has to be current. Neither fails loudly on its own.
+    SQL Server resolves column names when a procedure is created (unlike table names, which it
+    resolves lazily), so deploying against a database whose schema is behind the application gives
+    a run of "Invalid column name" errors -- one per column, per procedure -- while every other
+    procedure deploys happily, leaving a database that looks deployed and is quietly missing the
+    procedures that matter.
+
+    So: migrations first. Start the application once against the database (it calls
+    Database.Migrate at startup), or run `dotnet ef database update`, and then run this file.
+
+    The check looks for the newest columns this file depends on. If they are missing it says so
+    once and switches execution off for the rest of the script, so nothing is half-applied.
+*/
+IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
+    OR COL_LENGTH('dbo.FamilyMembers', 'IdentificationNumber') IS NULL
+    OR COL_LENGTH('dbo.FamilyMembers', 'InterestType') IS NULL
+BEGIN
+    -- RAISERROR substitutes constants and variables only, never a function call.
+    DECLARE @db varchar(128) = DB_NAME();
+    RAISERROR(
+        'Not deploying: dbo.FamilyMembers in database [%s] does not have the related-party columns these procedures write to. Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        16, 1, @db) WITH NOWAIT;
+    SET NOEXEC ON;
+END
+GO
+
+/*
     These two must be set before any procedure is created. SQL Server captures them with the
     procedure, and a procedure created with QUOTED_IDENTIFIER OFF fails at runtime on any table
     that has a filtered index -- Members has several -- with:
@@ -45,10 +75,6 @@
 */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
-GO
-
-
-USE [CGS];
 GO
 
 -- =========================== Company ===========================
@@ -1627,4 +1653,11 @@ BEGIN
     SET NOCOUNT ON;
     DELETE FROM dbo.OwnedCompanies WHERE Id = @Id;
 END
+GO
+
+/*
+    Clears the guard above. Reached normally on a successful run; on a guarded run this is the
+    only batch after the guard that does anything.
+*/
+SET NOEXEC OFF;
 GO

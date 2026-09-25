@@ -283,6 +283,20 @@ uses `CREATE OR ALTER`):
 sqlcmd -S UATWEB01 -d CGS -i scripts/stored-procedures.sql
 ```
 
+**Migrations first, then this script.** The procedures name columns, and SQL Server resolves
+column names when a procedure is created — unlike table names, which it resolves lazily. Deploy
+against a database whose schema is behind the application and you get a run of
+`Invalid column name` errors, one per column per procedure, while every other procedure in the
+file deploys happily: a database that looks deployed and is quietly missing the procedures that
+matter. So add the columns first — start the app once against the database (it calls
+`Database.Migrate` at startup) or run `dotnet ef database update` — and then run the script.
+
+The script guards against this itself. If the schema is behind, or `-d` pointed at the wrong
+database, it says so once and deploys nothing at all rather than leaving a half-applied set.
+The guard checks the newest columns the file depends on, so **extend it when a migration adds a
+column a procedure writes to** — otherwise the next person to deploy in the wrong order gets the
+old confusing failure back.
+
 The script begins by setting `ANSI_NULLS` and `QUOTED_IDENTIFIER` ON, and it has to. SQL
 Server captures those settings with each procedure at creation time, and a procedure created
 with `QUOTED_IDENTIFIER OFF` fails at runtime on any table carrying a filtered index —
@@ -296,6 +310,10 @@ SSMS connects with it ON, but **sqlcmd defaults it OFF**, so running this file w
 SET statements produced procedures that looked deployed and then failed the first time anyone
 saved a user. Do not remove them, and do not split the file in a way that leaves a
 `CREATE OR ALTER` in a session that has not run them.
+
+The file deploys into whichever database the connection is on, so `-d` above is load-bearing.
+It used to carry a hardcoded `USE [CGS]`, which ignored `-d` and sent every deploy to that one
+database name regardless of what was asked for; that is gone. In SSMS, pick the database first.
 
 ## Run
 

@@ -33,6 +33,7 @@ public static class NavMenuCatalog
         new("AdminPanel.AuditLogs", "Audit Logs", "AdminPanel"),
 
         new("AdminPanel.AuditLogs.Daily", "Daily Logs", "AdminPanel.AuditLogs"),
+        new("AdminPanel.AuditLogs.Detailed", "Detailed Log", "AdminPanel.AuditLogs"),
         new("AdminPanel.AuditLogs.Periodic", "Periodic Review by Date filter", "AdminPanel.AuditLogs"),
 
         new("DeclarationSetup.InsiderTrading", "Insider Trading", "DeclarationSetup"),

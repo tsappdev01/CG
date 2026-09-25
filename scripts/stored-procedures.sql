@@ -52,11 +52,13 @@
 IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'IdentificationNumber') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'InterestType') IS NULL
+    OR COL_LENGTH('dbo.AuditLogEntries', 'RecordHash') IS NULL
+    OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
 BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
     RAISERROR(
-        'Not deploying: dbo.FamilyMembers in database [%s] does not have the related-party columns these procedures write to. Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party columns, AuditLogEntries.RecordHash, AuditLogReviews). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
         16, 1, @db) WITH NOWAIT;
     SET NOEXEC ON;
 END
@@ -554,6 +556,68 @@ GO
 
 -- =========================== AuditLogEntry ===========================
 
+/*
+    ===========================================================================
+    Audit log tamper evidence
+    ===========================================================================
+
+    One definition of the hash, used by the insert, the backfill and the verify. It is here rather
+    than in C# on purpose: if sealing and checking were written twice, a difference in how a null
+    or a date was rendered would make a perfectly sound chain report as broken, which is worse than
+    no check at all.
+
+    Every field is coerced to a string, nulls become empty, and the parts are joined with a
+    character that cannot appear in a hash. The previous row's hash is part of the payload, which
+    is what makes it a chain rather than a set of independent checksums.
+*/
+CREATE OR ALTER FUNCTION dbo.fn_AuditLogGenesisHash()
+RETURNS char(64)
+AS
+BEGIN
+    -- The first row has no predecessor; this fixed value stands in for one.
+    RETURN REPLICATE('0', 64);
+END
+GO
+
+CREATE OR ALTER FUNCTION dbo.fn_AuditLogRecordHash(
+    @Sequence bigint,
+    @OccurredAtUtc datetime2(7),
+    @ActorDisplayName nvarchar(160),
+    @ActingOnBehalfOf nvarchar(160),
+    @Action int,
+    @EntityType nvarchar(80),
+    @EntityId nvarchar(80),
+    @Details nvarchar(2000),
+    @Justification nvarchar(1000),
+    @IpAddress nvarchar(64),
+    @UserAgent nvarchar(400),
+    @PreviousHash char(64))
+RETURNS char(64)
+AS
+BEGIN
+    /*
+        CONCAT_WS drops nulls rather than emitting an empty part, which would shift every later
+        field along and make two different rows hash alike -- hence ISNULL on every nullable one.
+        Dates use ISO 8601 (style 126) so the value does not depend on server language settings.
+    */
+    DECLARE @payload nvarchar(max) = CONCAT_WS(NCHAR(31),
+        CONVERT(nvarchar(20), @Sequence),
+        CONVERT(nvarchar(33), @OccurredAtUtc, 126),
+        ISNULL(@ActorDisplayName, N''),
+        ISNULL(@ActingOnBehalfOf, N''),
+        CONVERT(nvarchar(11), @Action),
+        ISNULL(@EntityType, N''),
+        ISNULL(@EntityId, N''),
+        ISNULL(@Details, N''),
+        ISNULL(@Justification, N''),
+        ISNULL(@IpAddress, N''),
+        ISNULL(@UserAgent, N''),
+        ISNULL(@PreviousHash, N''));
+
+    RETURN CONVERT(char(64), HASHBYTES('SHA2_256', @payload), 2);
+END
+GO
+
 CREATE OR ALTER PROCEDURE dbo.usp_AuditLogEntry_Insert
     @ActorDisplayName nvarchar(160),
     @ActingOnBehalfOf nvarchar(160) = NULL,
@@ -569,12 +633,159 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    DECLARE @OccurredAtUtc datetime2(7) = SYSUTCDATETIME();
+    DECLARE @Sequence bigint, @PreviousHash char(64), @RecordHash char(64);
+
+    /*
+        The sequence and the previous hash have to be read and used without anyone else getting in
+        between, or two concurrent writes seal themselves onto the same predecessor and the chain
+        forks. An application lock is held for the length of the transaction, which is short.
+    */
+    BEGIN TRANSACTION;
+
+    EXEC sp_getapplock @Resource = 'dbo.AuditLogEntries.Chain', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 15000;
+
+    SELECT TOP (1) @Sequence = Sequence, @PreviousHash = RecordHash
+    FROM   dbo.AuditLogEntries
+    WHERE  Sequence IS NOT NULL
+    ORDER BY Sequence DESC;
+
+    SET @Sequence = ISNULL(@Sequence, 0) + 1;
+    SET @PreviousHash = ISNULL(@PreviousHash, dbo.fn_AuditLogGenesisHash());
+
+    SET @RecordHash = dbo.fn_AuditLogRecordHash(
+        @Sequence, @OccurredAtUtc, @ActorDisplayName, @ActingOnBehalfOf, @Action,
+        @EntityType, @EntityId, @Details, @Justification, @IpAddress, @UserAgent, @PreviousHash);
+
     INSERT INTO dbo.AuditLogEntries
-        (ActorDisplayName, ActingOnBehalfOf, Action, EntityType, EntityId, Details, Justification, IpAddress, UserAgent, OccurredAtUtc)
+        (ActorDisplayName, ActingOnBehalfOf, Action, EntityType, EntityId, Details, Justification, IpAddress, UserAgent, OccurredAtUtc,
+         Sequence, PreviousHash, RecordHash)
     VALUES
-        (@ActorDisplayName, @ActingOnBehalfOf, @Action, @EntityType, @EntityId, @Details, @Justification, @IpAddress, @UserAgent, SYSUTCDATETIME());
+        (@ActorDisplayName, @ActingOnBehalfOf, @Action, @EntityType, @EntityId, @Details, @Justification, @IpAddress, @UserAgent, @OccurredAtUtc,
+         @Sequence, @PreviousHash, @RecordHash);
 
     SET @NewId = SCOPE_IDENTITY();
+
+    COMMIT TRANSACTION;
+END
+GO
+
+/*
+    Seals rows written before the chain existed, in Id order, and is safe to run again -- it only
+    touches rows that have no sequence yet. Those rows are protected from the moment this runs and
+    not before, which is the honest limit of retrofitting tamper evidence.
+*/
+CREATE OR ALTER PROCEDURE dbo.usp_AuditLog_BackfillChain
+    @Sealed int OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @Sealed = 0;
+
+    BEGIN TRANSACTION;
+    EXEC sp_getapplock @Resource = 'dbo.AuditLogEntries.Chain', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 60000;
+
+    DECLARE @Sequence bigint, @PreviousHash char(64);
+
+    SELECT TOP (1) @Sequence = Sequence, @PreviousHash = RecordHash
+    FROM   dbo.AuditLogEntries WHERE Sequence IS NOT NULL ORDER BY Sequence DESC;
+
+    SET @Sequence = ISNULL(@Sequence, 0);
+    SET @PreviousHash = ISNULL(@PreviousHash, dbo.fn_AuditLogGenesisHash());
+
+    DECLARE @Id int, @OccurredAtUtc datetime2(7), @Actor nvarchar(160), @OnBehalf nvarchar(160),
+            @Action int, @EntityType nvarchar(80), @EntityId nvarchar(80), @Details nvarchar(2000),
+            @Justification nvarchar(1000), @Ip nvarchar(64), @Agent nvarchar(400), @Hash char(64);
+
+    DECLARE unsealed CURSOR LOCAL FAST_FORWARD FOR
+        SELECT Id, OccurredAtUtc, ActorDisplayName, ActingOnBehalfOf, Action, EntityType, EntityId,
+               Details, Justification, IpAddress, UserAgent
+        FROM   dbo.AuditLogEntries WHERE Sequence IS NULL ORDER BY Id;
+
+    OPEN unsealed;
+    FETCH NEXT FROM unsealed INTO @Id, @OccurredAtUtc, @Actor, @OnBehalf, @Action, @EntityType, @EntityId, @Details, @Justification, @Ip, @Agent;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @Sequence = @Sequence + 1;
+        SET @Hash = dbo.fn_AuditLogRecordHash(@Sequence, @OccurredAtUtc, @Actor, @OnBehalf, @Action,
+                                              @EntityType, @EntityId, @Details, @Justification, @Ip, @Agent, @PreviousHash);
+
+        UPDATE dbo.AuditLogEntries
+        SET    Sequence = @Sequence, PreviousHash = @PreviousHash, RecordHash = @Hash
+        WHERE  Id = @Id;
+
+        SET @PreviousHash = @Hash;
+        SET @Sealed = @Sealed + 1;
+
+        FETCH NEXT FROM unsealed INTO @Id, @OccurredAtUtc, @Actor, @OnBehalf, @Action, @EntityType, @EntityId, @Details, @Justification, @Ip, @Agent;
+    END
+
+    CLOSE unsealed;
+    DEALLOCATE unsealed;
+
+    COMMIT TRANSACTION;
+END
+GO
+
+/*
+    Re-seals every row from its own stored fields and compares. A row whose contents were changed
+    fails on its own hash; a row that was removed shows as a gap in the sequence; a row whose
+    predecessor changed fails on the link. Returns one row per problem, empty when the chain is
+    sound.
+*/
+CREATE OR ALTER PROCEDURE dbo.usp_AuditLog_Verify
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    WITH chained AS (
+        SELECT Id, Sequence, PreviousHash, RecordHash,
+               dbo.fn_AuditLogRecordHash(Sequence, OccurredAtUtc, ActorDisplayName, ActingOnBehalfOf,
+                                         Action, EntityType, EntityId, Details, Justification,
+                                         IpAddress, UserAgent, PreviousHash) AS Recomputed,
+               LAG(RecordHash) OVER (ORDER BY Sequence) AS ActualPrevious,
+               LAG(Sequence)   OVER (ORDER BY Sequence) AS PreviousSequence
+        FROM   dbo.AuditLogEntries
+        WHERE  Sequence IS NOT NULL)
+    SELECT Id,
+           Sequence,
+           CASE
+               WHEN RecordHash <> Recomputed THEN 'Contents do not match the seal on this record.'
+               WHEN PreviousSequence IS NOT NULL AND Sequence <> PreviousSequence + 1
+                    THEN CONCAT('Sequence jumps from ', PreviousSequence, ' to ', Sequence, ' -- record(s) removed.')
+               WHEN ActualPrevious IS NULL AND PreviousHash <> dbo.fn_AuditLogGenesisHash()
+                    THEN 'First record does not start the chain.'
+               WHEN ActualPrevious IS NOT NULL AND PreviousHash <> ActualPrevious
+                    THEN 'Link to the previous record is broken.'
+           END AS Problem
+    FROM   chained
+    WHERE  RecordHash <> Recomputed
+       OR (PreviousSequence IS NOT NULL AND Sequence <> PreviousSequence + 1)
+       OR (ActualPrevious IS NULL AND PreviousHash <> dbo.fn_AuditLogGenesisHash())
+       OR (ActualPrevious IS NOT NULL AND PreviousHash <> ActualPrevious)
+    ORDER BY Sequence;
+END
+GO
+
+-- A reviewer's sign-off. One per entry: signing off again replaces the previous assertion rather
+-- than stacking, so "who last looked at this" has a single answer.
+CREATE OR ALTER PROCEDURE dbo.usp_AuditLogReview_Upsert
+    @AuditLogEntryId int,
+    @ReviewerName nvarchar(160),
+    @Outcome int,
+    @Comment nvarchar(1000)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.AuditLogReviews
+    SET    ReviewerName = @ReviewerName, Outcome = @Outcome, Comment = @Comment, ReviewedAtUtc = SYSUTCDATETIME()
+    WHERE  AuditLogEntryId = @AuditLogEntryId;
+
+    IF @@ROWCOUNT = 0
+        INSERT INTO dbo.AuditLogReviews (AuditLogEntryId, ReviewerName, Outcome, Comment, ReviewedAtUtc)
+        VALUES (@AuditLogEntryId, @ReviewerName, @Outcome, @Comment, SYSUTCDATETIME());
 END
 GO
 

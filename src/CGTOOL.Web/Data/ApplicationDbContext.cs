@@ -33,6 +33,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<NavMenuItemOrder> NavMenuItemOrders => Set<NavMenuItemOrder>();
     public DbSet<NavMenuItemLabel> NavMenuItemLabels => Set<NavMenuItemLabel>();
     public DbSet<NavMenuItemVisibility> NavMenuItemVisibilities => Set<NavMenuItemVisibility>();
+    public DbSet<AuditLogReview> AuditLogReviews => Set<AuditLogReview>();
     public DbSet<ShareholderRegisterUpload> ShareholderRegisterUploads => Set<ShareholderRegisterUpload>();
     public DbSet<ShareholderRecord> ShareholderRecords => Set<ShareholderRecord>();
     public DbSet<ShareTradingUpload> ShareTradingUploads => Set<ShareTradingUpload>();
@@ -61,6 +62,18 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<NavMenuItemVisibility>()
             .HasIndex(n => n.ItemKey)
+            .IsUnique();
+
+        // The chain is only a chain if positions are unique. Filtered, because rows the backfill
+        // has not reached yet have none.
+        builder.Entity<AuditLogEntry>()
+            .HasIndex(a => a.Sequence)
+            .IsUnique()
+            .HasFilter("[Sequence] IS NOT NULL");
+
+        // One sign-off per entry -- a second reviewer replaces the first rather than stacking.
+        builder.Entity<AuditLogReview>()
+            .HasIndex(r => r.AuditLogEntryId)
             .IsUnique();
 
         builder.Entity<Company>()

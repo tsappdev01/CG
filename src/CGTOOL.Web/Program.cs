@@ -105,6 +105,8 @@ builder.Services.AddScoped<INavMenuItemOrderWriter, NavMenuItemOrderWriter>();
 builder.Services.AddScoped<INavMenuItemLabelWriter, NavMenuItemLabelWriter>();
 builder.Services.AddScoped<INavMenuItemVisibilityWriter, NavMenuItemVisibilityWriter>();
 builder.Services.AddScoped<IDirectoryImporter, DirectoryImporter>();
+builder.Services.AddScoped<IAuditLogIntegrity, AuditLogIntegrity>();
+builder.Services.AddScoped<IAuditLogReviewWriter, AuditLogReviewWriter>();
 builder.Services.AddScoped<NavMenuStateNotifier>();
 builder.Services.AddScoped<IShareholderRegisterWriter, ShareholderRegisterWriter>();
 builder.Services.AddScoped<IShareTradingWriter, ShareTradingWriter>();

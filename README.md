@@ -328,6 +328,35 @@ It creates **no business records** — no companies, departments, members or
 transactions. The sample data described under **Demo data** below is off unless
 `Seed:DemoData` is turned on.
 
+## The audit log is tamper-evident
+
+Every audit row is sealed with a SHA-256 over its own fields **and the previous row's hash**, so
+the log is a chain rather than a list. Altering a row breaks its own seal; altering a row and
+re-sealing it breaks the next row's link; removing a row leaves a gap in the sequence. All three
+are found by **Verify integrity** on Admin Panel → Audit Logs → Detailed Log, which names the
+records involved.
+
+The seal and the check are both in SQL (`fn_AuditLogRecordHash`, `usp_AuditLogEntry_Insert`,
+`usp_AuditLog_Verify`) and share one definition of the payload. That is deliberate: written twice,
+a difference in how C# and T-SQL render a null or a date would report a perfectly sound chain as
+broken, which is worse than not checking at all. The sequence and previous hash are taken under an
+application lock inside the insert, so two concurrent writes cannot claim the same position.
+
+**What it does and does not prove.** It shows the rows have not been changed since they were
+written. It is not a defence against someone who can rewrite the whole chain — an attacker with
+`db_owner` could re-seal every row from the tampered one onwards. Detecting that needs the head
+hash published somewhere the database cannot reach; the chain is what makes such a publication
+worth anything, but it is not itself that. Rows written before the chain existed are sealed by
+`usp_AuditLog_BackfillChain` (run automatically by Verify integrity) and are therefore protected
+from that moment onwards and not before.
+
+Risk, area and control exceptions are derived from what was recorded rather than stored alongside
+it, so a change of policy is a change of code and not a migration plus a rewrite of history. A
+control that was not being checked when an event happened still surfaces against it now.
+
+Review sign-off lives in its own table. The entry is append-only and sealed; writing a review into
+it would break the chain, and a review is a later assertion about an event rather than part of it.
+
 ## Screen lock on inactivity
 
 After a period with no keyboard, mouse or touch activity the screen locks, and the signed-in

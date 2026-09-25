@@ -1,0 +1,326 @@
+@page "/admin/audit-log/detailed"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject IAuditLogIntegrity Integrity
+@inject IAuditLogReviewWriter ReviewWriter
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toasts
+@inject IJSRuntime JS
+
+<PageTitle>Audit log — detailed</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <div class="cg-audit-head">
+        <div>
+            <h1 data-icon="shield">Audit log — detailed</h1>
+            <p class="cg-subtitle">Who did what, to which record, when, from where, why, and who approved it. Tamper-evident and retained for SCA, ITGC and ITSC audit.</p>
+        </div>
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn" disabled="@_verifying" @onclick="VerifyAsync">
+                @(_verifying ? "Verifying…" : "Verify integrity")
+            </button>
+            <button type="button" class="cg-action-btn cg-good" @onclick="ExportAsync">Export evidence pack</button>
+        </div>
+    </div>
+
+    @* The integrity strip states only what was actually checked. It says "not verified" until the
+       check has run, rather than implying a guarantee nobody asked for. *@
+    <div class="cg-audit-chips">
+        @if (_chain is null)
+        {
+            <span class="cg-audit-chip">Chain not checked yet</span>
+        }
+        else if (_chain.Verified)
+        {
+            <span class="cg-audit-chip ok">✓ Hash chain verified · seq @(_chain.FirstSequence.GetValueOrDefault().ToString("000000"))-@(_chain.LastSequence.GetValueOrDefault().ToString("000000")) · @_chain.Gaps gaps</span>
+        }
+        else if (_chain.Problems.Count > 0)
+        {
+            <span class="cg-audit-chip bad">✗ Chain broken · @_chain.Problems.Count problem(s) · @_chain.Gaps gap(s)</span>
+        }
+        else if (_chain.Unsealed > 0)
+        {
+            <span class="cg-audit-chip warn">@_chain.Unsealed record(s) not yet sealed — run Verify integrity</span>
+        }
+        else
+        {
+            <span class="cg-audit-chip">No records to verify</span>
+        }
+
+        <span class="cg-audit-chip">Storage: append-only (no update or delete path in the application)</span>
+        <span class="cg-audit-chip">Retention: per SCA policy</span>
+    </div>
+
+    @if (_chain is { Problems.Count: > 0 })
+    {
+        <div class="cg-audit-alarm">
+            <b>The audit log has been altered.</b>
+            <ul>
+                @foreach (var problem in _chain.Problems.Take(10))
+                {
+                    <li>@EventRefFor(problem.Sequence) — @problem.Problem</li>
+                }
+            </ul>
+            @if (_chain.Problems.Count > 10)
+            {
+                <p class="cg-subtitle">…and @(_chain.Problems.Count - 10) more.</p>
+            }
+        </div>
+    }
+
+    @if (_entries is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-audit-kpis">
+            <div class="cg-audit-kpi"><span>Events in range</span><b>@_entries.Count</b></div>
+            <div class="cg-audit-kpi"><span>Privileged actions</span><b>@_entries.Count(IsPrivileged)</b></div>
+            <div class="cg-audit-kpi"><span>Missing justification</span><b class="warn">@_entries.Count(e => IsPrivileged(e) && string.IsNullOrWhiteSpace(e.Justification))</b></div>
+            <div class="cg-audit-kpi"><span>Awaiting review</span><b class="accent">@_entries.Count(AwaitingReview)</b></div>
+        </div>
+
+        <div class="cg-audit-filters">
+            <div class="cg-audit-filter-row">
+                <label class="cg-field"><span>From</span>
+                    <input type="date" class="cg-input" value="@_from.ToString("yyyy-MM-dd")"
+                           @onchange="async e => { _from = DateOnly.Parse((string)e.Value!); await ApplyRangeAsync(); }" />
+                </label>
+                <label class="cg-field"><span>To</span>
+                    <input type="date" class="cg-input" value="@_to.ToString("yyyy-MM-dd")"
+                           @onchange="async e => { _to = DateOnly.Parse((string)e.Value!); await ApplyRangeAsync(); }" />
+                </label>
+                <label class="cg-field cg-audit-search"><span>Search user, entity, event reference or detail</span>
+                    <input class="cg-input" type="search" placeholder="e.g. AUD-000129, JobTitle, admin@cgtool.local"
+                           @bind="_search" @bind:event="oninput" @bind:after="() => _page = 1" />
+                </label>
+                <label class="cg-field"><span>Risk</span>
+                    <select class="cg-input" value="@_riskFilter" @onchange="e => { _riskFilter = (string)e.Value!; _page = 1; }">
+                        <option value="all">All levels</option>
+                        <option value="Critical">Critical</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="cg-audit-filter-row">
+                <div class="cg-audit-pills">
+                    <button type="button" class="cg-audit-pill @(_areaFilter is null ? "active" : "")" @onclick="() => SetArea(null)">All areas</button>
+                    @foreach (var area in Enum.GetValues<AuditArea>())
+                    {
+                        var a = area;
+                        <button type="button" class="cg-audit-pill @(_areaFilter == a ? "active" : "")" @onclick="() => SetArea(a)">@a</button>
+                    }
+                </div>
+
+                <label class="cg-audit-check"><input type="checkbox" checked="@_privilegedOnly" @onchange="e => { _privilegedOnly = (bool)e.Value!; _page = 1; }" /> Privileged only</label>
+                <label class="cg-audit-check"><input type="checkbox" checked="@_awaitingReviewOnly" @onchange="e => { _awaitingReviewOnly = (bool)e.Value!; _page = 1; }" /> Awaiting review only</label>
+                <button type="button" class="cg-action-btn cg-btn-filter" disabled="@(!HasActiveFilters)" @onclick="ClearFilters">Clear Filters</button>
+            </div>
+        </div>
+
+        <div class="cg-audit-layout">
+            <div class="cg-audit-list">
+                <div class="cg-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>When (UTC)</th>
+                                <th>Who</th>
+                                <th>Action</th>
+                                <th>Entity · what changed</th>
+                                <th>Risk</th>
+                                <th>Review</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var e in Paged())
+                            {
+                                var entry = e;
+                                var exceptions = ExceptionsOf(entry);
+                                <tr class="cg-data-row cg-audit-row @(_selected?.Id == entry.Id ? "selected" : "")"
+                                    @onclick="() => { _selected = entry; _reviewComment = string.Empty; }">
+                                    <td>
+                                        <span class="mono">@entry.OccurredAtUtc.ToLocalDisplay("HH:mm:ss")</span>
+                                        <span class="cg-audit-ref">@EventRef(entry)</span>
+                                    </td>
+                                    <td>
+                                        @entry.ActorDisplayName
+                                        @if (entry.ActingOnBehalfOf is not null)
+                                        {
+                                            <span class="cg-audit-onbehalf">on behalf of @entry.ActingOnBehalfOf</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="cg-audit-action @AreaOf(entry).ToString().ToLowerInvariant()">@entry.Action</span>
+                                        <span class="cg-audit-area">@AreaOf(entry)</span>
+                                    </td>
+                                    <td>
+                                        <b>@entry.EntityType@(entry.EntityId is null ? "" : $" #{entry.EntityId}")</b>
+                                        <span class="cg-audit-detail">@entry.Details</span>
+                                        @if (IsPrivileged(entry) && string.IsNullOrWhiteSpace(entry.Justification))
+                                        {
+                                            <span class="cg-audit-flag">No justification recorded</span>
+                                        }
+                                        @if (exceptions.Count > 0)
+                                        {
+                                            <span class="cg-audit-flag">@exceptions.Count control exception(s)</span>
+                                        }
+                                    </td>
+                                    <td><span class="cg-audit-risk @RiskOf(entry).ToString().ToLowerInvariant()">@RiskOf(entry)</span></td>
+                                    <td>
+                                        @if (ReviewOf(entry) is { } review)
+                                        {
+                                            <span class="cg-audit-review @(review.Outcome == AuditReviewOutcome.Reviewed ? "done" : "exception")">
+                                                @(review.Outcome == AuditReviewOutcome.Reviewed ? "Reviewed" : "Exception")
+                                            </span>
+                                        }
+                                        else if (AwaitingReview(entry))
+                                        {
+                                            <span class="cg-audit-review pending">Pending</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="cg-subtitle">—</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+
+                            @if (Visible().Count == 0)
+                            {
+                                <tr><td colspan="6">
+                                    <div class="cg-empty-state">
+                                        <h3>No events match</h3>
+                                        <p>@_entries.Count event(s) in this date range are hidden by the current filters.</p>
+                                    </div>
+                                </td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <TablePager TotalItems="Visible().Count" ItemNoun="events"
+                            Page="_page" PageChanged="p => _page = p"
+                            PageSize="_pageSize" PageSizeChanged="s => _pageSize = s" />
+            </div>
+
+            @if (_selected is { } sel)
+            {
+                <aside class="cg-audit-detail-panel">
+                    <div class="cg-audit-detail-head">
+                        <span class="mono">@EventRef(sel)</span>
+                        <span class="cg-audit-risk @RiskOf(sel).ToString().ToLowerInvariant()">@RiskOf(sel) risk</span>
+                    </div>
+                    <h2>@sel.Action · @sel.EntityType@(sel.EntityId is null ? "" : $" #{sel.EntityId}")</h2>
+
+                    @if (ExceptionsOf(sel) is { Count: > 0 } exceptions)
+                    {
+                        <div class="cg-audit-exceptions">
+                            <b>Control exceptions</b>
+                            <ul>
+                                @foreach (var x in exceptions)
+                                {
+                                    <li>@x</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    <h3>When · who</h3>
+                    <dl class="cg-audit-dl">
+                        <div><dt>Timestamp (local)</dt><dd>@sel.OccurredAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm:ss")</dd></div>
+                        <div><dt>Timestamp (UTC)</dt><dd class="mono">@sel.OccurredAtUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")</dd></div>
+                        <div><dt>Actor</dt><dd>@sel.ActorDisplayName</dd></div>
+                        <div><dt>Acting on behalf of</dt><dd>@(sel.ActingOnBehalfOf ?? "— (acting as self)")</dd></div>
+                        <div><dt>Area</dt><dd>@AreaOf(sel)</dd></div>
+                    </dl>
+
+                    <h3>What changed</h3>
+                    <p class="cg-audit-details-text">@(string.IsNullOrWhiteSpace(sel.Details) ? "— no description recorded" : sel.Details)</p>
+
+                    <h3>Why · approval</h3>
+                    <dl class="cg-audit-dl">
+                        <div>
+                            <dt>Justification</dt>
+                            <dd>
+                                @if (!string.IsNullOrWhiteSpace(sel.Justification))
+                                {
+                                    @sel.Justification
+                                }
+                                else if (IsPrivileged(sel))
+                                {
+                                    <span class="cg-audit-missing">Missing — required for privileged actions</span>
+                                }
+                                else
+                                {
+                                    <span>— not required for this action</span>
+                                }
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <h3>From where</h3>
+                    <dl class="cg-audit-dl">
+                        <div><dt>IP address</dt><dd class="mono">@(sel.IpAddress ?? "— not recorded")</dd></div>
+                        <div><dt>Device · browser</dt><dd>@(sel.UserAgent ?? "— not recorded")</dd></div>
+                    </dl>
+
+                    <h3>Integrity</h3>
+                    <dl class="cg-audit-dl">
+                        <div><dt>Sequence</dt><dd class="mono">@(sel.Sequence?.ToString("000000") ?? "not sealed")</dd></div>
+                        <div><dt>Record hash</dt><dd class="mono cg-audit-hash">@(sel.RecordHash ?? "—")</dd></div>
+                        <div><dt>Previous hash</dt><dd class="mono cg-audit-hash">@(sel.PreviousHash ?? "—")</dd></div>
+                        <div>
+                            <dt>Chain check</dt>
+                            <dd>
+                                @if (_chain is null)
+                                {
+                                    <span>Not checked yet</span>
+                                }
+                                else if (_chain.Problems.Any(p => p.Id == sel.Id))
+                                {
+                                    <span class="cg-audit-missing">@_chain.Problems.First(p => p.Id == sel.Id).Problem</span>
+                                }
+                                else if (_chain.Verified)
+                                {
+                                    <span class="cg-audit-ok">Verified — record unaltered</span>
+                                }
+                                else
+                                {
+                                    <span>This record is intact; other records failed</span>
+                                }
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <h3>Periodic review sign-off</h3>
+                    @if (ReviewOf(sel) is { } existing)
+                    {
+                        <p class="cg-subtitle">
+                            @(existing.Outcome == AuditReviewOutcome.Reviewed ? "Signed off" : "Exception raised")
+                            by @existing.ReviewerName on @existing.ReviewedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm")
+                        </p>
+                        <p class="cg-audit-details-text">@existing.Comment</p>
+                    }
+                    <label class="cg-field">
+                        <span>Reviewer comment (required)</span>
+                        <textarea class="cg-input" rows="2" placeholder="e.g. Confirmed against change request; no further action."
+                                  @bind="_reviewComment" @bind:event="oninput"></textarea>
+                    </label>
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn cg-good" disabled="@_signingOff" @onclick="() => SignOffAsync(AuditReviewOutcome.Reviewed)">
+                            @(ReviewOf(sel) is null ? "Sign off as reviewed" : "Replace sign-off")
+                        </button>
+                        <button type="button" class="cg-action-btn cg-critical" disabled="@_signingOff" @onclick="() => SignOffAsync(AuditReviewOutcome.ExceptionRaised)">Raise exception</button>
+                    </div>
+                </aside>
+            }
+        </div>
+    }
+</div>

@@ -25,7 +25,7 @@ wwwroot\uploads\coi-trade-licenses\9-7ff6e313532c43a3a82b004ad79859d1-0.pdf
 wwwroot\uploads\coi-trade-licenses\9-aaf2a4d12e4747bd9c1aed46c418c70f-0.pdf
 wwwroot\uploads\coi-trade-licenses\9-af8b5d1d7c3f4b4899563e874c8920fd-0.pdf
 wwwroot\uploads\coi-trade-licenses\9-c007563b59e34cad9304a9098e472b13-0.pdf
-wwwroot\uploads\company-logos\1.png
+wwwroot\uploads\company-logos\1.jpg
 wwwroot\uploads\company-logos\2.jpg
 wwwroot\uploads\insider-declarations\10-emirates-id.pdf
 wwwroot\uploads\insider-declarations\10-passport.pdf

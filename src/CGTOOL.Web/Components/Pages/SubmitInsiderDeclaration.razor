@@ -50,7 +50,7 @@
         var period = PeriodRange();
         <p class="cg-subtitle">
             I, @_effectiveMember!.FullName, have read the Securities Dealing Policy including the relevant section on Material Price Sensitive
-            Information (<a href="/assets/policy.pdf" target="_blank">Link to Policy</a>) and hereby confirm that I have wholly complied with the
+            Information (<a href="@PolicyDocumentLink.CurrentUrl(Env)" target="_blank">Link to Policy</a>) and hereby confirm that I have wholly complied with the
             policies. Accordingly, I report the following in compliance with the Securities Dealing Policy during the period
             @period.From.ToString("dd-MM-yyyy") till @period.To.ToString("dd-MM-yyyy").
         </p>

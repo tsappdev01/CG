@@ -13,8 +13,10 @@ namespace CGTOOL.Web.Components.Pages.Admin;
 public partial class PolicyDocuments
 {
     private const long MaxPolicyDocumentBytes = 20 * 1024 * 1024;
-    private const string PolicyDocumentRelativePath = "assets/policy.pdf";
-    private const string PolicyBackupRelativeDir = "assets/policy-backups";
+    private const string PolicyDocumentRelativePath = PolicyDocumentLink.RelativePath;
+    private const string PolicyBackupRelativeDir = PolicyDocumentLink.BackupRelativeDir;
+
+    private string? _currentUrl;
 
     private List<PolicyDocumentVersion>? _versions;
     private bool _currentDocumentExists;
@@ -24,7 +26,10 @@ public partial class PolicyDocuments
 
     private async Task LoadAsync()
     {
-        _currentDocumentExists = File.Exists(Path.Combine(Env.WebRootPath, PolicyDocumentRelativePath));
+        _currentDocumentExists = PolicyDocumentLink.Exists(Env);
+
+        // Re-read on every load so the link changes the moment the file does.
+        _currentUrl = PolicyDocumentLink.CurrentUrl(Env);
 
         // Its own short-lived context rather than the circuit-scoped ApplicationDbContext: sharing
         // that one lets this race, or outlive, whatever else in the circuit is using it.

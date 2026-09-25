@@ -20,7 +20,7 @@
 
         @if (_currentDocumentExists)
         {
-            <p><a href="/assets/policy.pdf" target="_blank">View current policy document</a></p>
+            <p><a href="@_currentUrl" target="_blank">View current policy document</a></p>
         }
         else
         {
@@ -52,7 +52,7 @@
                 {
                     <div class="cg-table-wrap">
                         <table>
-                            <thead><tr><th>Replaced on</th><th>Replaced by</th><th>Original file name</th><th>Backup</th></tr></thead>
+                            <thead><tr><th>Replaced on</th><th>Replaced by</th><th>File uploaded</th><th>Copy it replaced</th></tr></thead>
                             <tbody>
                                 @foreach (var v in _versions)
                                 {
@@ -60,7 +60,7 @@
                                         <td class="mono">@v.UploadedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm")</td>
                                         <td>@v.UploadedByName</td>
                                         <td>@v.OriginalFileName</td>
-                                        <td><a href="@v.FilePath" target="_blank">View backup</a></td>
+                                        <td><a href="@v.FilePath" target="_blank">Open replaced copy</a></td>
                                     </tr>
                                 }
                             </tbody>

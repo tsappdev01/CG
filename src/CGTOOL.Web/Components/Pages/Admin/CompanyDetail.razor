@@ -50,9 +50,8 @@
                     <p class="cg-subtitle">JPEG, PNG, or WebP, up to 2 MB. Shown in place of the name in Entity columns.</p>
                 }
             </label>
-            <label class="cg-field"><span>Address</span><InputText class="cg-input" @bind-Value="_editing.Address" maxlength="240" /></label>
-            <label class="cg-field"><span>City</span><InputText class="cg-input" @bind-Value="_editing.City" maxlength="80" /></label>
-            <label class="cg-field"><span>Country</span><InputText class="cg-input" @bind-Value="_editing.Country" maxlength="80" /></label>
+            @* Address, City and Country are not edited here. The columns remain and keep whatever
+               they already hold -- the save writes the loaded values back unchanged. *@
 
             <label class="cg-field">
                 <span>Sector</span>

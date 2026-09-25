@@ -28,7 +28,7 @@
 
         <div class="cg-controls cg-filter-bar">
             <div class="cg-search-wrap">
-                <input class="cg-input" type="search" placeholder="Search by name, short code, city or country…"
+                <input class="cg-input" type="search" placeholder="Search by name, short code, sector or group…"
                        @bind="_search" @bind:event="oninput" @bind:after="() => _page = 1" aria-label="Search companies" />
             </div>
 
@@ -71,8 +71,8 @@
                             <th>Logo</th>
                             <SortableHeader Label="Name" Column="Name" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <SortableHeader Label="Short code" Column="ShortCode" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                            <SortableHeader Label="City" Column="City" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                            <SortableHeader Label="Country" Column="Country" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Sector" Column="Sector" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Group Name" Column="GroupName" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <SortableHeader Label="Users" Column="Users" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <SortableHeader Label="Status" Column="Status" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <th></th>
@@ -86,8 +86,8 @@
                                 <td><EntityLogo Company="c" /></td>
                                 <td>@c.Name</td>
                                 <td class="mono">@c.ShortCode</td>
-                                <td>@c.City</td>
-                                <td>@c.Country</td>
+                                <td>@c.Sector</td>
+                                <td>@c.GroupName</td>
                                 <td class="mono">@MemberCount(c.Id)</td>
                                 <td><ToggleSwitch Value="c.Active" ValueChanged="() => _pendingJustify = c" /></td>
                                 <td>
@@ -154,8 +154,8 @@
                                     <tr>
                                         <th>Name</th>
                                         <th>Short code</th>
-                                        <th>City</th>
-                                        <th>Country</th>
+                                        <th>Sector</th>
+                                        <th>Group Name</th>
                                         <th>Users</th>
                                         <th>Status</th>
                                     </tr>
@@ -166,8 +166,8 @@
                                         <tr class="cg-data-row">
                                             <td>@c.Name</td>
                                             <td class="mono">@c.ShortCode</td>
-                                            <td>@c.City</td>
-                                            <td>@c.Country</td>
+                                            <td>@c.Sector</td>
+                                            <td>@c.GroupName</td>
                                             <td class="mono">@MemberCount(c.Id)</td>
                                             <td>@(c.Active ? "Active" : "Inactive")</td>
                                         </tr>

@@ -41,14 +41,13 @@ public partial class Companies
 
         if (!string.IsNullOrWhiteSpace(_search))
         {
-            // Name, short code, city and country -- every text column on the table, so what you can
-            // see is what you can search for.
+            // Every text column on the table, so what you can see is what you can search for.
             var term = _search.Trim();
             rows = rows.Where(c =>
                 c.Name.Contains(term, StringComparison.OrdinalIgnoreCase)
                 || c.ShortCode.Contains(term, StringComparison.OrdinalIgnoreCase)
-                || (c.City ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase)
-                || (c.Country ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase));
+                || (c.Sector ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase)
+                || (c.GroupName ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase));
         }
 
         return rows.ToList();
@@ -85,8 +84,8 @@ public partial class Companies
         IOrderedEnumerable<Company> sorted = _sortColumn switch
         {
             "ShortCode" => _companies.OrderBy(c => c.ShortCode),
-            "City" => _companies.OrderBy(c => c.City),
-            "Country" => _companies.OrderBy(c => c.Country),
+            "Sector" => _companies.OrderBy(c => c.Sector),
+            "GroupName" => _companies.OrderBy(c => c.GroupName),
             "Users" => _companies.OrderBy(c => MemberCount(c.Id)),
             "Status" => _companies.OrderBy(c => c.Active),
             _ => _companies.OrderBy(c => c.Name),

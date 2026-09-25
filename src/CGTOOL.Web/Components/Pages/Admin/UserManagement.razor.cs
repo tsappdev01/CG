@@ -264,7 +264,8 @@ public partial class UserManagement
 
         IOrderedEnumerable<Member> sorted = _sortColumn switch
         {
-            "Entity" => query.OrderBy(m => m.Company?.ShortCode),
+            // Sorts on what the column shows -- it used to show the short code.
+            "Entity" => query.OrderBy(m => m.Company?.Name),
             "Department" => query.OrderBy(m => m.Department?.Name),
             "CreatedOn" => query.OrderBy(m => m.CreatedAtUtc),
             "ModifiedOn" => query.OrderBy(m => m.ModifiedAtUtc),

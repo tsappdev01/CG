@@ -215,10 +215,9 @@
                             <th class="cg-num-col">#</th>
                             <SortableHeader Label="User" Column="Name" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <th>Role</th>
-                            <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Entity Name" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <SortableHeader Label="Department" Column="Department" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <SortableHeader Label="Created on" Column="CreatedOn" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                            <SortableHeader Label="Last modified" Column="ModifiedOn" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             @if (_statusFilter == StatusFilter.Recent)
                             {
                                 <th>Recency</th>
@@ -265,10 +264,9 @@
                                         <span class="cg-subtitle">—</span>
                                     }
                                 </td>
-                                <td><EntityLogo Company="m.Company" /></td>
+                                <td>@(m.Company?.Name ?? "—")</td>
                                 <td>@m.Department?.Name</td>
                                 <td class="mono">@m.CreatedAtUtc.ToLocalDisplay("dd/MM/yyyy")</td>
-                                <td class="mono">@m.ModifiedAtUtc.ToLocalDisplay("dd/MM/yyyy")</td>
                                 @if (_statusFilter == StatusFilter.Recent)
                                 {
                                     <td class="mono">@RecencyLabel(m)</td>

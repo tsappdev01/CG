@@ -12,14 +12,30 @@ public partial class Departments
     private List<Department>? _departments;
     private Dictionary<int, int> _memberCounts = [];
     private Department? _pendingJustify;
-    private string _newCode = string.Empty;
-    private string _newName = string.Empty;
     private bool _showPrintPreview;
     private Department? _printSingleRecord;
     private string _sortColumn = "Name";
     private bool _sortAscending = true;
     private HashSet<int> _selectedIds = [];
     private bool? _bulkSetActive;
+    private string _search = string.Empty;
+    private string _statusFilter = "all";
+
+
+
+    private bool HasActiveFilters => !string.IsNullOrWhiteSpace(_search) || _statusFilter != "all";
+
+    private void ClearFilters()
+    {
+        _search = string.Empty;
+        _statusFilter = "all";
+    }
+
+
+
+    private void AddNew() => Nav.NavigateTo("/admin/departments/0");
+
+    private void Edit(Department department) => Nav.NavigateTo($"/admin/departments/{department.Id}");
 
     private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
@@ -52,17 +68,35 @@ public partial class Departments
         return (_sortAscending ? sorted : sorted.Reverse()).ToList();
     }
 
+    private List<Department> VisibleDepartments()
+    {
+        IEnumerable<Department> rows = SortedDepartments();
+
+        if (_statusFilter == "active") rows = rows.Where(d => d.Active);
+        else if (_statusFilter == "inactive") rows = rows.Where(d => !d.Active);
+
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            var term = _search.Trim();
+            rows = rows.Where(d =>
+                d.Code.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                d.Name.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return rows.ToList();
+    }
+
     private void Sort(string column)
     {
         if (_sortColumn == column) _sortAscending = !_sortAscending;
         else { _sortColumn = column; _sortAscending = true; }
     }
 
-    private bool AllSelected => _departments is { Count: > 0 } && _departments.All(d => _selectedIds.Contains(d.Id));
+    private bool AllSelected => VisibleDepartments() is { Count: > 0 } visible && visible.All(d => _selectedIds.Contains(d.Id));
 
     private void ToggleSelectAll(bool select)
     {
-        if (select) _selectedIds = _departments!.Select(d => d.Id).ToHashSet();
+        if (select) _selectedIds = VisibleDepartments().Select(d => d.Id).ToHashSet();
         else _selectedIds.Clear();
     }
 
@@ -100,64 +134,6 @@ public partial class Departments
         await LoadAsync();
     }
 
-    private static bool TryValidate(object model, out string errorMessage)
-    {
-        var results = new List<ValidationResult>();
-        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), results, validateAllProperties: true);
-        errorMessage = string.Join(" ", results.Select(r => r.ErrorMessage));
-        return isValid;
-    }
-
-    private async Task AddAsync()
-    {
-        var department = new Department { Code = _newCode.Trim(), Name = _newName.Trim() };
-        if (!TryValidate(department, out var error))
-        {
-            Toasts.ShowError(error);
-            return;
-        }
-
-        try
-        {
-            department.Id = await DepartmentWriter.InsertAsync(department);
-        }
-        catch (SqlException ex) when (ex.Number == 50002)
-        {
-            Toasts.ShowError($"A department with code '{department.Code}' already exists.");
-            return;
-        }
-
-        var state = await AuthState.GetAuthenticationStateAsync();
-        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.Create, nameof(Department), department.Id.ToString(), department.Name);
-
-        Toasts.ShowSuccess($"{department.Name} added.");
-        _newCode = string.Empty;
-        _newName = string.Empty;
-        await LoadAsync();
-    }
-
-    private async Task SaveAsync(Department department)
-    {
-        if (!TryValidate(department, out var error))
-        {
-            Toasts.ShowError(error);
-            return;
-        }
-
-        try
-        {
-            await DepartmentWriter.UpdateAsync(department);
-        }
-        catch (SqlException ex) when (ex.Number == 50002)
-        {
-            Toasts.ShowError($"A department with code '{department.Code}' already exists.");
-            return;
-        }
-
-        var state = await AuthState.GetAuthenticationStateAsync();
-        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.Update, nameof(Department), department.Id.ToString(), department.Name);
-        Toasts.ShowSuccess($"{department.Name} saved.");
-    }
 
     private async Task ToggleActiveAsync(string justification)
     {

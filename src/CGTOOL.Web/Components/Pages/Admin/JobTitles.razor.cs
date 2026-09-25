@@ -11,13 +11,47 @@ public partial class JobTitles
 {
     private List<JobTitle>? _jobTitles;
     private JobTitle? _pendingJustify;
-    private string _newName = string.Empty;
     private bool _showPrintPreview;
     private JobTitle? _printSingleRecord;
     private string _sortColumn = "Name";
     private bool _sortAscending = true;
     private HashSet<int> _selectedIds = [];
     private bool? _bulkSetActive;
+    private string _search = string.Empty;
+    private string _statusFilter = "all";
+
+    // Member.JobTitle is free text rather than a foreign key, so the count matches on the name.
+    private Dictionary<string, int> _memberCounts = [];
+
+    private bool HasActiveFilters => !string.IsNullOrWhiteSpace(_search) || _statusFilter != "all";
+
+    private void ClearFilters()
+    {
+        _search = string.Empty;
+        _statusFilter = "all";
+    }
+
+    private int MemberCount(string name) => _memberCounts.GetValueOrDefault(name);
+
+    private void AddNew() => Nav.NavigateTo("/admin/job-titles/0");
+
+    private void Edit(JobTitle jobTitle) => Nav.NavigateTo($"/admin/job-titles/{jobTitle.Id}");
+
+    private List<JobTitle> VisibleJobTitles()
+    {
+        IEnumerable<JobTitle> rows = SortedJobTitles();
+
+        if (_statusFilter == "active") rows = rows.Where(j => j.Active);
+        else if (_statusFilter == "inactive") rows = rows.Where(j => !j.Active);
+
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            var term = _search.Trim();
+            rows = rows.Where(j => j.Name.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return rows.ToList();
+    }
 
     private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
@@ -28,6 +62,12 @@ public partial class JobTitles
     private async Task LoadAsync()
     {
         _jobTitles = await Db.JobTitles.OrderBy(j => j.Name).ToListAsync();
+
+        _memberCounts = await Db.Members
+            .Where(m => m.JobTitle != null)
+            .GroupBy(m => m.JobTitle!)
+            .Select(g => new { Title = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Title, x => x.Count);
     }
 
     private List<JobTitle> SortedJobTitles()
@@ -35,6 +75,7 @@ public partial class JobTitles
         if (_jobTitles is null) return [];
         IOrderedEnumerable<JobTitle> sorted = _sortColumn switch
         {
+            "Users" => _jobTitles.OrderBy(j => MemberCount(j.Name)),
             "Status" => _jobTitles.OrderBy(j => j.Active),
             _ => _jobTitles.OrderBy(j => j.Name),
         };
@@ -47,11 +88,11 @@ public partial class JobTitles
         else { _sortColumn = column; _sortAscending = true; }
     }
 
-    private bool AllSelected => _jobTitles is { Count: > 0 } && _jobTitles.All(j => _selectedIds.Contains(j.Id));
+    private bool AllSelected => VisibleJobTitles() is { Count: > 0 } visible && visible.All(j => _selectedIds.Contains(j.Id));
 
     private void ToggleSelectAll(bool select)
     {
-        if (select) _selectedIds = _jobTitles!.Select(j => j.Id).ToHashSet();
+        if (select) _selectedIds = VisibleJobTitles().Select(j => j.Id).ToHashSet();
         else _selectedIds.Clear();
     }
 
@@ -89,63 +130,8 @@ public partial class JobTitles
         await LoadAsync();
     }
 
-    private static bool TryValidate(object model, out string errorMessage)
-    {
-        var results = new List<ValidationResult>();
-        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), results, validateAllProperties: true);
-        errorMessage = string.Join(" ", results.Select(r => r.ErrorMessage));
-        return isValid;
-    }
 
-    private async Task AddAsync()
-    {
-        var jobTitle = new JobTitle { Name = _newName.Trim() };
-        if (!TryValidate(jobTitle, out var error))
-        {
-            Toasts.ShowError(error);
-            return;
-        }
 
-        try
-        {
-            jobTitle.Id = await JobTitleWriter.InsertAsync(jobTitle);
-        }
-        catch (SqlException ex) when (ex.Number == 50010)
-        {
-            Toasts.ShowError($"A job title '{jobTitle.Name}' already exists.");
-            return;
-        }
-
-        var state = await AuthState.GetAuthenticationStateAsync();
-        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.Create, nameof(JobTitle), jobTitle.Id.ToString(), jobTitle.Name);
-
-        Toasts.ShowSuccess($"{jobTitle.Name} added.");
-        _newName = string.Empty;
-        await LoadAsync();
-    }
-
-    private async Task SaveAsync(JobTitle jobTitle)
-    {
-        if (!TryValidate(jobTitle, out var error))
-        {
-            Toasts.ShowError(error);
-            return;
-        }
-
-        try
-        {
-            await JobTitleWriter.UpdateAsync(jobTitle);
-        }
-        catch (SqlException ex) when (ex.Number == 50010)
-        {
-            Toasts.ShowError($"A job title '{jobTitle.Name}' already exists.");
-            return;
-        }
-
-        var state = await AuthState.GetAuthenticationStateAsync();
-        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.Update, nameof(JobTitle), jobTitle.Id.ToString(), jobTitle.Name);
-        Toasts.ShowSuccess($"{jobTitle.Name} saved.");
-    }
 
     private async Task ToggleActiveAsync(string justification)
     {

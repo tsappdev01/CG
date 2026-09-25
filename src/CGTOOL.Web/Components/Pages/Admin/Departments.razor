@@ -7,6 +7,7 @@
 @inject AuthenticationStateProvider AuthState
 @inject ToastService Toasts
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
 <PageTitle>Departments</PageTitle>
 
@@ -21,8 +22,29 @@
     else
     {
         <div class="cg-actions">
+            <button type="button" class="cg-action-btn cg-good" @onclick="AddNew">+ Add department</button>
             <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
         </div>
+
+        @if (_departments.Count > 0)
+        {
+            <div class="cg-controls cg-filter-bar">
+                <div class="cg-search-wrap">
+                    <input class="cg-input" type="search" placeholder="Search departments by code or name…"
+                           @bind="_search" @bind:event="oninput" aria-label="Search departments" />
+                </div>
+
+                <select class="cg-input cg-filter-select" value="@_statusFilter"
+                        @onchange="e => _statusFilter = (string)e.Value!" aria-label="Filter by status">
+                    <option value="all">All statuses</option>
+                    <option value="active">Active only</option>
+                    <option value="inactive">Inactive only</option>
+                </select>
+
+                <button type="button" class="cg-action-btn cg-btn-filter" disabled="@(!HasActiveFilters)" @onclick="ClearFilters">Clear Filters</button>
+                <span class="cg-result-count">@VisibleDepartments().Count of @_departments.Count shown</span>
+            </div>
+        }
 
         <div class="cg-bulk-bar">
             <button type="button" class="cg-action-btn" disabled="@(_selectedIds.Count == 0)" @onclick="DeselectAll">Deselect all</button>
@@ -43,44 +65,54 @@
                                  OnCancel="() => _bulkSetActive = null" />
         }
 
-        <div class="cg-table-wrap cg-employee-form">
-            <table>
-                <thead>
-                    <tr>
-                        <th class="cg-select-col"><input type="checkbox" checked="@AllSelected" @onchange="e => ToggleSelectAll((bool)e.Value!)" aria-label="Select all" /></th>
-                        <SortableHeader Label="Code" Column="Code" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                        <SortableHeader Label="Name" Column="Name" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                        <SortableHeader Label="Users" Column="Users" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                        <SortableHeader Label="Status" Column="Status" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="cg-data-row">
-                        <td></td>
-                        <td><input class="cg-input" placeholder="Code" @bind="_newCode" maxlength="20" /></td>
-                        <td><input class="cg-input" placeholder="Name" @bind="_newName" maxlength="120" /></td>
-                        <td></td>
-                        <td></td>
-                        <td><button type="button" class="cg-action-btn cg-good" @onclick="AddAsync">Add department</button></td>
-                    </tr>
-                    @foreach (var d in SortedDepartments())
-                    {
-                        <tr class="cg-data-row @(d.Id == _pendingJustify?.Id ? "cg-selected" : "")">
-                            <td class="cg-select-col"><input type="checkbox" checked="@_selectedIds.Contains(d.Id)" @onchange="e => ToggleSelect(d.Id, (bool)e.Value!)" aria-label="Select @d.Name" /></td>
-                            <td><input class="cg-input" @bind="d.Code" maxlength="20" /></td>
-                            <td><input class="cg-input" @bind="d.Name" maxlength="120" /></td>
-                            <td class="mono">@MemberCount(d.Id)</td>
-                            <td><ToggleSwitch Value="d.Active" ValueChanged="() => _pendingJustify = d" /></td>
-                            <td>
-                                <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveAsync(d)">Save</button>
-                                <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = d"><span class="cg-icon-print-glyph"></span></button>
-                            </td>
+        @if (_departments.Count == 0)
+        {
+            <div class="cg-empty-state">
+                <h3>No departments yet</h3>
+                <p>Use <b>+ Add department</b> above. Departments appear wherever a user can be assigned one.</p>
+            </div>
+        }
+        else if (VisibleDepartments().Count == 0)
+        {
+            <div class="cg-empty-state">
+                <h3>Nothing matches those filters</h3>
+                <p>All @_departments.Count departments are hidden by the current search or status filter.</p>
+                <button type="button" class="cg-action-btn" @onclick="ClearFilters">Clear Filters</button>
+            </div>
+        }
+        else
+        {
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="cg-select-col"><input type="checkbox" checked="@AllSelected" @onchange="e => ToggleSelectAll((bool)e.Value!)" aria-label="Select all" /></th>
+                            <SortableHeader Label="Code" Column="Code" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Name" Column="Name" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Users" Column="Users" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <SortableHeader Label="Status" Column="Status" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th></th>
                         </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in VisibleDepartments())
+                        {
+                            <tr class="cg-data-row">
+                                <td class="cg-select-col"><input type="checkbox" checked="@_selectedIds.Contains(d.Id)" @onchange="e => ToggleSelect(d.Id, (bool)e.Value!)" aria-label="Select @d.Name" /></td>
+                                <td class="mono">@d.Code</td>
+                                <td>@d.Name</td>
+                                <td class="mono">@MemberCount(d.Id)</td>
+                                <td><ToggleSwitch Value="d.Active" ValueChanged="() => _pendingJustify = d" /></td>
+                                <td>
+                                    <button type="button" class="cg-action-btn" @onclick="() => Edit(d)">Edit</button>
+                                    <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = d"><span class="cg-icon-print-glyph"></span></button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
 
         @if (_pendingJustify is not null)
         {

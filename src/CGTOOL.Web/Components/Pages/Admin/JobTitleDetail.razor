@@ -1,0 +1,43 @@
+@page "/admin/job-titles/{Id:int}"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IJobTitleWriter JobTitleWriter
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject ToastService Toasts
+
+<PageTitle>@(Id == 0 ? "New Job Title" : "Edit Job Title")</PageTitle>
+
+<div class="cg-shell">
+    <p><a href="/admin/job-titles">← Back to Job titles</a></p>
+
+    @if (_editing is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <EditForm Model="_editing" OnValidSubmit="SaveAsync" class="cg-member-form cg-member-page">
+            <DataAnnotationsValidator />
+            <h1 data-icon="folder">@(_editing.Id == 0 ? "New job title" : $"Edit — {_editing.Name}")</h1>
+
+            <label class="cg-field">
+                <span>Job title</span>
+                <InputText class="cg-input" @bind-Value="_editing.Name" maxlength="120" placeholder="e.g. Accounts Manager" />
+                <ValidationMessage For="() => _editing.Name" class="cg-error" />
+            </label>
+
+            @if (_editing.Id != 0)
+            {
+                <p class="cg-subtitle">@_memberCount user(s) currently hold this job title.</p>
+            }
+
+            <div class="cg-actions">
+                <button type="submit" class="cg-action-btn cg-good" disabled="@_saving">@(_saving ? "Saving…" : "Save")</button>
+                <a class="cg-action-btn" href="/admin/job-titles">Cancel</a>
+            </div>
+        </EditForm>
+    }
+</div>

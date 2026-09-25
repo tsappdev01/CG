@@ -1,0 +1,49 @@
+@page "/admin/departments/{Id:int}"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ApplicationDbContext Db
+@inject IDepartmentWriter DepartmentWriter
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject ToastService Toasts
+
+<PageTitle>@(Id == 0 ? "New Department" : "Edit Department")</PageTitle>
+
+<div class="cg-shell">
+    <p><a href="/admin/departments">← Back to Departments</a></p>
+
+    @if (_editing is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <EditForm Model="_editing" OnValidSubmit="SaveAsync" class="cg-member-form cg-member-page">
+            <DataAnnotationsValidator />
+            <h1 data-icon="folder">@(_editing.Id == 0 ? "New department" : $"Edit — {_editing.Name}")</h1>
+
+            <label class="cg-field">
+                <span>Code</span>
+                <InputText class="cg-input" @bind-Value="_editing.Code" maxlength="20" placeholder="e.g. FIN" />
+                <ValidationMessage For="() => _editing.Code" class="cg-error" />
+            </label>
+
+            <label class="cg-field">
+                <span>Department name</span>
+                <InputText class="cg-input" @bind-Value="_editing.Name" maxlength="120" placeholder="e.g. Finance" />
+                <ValidationMessage For="() => _editing.Name" class="cg-error" />
+            </label>
+
+            @if (_editing.Id != 0)
+            {
+                <p class="cg-subtitle">@_memberCount user(s) are currently assigned to this department.</p>
+            }
+
+            <div class="cg-actions">
+                <button type="submit" class="cg-action-btn cg-good" disabled="@_saving">@(_saving ? "Saving…" : "Save")</button>
+                <a class="cg-action-btn" href="/admin/departments">Cancel</a>
+            </div>
+        </EditForm>
+    }
+</div>

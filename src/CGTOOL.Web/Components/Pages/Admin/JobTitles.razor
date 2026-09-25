@@ -7,6 +7,7 @@
 @inject AuthenticationStateProvider AuthState
 @inject ToastService Toasts
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
 <PageTitle>Job Titles</PageTitle>
 
@@ -21,6 +22,7 @@
     else
     {
         <div class="cg-actions">
+            <button type="button" class="cg-action-btn cg-good" @onclick="AddNew">+ Add job title</button>
             <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
         </div>
 
@@ -43,34 +45,66 @@
                                  OnCancel="() => _bulkSetActive = null" />
         }
 
-        <div class="cg-table-wrap cg-employee-form">
+        <div class="cg-controls cg-filter-bar">
+            <div class="cg-search-wrap">
+                <input class="cg-input" type="search" placeholder="Search job titles…"
+                       @bind="_search" @bind:event="oninput" aria-label="Search job titles" />
+            </div>
+
+            <select class="cg-input cg-filter-select" value="@_statusFilter"
+                    @onchange="e => _statusFilter = (string)e.Value!" aria-label="Filter by status">
+                <option value="all">All statuses</option>
+                <option value="active">Active only</option>
+                <option value="inactive">Inactive only</option>
+            </select>
+
+            <button type="button" class="cg-action-btn cg-btn-filter" disabled="@(!HasActiveFilters)" @onclick="ClearFilters">Clear Filters</button>
+            <span class="cg-result-count">@VisibleJobTitles().Count of @_jobTitles.Count shown</span>
+        </div>
+
+        <div class="cg-table-wrap">
             <table>
                 <thead>
                     <tr>
                         <th class="cg-select-col"><input type="checkbox" checked="@AllSelected" @onchange="e => ToggleSelectAll((bool)e.Value!)" aria-label="Select all" /></th>
                         <SortableHeader Label="Name" Column="Name" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <SortableHeader Label="Users" Column="Users" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                         <SortableHeader Label="Status" Column="Status" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr class="cg-data-row">
-                        <td></td>
-                        <td><input class="cg-input" placeholder="Name" @bind="_newName" maxlength="120" /></td>
-                        <td></td>
-                        <td><button type="button" class="cg-action-btn cg-good" @onclick="AddAsync">Add job title</button></td>
-                    </tr>
-                    @foreach (var j in SortedJobTitles())
+                    @foreach (var j in VisibleJobTitles())
                     {
-                        <tr class="cg-data-row @(j.Id == _pendingJustify?.Id ? "cg-selected" : "")">
+                        <tr class="cg-data-row">
                             <td class="cg-select-col"><input type="checkbox" checked="@_selectedIds.Contains(j.Id)" @onchange="e => ToggleSelect(j.Id, (bool)e.Value!)" aria-label="Select @j.Name" /></td>
-                            <td><input class="cg-input" @bind="j.Name" maxlength="120" /></td>
+                            <td>@j.Name</td>
+                            <td class="mono">@MemberCount(j.Name)</td>
                             <td><ToggleSwitch Value="j.Active" ValueChanged="() => _pendingJustify = j" /></td>
                             <td>
-                                <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveAsync(j)">Save</button>
+                                <button type="button" class="cg-action-btn" @onclick="() => Edit(j)">Edit</button>
                                 <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = j"><span class="cg-icon-print-glyph"></span></button>
                             </td>
                         </tr>
+                    }
+
+                    @if (_jobTitles.Count == 0)
+                    {
+                        <tr><td colspan="5">
+                            <div class="cg-empty-state">
+                                <h3>No job titles yet</h3>
+                                <p>Use <b>+ Add job title</b> above. Job titles are the designation options offered on a user's record.</p>
+                            </div>
+                        </td></tr>
+                    }
+                    else if (VisibleJobTitles().Count == 0)
+                    {
+                        <tr><td colspan="5">
+                            <div class="cg-empty-state">
+                                <h3>Nothing matches those filters</h3>
+                                <p>All @_jobTitles.Count job titles are hidden by the current search or status filter.</p>
+                            </div>
+                        </td></tr>
                     }
                 </tbody>
             </table>
@@ -106,6 +140,7 @@
                                 <thead>
                                     <tr>
                                         <th>Name</th>
+                                        <th>Users</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
@@ -114,6 +149,7 @@
                                     {
                                         <tr class="cg-data-row">
                                             <td>@j.Name</td>
+                                            <td class="mono">@MemberCount(j.Name)</td>
                                             <td>@(j.Active ? "Active" : "Inactive")</td>
                                         </tr>
                                     }

@@ -25,7 +25,12 @@ public partial class CompanyDetail
 
     protected override async Task OnParametersSetAsync()
     {
-        _members = await Db.Members.Where(m => m.Active).OrderBy(m => m.FullName).ToListAsync();
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _members = await db.Members.Where(m => m.Active).OrderBy(m => m.FullName).ToListAsync();
 
         if (Id == 0)
         {
@@ -33,7 +38,7 @@ public partial class CompanyDetail
             return;
         }
 
-        _editing = await Db.Companies.FirstOrDefaultAsync(c => c.Id == Id);
+        _editing = await db.Companies.FirstOrDefaultAsync(c => c.Id == Id);
         if (_editing is null)
         {
             Nav.NavigateTo("/admin/companies");
@@ -97,6 +102,11 @@ public partial class CompanyDetail
 
     private async Task SaveAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         if (_editing is null || _saving) return;
         _saving = true;
 
@@ -131,7 +141,7 @@ public partial class CompanyDetail
             }
 
             var editingId = _editing.Id;
-            _editing = await Db.Companies.FirstAsync(c => c.Id == editingId);
+            _editing = await db.Companies.FirstAsync(c => c.Id == editingId);
         }
         finally
         {

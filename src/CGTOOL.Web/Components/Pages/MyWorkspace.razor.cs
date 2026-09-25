@@ -10,7 +10,7 @@ namespace CGTOOL.Web.Components.Pages;
 
 public partial class MyWorkspace : ComponentBase
 {
-    [Inject] private ApplicationDbContext Db { get; set; } = default!;
+    [Inject] private IDbContextFactory<ApplicationDbContext> DbFactory { get; set; } = default!;
     [Inject] private IFamilyMemberWriter FamilyMemberWriter { get; set; } = default!;
     [Inject] private IOwnedCompanyWriter CompanyWriter { get; set; } = default!;
     [Inject] private IAuditLogger AuditLog { get; set; } = default!;
@@ -79,31 +79,36 @@ public partial class MyWorkspace : ComponentBase
 
     private async Task LoadAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var state = await AuthState.GetAuthenticationStateAsync();
 
         if (Impersonation.ActingMemberId is { } actingId)
         {
-            _effectiveMember = await Db.Members.FirstOrDefaultAsync(m => m.Id == actingId);
+            _effectiveMember = await db.Members.FirstOrDefaultAsync(m => m.Id == actingId);
         }
         else
         {
             var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId is not null)
             {
-                _effectiveMember = await Db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
+                _effectiveMember = await db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
             }
         }
 
         if (_effectiveMember is null) return;
 
         _familyMembers.Clear();
-        _familyMembers.AddRange(await Db.FamilyMembers.AsNoTracking()
+        _familyMembers.AddRange(await db.FamilyMembers.AsNoTracking()
             .Where(f => f.MemberId == _effectiveMember.Id)
             .OrderBy(f => f.Id)
             .ToListAsync());
 
         _companies.Clear();
-        _companies.AddRange(await Db.OwnedCompanies.AsNoTracking()
+        _companies.AddRange(await db.OwnedCompanies.AsNoTracking()
             .Where(c => c.MemberId == _effectiveMember.Id)
             .OrderBy(c => c.Id)
             .ToListAsync());
@@ -116,9 +121,14 @@ public partial class MyWorkspace : ComponentBase
     /// for rather than a calendar quarter worked out here.</summary>
     private async Task LoadDeclarationSummaryAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         if (_effectiveMember is null) return;
 
-        var latest = await Db.InsiderDeclarations
+        var latest = await db.InsiderDeclarations
             .Include(d => d.DeclarationCycleRun)
             .Where(d => d.MemberId == _effectiveMember.Id && !d.IsDraft)
             .OrderByDescending(d => d.SubmittedAtUtc)
@@ -134,7 +144,7 @@ public partial class MyWorkspace : ComponentBase
         }
 
         // Nothing submitted yet: fall back to the open run so the member can still see what is due.
-        var open = await Db.DeclarationCycleRuns
+        var open = await db.DeclarationCycleRuns
             .Where(r => r.Type == DeclarationCycleType.InsiderTrading && r.Sent && !r.Recalled)
             .OrderByDescending(r => r.PeriodYear).ThenByDescending(r => r.PeriodQuarter)
             .FirstOrDefaultAsync();

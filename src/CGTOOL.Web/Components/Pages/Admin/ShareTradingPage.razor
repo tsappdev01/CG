@@ -1,7 +1,7 @@
 @page "/admin/investor-relations/share-trading"
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IShareTradingWriter Writer
 @inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState

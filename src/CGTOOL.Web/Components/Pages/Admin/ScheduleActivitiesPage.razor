@@ -2,7 +2,7 @@
 @page "/admin/schedule-activities/{TypeSlug}"
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IScheduledActivityWriter ActivityWriter
 @inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState
@@ -221,16 +221,21 @@
 
     private async Task LoadAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         if (FilterType is { } type)
         {
             // Every Type is meant to have exactly one row; there's no general "add activity" UI, so
             // the first visit to a type-filtered route creates it (inactive, no dates) if missing.
             await ActivityWriter.EnsureExistsAsync(type);
-            _activities = await Db.ScheduledActivities.Include(a => a.Dates).Where(a => a.Type == type).ToListAsync();
+            _activities = await db.ScheduledActivities.Include(a => a.Dates).Where(a => a.Type == type).ToListAsync();
         }
         else
         {
-            _activities = await Db.ScheduledActivities.Include(a => a.Dates).ToListAsync();
+            _activities = await db.ScheduledActivities.Include(a => a.Dates).ToListAsync();
         }
     }
 

@@ -3,7 +3,7 @@
 @attribute [Authorize]
 @rendermode InteractiveServer
 @using System.Security.Claims
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IRelatedPartyCoiDeclarationWriter Writer
 @inject IActivityEmailSender EmailSender
 @inject IAuditLogger AuditLog

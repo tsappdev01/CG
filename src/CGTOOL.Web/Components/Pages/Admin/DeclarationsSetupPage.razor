@@ -2,7 +2,7 @@
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
 @using System.Security.Claims
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IDeclarationCycleSetupWriter SetupWriter
 @inject IDeclarationCycleRunWriter RunWriter
 @inject IActivityEmailSender EmailSender

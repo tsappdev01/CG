@@ -139,18 +139,23 @@ public partial class SubmitInsiderDeclaration
 
     private async Task LoadAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var state = await AuthState.GetAuthenticationStateAsync();
 
         if (Impersonation.ActingMemberId is { } actingId)
         {
-            _effectiveMember = await Db.Members.Include(m => m.Company).FirstOrDefaultAsync(m => m.Id == actingId);
+            _effectiveMember = await db.Members.Include(m => m.Company).FirstOrDefaultAsync(m => m.Id == actingId);
         }
         else
         {
             var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId is not null)
             {
-                _effectiveMember = await Db.Members.Include(m => m.Company).FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
+                _effectiveMember = await db.Members.Include(m => m.Company).FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
             }
         }
 
@@ -169,7 +174,7 @@ public partial class SubmitInsiderDeclaration
         // A saved-but-not-submitted draft is still a row in InsiderDeclarations, so it must not count
         // as "already submitted" here -- otherwise the run it belongs to would look done and the
         // member could never get back to their own draft via the plain (no Id) URL.
-        var submittedRunIds = await Db.InsiderDeclarations
+        var submittedRunIds = await db.InsiderDeclarations
             .AsNoTracking()
             .Where(d => d.MemberId == _effectiveMember.Id && !d.IsDraft)
             .Select(d => d.DeclarationCycleRunId)
@@ -179,7 +184,7 @@ public partial class SubmitInsiderDeclaration
         // deterministic tiebreaker this could disagree with the identical queries in
         // InsiderDeclarationBanner.razor and MyDeclarations.razor.cs and open a different run (with a
         // different due date) than the one those pages showed.
-        _run = await Db.DeclarationCycleRuns
+        _run = await db.DeclarationCycleRuns
             .AsNoTracking()
             .Where(r => r.Type == DeclarationCycleType.InsiderTrading
                 && (r.CompanyId == null || r.CompanyId == _effectiveMember.CompanyId)
@@ -191,7 +196,7 @@ public partial class SubmitInsiderDeclaration
 
         if (_run is not null)
         {
-            var existingDraftId = await Db.InsiderDeclarations
+            var existingDraftId = await db.InsiderDeclarations
                 .AsNoTracking()
                 .Where(d => d.MemberId == _effectiveMember.Id && d.DeclarationCycleRunId == _run.Id && d.IsDraft)
                 .Select(d => (int?)d.Id)
@@ -218,7 +223,12 @@ public partial class SubmitInsiderDeclaration
     // exists for this run) -- LoadForEditAsync handles editing an existing row separately.
     private async Task PrefillDocumentsFromPriorDeclarationAsync()
     {
-        var prior = await Db.InsiderDeclarations
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var prior = await db.InsiderDeclarations
             .AsNoTracking()
             .Where(d => d.MemberId == _effectiveMember!.Id && !d.IsDraft)
             .OrderByDescending(d => d.SubmittedAtUtc)
@@ -282,7 +292,12 @@ public partial class SubmitInsiderDeclaration
     // on a later re-read within the same circuit (e.g. My Declarations' print preview after editing).
     private async Task LoadForEditAsync(int declarationId)
     {
-        var declaration = await Db.InsiderDeclarations
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var declaration = await db.InsiderDeclarations
             .AsNoTracking()
             .Include(d => d.DeclarationCycleRun)
             .Include(d => d.Relatives)
@@ -688,6 +703,11 @@ public partial class SubmitInsiderDeclaration
     // -- the insert proc throws once a row already exists for this member+cycle.
     private async Task<int> PersistAsync(bool isDraft, string actorName, bool isImpersonating)
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var declaration = new InsiderDeclaration
         {
             Id = _editingDeclarationId,
@@ -720,7 +740,7 @@ public partial class SubmitInsiderDeclaration
         };
 
         int declarationId;
-        await using (var tx = await Db.Database.BeginTransactionAsync())
+        await using (var tx = await db.Database.BeginTransactionAsync())
         {
             if (_isEditing)
             {
@@ -810,6 +830,11 @@ public partial class SubmitInsiderDeclaration
 
     private async Task SubmitAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         // Guards against a double-click (or a slow round-trip) firing this handler a second time
         // while the first call is still in flight -- two concurrent calls sharing the circuit's
         // single ApplicationDbContext instance would otherwise crash with "a second operation was
@@ -853,7 +878,7 @@ public partial class SubmitInsiderDeclaration
                 {
                     if (attachPdf)
                     {
-                        var declaration = await Db.InsiderDeclarations
+                        var declaration = await db.InsiderDeclarations
                             .AsNoTracking()
                             .Include(x => x.Relatives)
                             .Include(x => x.NinHolders)

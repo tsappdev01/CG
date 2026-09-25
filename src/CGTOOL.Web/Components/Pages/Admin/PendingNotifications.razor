@@ -1,7 +1,7 @@
 @page "/admin/pending-notifications"
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IMemberNotificationWriter NotificationWriter
 @inject IMemberWelcomeEmailSender WelcomeEmailSender
 @inject IAuditLogger AuditLog

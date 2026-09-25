@@ -2,7 +2,7 @@
 @attribute [Authorize]
 @rendermode InteractiveServer
 @using System.Security.Claims
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject AuthenticationStateProvider AuthState
 @inject ImpersonationContext Impersonation
 @inject IAuditLogger AuditLog

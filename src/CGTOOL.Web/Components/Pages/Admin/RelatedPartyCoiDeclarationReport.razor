@@ -1,7 +1,7 @@
 @page "/reports/related-party-coi-declarations"
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IJSRuntime JS
 
 <PageTitle>Related Party & COI Declaration Submission Report</PageTitle>

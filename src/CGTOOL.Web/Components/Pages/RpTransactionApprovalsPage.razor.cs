@@ -16,9 +16,14 @@ public partial class RpTransactionApprovalsPage
 
     protected override async Task OnInitializedAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var state = await AuthState.GetAuthenticationStateAsync();
         var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        _currentMember = userId is null ? null : await Db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
+        _currentMember = userId is null ? null : await db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
 
         if (_currentMember is null)
         {
@@ -32,7 +37,12 @@ public partial class RpTransactionApprovalsPage
 
     private async Task LoadAsync()
     {
-        _pending = await Db.RelatedPartyTransactions
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _pending = await db.RelatedPartyTransactions
             .Include(t => t.Member).ThenInclude(m => m!.Company)
             .Include(t => t.Company)
             .Where(t => t.Status == RpTransactionStatus.AwaitingApproval && t.ApproverMemberId == _currentMember!.Id)
@@ -46,6 +56,11 @@ public partial class RpTransactionApprovalsPage
 
     private async Task ApproveAsync(RelatedPartyTransaction t)
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var remarks = RemarksFor(t.Id).Trim();
         if (string.IsNullOrWhiteSpace(remarks))
         {
@@ -60,8 +75,8 @@ public partial class RpTransactionApprovalsPage
 
         await Writer.RecordApproverActionAsync(t);
 
-        var ccaoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(Db, RpTransactionRole.Ccao);
-        var cfoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(Db, RpTransactionRole.Cfo);
+        var ccaoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Ccao);
+        var cfoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Cfo);
         await RpTransactionNotificationService.ApprovedByApproverAsync(EmailSender, t, ccaoEmails, cfoEmails);
 
         await LogAndReloadAsync(t, "approved");
@@ -89,6 +104,11 @@ public partial class RpTransactionApprovalsPage
 
     private async Task EscalateAsync(RelatedPartyTransaction t)
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var remarks = RemarksFor(t.Id).Trim();
         if (string.IsNullOrWhiteSpace(remarks))
         {
@@ -105,8 +125,8 @@ public partial class RpTransactionApprovalsPage
 
         await Writer.RecordApproverActionAsync(t);
 
-        var ccaoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(Db, RpTransactionRole.Ccao);
-        var cfoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(Db, RpTransactionRole.Cfo);
+        var ccaoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Ccao);
+        var cfoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Cfo);
         await RpTransactionNotificationService.EscalatedAsync(EmailSender, t, _currentMember!.Email, ccaoEmails, cfoEmails, RpEscalationReason.ManualByApprover);
 
         await LogAndReloadAsync(t, "escalated");

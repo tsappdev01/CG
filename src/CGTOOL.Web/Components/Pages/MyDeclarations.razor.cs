@@ -52,17 +52,22 @@ public partial class MyDeclarations
 
     private async Task LoadAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         _isImpersonating = Impersonation.ActingMemberId is not null;
 
         if (Impersonation.ActingMemberId is { } actingId)
         {
-            _effectiveMember = await Db.Members.FirstOrDefaultAsync(m => m.Id == actingId);
+            _effectiveMember = await db.Members.FirstOrDefaultAsync(m => m.Id == actingId);
         }
         else
         {
             var state = await AuthState.GetAuthenticationStateAsync();
             var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            _effectiveMember = userId is null ? null : await Db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
+            _effectiveMember = userId is null ? null : await db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
         }
 
         if (_effectiveMember is null) return;
@@ -72,7 +77,7 @@ public partial class MyDeclarations
             // Drafts are still rows in InsiderDeclarations, so they must not count as "already
             // submitted" here -- otherwise a saved-but-not-submitted draft would make its run look
             // done and the "1. Submit Insider Declaration" option would wrongly disappear.
-            var submittedInsiderRunIds = await Db.InsiderDeclarations
+            var submittedInsiderRunIds = await db.InsiderDeclarations
                 .AsNoTracking()
                 .Where(d => d.MemberId == _effectiveMember.Id && !d.IsDraft)
                 .Select(d => d.DeclarationCycleRunId)
@@ -82,7 +87,7 @@ public partial class MyDeclarations
             // reminders can tie), so without a deterministic tiebreaker this could disagree with the
             // identical query in InsiderDeclarationBanner.razor and show a different due date there
             // than here.
-            _insiderRun = await Db.DeclarationCycleRuns
+            _insiderRun = await db.DeclarationCycleRuns
                 .AsNoTracking()
                 .Where(r => r.Type == DeclarationCycleType.InsiderTrading
                     && (r.CompanyId == null || r.CompanyId == _effectiveMember.CompanyId)
@@ -95,13 +100,13 @@ public partial class MyDeclarations
 
         if (_effectiveMember.ConflictOfInterestAccess || _effectiveMember.RelatedPartyRegisterAccess)
         {
-            var submittedCoiRunIds = await Db.RelatedPartyCoiDeclarations
+            var submittedCoiRunIds = await db.RelatedPartyCoiDeclarations
                 .AsNoTracking()
                 .Where(d => d.MemberId == _effectiveMember.Id && !d.IsDraft)
                 .Select(d => d.DeclarationCycleRunId)
                 .ToListAsync();
 
-            _coiRun = await Db.DeclarationCycleRuns
+            _coiRun = await db.DeclarationCycleRuns
                 .AsNoTracking()
                 .Where(r => r.Type == DeclarationCycleType.ConflictOfInterest
                     && (r.CompanyId == null || r.CompanyId == _effectiveMember.CompanyId)
@@ -116,7 +121,7 @@ public partial class MyDeclarations
         // a declaration on a different page within the same circuit-scoped DbContext (edits go
         // through a raw stored procedure, not EF's tracker), which is why print preview kept showing
         // the old values.
-        _insiderHistory = await Db.InsiderDeclarations
+        _insiderHistory = await db.InsiderDeclarations
             .AsNoTracking()
             .Include(d => d.DeclarationCycleRun)
             .Include(d => d.Relatives)
@@ -125,7 +130,7 @@ public partial class MyDeclarations
             .OrderByDescending(d => d.SubmittedAtUtc)
             .ToListAsync();
 
-        _coiHistory = await Db.RelatedPartyCoiDeclarations
+        _coiHistory = await db.RelatedPartyCoiDeclarations
             .AsNoTracking()
             .Include(d => d.DeclarationCycleRun)
             .Where(d => d.MemberId == _effectiveMember.Id)

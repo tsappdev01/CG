@@ -15,10 +15,15 @@ public partial class DepartmentDetail
 
     protected override async Task OnParametersSetAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         // Id 0 is the "new" route, exactly as CompanyDetail treats it.
         _editing = Id == 0
             ? new Department()
-            : await Db.Departments.AsNoTracking().FirstOrDefaultAsync(d => d.Id == Id);
+            : await db.Departments.AsNoTracking().FirstOrDefaultAsync(d => d.Id == Id);
 
         if (_editing is null)
         {
@@ -27,7 +32,7 @@ public partial class DepartmentDetail
             return;
         }
 
-        _memberCount = Id == 0 ? 0 : await Db.Members.CountAsync(m => m.DepartmentId == Id);
+        _memberCount = Id == 0 ? 0 : await db.Members.CountAsync(m => m.DepartmentId == Id);
     }
 
     private async Task<string> CurrentActorAsync()

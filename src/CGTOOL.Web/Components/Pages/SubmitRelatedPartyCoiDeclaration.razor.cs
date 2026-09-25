@@ -131,18 +131,23 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
     private async Task LoadAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var state = await AuthState.GetAuthenticationStateAsync();
 
         if (Impersonation.ActingMemberId is { } actingId)
         {
-            _effectiveMember = await Db.Members.Include(m => m.Company).FirstOrDefaultAsync(m => m.Id == actingId);
+            _effectiveMember = await db.Members.Include(m => m.Company).FirstOrDefaultAsync(m => m.Id == actingId);
         }
         else
         {
             var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId is not null)
             {
-                _effectiveMember = await Db.Members.Include(m => m.Company).FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
+                _effectiveMember = await db.Members.Include(m => m.Company).FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
             }
         }
 
@@ -153,13 +158,13 @@ public partial class SubmitRelatedPartyCoiDeclaration
         }
 
         _myFamilyMembers.Clear();
-        _myFamilyMembers.AddRange(await Db.FamilyMembers.AsNoTracking()
+        _myFamilyMembers.AddRange(await db.FamilyMembers.AsNoTracking()
             .Where(f => f.MemberId == _effectiveMember.Id)
             .OrderBy(f => f.Id)
             .ToListAsync());
 
         _myCompanies.Clear();
-        _myCompanies.AddRange(await Db.OwnedCompanies.AsNoTracking()
+        _myCompanies.AddRange(await db.OwnedCompanies.AsNoTracking()
             .Where(c => c.MemberId == _effectiveMember.Id)
             .OrderBy(c => c.Id)
             .ToListAsync());
@@ -170,13 +175,13 @@ public partial class SubmitRelatedPartyCoiDeclaration
             return;
         }
 
-        var submittedRunIds = await Db.RelatedPartyCoiDeclarations
+        var submittedRunIds = await db.RelatedPartyCoiDeclarations
             .AsNoTracking()
             .Where(d => d.MemberId == _effectiveMember.Id && !d.IsDraft)
             .Select(d => d.DeclarationCycleRunId)
             .ToListAsync();
 
-        _run = await Db.DeclarationCycleRuns
+        _run = await db.DeclarationCycleRuns
             .AsNoTracking()
             .Where(r => r.Type == DeclarationCycleType.ConflictOfInterest
                 && (r.CompanyId == null || r.CompanyId == _effectiveMember.CompanyId)
@@ -188,7 +193,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
         if (_run is not null)
         {
-            var existingDraftId = await Db.RelatedPartyCoiDeclarations
+            var existingDraftId = await db.RelatedPartyCoiDeclarations
                 .AsNoTracking()
                 .Where(d => d.MemberId == _effectiveMember.Id && d.DeclarationCycleRunId == _run.Id && d.IsDraft)
                 .Select(d => (int?)d.Id)
@@ -211,7 +216,12 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
     private async Task LoadForEditAsync(int declarationId)
     {
-        var declaration = await Db.RelatedPartyCoiDeclarations
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var declaration = await db.RelatedPartyCoiDeclarations
             .AsNoTracking()
             .Include(d => d.DeclarationCycleRun)
             .Include(d => d.Relatives)
@@ -693,6 +703,11 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
     private async Task<int> PersistAsync(bool isDraft, string actorName, bool isImpersonating)
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var declaration = new RelatedPartyCoiDeclaration
         {
             Id = _editingDeclarationId,
@@ -711,7 +726,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         };
 
         int declarationId;
-        await using (var tx = await Db.Database.BeginTransactionAsync())
+        await using (var tx = await db.Database.BeginTransactionAsync())
         {
             if (_isEditing)
             {

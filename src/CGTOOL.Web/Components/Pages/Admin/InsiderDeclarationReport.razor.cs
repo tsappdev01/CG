@@ -73,19 +73,24 @@ public partial class InsiderDeclarationReport
 
     protected override async Task OnInitializedAsync()
     {
-        var recipients = await Db.DeclarationCycleRunRecipients
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var recipients = await db.DeclarationCycleRunRecipients
             .AsNoTracking()
             .Include(r => r.DeclarationCycleRun)
             .Where(r => r.DeclarationCycleRun!.Type == DeclarationCycleType.InsiderTrading)
             .ToListAsync();
 
-        var members = await Db.Members
+        var members = await db.Members
             .AsNoTracking()
             .Include(m => m.Company)
             .Include(m => m.Department)
             .ToDictionaryAsync(m => m.Id);
 
-        var declarations = await Db.InsiderDeclarations
+        var declarations = await db.InsiderDeclarations
             .AsNoTracking()
             .Include(d => d.Relatives)
             .ToListAsync();
@@ -116,7 +121,7 @@ public partial class InsiderDeclarationReport
             };
         }).ToList();
 
-        _companies = await Db.Companies.OrderBy(c => c.Name).ToListAsync();
+        _companies = await db.Companies.OrderBy(c => c.Name).ToListAsync();
     }
 
     private List<int> AvailableYears() => (_rows ?? [])

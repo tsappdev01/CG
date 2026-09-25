@@ -90,12 +90,17 @@ public partial class MemberDetail
 
     protected override async Task OnInitializedAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var state = await AuthState.GetAuthenticationStateAsync();
         _currentUserId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        _companies = await Db.Companies.OrderBy(c => c.Name).ToListAsync();
-        _departments = await Db.Departments.OrderBy(d => d.Name).ToListAsync();
-        _members = await Db.Members.Include(m => m.Company).Include(m => m.Department).OrderBy(m => m.FullName).ToListAsync();
+        _companies = await db.Companies.OrderBy(c => c.Name).ToListAsync();
+        _departments = await db.Departments.OrderBy(d => d.Name).ToListAsync();
+        _members = await db.Members.Include(m => m.Company).Include(m => m.Department).OrderBy(m => m.FullName).ToListAsync();
         _users = await UserManager.Users.OrderBy(u => u.Email).ToListAsync();
         _roles = await RoleManager.Roles.OrderBy(r => r.Name).ToListAsync();
 
@@ -119,7 +124,7 @@ public partial class MemberDetail
         }
 
         _editing = member;
-        _approvedImpersonatorIds = (await Db.MemberImpersonationApprovals
+        _approvedImpersonatorIds = (await db.MemberImpersonationApprovals
             .Where(a => a.MemberId == member.Id)
             .Select(a => a.ImpersonatorId)
             .ToListAsync()).ToHashSet();
@@ -138,10 +143,15 @@ public partial class MemberDetail
 
     private async Task LoadDocumentsAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         _documents = [];
         if (_editing is null || _editing.Id == 0) return;
 
-        var declarations = await Db.InsiderDeclarations
+        var declarations = await db.InsiderDeclarations
             .AsNoTracking()
             .Include(d => d.DeclarationCycleRun)
             .Where(d => d.MemberId == _editing.Id)
@@ -165,6 +175,11 @@ public partial class MemberDetail
 
     private async Task LoadAuditAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         _selectedUserRoles = [];
         _systemRoleSelection = string.Empty;
         _profilePicturePath = null;
@@ -188,7 +203,7 @@ public partial class MemberDetail
         var memberId = _editing.Id.ToString();
         var linkedUserId = _editing.ApplicationUserId;
 
-        _auditEntries = await Db.AuditLogEntries
+        _auditEntries = await db.AuditLogEntries
             .Where(a => (a.EntityType == nameof(Member) && a.EntityId == memberId)
                      || (linkedUserId != null && a.EntityType == nameof(ApplicationUser) && a.EntityId == linkedUserId))
             .OrderByDescending(a => a.OccurredAtUtc)
@@ -433,6 +448,11 @@ public partial class MemberDetail
 
     private async Task SaveAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         // Guards against a double/rapid click re-entering Save while the first click's insert/update
         // is still awaiting the DB: both calls would otherwise share this circuit's one DbContext and
         // either race (throwing "a second operation was started on this context before a previous
@@ -495,7 +515,7 @@ public partial class MemberDetail
             }
 
             var editingId = _editing.Id;
-            _members = await Db.Members.Include(m => m.Company).Include(m => m.Department).OrderBy(m => m.FullName).ToListAsync();
+            _members = await db.Members.Include(m => m.Company).Include(m => m.Department).OrderBy(m => m.FullName).ToListAsync();
             _editing = _members.First(m => m.Id == editingId);
             await LoadAuditAsync();
         }

@@ -68,7 +68,12 @@ public partial class ShareholderRegisterPage
 
     private async Task ReloadUploadsAsync()
     {
-        _uploads = await Db.ShareholderRegisterUploads
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _uploads = await db.ShareholderRegisterUploads
             .AsNoTracking()
             .OrderByDescending(u => u.AsOnDate).ThenByDescending(u => u.UploadedAtUtc)
             .ToListAsync();
@@ -83,10 +88,15 @@ public partial class ShareholderRegisterPage
 
     private async Task LoadSelectedSnapshotAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         _page = 1;
         _records = _selectedUploadId == 0
             ? []
-            : await Db.ShareholderRecords
+            : await db.ShareholderRecords
                 .AsNoTracking()
                 .Where(r => r.ShareholderRegisterUploadId == _selectedUploadId)
                 .Select(r => new ShareholderListRow
@@ -118,9 +128,14 @@ public partial class ShareholderRegisterPage
         }
     }
 
-    private async Task ViewRecordAsync(int id) =>
-        _viewRecord = await Db.ShareholderRecords.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id);
-
+    private async Task ViewRecordAsync(int id)
+    {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _viewRecord = await db.ShareholderRecords.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id);
+    }
     private List<string> AvailableClientTypes() => (_records ?? [])
         .Select(r => r.ClientType).Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!).Distinct().OrderBy(v => v).ToList();
 

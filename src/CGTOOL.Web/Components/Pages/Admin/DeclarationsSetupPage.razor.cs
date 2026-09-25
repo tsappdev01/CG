@@ -85,11 +85,16 @@ public partial class DeclarationsSetupPage
 
     protected override async Task OnParametersSetAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var id = await SetupWriter.EnsureExistsAsync(Type);
-        _setup = await Db.DeclarationCycleSetups.AsNoTracking().FirstAsync(s => s.Id == id);
+        _setup = await db.DeclarationCycleSetups.AsNoTracking().FirstAsync(s => s.Id == id);
         _original = Clone(_setup);
 
-        _companies = await Db.Companies.Where(c => c.Active).OrderBy(c => c.Name).ToListAsync();
+        _companies = await db.Companies.Where(c => c.Active).OrderBy(c => c.Name).ToListAsync();
 
         await LoadRunsAsync();
         EnsureValidSelectedPeriod();
@@ -101,7 +106,12 @@ public partial class DeclarationsSetupPage
     // stale pre-update entity from EF's identity map instead of the fresh row.
     private async Task LoadRunsAsync()
     {
-        _runs = await Db.DeclarationCycleRuns
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _runs = await db.DeclarationCycleRuns
             .AsNoTracking()
             .Include(r => r.Company)
             .Include(r => r.Recipients)
@@ -114,13 +124,13 @@ public partial class DeclarationsSetupPage
         // nothing to check "no submissions yet" against).
         _submittedCounts = Type switch
         {
-            DeclarationCycleType.InsiderTrading => await Db.InsiderDeclarations
+            DeclarationCycleType.InsiderTrading => await db.InsiderDeclarations
                 .AsNoTracking()
                 .Where(d => !d.IsDraft)
                 .GroupBy(d => d.DeclarationCycleRunId)
                 .Select(g => new { RunId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(g => g.RunId, g => g.Count),
-            DeclarationCycleType.ConflictOfInterest => await Db.RelatedPartyCoiDeclarations
+            DeclarationCycleType.ConflictOfInterest => await db.RelatedPartyCoiDeclarations
                 .AsNoTracking()
                 .Where(d => !d.IsDraft)
                 .GroupBy(d => d.DeclarationCycleRunId)
@@ -278,11 +288,16 @@ public partial class DeclarationsSetupPage
 
     private async Task ConfirmSendNowAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         _pendingSendConfirm = false;
         if (_setup is null) return;
 
         _sending = true;
-        var recipients = await DeclarationCycleReminderHostedService.ResolveRecipientsAsync(Db, _pendingCompanyId, default);
+        var recipients = await DeclarationCycleReminderHostedService.ResolveRecipientsAsync(db, _pendingCompanyId, default);
         if (recipients.Count == 0)
         {
             Toasts.ShowError("No active users with an email address were found for that entity.");
@@ -305,7 +320,7 @@ public partial class DeclarationsSetupPage
         };
         run.Id = await RunWriter.InsertAsync(run);
 
-        var (sentCount, failedCount) = await DeclarationCycleReminderHostedService.SendNotificationAsync(Db, EmailSender, RunWriter, AuditLog, run, _setup, actor);
+        var (sentCount, failedCount) = await DeclarationCycleReminderHostedService.SendNotificationAsync(db, EmailSender, RunWriter, AuditLog, run, _setup, actor);
         await RunWriter.MarkSentAsync(run.Id, DateTime.UtcNow, sentCount + failedCount);
 
         Toasts.ShowSuccess(failedCount == 0

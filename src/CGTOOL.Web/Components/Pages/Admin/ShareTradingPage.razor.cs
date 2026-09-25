@@ -63,12 +63,17 @@ public partial class ShareTradingPage
 
     private async Task ReloadAsync()
     {
-        _uploads = await Db.ShareTradingUploads
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _uploads = await db.ShareTradingUploads
             .AsNoTracking()
             .OrderByDescending(u => u.UploadedAtUtc)
             .ToListAsync();
 
-        _availableReportDates = await Db.ShareTradingRecords
+        _availableReportDates = await db.ShareTradingRecords
             .AsNoTracking()
             .Select(r => r.ReportDate)
             .Distinct()
@@ -92,9 +97,14 @@ public partial class ShareTradingPage
 
     private async Task LoadSelectedReportAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         _records = _selectedReportDate is null
             ? []
-            : await Db.ShareTradingRecords.AsNoTracking().Where(r => r.ReportDate == _selectedReportDate.Value).ToListAsync();
+            : await db.ShareTradingRecords.AsNoTracking().Where(r => r.ReportDate == _selectedReportDate.Value).ToListAsync();
     }
 
     private async Task OnReportDateSelectedAsync(ChangeEventArgs e)
@@ -108,6 +118,11 @@ public partial class ShareTradingPage
 
     private async Task LoadRunningPositionAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         if (_positionFrom > _positionTo)
         {
             _positionRows = [];
@@ -115,7 +130,7 @@ public partial class ShareTradingPage
             return;
         }
 
-        var records = await Db.ShareTradingRecords
+        var records = await db.ShareTradingRecords
             .AsNoTracking()
             .Where(r => r.ReportDate >= _positionFrom && r.ReportDate <= _positionTo)
             .ToListAsync();

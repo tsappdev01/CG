@@ -1,7 +1,7 @@
 @page "/admin/companies/{Id:int}"
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject ICompanyWriter CompanyWriter
 @inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState

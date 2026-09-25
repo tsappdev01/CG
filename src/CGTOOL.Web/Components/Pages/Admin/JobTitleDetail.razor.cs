@@ -15,9 +15,14 @@ public partial class JobTitleDetail
 
     protected override async Task OnParametersSetAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         _editing = Id == 0
             ? new JobTitle()
-            : await Db.JobTitles.AsNoTracking().FirstOrDefaultAsync(j => j.Id == Id);
+            : await db.JobTitles.AsNoTracking().FirstOrDefaultAsync(j => j.Id == Id);
 
         if (_editing is null)
         {
@@ -28,7 +33,7 @@ public partial class JobTitleDetail
 
         // JobTitle is held on Member as free text rather than a foreign key, so the count matches
         // on the name -- the same thing the list page counts.
-        _memberCount = Id == 0 ? 0 : await Db.Members.CountAsync(m => m.JobTitle == _editing.Name);
+        _memberCount = Id == 0 ? 0 : await db.Members.CountAsync(m => m.JobTitle == _editing.Name);
     }
 
     private async Task<string> CurrentActorAsync()

@@ -34,20 +34,25 @@ public partial class RpTransactionsPage
 
     protected override async Task OnInitializedAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         _activeTab = Nav.ToBaseRelativePath(Nav.Uri).Contains("mine", StringComparison.OrdinalIgnoreCase) ? "mine" : "new";
 
         var state = await AuthState.GetAuthenticationStateAsync();
 
         if (Impersonation.ActingMemberId is { } actingId)
         {
-            _effectiveMember = await Db.Members.Include(m => m.Company).FirstOrDefaultAsync(m => m.Id == actingId);
+            _effectiveMember = await db.Members.Include(m => m.Company).FirstOrDefaultAsync(m => m.Id == actingId);
         }
         else
         {
             var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId is not null)
             {
-                _effectiveMember = await Db.Members.Include(m => m.Company).FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
+                _effectiveMember = await db.Members.Include(m => m.Company).FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
             }
         }
 
@@ -58,7 +63,7 @@ public partial class RpTransactionsPage
             return;
         }
 
-        _counterPartyNames = await RelatedPartyMasterSource.GetNamesAsync(Db);
+        _counterPartyNames = await RelatedPartyMasterSource.GetNamesAsync(db);
         await LoadMyTransactionsAsync();
 
         _step = Step.Ready;
@@ -66,7 +71,12 @@ public partial class RpTransactionsPage
 
     private async Task LoadMyTransactionsAsync()
     {
-        _myTransactions = await Db.RelatedPartyTransactions
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _myTransactions = await db.RelatedPartyTransactions
             .AsNoTracking()
             .Include(t => t.ApproverMember)
             .Where(t => t.MemberId == _effectiveMember!.Id)
@@ -162,6 +172,11 @@ public partial class RpTransactionsPage
 
     private async Task SubmitAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         if (string.IsNullOrWhiteSpace(_counterPartyName))
         {
             Toasts.ShowError("Select the name of the counter-party.");
@@ -181,7 +196,7 @@ public partial class RpTransactionsPage
         _submitting = true;
         try
         {
-            var company = await Db.Companies
+            var company = await db.Companies
                 .Include(c => c.ApprovingAuthorityMember)
                 .FirstOrDefaultAsync(c => c.Id == _effectiveMember!.CompanyId);
 
@@ -235,8 +250,8 @@ public partial class RpTransactionsPage
 
             if (isConflicted)
             {
-                var ccaoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(Db, RpTransactionRole.Ccao);
-                var cfoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(Db, RpTransactionRole.Cfo);
+                var ccaoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Ccao);
+                var cfoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Cfo);
                 await RpTransactionNotificationService.EscalatedAsync(EmailSender, transaction, company.ApprovingAuthorityMember.Email, ccaoEmails, cfoEmails, RpEscalationReason.ApproverConflictOfInterest);
             }
             else
@@ -258,7 +273,7 @@ public partial class RpTransactionsPage
             _pendingDocuments.Clear();
 
             await LoadMyTransactionsAsync();
-            _counterPartyNames = await RelatedPartyMasterSource.GetNamesAsync(Db);
+            _counterPartyNames = await RelatedPartyMasterSource.GetNamesAsync(db);
             _activeTab = "mine";
         }
         finally
@@ -272,7 +287,12 @@ public partial class RpTransactionsPage
     /// never gets a chance to act; the transaction routes straight to CCAO.</summary>
     private async Task<bool> ApproverIsConflictedAsync(int approverMemberId, string counterPartyName)
     {
-        var latestDeclaration = await Db.RelatedPartyCoiDeclarations
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var latestDeclaration = await db.RelatedPartyCoiDeclarations
             .AsNoTracking()
             .Include(d => d.Relatives)
             .Include(d => d.Companies)
@@ -298,6 +318,11 @@ public partial class RpTransactionsPage
 
     private async Task SaveAmendAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         if (_amendingRow is null) return;
 
         if (string.IsNullOrWhiteSpace(_amendCounterPartyName) || _amendTransactionValue is not (> 0) || string.IsNullOrWhiteSpace(_amendDescription))
@@ -306,7 +331,7 @@ public partial class RpTransactionsPage
             return;
         }
 
-        var t = await Db.RelatedPartyTransactions.Include(x => x.Member).Include(x => x.Company).Include(x => x.ApproverMember)
+        var t = await db.RelatedPartyTransactions.Include(x => x.Member).Include(x => x.Company).Include(x => x.ApproverMember)
             .FirstOrDefaultAsync(x => x.Id == _amendingRow.Id);
         if (t is null || !CanAmend(t)) { _amendingRow = null; return; }
 
@@ -321,8 +346,8 @@ public partial class RpTransactionsPage
         var amendedSubject = $"{RelatedPartyTransaction.DisplayReference(t.Id)} — Amended";
         if (t.Status == RpTransactionStatus.Escalated)
         {
-            var ccaoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(Db, RpTransactionRole.Ccao);
-            var cfoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(Db, RpTransactionRole.Cfo);
+            var ccaoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Ccao);
+            var cfoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Cfo);
             foreach (var email in ccaoEmails.Concat(cfoEmails))
             {
                 await EmailSender.SendAsync(email, amendedSubject, amendedNote);

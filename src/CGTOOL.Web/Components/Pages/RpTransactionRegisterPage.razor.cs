@@ -24,7 +24,12 @@ public partial class RpTransactionRegisterPage
 
     private async Task LoadAsync()
     {
-        var query = Db.RelatedPartyTransactions
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var query = db.RelatedPartyTransactions
             .AsNoTracking()
             .Include(t => t.Member).ThenInclude(m => m!.Company)
             .Include(t => t.Company)
@@ -49,7 +54,7 @@ public partial class RpTransactionRegisterPage
 
         _released = await query.OrderByDescending(t => t.ReleasedAtUtc).ToListAsync();
 
-        _escalated = await Db.RelatedPartyTransactions
+        _escalated = await db.RelatedPartyTransactions
             .AsNoTracking()
             .Include(t => t.Member).ThenInclude(m => m!.Company)
             .Include(t => t.Company)

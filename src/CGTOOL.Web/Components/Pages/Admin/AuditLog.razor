@@ -2,7 +2,7 @@
 @page "/admin/audit-log/{ModeSlug}"
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IJSRuntime JS
 
 <PageTitle>@PageHeading</PageTitle>

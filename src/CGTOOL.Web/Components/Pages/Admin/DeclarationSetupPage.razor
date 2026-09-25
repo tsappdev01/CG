@@ -2,7 +2,7 @@
 @page "/admin/declaration-setup/{TypeSlug}"
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IDeclarationSetupWriter SetupWriter
 @inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState
@@ -241,7 +241,12 @@
 
     private async Task LoadAsync()
     {
-        var query = Db.DeclarationSetups.AsQueryable();
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var query = db.DeclarationSetups.AsQueryable();
         if (FilterType is { } type) query = query.Where(s => s.Type == type);
         _setups = await query.OrderByDescending(s => s.Date).ToListAsync();
     }

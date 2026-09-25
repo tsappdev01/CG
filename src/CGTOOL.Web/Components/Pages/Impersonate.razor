@@ -1,7 +1,7 @@
 @page "/impersonate"
 @attribute [Authorize]
 @rendermode InteractiveServer
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject AuthenticationStateProvider AuthState
 @inject ImpersonationContext Impersonation
 @inject IAuditLogger AuditLog
@@ -52,6 +52,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var state = await AuthState.GetAuthenticationStateAsync();
         if (GovernanceRoles.IsNormalStaffOnly(state.User))
         {
@@ -62,15 +67,15 @@
         var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (userId is null) return;
 
-        _myMember = await Db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
+        _myMember = await db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
         if (_myMember is null) return;
 
-        var approvedIds = await Db.MemberImpersonationApprovals
+        var approvedIds = await db.MemberImpersonationApprovals
             .Where(a => a.ImpersonatorId == _myMember.Id)
             .Select(a => a.MemberId)
             .ToListAsync();
 
-        _candidates = await Db.Members.Include(m => m.Company).Where(m => approvedIds.Contains(m.Id) && m.Active).ToListAsync();
+        _candidates = await db.Members.Include(m => m.Company).Where(m => approvedIds.Contains(m.Id) && m.Active).ToListAsync();
     }
 
     private async Task StartAsync(Member member)

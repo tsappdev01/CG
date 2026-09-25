@@ -21,9 +21,14 @@ public partial class RpTransactionCcaoReviewPage
 
     protected override async Task OnInitializedAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var state = await AuthState.GetAuthenticationStateAsync();
         var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var currentMember = userId is null ? null : await Db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
+        var currentMember = userId is null ? null : await db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
 
         var isCcao = currentMember?.RpTransactionRole == RpTransactionRole.Ccao;
         var isAdmin = state.User.IsInRole(GovernanceRoles.Administrator);
@@ -34,7 +39,7 @@ public partial class RpTransactionCcaoReviewPage
             return;
         }
 
-        _cfoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(Db, RpTransactionRole.Cfo);
+        _cfoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Cfo);
 
         await LoadAsync();
         _step = Step.Ready;
@@ -42,7 +47,12 @@ public partial class RpTransactionCcaoReviewPage
 
     private async Task LoadAsync()
     {
-        var query = Db.RelatedPartyTransactions
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var query = db.RelatedPartyTransactions
             .Include(t => t.Member).ThenInclude(m => m!.Company)
             .Include(t => t.Company)
             .Include(t => t.ApproverMember)

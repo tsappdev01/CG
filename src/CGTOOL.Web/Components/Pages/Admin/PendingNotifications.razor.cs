@@ -24,7 +24,12 @@ public partial class PendingNotifications
 
     private async Task LoadAsync()
     {
-        _pending = await Db.MemberNotifications
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _pending = await db.MemberNotifications
             .Include(n => n.Member)
             .Where(n => n.Status == MemberNotificationStatus.Pending)
             .OrderBy(n => n.CreatedAtUtc)

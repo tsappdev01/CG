@@ -80,12 +80,17 @@ public partial class AuditLog
 
     private async Task LoadAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         if (_from is null || _to is null) return;
 
         var fromUtc = _from.Value.ToDateTime(TimeOnly.MinValue);
         var toUtcExclusive = _to.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
 
-        var query = Db.AuditLogEntries.Where(e => e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc < toUtcExclusive);
+        var query = db.AuditLogEntries.Where(e => e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc < toUtcExclusive);
 
         _totalCount = await query.CountAsync();
         _entries = await query.OrderByDescending(e => e.OccurredAtUtc).Take(MaxRows).ToListAsync();

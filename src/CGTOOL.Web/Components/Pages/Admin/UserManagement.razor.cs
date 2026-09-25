@@ -94,14 +94,20 @@ public partial class UserManagement
 
     private async Task LoadAsync()
     {
-        _members = await Db.Members.Include(m => m.Company).Include(m => m.Department).OrderBy(m => m.FullName).ToListAsync();
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- surfacing as "A second operation was started on this context instance" or
+        // "Cannot access a disposed context instance". Same reason NavMenu and TopBar do it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _members = await db.Members.Include(m => m.Company).Include(m => m.Department).OrderBy(m => m.FullName).ToListAsync();
         _users = await UserManager.Users.OrderBy(u => u.Email).ToListAsync();
         _roles = await RoleManager.Roles.OrderBy(r => r.Name).ToListAsync();
-        _companies = await Db.Companies.OrderBy(c => c.Name).ToListAsync();
-        _departments = await Db.Departments.OrderBy(d => d.Name).ToListAsync();
+        _companies = await db.Companies.OrderBy(c => c.Name).ToListAsync();
+        _departments = await db.Departments.OrderBy(d => d.Name).ToListAsync();
 
-        var roleNamesById = await Db.Roles.AsNoTracking().ToDictionaryAsync(r => r.Id, r => r.Name ?? string.Empty);
-        _userRoles = (await Db.UserRoles.AsNoTracking().ToListAsync())
+        var roleNamesById = await db.Roles.AsNoTracking().ToDictionaryAsync(r => r.Id, r => r.Name ?? string.Empty);
+        _userRoles = (await db.UserRoles.AsNoTracking().ToListAsync())
             .GroupBy(ur => ur.UserId)
             .ToDictionary(
                 g => g.Key,

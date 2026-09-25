@@ -101,19 +101,25 @@ public partial class Settings
 
     private async Task LoadAsync()
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- surfacing as "A second operation was started on this context instance" or
+        // "Cannot access a disposed context instance". Same reason NavMenu and TopBar do it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         _currentDocumentExists = File.Exists(Path.Combine(Env.WebRootPath, PolicyDocumentRelativePath));
-        _versions = await Db.PolicyDocumentVersions
+        _versions = await db.PolicyDocumentVersions
             .AsNoTracking()
             .OrderByDescending(v => v.UploadedAtUtc)
             .ToListAsync();
 
-        _navOrder = await Db.NavMenuItemOrders.AsNoTracking().ToDictionaryAsync(o => o.ItemKey, o => o.SortOrder);
-        _navLabels = await Db.NavMenuItemLabels.AsNoTracking().ToDictionaryAsync(l => l.ItemKey, l => l.CustomLabel);
+        _navOrder = await db.NavMenuItemOrders.AsNoTracking().ToDictionaryAsync(o => o.ItemKey, o => o.SortOrder);
+        _navLabels = await db.NavMenuItemLabels.AsNoTracking().ToDictionaryAsync(l => l.ItemKey, l => l.CustomLabel);
 
         // Text boxes start seeded with whatever's currently displayed (renamed or catalog default)
         // so the admin edits from what they actually see, not a blank field.
         _labelEdits = NavMenuCatalog.Items.ToDictionary(i => i.Key, i => EffectiveLabel(i));
-        _navVisibility = await Db.NavMenuItemVisibilities.AsNoTracking().ToDictionaryAsync(v => v.ItemKey, v => v.State);
+        _navVisibility = await db.NavMenuItemVisibilities.AsNoTracking().ToDictionaryAsync(v => v.ItemKey, v => v.State);
     }
 
     private List<NavMenuCatalogItem> SortedGroupItems(OrderGroup group) => NavMenuCatalog.Sorted(group.ParentKey, _navOrder);
@@ -261,11 +267,17 @@ public partial class Settings
     // logins with no linked Member (e.g. a bootstrap admin account).
     private async Task<string> CurrentActorFullNameAsync(string fallbackActorName)
     {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- surfacing as "A second operation was started on this context instance" or
+        // "Cannot access a disposed context instance". Same reason NavMenu and TopBar do it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
         var state = await AuthState.GetAuthenticationStateAsync();
         var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId is null) return fallbackActorName;
 
-        var fullName = await Db.Members.Where(m => m.ApplicationUserId == userId).Select(m => m.FullName).FirstOrDefaultAsync();
+        var fullName = await db.Members.Where(m => m.ApplicationUserId == userId).Select(m => m.FullName).FirstOrDefaultAsync();
         return string.IsNullOrWhiteSpace(fullName) ? fallbackActorName : fullName;
     }
 }

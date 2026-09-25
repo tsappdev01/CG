@@ -45,8 +45,14 @@ public partial class Departments
 
     private async Task LoadAsync()
     {
-        _departments = await Db.Departments.OrderBy(d => d.Name).ToListAsync();
-        _memberCounts = await Db.Members
+        // A short-lived context of its own, not the circuit-scoped ApplicationDbContext. Sharing
+        // that one lets this load race whatever else in the circuit is using it at the same moment,
+        // which surfaces as "A second operation was started on this context instance before a
+        // previous operation completed" -- the same reason NavMenu and TopBar take their own.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _departments = await db.Departments.OrderBy(d => d.Name).ToListAsync();
+        _memberCounts = await db.Members
             .Where(m => m.DepartmentId != null)
             .GroupBy(m => m.DepartmentId!.Value)
             .Select(g => new { DepartmentId = g.Key, Count = g.Count() })

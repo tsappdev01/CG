@@ -347,14 +347,23 @@ sign-out and Manage redirect.
 To stop the prompt, once per machine:
 
 1. **Debug → Windows → Exception Settings** (`Ctrl+Alt+E`).
-2. Expand **Common Language Runtime Exceptions** and search for
-   `NavigationException`. If it isn't listed, click **+**, pick that category and
-   enter `Microsoft.AspNetCore.Components.NavigationException`.
-3. Leave its **Break When Thrown** box *unchecked*.
-4. Right-click it and check **Continue When Unhandled in User Code**.
+2. Select **Common Language Runtime Exceptions** and click **+**. Searching for
+   `NavigationException` first will find nothing — the list ships with `System.*`
+   types and a handful of others, and ASP.NET Core's are not among them.
+3. Type the type name *only*, with no message text:
+   `Microsoft.AspNetCore.Components.NavigationException`, and press Enter.
+4. It is added with **Break When Thrown** ticked. **Untick it.**
+5. Right-click the new entry and check **Continue When Unhandled in User Code**.
 
 That setting lives in the per-developer `.suo`, so it is not something the
 repository can carry — each developer sets it once.
+
+If that is more fiddling than it is worth, **Tools → Options → Debugging →
+General → untick "Enable Just My Code"** also stops it, in one click. The
+"user-unhandled" category only exists under Just My Code, so turning it off
+removes this prompt entirely — at the cost of stepping into framework code and
+losing genuine user-unhandled breaks elsewhere. The targeted setting above is
+the better trade.
 
 There is no code-level fix. `[DebuggerDisableUserUnhandledExceptions]` reads as
 though it should work and does not: it suppresses the break only for an exception

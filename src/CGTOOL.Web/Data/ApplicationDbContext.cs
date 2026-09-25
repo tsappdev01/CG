@@ -32,6 +32,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PolicyDocumentVersion> PolicyDocumentVersions => Set<PolicyDocumentVersion>();
     public DbSet<NavMenuItemOrder> NavMenuItemOrders => Set<NavMenuItemOrder>();
     public DbSet<NavMenuItemLabel> NavMenuItemLabels => Set<NavMenuItemLabel>();
+    public DbSet<NavMenuItemVisibility> NavMenuItemVisibilities => Set<NavMenuItemVisibility>();
     public DbSet<ShareholderRegisterUpload> ShareholderRegisterUploads => Set<ShareholderRegisterUpload>();
     public DbSet<ShareholderRecord> ShareholderRecords => Set<ShareholderRecord>();
     public DbSet<ShareTradingUpload> ShareTradingUploads => Set<ShareTradingUpload>();
@@ -55,6 +56,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .IsUnique();
 
         builder.Entity<NavMenuItemLabel>()
+            .HasIndex(n => n.ItemKey)
+            .IsUnique();
+
+        builder.Entity<NavMenuItemVisibility>()
             .HasIndex(n => n.ItemKey)
             .IsUnique();
 

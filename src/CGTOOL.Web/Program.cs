@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using CGTOOL.Web.Components;
 using CGTOOL.Web.Components.Account;
+using CGTOOL.Web.Components.Layout;
 using CGTOOL.Web.Data;
 using CGTOOL.Web.Data.Governance;
 
@@ -102,6 +103,8 @@ builder.Services.AddScoped<IRelatedPartyCoiDeclarationWriter, RelatedPartyCoiDec
 builder.Services.AddScoped<IPolicyDocumentVersionWriter, PolicyDocumentVersionWriter>();
 builder.Services.AddScoped<INavMenuItemOrderWriter, NavMenuItemOrderWriter>();
 builder.Services.AddScoped<INavMenuItemLabelWriter, NavMenuItemLabelWriter>();
+builder.Services.AddScoped<INavMenuItemVisibilityWriter, NavMenuItemVisibilityWriter>();
+builder.Services.AddScoped<NavMenuStateNotifier>();
 builder.Services.AddScoped<IShareholderRegisterWriter, ShareholderRegisterWriter>();
 builder.Services.AddScoped<IShareTradingWriter, ShareTradingWriter>();
 builder.Services.AddScoped<IRelatedPartyTransactionWriter, RelatedPartyTransactionWriter>();

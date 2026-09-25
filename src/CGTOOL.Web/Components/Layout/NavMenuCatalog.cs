@@ -1,3 +1,5 @@
+using CGTOOL.Web.Data.Governance;
+
 namespace CGTOOL.Web.Components.Layout;
 
 /// <summary>One reorderable nav menu entry. Key is stable and persisted (NavMenuItemOrder.ItemKey) --
@@ -83,5 +85,24 @@ public static class NavMenuCatalog
         if (labelOverrides.TryGetValue(key, out var custom)) return custom;
         var item = Items.FirstOrDefault(i => i.Key == key);
         return item?.Label ?? key;
+    }
+
+    /// <summary>
+    /// Whether an item appears in the nav, and if not, why. An item is only shown when it and every
+    /// ancestor are Visible -- a child of a hidden section has nowhere to appear, and its own
+    /// setting is left untouched so unhiding the parent restores whatever each child was set to.
+    /// Shared by NavMenu (rendering) and the Settings screen (editing) so both agree.
+    /// </summary>
+    public static NavMenuItemState EffectiveState(string key, IReadOnlyDictionary<string, NavMenuItemState> overrides)
+    {
+        var current = key;
+
+        while (current is not null)
+        {
+            if (overrides.TryGetValue(current, out var state) && state != NavMenuItemState.Visible) return state;
+            current = Items.FirstOrDefault(i => i.Key == current)?.ParentKey;
+        }
+
+        return NavMenuItemState.Visible;
     }
 }

@@ -36,6 +36,66 @@ public partial class Settings
     private Dictionary<string, int> _navOrder = [];
     private Dictionary<string, string> _navLabels = [];
     private Dictionary<string, string> _labelEdits = [];
+    private Dictionary<string, NavMenuItemState> _navVisibility = [];
+    private NavMenuCatalogItem? _pendingRemoval;
+
+    // Only one section is open at a time, matching how the nav menu itself behaves. "Main sections"
+    // starts open because it is the one people come here for most.
+    private readonly HashSet<string> _openSections = ["Main sections"];
+
+    private bool IsSectionOpen(string title) => _openSections.Contains(title);
+
+    private void ToggleSection(string title)
+    {
+        if (!_openSections.Remove(title))
+        {
+            _openSections.Clear();
+            _openSections.Add(title);
+        }
+    }
+
+    /// <summary>This item's own setting, ignoring its ancestors -- the row edits the item itself.</summary>
+    private NavMenuItemState StateOf(NavMenuCatalogItem item) =>
+        _navVisibility.GetValueOrDefault(item.Key, NavMenuItemState.Visible);
+
+    private int VisibleCount(List<NavMenuCatalogItem> items) => items.Count(i => StateOf(i) == NavMenuItemState.Visible);
+
+    /// <summary>True when this row is a section that is off, and something sits under it -- so the
+    /// row can say that its children went with it rather than leaving that to be discovered.</summary>
+    private bool HasHiddenChildren(NavMenuCatalogItem item, NavMenuItemState state) =>
+        state != NavMenuItemState.Visible && NavMenuCatalog.Items.Any(i => i.ParentKey == item.Key);
+
+    private async Task SetStateAsync(NavMenuCatalogItem item, NavMenuItemState state)
+    {
+        await NavVisibilityWriter.SetStateAsync(item.Key, state);
+
+        if (state == NavMenuItemState.Visible) _navVisibility.Remove(item.Key);
+        else _navVisibility[item.Key] = state;
+
+        await AuditLog.LogAsync(
+            await CurrentActorAsync(),
+            AuditAction.Update,
+            "NavMenuItem", item.Key, EffectiveLabel(item),
+            justification: $"Menu visibility set to {state}.");
+
+        await NavState.NotifyChangedAsync();
+
+        Toasts.ShowSuccess(state switch
+        {
+            NavMenuItemState.Visible => $"{EffectiveLabel(item)} is back on the menu.",
+            NavMenuItemState.Hidden => $"{EffectiveLabel(item)} is hidden.",
+            _ => $"{EffectiveLabel(item)} was removed from the menu.",
+        });
+    }
+
+    private async Task ConfirmRemovalAsync()
+    {
+        if (_pendingRemoval is null) return;
+
+        var item = _pendingRemoval;
+        _pendingRemoval = null;
+        await SetStateAsync(item, NavMenuItemState.Removed);
+    }
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -53,6 +113,7 @@ public partial class Settings
         // Text boxes start seeded with whatever's currently displayed (renamed or catalog default)
         // so the admin edits from what they actually see, not a blank field.
         _labelEdits = NavMenuCatalog.Items.ToDictionary(i => i.Key, i => EffectiveLabel(i));
+        _navVisibility = await Db.NavMenuItemVisibilities.AsNoTracking().ToDictionaryAsync(v => v.ItemKey, v => v.State);
     }
 
     private List<NavMenuCatalogItem> SortedGroupItems(OrderGroup group) => NavMenuCatalog.Sorted(group.ParentKey, _navOrder);
@@ -80,6 +141,7 @@ public partial class Settings
             $"Renamed nav menu item '{item.Label}' to '{newLabel}'");
 
         await LoadAsync();
+        await NavState.NotifyChangedAsync();
         Toasts.ShowSuccess("Menu item renamed.");
     }
 
@@ -92,6 +154,7 @@ public partial class Settings
             $"Reset nav menu item '{item.Key}' back to its default label ('{item.Label}')");
 
         await LoadAsync();
+        await NavState.NotifyChangedAsync();
         Toasts.ShowSuccess("Menu item reset to its default name.");
     }
 
@@ -114,6 +177,7 @@ public partial class Settings
             $"Swapped nav menu order of '{a.Label}' and '{b.Label}' within {group.Title}");
 
         await LoadAsync();
+        await NavState.NotifyChangedAsync();
         Toasts.ShowSuccess("Menu order updated.");
     }
 

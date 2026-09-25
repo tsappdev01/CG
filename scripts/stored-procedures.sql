@@ -1204,6 +1204,32 @@ BEGIN
 END
 GO
 
+-- Hidden/Removed override for a nav menu entry. Visible is the absence of a row, so there is
+-- nothing stored for a menu nobody has touched.
+CREATE OR ALTER PROCEDURE dbo.usp_NavMenuItemVisibility_Upsert
+    @ItemKey nvarchar(80),
+    @State int
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.NavMenuItemVisibilities SET State = @State WHERE ItemKey = @ItemKey;
+    IF @@ROWCOUNT = 0
+        INSERT INTO dbo.NavMenuItemVisibilities (ItemKey, State) VALUES (@ItemKey, @State);
+END
+GO
+
+-- Puts an item back on the menu by removing the override row entirely.
+CREATE OR ALTER PROCEDURE dbo.usp_NavMenuItemVisibility_Delete
+    @ItemKey nvarchar(80)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DELETE FROM dbo.NavMenuItemVisibilities WHERE ItemKey = @ItemKey;
+END
+GO
+
 -- =========================== Investor Relations: Shareholder Register ===========================
 
 -- Table type carrying one full parsed row of an uploaded Share Register .xlsx -- passed as a single

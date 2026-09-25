@@ -5,6 +5,9 @@
 @inject IPolicyDocumentVersionWriter VersionWriter
 @inject INavMenuItemOrderWriter NavOrderWriter
 @inject INavMenuItemLabelWriter NavLabelWriter
+@inject INavMenuItemVisibilityWriter NavVisibilityWriter
+@using CGTOOL.Web.Components.Layout
+@inject NavMenuStateNotifier NavState
 @inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState
 @inject ToastService Toasts
@@ -89,46 +92,102 @@
         <h2>Menu Order &amp; Names</h2>
         <p class="cg-subtitle">Reorder or rename the sections and items in the left-hand nav menu. Changes apply immediately for everyone.</p>
 
+        @* Each group is a collapsible panel -- the flat list ran to eight headings and forty rows,
+           which meant scrolling past everything to reach the one section being edited. *@
         @foreach (var group in OrderGroups)
         {
             var items = SortedGroupItems(group);
-            <h3>@group.Title</h3>
-            @if (items.Count == 0)
-            {
-                <p class="cg-subtitle">No items in this group.</p>
-            }
-            else
-            {
-                <div class="cg-table-wrap" style="margin-bottom:16px;">
-                    <table>
-                        <tbody>
+            var open = IsSectionOpen(group.Title);
+
+            <section class="cg-menu-section">
+                <button type="button" class="cg-menu-section-head @(open ? "open" : "")"
+                        @onclick="() => ToggleSection(group.Title)" aria-expanded="@open">
+                    <span class="cg-menu-chevron" aria-hidden="true"></span>
+                    <span class="cg-menu-section-title">@group.Title</span>
+                    <span class="cg-menu-section-count">@VisibleCount(items) of @items.Count shown</span>
+                </button>
+
+                @if (open)
+                {
+                    <div class="cg-menu-section-body">
+                        @if (items.Count == 0)
+                        {
+                            <p class="cg-subtitle">No items in this group.</p>
+                        }
+                        else
+                        {
                             @for (var i = 0; i < items.Count; i++)
                             {
                                 var item = items[i];
                                 var pos = i;
-                                <tr class="cg-data-row">
-                                    <td>
-                                        <input class="cg-input" style="min-width:220px;" maxlength="120"
-                                               value="@(_labelEdits.TryGetValue(item.Key, out var v) ? v : item.Label)"
-                                               @onchange="e => _labelEdits[item.Key] = e.Value?.ToString() ?? string.Empty" />
-                                    </td>
-                                    <td style="width:1%; white-space:nowrap;">
-                                        <button type="button" class="cg-action-btn" @onclick="() => SaveLabelAsync(item)">Save name</button>
-                                        @if (IsRenamed(item))
-                                        {
-                                            <button type="button" class="cg-icon-btn" title="Reset to default name (@item.Label)" @onclick="() => ResetLabelAsync(item)">↺</button>
-                                        }
-                                    </td>
-                                    <td style="width:1%; white-space:nowrap;">
+                                var state = StateOf(item);
+                                <div class="cg-menu-row @(state == NavMenuItemState.Removed ? "removed" : "")">
+                                    <input class="cg-input cg-menu-row-name" maxlength="120"
+                                           disabled="@(state == NavMenuItemState.Removed)"
+                                           value="@(_labelEdits.TryGetValue(item.Key, out var v) ? v : item.Label)"
+                                           @onchange="e => _labelEdits[item.Key] = e.Value?.ToString() ?? string.Empty"
+                                           aria-label="Menu name" />
+
+                                    <button type="button" class="cg-action-btn" disabled="@(state == NavMenuItemState.Removed)"
+                                            @onclick="() => SaveLabelAsync(item)">Save name</button>
+
+                                    @if (IsRenamed(item))
+                                    {
+                                        <button type="button" class="cg-icon-btn" title="Reset to default name (@item.Label)" @onclick="() => ResetLabelAsync(item)">↺</button>
+                                    }
+
+                                    <span class="cg-menu-row-move">
                                         <button type="button" class="cg-icon-btn" title="Move up" disabled="@(pos == 0)" @onclick="() => MoveAsync(group, item, -1)">▲</button>
                                         <button type="button" class="cg-icon-btn" title="Move down" disabled="@(pos == items.Count - 1)" @onclick="() => MoveAsync(group, item, 1)">▼</button>
-                                    </td>
-                                </tr>
+                                    </span>
+
+                                    @if (state == NavMenuItemState.Removed)
+                                    {
+                                        <span class="cg-menu-removed-tag">Removed from menu</span>
+                                        <button type="button" class="cg-action-btn cg-good" @onclick="() => SetStateAsync(item, NavMenuItemState.Visible)">Restore</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="cg-menu-row-show">
+                                            <ToggleSwitch Value="@(state == NavMenuItemState.Visible)"
+                                                          ValueChanged="on => SetStateAsync(item, on ? NavMenuItemState.Visible : NavMenuItemState.Hidden)" />
+                                            <span class="cg-menu-row-show-text @(state == NavMenuItemState.Visible ? "on" : "off")">
+                                                @(state == NavMenuItemState.Visible ? "Shown" : "Hidden")
+                                            </span>
+                                        </span>
+
+                                        <button type="button" class="cg-action-btn cg-critical" title="Remove from the menu for everyone"
+                                                @onclick="() => _pendingRemoval = item">Delete</button>
+                                    }
+                                </div>
+
+                                @if (HasHiddenChildren(item, state))
+                                {
+                                    <p class="cg-menu-row-note">Items under this section are hidden with it. Their own settings are kept.</p>
+                                }
                             }
-                        </tbody>
-                    </table>
+                        }
+                    </div>
+                }
+            </section>
+        }
+
+        @if (_pendingRemoval is not null)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-confirm-modal">
+                    <h3>Remove “@EffectiveLabel(_pendingRemoval)” from the menu?</h3>
+                    <p>
+                        It disappears from the left-hand nav for everyone, immediately. Anything under it
+                        goes too. Nothing is deleted — the pages still exist and anyone with the address
+                        can still open them, and you can put it back from this screen at any time.
+                    </p>
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn cg-critical" @onclick="ConfirmRemovalAsync">Remove from menu</button>
+                        <button type="button" class="cg-action-btn" @onclick="() => _pendingRemoval = null">Cancel</button>
+                    </div>
                 </div>
-            }
+            </div>
         }
     </div>
 </div>

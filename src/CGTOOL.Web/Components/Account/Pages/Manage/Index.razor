@@ -8,7 +8,6 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityUserAccessor UserAccessor
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
-@inject IConfiguration Configuration
 
 <PageTitle>Profile</PageTitle>
 
@@ -152,51 +151,11 @@
                 </div>
             </dl>
 
-            <div class="cg-info-callout cg-account-note">
-                @if (_isSingleSignOn)
-                {
-                    <span>
-                        Your password and MFA are managed by your organization. To update authentication
-                        settings, use your organization's Microsoft Entra account.
-                    </span>
-                }
-                else
-                {
-                    <span>
-                        This account signs in with a password held by the application rather than through
-                        Entra ID. Once users are loaded from Entra ID, sign-in moves to single sign-on.
-                    </span>
-                }
-            </div>
-
-            <div class="cg-account-actions">
-                @if (_isSingleSignOn)
-                {
-                    <a class="cg-action-btn cg-btn-external" href="@_signInActivityUrl" target="_blank" rel="noopener">
-                        View sign-in activity
-                    </a>
-                }
-                else
-                {
-                    @* Without this the setup account would have no way to change its own password,
-                       since the Entra link does not apply to it. *@
-                    <a class="cg-action-btn" href="Account/Manage/ChangePassword">Change password</a>
-                }
-
-                @if (!string.IsNullOrWhiteSpace(_supportContact))
-                {
-                    <a class="cg-account-support" href="@_supportContact">
-                        <span class="cg-account-ico-inline cg-ico-help" aria-hidden="true"></span>
-                        Contact IT Support
-                    </a>
-                }
-            </div>
         </section>
     </div>
 </div>
 
 @code {
-    private const string DefaultSignInActivityUrl = "https://mysignins.microsoft.com/";
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -211,8 +170,6 @@
     private bool _isActive;
     private bool _twoFactorEnabled;
     private string _lastSignIn = "—";
-    private string? _signInActivityUrl;
-    private string? _supportContact;
 
     protected override async Task OnInitializedAsync()
     {
@@ -242,13 +199,7 @@
         _department = member?.Department?.Name;
         _jobTitle = member?.JobTitle;
 
-        _signInActivityUrl = Configuration["Support:SignInActivityUrl"] is { Length: > 0 } url
-            ? url
-            : DefaultSignInActivityUrl;
 
-        // Rendered only when a deployment has said where support requests go.
-        var support = Configuration["Support:Email"];
-        _supportContact = string.IsNullOrWhiteSpace(support) ? null : $"mailto:{support}";
     }
 
     private static string Initials(string? name)

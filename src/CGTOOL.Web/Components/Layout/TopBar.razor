@@ -1,6 +1,5 @@
 @implements IDisposable
 @using System.Security.Claims
-@using Microsoft.AspNetCore.Components.Web
 
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthState
@@ -9,12 +8,6 @@
 <AuthorizeView>
     <Authorized>
         <header class="cg-appbar">
-            <div class="cg-appbar-search">
-                <input class="cg-input" type="search" placeholder="Search users, roles, or modules…"
-                       @bind="_term" @bind:event="oninput" @onkeydown="OnSearchKeyDown"
-                       aria-label="Search users, roles, or modules" />
-            </div>
-
             <div class="cg-appbar-actions">
                 @if (_showNotifications)
                 {
@@ -29,33 +22,66 @@
                     </a>
                 }
 
-                <a class="cg-appbar-user" href="Account/Manage">
-                    @if (!string.IsNullOrEmpty(_picturePath))
+                @* The account menu the sidebar used to carry. Signing out lives here now, where
+                   people look for it, rather than as an unlabelled icon under the logo. *@
+                <div class="cg-appbar-account">
+                    <button type="button" class="cg-appbar-user" @onclick="() => _menuOpen = !_menuOpen"
+                            aria-haspopup="menu" aria-expanded="@_menuOpen">
+                        @if (!string.IsNullOrEmpty(_picturePath))
+                        {
+                            <img src="@_picturePath" alt="" class="cg-appbar-avatar" />
+                        }
+                        else
+                        {
+                            <span class="cg-appbar-avatar cg-appbar-avatar-initials">@Initials(_displayName)</span>
+                        }
+                        <span class="cg-appbar-user-text">
+                            <span class="cg-appbar-user-name">@_displayName</span>
+                            <span class="cg-appbar-user-role">@_roleLabel</span>
+                        </span>
+                        <span class="cg-appbar-caret @(_menuOpen ? "open" : "")" aria-hidden="true"></span>
+                    </button>
+
+                    @if (_menuOpen)
                     {
-                        <img src="@_picturePath" alt="" class="cg-appbar-avatar" />
+                        @* A transparent sheet behind the panel closes it on any outside click,
+                           which keeps this to markup rather than a JS document listener. *@
+                        <div class="cg-appbar-menu-backdrop" @onclick="() => _menuOpen = false"></div>
+
+                        <div class="cg-appbar-menu" role="menu">
+                            <div class="cg-appbar-menu-head">
+                                <span class="cg-appbar-menu-name">@_displayName</span>
+                                <span class="cg-appbar-menu-role">@_roleLabel</span>
+                            </div>
+
+                            <a class="cg-appbar-menu-item" role="menuitem" href="Account/Manage">
+                                <span class="cg-appbar-menu-ico cg-ico-person" aria-hidden="true"></span>
+                                Manage your account
+                            </a>
+
+                            <form action="Account/Logout" method="post" class="cg-appbar-menu-form">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="ReturnUrl" value="Account/Login" />
+                                <button type="submit" class="cg-appbar-menu-item cg-appbar-menu-signout" role="menuitem">
+                                    <span class="cg-appbar-menu-ico cg-ico-signout" aria-hidden="true"></span>
+                                    Sign out
+                                </button>
+                            </form>
+                        </div>
                     }
-                    else
-                    {
-                        <span class="cg-appbar-avatar cg-appbar-avatar-initials">@Initials(_displayName)</span>
-                    }
-                    <span class="cg-appbar-user-text">
-                        <span class="cg-appbar-user-name">@_displayName</span>
-                        <span class="cg-appbar-user-role">@_roleLabel</span>
-                    </span>
-                    <span class="cg-appbar-caret" aria-hidden="true"></span>
-                </a>
+                </div>
             </div>
         </header>
     </Authorized>
 </AuthorizeView>
 
 @code {
-    private string? _term;
     private string? _displayName;
     private string? _roleLabel;
     private string? _picturePath;
     private bool _showNotifications;
     private int _pendingCount;
+    private bool _menuOpen;
 
     protected override async Task OnInitializedAsync()
     {
@@ -64,8 +90,7 @@
     }
 
     // The top bar is a persistent layout component, so it uses its own short-lived DbContext rather
-    // than the circuit-scoped one -- exactly the same reason as NavMenu.RefreshProfilePictureAsync:
-    // sharing it would race whichever page is loading at the same time.
+    // than the circuit-scoped one -- sharing it would race whichever page is loading at the same time.
     private async Task RefreshAsync()
     {
         var state = await AuthState.GetAuthenticationStateAsync();
@@ -100,16 +125,9 @@
         }
     }
 
-    // Enter hands the term to User Management, which seeds its own search box from ?q= -- the search
-    // is a jump-off point, not a second search implementation.
-    private void OnSearchKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key != "Enter" || string.IsNullOrWhiteSpace(_term)) return;
-        NavigationManager.NavigateTo($"admin/user-management?q={Uri.EscapeDataString(_term.Trim())}");
-    }
-
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        _menuOpen = false;
         await RefreshAsync();
         StateHasChanged();
     }

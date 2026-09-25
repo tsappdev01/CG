@@ -1729,25 +1729,6 @@ select.cg-input {
     background: var(--cg-surface);
     border-bottom: 1px solid var(--cg-line);
 }
-.cg-appbar-search { flex: 1 1 auto; max-width: 620px; position: relative; }
-.cg-appbar-search .cg-input {
-    border-radius: 999px;
-    background: var(--cg-surface-sunken);
-    border-color: var(--cg-line);
-    padding-left: 40px;
-}
-.cg-appbar-search::before {
-    content: "";
-    position: absolute;
-    left: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 16px;
-    height: 16px;
-    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><path d='M21 21l-4-4'/></svg>") center/16px no-repeat;
-    pointer-events: none;
-    z-index: 1;
-}
 .cg-appbar-actions { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 
 .cg-appbar-bell {
@@ -2459,4 +2440,169 @@ select.cg-input {
 
 @media (max-width: 860px) {
     .cg-form-grid, .cg-choice-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ===========================================================================
+   Settings > Menu Order & Names
+
+   Eight groups of rows stacked flat meant scrolling past everything to reach
+   the one being edited, so each group is a collapsible panel with a chevron.
+   =========================================================================== */
+
+.cg-menu-section {
+    border: 1px solid var(--cg-line);
+    border-radius: var(--cg-radius-sm);
+    background: var(--cg-surface);
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+.cg-menu-section-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 13px 16px;
+    background: var(--cg-surface-sunken);
+    border: 0;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    color: var(--cg-ink);
+}
+.cg-menu-section-head:hover { background: var(--cg-accent-tint); }
+.cg-menu-section-head.open { background: var(--cg-accent-tint); border-bottom: 1px solid var(--cg-line); }
+
+.cg-menu-chevron {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    background: var(--cg-ink-muted);
+    transition: transform 120ms ease;
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M9 18l6-6-6-6'/></svg>") center/contain no-repeat;
+    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M9 18l6-6-6-6'/></svg>") center/contain no-repeat;
+}
+.cg-menu-section-head.open .cg-menu-chevron { transform: rotate(90deg); background: var(--cg-accent); }
+
+.cg-menu-section-title { font-size: 14px; font-weight: 650; }
+.cg-menu-section-count {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--cg-ink-muted);
+    white-space: nowrap;
+}
+
+.cg-menu-section-body { padding: 12px 16px 16px; }
+
+.cg-menu-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--cg-line);
+}
+.cg-menu-row:last-child { border-bottom: 0; }
+.cg-menu-row-name { flex: 1 1 220px; min-width: 180px; }
+.cg-menu-row-move { display: inline-flex; gap: 4px; }
+.cg-menu-row-show { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.cg-menu-row-show-text { font-size: 12.5px; font-weight: 600; }
+.cg-menu-row-show-text.on { color: var(--cg-good); }
+.cg-menu-row-show-text.off { color: var(--cg-ink-faint); }
+
+/* Removed items stay listed, greyed, so putting one back does not mean hunting for it. */
+.cg-menu-row.removed { opacity: 0.68; }
+.cg-menu-removed-tag {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cg-critical);
+}
+.cg-menu-row-note {
+    margin: -4px 0 8px;
+    font-size: 12px;
+    color: var(--cg-ink-muted);
+}
+
+.cg-confirm-modal {
+    background: var(--cg-surface);
+    border-radius: var(--cg-radius);
+    box-shadow: var(--cg-shadow);
+    padding: 24px 26px;
+    max-width: 480px;
+    margin: auto;
+}
+.cg-confirm-modal h3 { margin: 0 0 8px; font-size: 16px; }
+.cg-confirm-modal p { margin: 0 0 4px; font-size: 13px; color: var(--cg-ink-muted); }
+
+/* --- top-bar account menu (was two unlabelled icons under the sidebar logo) --------------- */
+
+.cg-appbar-account { position: relative; }
+
+button.cg-appbar-user {
+    border: 0;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+}
+.cg-appbar-caret { transition: transform 120ms ease; }
+.cg-appbar-caret.open { transform: rotate(180deg); }
+
+/* Sits under the panel and over everything else, so any outside click closes the menu. */
+.cg-appbar-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+}
+
+.cg-appbar-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 41;
+    min-width: 232px;
+    padding: 6px;
+    background: var(--cg-surface);
+    border: 1px solid var(--cg-line);
+    border-radius: var(--cg-radius-sm);
+    box-shadow: var(--cg-shadow);
+}
+.cg-appbar-menu-head {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 8px 10px 10px;
+    border-bottom: 1px solid var(--cg-line);
+    margin-bottom: 6px;
+}
+.cg-appbar-menu-name { font-size: 13.5px; font-weight: 650; color: var(--cg-ink); }
+.cg-appbar-menu-role { font-size: 12px; color: var(--cg-ink-muted); }
+
+.cg-appbar-menu-form { margin: 0; }
+.cg-appbar-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    font: inherit;
+    font-size: 13.5px;
+    color: var(--cg-ink);
+    text-decoration: none;
+    cursor: pointer;
+    text-align: left;
+}
+.cg-appbar-menu-item:hover { background: var(--cg-accent-tint); color: var(--cg-accent-ink); }
+.cg-appbar-menu-signout:hover { background: var(--cg-critical-tint); color: var(--cg-critical); }
+
+.cg-appbar-menu-ico { width: 17px; height: 17px; flex: none; background: currentColor; }
+.cg-ico-person {
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>") center/contain no-repeat;
+    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>") center/contain no-repeat;
+}
+.cg-ico-signout {
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/><path d='M16 17l5-5-5-5'/><path d='M21 12H9'/></svg>") center/contain no-repeat;
+    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/><path d='M16 17l5-5-5-5'/><path d='M21 12H9'/></svg>") center/contain no-repeat;
 }

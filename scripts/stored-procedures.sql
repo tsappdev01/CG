@@ -32,6 +32,22 @@
     Safe to re-run: every procedure uses CREATE OR ALTER.
 */
 
+/*
+    These two must be set before any procedure is created. SQL Server captures them with the
+    procedure, and a procedure created with QUOTED_IDENTIFIER OFF fails at runtime on any table
+    that has a filtered index -- Members has several -- with:
+
+      INSERT failed because the following SET options have incorrect settings: 'QUOTED_IDENTIFIER'
+
+    SSMS connects with QUOTED_IDENTIFIER ON, but sqlcmd defaults it OFF, so deploying this file
+    with sqlcmd without them silently produced procedures that could not insert. Setting them here
+    makes the script correct whichever client runs it.
+*/
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
+
 USE [CGS];
 GO
 

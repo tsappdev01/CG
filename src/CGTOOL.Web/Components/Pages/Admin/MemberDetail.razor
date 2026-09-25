@@ -45,151 +45,277 @@
                 }
             </h1>
 
-            <label class="cg-field">
-                <span>Entity</span>
-                <select class="cg-input" @bind="_editing.CompanyId" @bind:after="OnCompanyChangedAsync">
-                    <option value="0">Select entity…</option>
-                    @foreach (var c in _companies.Where(c => c.Active || c.Id == _editing.CompanyId))
-                    {
-                        <option value="@c.Id">@c.Name@(c.Active ? "" : " (inactive)")</option>
-                    }
-                </select>
-                <ValidationMessage For="() => _editing.CompanyId" class="cg-error" />
-            </label>
+            <p class="cg-form-intro">
+                Fill in who this person is, then tick what they are responsible for. Anything marked
+                <span class="cg-req-mark">*</span> is needed before you can save.
+            </p>
 
-            @if (_editing.CompanyId != 0)
-            {
-                @if (_adSynced)
-                {
-                    <div class="cg-ad-status cg-ad-ok">
-                        Azure AD sync available for this entity.
-                        <button type="button" class="cg-action-btn" @onclick="LoadFromDirectoryAsync">Load from Azure AD</button>
+            @* ---------------- 1. Who they are ---------------- *@
+            <section class="cg-form-section">
+                <div class="cg-form-section-head">
+                    <span class="cg-form-step">1</span>
+                    <div>
+                        <h2>Who is this person?</h2>
+                        <p class="cg-subtitle">Their name, where they work and how to reach them.</p>
                     </div>
-                }
-                else
+                </div>
+
+                <div class="cg-form-grid">
+                    <label class="cg-field">
+                        <span>Entity <em class="cg-req-mark">*</em></span>
+                        <select class="cg-input" @bind="_editing.CompanyId" @bind:after="OnCompanyChangedAsync">
+                            <option value="0">Choose the company they belong to…</option>
+                            @foreach (var c in _companies.Where(c => c.Active || c.Id == _editing.CompanyId))
+                            {
+                                <option value="@c.Id">@c.Name@(c.Active ? "" : " (inactive)")</option>
+                            }
+                        </select>
+                        <ValidationMessage For="() => _editing.CompanyId" class="cg-error" />
+                    </label>
+
+                    <label class="cg-field">
+                        <span>Full name <em class="cg-req-mark">*</em></span>
+                        <InputText class="cg-input" @bind-Value="_editing.FullName" maxlength="120" placeholder="As it should appear on declarations" />
+                        <ValidationMessage For="() => _editing.FullName" class="cg-error" />
+                    </label>
+
+                    <label class="cg-field">
+                        <span>Job title</span>
+                        <InputText class="cg-input" @bind-Value="_editing.JobTitle" maxlength="120" placeholder="e.g. Head of Treasury" />
+                    </label>
+
+                    <label class="cg-field">
+                        <span>Department</span>
+                        <select class="cg-input" @bind="_editing.DepartmentId">
+                            <option value="">Not set</option>
+                            @foreach (var d in _departments!.Where(d => d.Active || d.Id == _editing.DepartmentId))
+                            {
+                                <option value="@d.Id">@d.Name@(d.Active ? "" : " (inactive)")</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label class="cg-field cg-field-wide">
+                        <span>Email address</span>
+                        <InputText class="cg-input" @bind-Value="_editing.Email" maxlength="160" placeholder="name@dubaiinvestments.com" />
+                        <p class="cg-hint">Declaration reminders and the welcome email are sent here.</p>
+                        <ValidationMessage For="() => _editing.Email" class="cg-error" />
+                    </label>
+                </div>
+
+                @if (_editing.CompanyId != 0)
                 {
-                    <div class="cg-ad-status cg-ad-warn">This entity's Azure AD isn't synced — enter details manually below.</div>
-                }
-            }
-
-            <label class="cg-field">
-                <span>Full name</span>
-                <InputText class="cg-input" @bind-Value="_editing.FullName" maxlength="120" />
-                <ValidationMessage For="() => _editing.FullName" class="cg-error" />
-            </label>
-            <label class="cg-field"><span>Job title / designation</span><InputText class="cg-input" @bind-Value="_editing.JobTitle" maxlength="120" /></label>
-
-            <label class="cg-field">
-                <span>Department</span>
-                <select class="cg-input" @bind="_editing.DepartmentId">
-                    <option value="">No department</option>
-                    @foreach (var d in _departments!.Where(d => d.Active || d.Id == _editing.DepartmentId))
+                    @if (_adSynced)
                     {
-                        <option value="@d.Id">@d.Name@(d.Active ? "" : " (inactive)")</option>
-                    }
-                </select>
-            </label>
-
-            <label class="cg-field">
-                <span>Email</span>
-                <InputText class="cg-input" @bind-Value="_editing.Email" maxlength="160" />
-                <ValidationMessage For="() => _editing.Email" class="cg-error" />
-            </label>
-            <label class="cg-field"><span>System ID (Azure AD object ID)</span><input class="cg-input mono" @bind="_editing.AzureAdObjectId" readonly /></label>
-            <label class="cg-field"><span>Signature</span><InputText class="cg-input" @bind-Value="_editing.Signature" maxlength="160" placeholder="e.g. scanned signature reference" /></label>
-
-            <label class="cg-field">
-                <span>Reporting manager (optional)</span>
-                <select class="cg-input" @bind="_editing.ReportingManagerId">
-                    <option value="">None</option>
-                    @foreach (var m in _members!.Where(m => m.Id != _editing.Id && m.Active))
-                    {
-                        <option value="@m.Id">@m.FullName</option>
-                    }
-                </select>
-            </label>
-
-            <label class="cg-field">
-                <span>Login account</span>
-                <select class="cg-input" @bind="_editing.ApplicationUserId" @bind:after="LoadAuditAsync">
-                    <option value="">Not linked</option>
-                    @foreach (var u in _users!)
-                    {
-                        <option value="@u.Id">@u.Email</option>
-                    }
-                </select>
-            </label>
-
-            @if (!string.IsNullOrEmpty(_editing.ApplicationUserId))
-            {
-                <label class="cg-field">
-                    <span>Profile picture</span>
-                    <div class="cg-profile-upload">
-                        @if (!string.IsNullOrEmpty(_profilePicturePath))
-                        {
-                            <img src="@_profilePicturePath" alt="Profile picture" class="cg-profile-pic-preview" />
-                        }
-                        else
-                        {
-                            <span class="cg-profile-pic-placeholder">@(_editing.FullName.Length > 0 ? _editing.FullName[..1].ToUpperInvariant() : "?")</span>
-                        }
-                        <InputFile OnChange="OnProfilePictureSelectedAsync" accept="image/png,image/jpeg,image/webp" />
-                    </div>
-                    <p class="cg-subtitle">JPEG, PNG, or WebP, up to 2 MB.</p>
-                </label>
-            }
-
-            <label class="cg-field">
-                <span>Role assigned</span>
-                <select class="cg-input" multiple size="4" @onchange="OnRoleAssignedChanged">
-                    <option value="InsiderTrading" selected="@_editing.InsiderTradingAccess">Insider Trading</option>
-                    <option value="ConflictOfInterest" selected="@_editing.ConflictOfInterestAccess">Conflict of Interest</option>
-                    <option value="RelatedPartyRegister" selected="@_editing.RelatedPartyRegisterAccess">Related Party Register</option>
-                    <option value="RelatedPartyTransaction" selected="@_editing.RelatedPartyTransactionAccess">Related Party Transaction</option>
-                </select>
-                <p class="cg-subtitle">Ctrl/Cmd-click (or shift-click) to select more than one.</p>
-            </label>
-
-            <label class="cg-field">
-                <span>RP Transaction Role</span>
-                <select class="cg-input" @bind="_editing.RpTransactionRole">
-                    <option value="@RpTransactionRole.None">None</option>
-                    <option value="@RpTransactionRole.Ccao">CCAO</option>
-                    <option value="@RpTransactionRole.Cfo">CFO</option>
-                    <option value="@RpTransactionRole.Coo">COO</option>
-                    <option value="@RpTransactionRole.MdCeo">MD&amp;CEO</option>
-                </select>
-                <p class="cg-subtitle">Position in the Related Party Transaction approval workflow -- separate from System roles below.</p>
-            </label>
-
-            <fieldset class="cg-checkgroup">
-                <legend>Other flags</legend>
-                <label><input type="checkbox" @bind="_editing.IsBoardMember" /> Board member</label>
-                <label><input type="checkbox" @bind="_editing.IsExecutiveManagement" /> Executive Management</label>
-                <label><input type="checkbox" @bind="_editing.IsExternalMember" /> External member (not a direct DI Group employee)</label>
-                <label><input type="checkbox" @bind="_editing.CanBeImpersonated" /> Can be impersonated (Related Party Register / COI)</label>
-            </fieldset>
-
-            @if (_editing.CanBeImpersonated)
-            {
-                <label class="cg-field">
-                    <span>Approved impersonators</span>
-                    @if (_editing.Id == 0)
-                    {
-                        <p class="cg-subtitle">Save this user first, then choose who may impersonate them.</p>
+                        <div class="cg-ad-status cg-ad-ok">
+                            <div>
+                                <b>Save typing:</b> this entity is connected to the company directory,
+                                so the details above can be filled in for you.
+                            </div>
+                            <button type="button" class="cg-action-btn" @onclick="LoadFromDirectoryAsync">Fill from directory</button>
+                        </div>
                     }
                     else
                     {
-                        <select class="cg-input" multiple size="6" @onchange="OnApprovedImpersonatorsChangedAsync">
-                            @foreach (var candidate in _members!.Where(m => m.Id != _editing.Id && m.Active))
+                        <div class="cg-ad-status cg-ad-warn">
+                            This entity is not connected to the company directory, so please type the details in.
+                        </div>
+                    }
+                }
+            </section>
+
+            @* ---------------- 2. What they must declare ---------------- *@
+            <section class="cg-form-section">
+                <div class="cg-form-section-head">
+                    <span class="cg-form-step">2</span>
+                    <div>
+                        <h2>What does this person have to declare?</h2>
+                        <p class="cg-subtitle">Tick everything that applies. They will be asked for each one you tick.</p>
+                    </div>
+                </div>
+
+                @* Replaces a multi-select that needed Ctrl-click, which is the single hardest
+                   control for someone who does not use software all day. *@
+                <div class="cg-choice-grid">
+                    <label class="cg-choice @(_editing.InsiderTradingAccess ? "on" : "")">
+                        <input type="checkbox" @bind="_editing.InsiderTradingAccess" />
+                        <span class="cg-choice-body">
+                            <span class="cg-choice-title">Insider Trading</span>
+                            <span class="cg-choice-desc">Declares their own and their relatives' dealings in DI shares each quarter.</span>
+                        </span>
+                    </label>
+                    <label class="cg-choice @(_editing.ConflictOfInterestAccess ? "on" : "")">
+                        <input type="checkbox" @bind="_editing.ConflictOfInterestAccess" />
+                        <span class="cg-choice-body">
+                            <span class="cg-choice-title">Conflict of Interest</span>
+                            <span class="cg-choice-desc">Declares interests that could conflict with their duties to DI.</span>
+                        </span>
+                    </label>
+                    <label class="cg-choice @(_editing.RelatedPartyRegisterAccess ? "on" : "")">
+                        <input type="checkbox" @bind="_editing.RelatedPartyRegisterAccess" />
+                        <span class="cg-choice-body">
+                            <span class="cg-choice-title">Related Party Register</span>
+                            <span class="cg-choice-desc">Lists their relatives and the companies they are connected to.</span>
+                        </span>
+                    </label>
+                    <label class="cg-choice @(_editing.RelatedPartyTransactionAccess ? "on" : "")">
+                        <input type="checkbox" @bind="_editing.RelatedPartyTransactionAccess" />
+                        <span class="cg-choice-body">
+                            <span class="cg-choice-title">Related Party Transactions</span>
+                            <span class="cg-choice-desc">May raise transactions with a related party for approval.</span>
+                        </span>
+                    </label>
+                </div>
+            </section>
+
+            @* ---------------- 3. Their standing ---------------- *@
+            <section class="cg-form-section">
+                <div class="cg-form-section-head">
+                    <span class="cg-form-step">3</span>
+                    <div>
+                        <h2>Their standing in the group</h2>
+                        <p class="cg-subtitle">Only tick what is true — these change who has to approve what.</p>
+                    </div>
+                </div>
+
+                <div class="cg-form-grid">
+                    <label class="cg-field">
+                        <span>Reporting manager</span>
+                        <select class="cg-input" @bind="_editing.ReportingManagerId">
+                            <option value="">Not set</option>
+                            @foreach (var m in _members!.Where(m => m.Id != _editing.Id && m.Active))
                             {
-                                <option value="@candidate.Id" selected="@_approvedImpersonatorIds.Contains(candidate.Id)">@candidate.FullName</option>
+                                <option value="@m.Id">@m.FullName</option>
                             }
                         </select>
-                        <p class="cg-subtitle">Ctrl/Cmd-click (or shift-click) to select more than one.</p>
+                        <p class="cg-hint">Who they report to. Optional.</p>
+                    </label>
+
+                    <label class="cg-field">
+                        <span>Position in Related Party Transaction approvals</span>
+                        <select class="cg-input" @bind="_editing.RpTransactionRole">
+                            <option value="@RpTransactionRole.None">Not part of the approval chain</option>
+                            <option value="@RpTransactionRole.Ccao">CCAO — confirms the governance review</option>
+                            <option value="@RpTransactionRole.Cfo">CFO</option>
+                            <option value="@RpTransactionRole.Coo">COO</option>
+                            <option value="@RpTransactionRole.MdCeo">MD &amp; CEO</option>
+                        </select>
+                        <p class="cg-hint">This is a position in the transaction workflow, not a system permission.</p>
+                    </label>
+                </div>
+
+                <div class="cg-choice-grid cg-choice-grid-compact">
+                    <label class="cg-choice @(_editing.IsBoardMember ? "on" : "")">
+                        <input type="checkbox" @bind="_editing.IsBoardMember" />
+                        <span class="cg-choice-body"><span class="cg-choice-title">Board member</span></span>
+                    </label>
+                    <label class="cg-choice @(_editing.IsExecutiveManagement ? "on" : "")">
+                        <input type="checkbox" @bind="_editing.IsExecutiveManagement" />
+                        <span class="cg-choice-body"><span class="cg-choice-title">Executive Management</span></span>
+                    </label>
+                    <label class="cg-choice @(_editing.IsExternalMember ? "on" : "")">
+                        <input type="checkbox" @bind="_editing.IsExternalMember" />
+                        <span class="cg-choice-body">
+                            <span class="cg-choice-title">External member</span>
+                            <span class="cg-choice-desc">Not a direct DI Group employee.</span>
+                        </span>
+                    </label>
+                    <label class="cg-choice @(_editing.CanBeImpersonated ? "on" : "")">
+                        <input type="checkbox" @bind="_editing.CanBeImpersonated" />
+                        <span class="cg-choice-body">
+                            <span class="cg-choice-title">Someone may file on their behalf</span>
+                            <span class="cg-choice-desc">For Related Party Register and Conflict of Interest declarations.</span>
+                        </span>
+                    </label>
+                </div>
+
+                @if (_editing.CanBeImpersonated)
+                {
+                    <div class="cg-subsection">
+                        <span class="cg-field-label">Who may file on their behalf?</span>
+                        @if (_editing.Id == 0)
+                        {
+                            <p class="cg-hint">Save this person first, then choose who may file for them.</p>
+                        }
+                        else
+                        {
+                            <div class="cg-checkbox-list">
+                                @foreach (var candidate in _members!.Where(m => m.Id != _editing.Id && m.Active))
+                                {
+                                    var id = candidate.Id;
+                                    <label class="cg-checkbox-item">
+                                        <input type="checkbox" checked="@_approvedImpersonatorIds.Contains(id)"
+                                               @onchange="e => ToggleImpersonatorAsync(id, (bool)e.Value!)" />
+                                        <span>@candidate.FullName</span>
+                                    </label>
+                                }
+                            </div>
+                            <p class="cg-hint">Tick each person who is allowed to file for them.</p>
+                        }
+                    </div>
+                }
+            </section>
+
+            @* ---------------- 4. Sign-in ---------------- *@
+            <section class="cg-form-section">
+                <div class="cg-form-section-head">
+                    <span class="cg-form-step">4</span>
+                    <div>
+                        <h2>How they sign in</h2>
+                        <p class="cg-subtitle">Link the person to the account they sign in with.</p>
+                    </div>
+                </div>
+
+                <div class="cg-form-grid">
+                    <label class="cg-field">
+                        <span>Sign-in account</span>
+                        <select class="cg-input" @bind="_editing.ApplicationUserId" @bind:after="LoadAuditAsync">
+                            <option value="">Not linked yet</option>
+                            @foreach (var u in _users!)
+                            {
+                                <option value="@u.Id">@u.Email</option>
+                            }
+                        </select>
+                        <p class="cg-hint">Until this is linked, they cannot sign in and see their own declarations.</p>
+                    </label>
+
+                    @if (!string.IsNullOrEmpty(_editing.ApplicationUserId))
+                    {
+                        <label class="cg-field">
+                            <span>Profile picture</span>
+                            <div class="cg-profile-upload">
+                                @if (!string.IsNullOrEmpty(_profilePicturePath))
+                                {
+                                    <img src="@_profilePicturePath" alt="Profile picture" class="cg-profile-pic-preview" />
+                                }
+                                else
+                                {
+                                    <span class="cg-profile-pic-placeholder">@(_editing.FullName.Length > 0 ? _editing.FullName[..1].ToUpperInvariant() : "?")</span>
+                                }
+                                <InputFile OnChange="OnProfilePictureSelectedAsync" accept="image/png,image/jpeg,image/webp" />
+                            </div>
+                            <p class="cg-hint">JPEG, PNG or WebP, up to 2 MB.</p>
+                        </label>
                     }
-                </label>
-            }
+                </div>
+
+                @* The technical fields are real but rarely touched, so they are out of the way
+                   rather than sitting between the name and the email address. *@
+                <details class="cg-advanced">
+                    <summary>Technical details</summary>
+                    <div class="cg-form-grid">
+                        <label class="cg-field">
+                            <span>Directory ID</span>
+                            <input class="cg-input mono" @bind="_editing.AzureAdObjectId" readonly />
+                            <p class="cg-hint">Set automatically when the person comes from Entra ID. Read-only.</p>
+                        </label>
+                        <label class="cg-field">
+                            <span>Signature reference</span>
+                            <InputText class="cg-input" @bind-Value="_editing.Signature" maxlength="160" placeholder="e.g. scanned signature reference" />
+                        </label>
+                    </div>
+                </details>
+            </section>
 
             <AuthorizeView Roles="@GovernanceRoles.Administrator" Context="rolesCtx">
                 <Authorized>

@@ -303,6 +303,21 @@ public partial class MemberDetail
     private bool _updatingImpersonators;
     private bool _updatingSystemRole;
 
+    /// <summary>One checkbox per candidate, replacing a multi-select that needed Ctrl-click.</summary>
+    private async Task ToggleImpersonatorAsync(int candidateId, bool selected)
+    {
+        if (_updatingImpersonators) return;
+        _updatingImpersonators = true;
+        try
+        {
+            await ToggleImpersonator(candidateId, selected);
+        }
+        finally
+        {
+            _updatingImpersonators = false;
+        }
+    }
+
     private async Task OnApprovedImpersonatorsChangedAsync(ChangeEventArgs e)
     {
         if (_updatingImpersonators) return;

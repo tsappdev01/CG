@@ -283,6 +283,20 @@ uses `CREATE OR ALTER`):
 sqlcmd -S UATWEB01 -d CGS -i scripts/stored-procedures.sql
 ```
 
+The script begins by setting `ANSI_NULLS` and `QUOTED_IDENTIFIER` ON, and it has to. SQL
+Server captures those settings with each procedure at creation time, and a procedure created
+with `QUOTED_IDENTIFIER OFF` fails at runtime on any table carrying a filtered index —
+`Members` has several — with:
+
+```
+INSERT failed because the following SET options have incorrect settings: 'QUOTED_IDENTIFIER'
+```
+
+SSMS connects with it ON, but **sqlcmd defaults it OFF**, so running this file without those
+SET statements produced procedures that looked deployed and then failed the first time anyone
+saved a user. Do not remove them, and do not split the file in a way that leaves a
+`CREATE OR ALTER` in a session that has not run them.
+
 ## Run
 
 ```bash

@@ -2308,3 +2308,155 @@ select.cg-input {
 .cg-relatives-table tbody tr:hover td:first-child { background: var(--cg-accent-tint); }
 .cg-relatives-table tr.cg-row-editing td:first-child { background: var(--cg-accent-tint); }
 .cg-relatives-table th, .cg-relatives-table td { padding-left: 13px; padding-right: 13px; }
+
+/* =====================================================================================
+   Member form -- built for someone who does not use software all day: numbered sections,
+   plain-language labels, tappable choice cards instead of Ctrl-click multi-selects, and
+   the technical fields folded away.
+   ===================================================================================== */
+.cg-member-page { max-width: 1000px; }
+.cg-form-intro {
+    font-size: 13.5px;
+    color: var(--cg-ink-muted);
+    margin: 0 0 22px;
+}
+.cg-req-mark { color: var(--cg-critical); font-style: normal; font-weight: 700; }
+
+.cg-form-section {
+    border: 1px solid var(--cg-line);
+    border-radius: var(--cg-radius);
+    background: var(--cg-surface);
+    padding: 22px 24px;
+    margin-bottom: 20px;
+}
+.cg-form-section-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--cg-line);
+    margin-bottom: 20px;
+}
+.cg-form-section-head h2 { font-size: 18px; font-weight: 700; margin: 0 0 3px; }
+.cg-form-section-head .cg-subtitle { margin: 0; }
+.cg-form-step {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--cg-accent);
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cg-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 20px;
+}
+.cg-field-wide { grid-column: 1 / -1; }
+.cg-hint { font-size: 12px; color: var(--cg-ink-muted); margin: 5px 0 0; line-height: 1.45; }
+.cg-field-label { font-size: 12.5px; font-weight: 600; color: var(--cg-ink-muted); display: block; margin-bottom: 8px; }
+
+/* ---------- choice cards ---------- */
+.cg-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.cg-choice-grid-compact { margin-top: 18px; }
+.cg-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--cg-line);
+    border-radius: var(--cg-radius-sm);
+    background: var(--cg-surface);
+    cursor: pointer;
+    transition: border-color .12s ease, background-color .12s ease, box-shadow .12s ease;
+}
+.cg-choice:hover { border-color: var(--cg-line-strong); background: var(--cg-surface-sunken); }
+.cg-choice.on {
+    border-color: var(--cg-accent);
+    background: var(--cg-accent-tint);
+    box-shadow: 0 0 0 1px var(--cg-accent) inset;
+}
+.cg-choice input[type="checkbox"] { width: 18px; height: 18px; margin-top: 1px; flex: none; accent-color: var(--cg-accent); }
+.cg-choice-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cg-choice-title { font-size: 14px; font-weight: 650; color: var(--cg-ink); }
+.cg-choice-desc { font-size: 12.5px; color: var(--cg-ink-muted); line-height: 1.45; }
+
+/* ---------- checkbox list (who may file on their behalf) ---------- */
+.cg-subsection {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--cg-line);
+}
+.cg-checkbox-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+    gap: 8px 16px;
+}
+.cg-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    border: 1px solid var(--cg-line);
+    border-radius: var(--cg-radius-sm);
+    font-size: 13.5px;
+    cursor: pointer;
+}
+.cg-checkbox-item:hover { background: var(--cg-surface-sunken); }
+.cg-checkbox-item input { width: 16px; height: 16px; accent-color: var(--cg-accent); }
+
+/* ---------- advanced ---------- */
+.cg-advanced {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--cg-line);
+}
+.cg-advanced > summary {
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--cg-accent);
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 14px;
+}
+.cg-advanced > summary::-webkit-details-marker { display: none; }
+.cg-advanced > summary::before {
+    content: "";
+    width: 15px;
+    height: 15px;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 6l6 6-6 6'/></svg>") center/15px no-repeat;
+    transition: transform .15s ease;
+}
+.cg-advanced[open] > summary::before { transform: rotate(90deg); }
+
+/* ---------- directory banner ---------- */
+.cg-ad-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+    padding: 13px 16px;
+    border-radius: var(--cg-radius-sm);
+    font-size: 13px;
+}
+.cg-ad-ok { background: var(--cg-accent-tint); border: 1px solid #D4E4FB; color: #1E3A8A; }
+.cg-ad-warn { background: var(--cg-warning-tint); border: 1px solid #F3D9AE; color: #7A4A08; }
+
+@media (max-width: 860px) {
+    .cg-form-grid, .cg-choice-grid { grid-template-columns: minmax(0, 1fr); }
+}

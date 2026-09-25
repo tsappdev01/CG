@@ -328,6 +328,26 @@ It creates **no business records** — no companies, departments, members or
 transactions. The sample data described under **Demo data** below is off unless
 `Seed:DemoData` is turned on.
 
+## Screen lock on inactivity
+
+After a period with no keyboard, mouse or touch activity the screen locks, and the signed-in
+user has to re-enter their password to carry on where they left off — the page is not reloaded
+and nothing in progress is lost. Signing out is not involved.
+
+```json
+"Security": {
+  "IdleLockMinutes": 15
+}
+```
+
+Set it to `0` to turn the lock off for a deployment. That is deliberately the only way to
+disable it: a deployment that does not want a lock says so, rather than setting a number large
+enough that it never fires. A value that cannot be read falls back to 15 minutes rather than
+leaving the screen unlocked, since of the two possible failures that is the safe one.
+
+The timer runs in the browser (`wwwroot/js/idle-lock.js`) and resets on any activity, so it
+measures real inactivity rather than time since page load.
+
 ## The debugger stops on `NavigationException`
 
 Signing in under the Visual Studio debugger raises:

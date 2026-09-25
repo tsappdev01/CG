@@ -16,6 +16,7 @@
       4. the AspNetUsers login
       5. the AspNetUserRoles grant
       6. the Members record, linked to the login
+      7. the reporting manager link, in a second pass once everyone exists
 
     Accounts are created with NO PASSWORD. Sign-in goes through Entra single sign-on, which finds
     the account by email address and links the external login on the first sign-in -- so the email
@@ -40,14 +41,18 @@ DECLARE @People TABLE (
     Title         nvarchar(120) NULL,
     Email         nvarchar(160) NOT NULL,
     CompanyName   nvarchar(160) NOT NULL,
-    RoleName      nvarchar(80)  NOT NULL   -- 'Administrator' or 'Normal User'
+    RoleName      nvarchar(80)  NOT NULL,  -- 'Administrator' or 'Normal User'
+    ReportingTo   nvarchar(160) NULL       -- the manager's Email, or NULL / 'None'
 );
 
-INSERT INTO @People (DisplayName, WindowsUserId, Department, Title, Email, CompanyName, RoleName)
+INSERT INTO @People (DisplayName, WindowsUserId, Department, Title, Email, CompanyName, RoleName, ReportingTo)
 VALUES
-    (N'Senthil Kumar', N'senthil',   N'TS Technology & Operations', N'Manager - Operations',           N'senthil@techsource.ae',   N'TechSource', N'Normal User'),
-    (N'Shafeeque',     N'shafeeque', N'TS Technology & Operations', N'System Administrator',           N'Shafeeque@techsource.ae', N'TechSource', N'Normal User'),
-    (N'Nayyar Jawaid', N'nayyar',    N'TS Business Systems',        N'Manager - Business Applications', N'nayyar@techsource.ae',   N'TechSource', N'Administrator');
+    (N'Senthil Kumar', N'senthil',   N'TS Technology & Operations', N'Manager - Operations',            N'senthil@techsource.ae.local',   N'TechSource', N'Normal User',   NULL),
+    (N'Shafeeque',     N'shafeeque', N'TS Technology & Operations', N'System Administrator',            N'Shafeeque@techsource.ae.local', N'TechSource', N'Normal User',   N'senthil@techsource.ae.local'),
+    (N'Nayyar Jawaid', N'nayyar',    N'TS Business Systems',        N'Manager - Business Applications', N'nayyar@techsource.ae.local',    N'TechSource', N'Administrator', NULL),
+    (N'Lata Jagwani',  N'lata',      N'TS Business Systems',        N'Application Support',             N'lata@techsource.ae.local',      N'TechSource', N'Normal User',   N'nayyar@techsource.ae.local');
+
+UPDATE @People SET ReportingTo = NULL WHERE ReportingTo IN (N'', N'None', N'none', N'N/A');
 
 /* --------------------------------------------------------------------------- sanity check --- */
 
@@ -173,6 +178,38 @@ JOIN dbo.Companies   c ON c.Name = p.CompanyName
 LEFT JOIN dbo.Departments d ON d.Name = p.Department
 WHERE NOT EXISTS (SELECT 1 FROM dbo.Members m WHERE m.ApplicationUserId = u.Id);
 
+/* ------------------------------------------------------------------- the reporting manager --- */
+
+/*
+    A separate pass, because a manager has to exist as a Member before anyone can point at them --
+    and in a list like this the manager may well be two rows further down. Matching is on the
+    manager's email, which is the only stable handle the sheet carries.
+
+    A manager who is not in the list and not already in the database is reported rather than
+    silently dropped, and the person is left with no reporting manager.
+*/
+UPDATE m
+SET    m.ReportingManagerId = mgr.Id,
+       m.ModifiedAtUtc      = SYSUTCDATETIME()
+FROM   dbo.Members m
+JOIN   @People     p   ON p.Email = m.Email
+JOIN   dbo.Members mgr ON mgr.Email = p.ReportingTo
+WHERE  p.ReportingTo IS NOT NULL
+  AND  mgr.Id <> m.Id                      -- nobody reports to themselves
+  AND  (m.ReportingManagerId IS NULL OR m.ReportingManagerId <> mgr.Id);
+
+IF EXISTS (SELECT 1 FROM @People p WHERE p.ReportingTo IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM dbo.Members mgr WHERE mgr.Email = p.ReportingTo))
+BEGIN
+    DECLARE @missingManagers nvarchar(max) =
+        STUFF((SELECT DISTINCT N', ' + p.ReportingTo FROM @People p
+               WHERE p.ReportingTo IS NOT NULL
+                 AND NOT EXISTS (SELECT 1 FROM dbo.Members mgr WHERE mgr.Email = p.ReportingTo)
+               FOR XML PATH('')), 1, 2, '');
+    RAISERROR('Everyone was created, but these reporting managers were not found and have been left unset: %s. Add them to the list and run this again.',
+              10, 1, @missingManagers) WITH NOWAIT;
+END
+
 /* ---------------------------------------------------------------------------- what we did --- */
 
 SELECT p.DisplayName,
@@ -180,12 +217,14 @@ SELECT p.DisplayName,
        p.RoleName,
        CASE WHEN u.Id IS NULL THEN 'NOT CREATED' ELSE 'login ok' END      AS LoginAccount,
        CASE WHEN m.Id IS NULL THEN 'NOT CREATED' ELSE 'member ok' END     AS MemberRecord,
-       c.Name  AS Company,
-       d.Name  AS Department
+       c.Name    AS Company,
+       d.Name    AS Department,
+       ISNULL(mgr.FullName, '-') AS ReportsTo
 FROM @People p
 LEFT JOIN dbo.AspNetUsers u ON u.NormalizedEmail = UPPER(p.Email)
 LEFT JOIN dbo.Members     m ON m.ApplicationUserId = u.Id
 LEFT JOIN dbo.Companies   c ON c.Id = m.CompanyId
 LEFT JOIN dbo.Departments d ON d.Id = m.DepartmentId
+LEFT JOIN dbo.Members   mgr ON mgr.Id = m.ReportingManagerId
 ORDER BY p.DisplayName;
 GO

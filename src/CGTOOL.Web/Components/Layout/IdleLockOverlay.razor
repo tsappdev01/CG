@@ -1,5 +1,6 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject IConfiguration Configuration
 @inject AuthenticationStateProvider AuthState
 @inject IActiveDirectoryAuthenticator DirectoryAuthenticator
 @inject ToastService Toasts
@@ -11,7 +12,7 @@
             <div class="cg-lock-overlay">
                 <div class="cg-lock-card">
                     <h2>Session locked</h2>
-                    <p class="cg-subtitle">No activity for 15 minutes. Enter your password to continue where you left off.</p>
+                    <p class="cg-subtitle">No activity for @IdleDescription. Enter your password to continue where you left off.</p>
                     <input type="password" class="cg-input" @bind="_password" @bind:event="oninput" placeholder="Password" />
                     <button type="button" class="cg-action-btn cg-good" @onclick="UnlockAsync">Unlock</button>
                 </div>
@@ -21,7 +22,26 @@
 </AuthorizeView>
 
 @code {
-    private const int IdleTimeoutMs = 15 * 60 * 1000;
+    private const int DefaultIdleMinutes = 15;
+
+    /// <summary>
+    /// Security:IdleLockMinutes in appsettings. 0 or less turns the lock off entirely, which is the
+    /// only way to disable it -- a deployment that wants no lock says so rather than setting a
+    /// number so large it never fires. Anything unparseable falls back to the default rather than
+    /// leaving the screen unlocked, since that is the safer of the two failures.
+    /// </summary>
+    private int IdleMinutes
+    {
+        get
+        {
+            var configured = Configuration.GetValue<int?>("Security:IdleLockMinutes");
+            return configured ?? DefaultIdleMinutes;
+        }
+    }
+
+    private int IdleTimeoutMs => IdleMinutes * 60 * 1000;
+
+    private string IdleDescription => IdleMinutes == 1 ? "1 minute" : $"{IdleMinutes} minutes";
 
     private bool _locked;
     private string _password = string.Empty;
@@ -33,7 +53,7 @@
         if (!_started)
         {
             var state = await AuthState.GetAuthenticationStateAsync();
-            if (state.User.Identity?.IsAuthenticated == true)
+            if (state.User.Identity?.IsAuthenticated == true && IdleMinutes > 0)
             {
                 _started = true;
                 _selfRef = DotNetObjectReference.Create(this);

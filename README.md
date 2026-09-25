@@ -322,22 +322,53 @@ cd src/CGTOOL.Web
 dotnet run
 ```
 
-On first run the app applies EF Core migrations automatically and seeds:
-- 2 companies (Dubai Investments, Dubai Investments Park), 7 departments, 8 members,
-  22 demo transactions
-- The `Administrator` / `ComplianceOfficer` / `Normal Staff` roles
-- 3 scheduled activities (Blackout Period, Insider Trading, Conflict of Interest)
-  with their recurring trigger dates, and 2 sample declaration setups
+On first run the app applies EF Core migrations automatically and creates the
+`Administrator` / `ComplianceOfficer` / `Normal Staff` roles and the setup account.
+It creates **no business records** — no companies, departments, members or
+transactions. The sample data described under **Demo data** below is off unless
+`Seed:DemoData` is turned on.
+
+## The debugger stops on `NavigationException`
+
+Signing in under the Visual Studio debugger raises:
+
+```
+Exception User-Unhandled
+Microsoft.AspNetCore.Components.NavigationException
+```
+
+on `navigationManager.NavigateTo(uri)` in `IdentityRedirectManager`. **Nothing is
+wrong** — press Continue (F5) and the redirect completes. Blazor's static server
+rendering signals a redirect by throwing this exception and catching it in the
+framework; `IdentityRedirectManager` deliberately lets it pass through, so under
+Just My Code the debugger reports it as escaping user code, on every sign-in,
+sign-out and Manage redirect.
+
+To stop the prompt, once per machine:
+
+1. **Debug → Windows → Exception Settings** (`Ctrl+Alt+E`).
+2. Expand **Common Language Runtime Exceptions** and search for
+   `NavigationException`. If it isn't listed, click **+**, pick that category and
+   enter `Microsoft.AspNetCore.Components.NavigationException`.
+3. Leave its **Break When Thrown** box *unchecked*.
+4. Right-click it and check **Continue When Unhandled in User Code**.
+
+That setting lives in the per-developer `.suo`, so it is not something the
+repository can carry — each developer sets it once.
+
+There is no code-level fix. `[DebuggerDisableUserUnhandledExceptions]` reads as
+though it should work and does not: it suppresses the break only for an exception
+the attributed method *catches*, and this one passes straight through. It belongs
+on the framework method that catches it, which is not ours to annotate.
 
 ## First-time setup
 
-1. Register/sign in as your first user (see **Authentication** above).
-2. Visit **Admin setup** in the nav (`/admin/setup`) to claim the `Administrator`
-   role — this only works once; after that, admins are managed from **User Management**.
-3. From **User Management**, grant `ComplianceOfficer`/`Administrator` to
+1. Sign in with the setup account, or with SSO once users have been imported
+   (see **First sign-in, and where users come from** below).
+2. From **User Management**, grant `ComplianceOfficer`/`Administrator` to
    teammates, create any additional custom roles you need, and open each
    Member's edit page to link their login account and review their audit
-   history.
+   history. Creating the first real administrator retires the setup account.
 
 ## Features by requirement
 
@@ -425,6 +456,14 @@ user-secrets, an environment variable or Key Vault before the deployment is expo
 ```bash
 dotnet user-secrets set "DefaultAdmin:Password" "<a real password>"
 ```
+
+`DefaultAdmin:Password` is authoritative every time the app starts, not only when the account is
+first created. Change it and restart, and the account is reset to the new value (logged as a
+warning). This matters because the alternative is silent: edit the setting on a deployment that
+already has the account, and without this the documented password simply would not work, which
+looks exactly like a broken login rather than a setting that was ignored. The corollary is that
+changing this account's password from inside the app does not survive a restart — which is the
+right trade for a bootstrap account that retires itself.
 
 The rule that governs the account is a single invariant, applied at startup and again whenever the
 Administrator role is granted: **it is enabled only while the deployment has no other

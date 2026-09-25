@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components;
 
@@ -17,13 +16,20 @@ internal sealed class IdentityRedirectManager(NavigationManager navigationManage
     };
 
     // NavigateTo below throws NavigationException by design, and the framework catches it to
-    // perform the redirect (see the comment at the call site). Because the throw site sits in our
-    // code, the debugger otherwise reports it as "Exception User-Unhandled" and halts on every
-    // sign-in, registration, sign-out and Manage redirect -- which looks exactly like a hung login.
-    // This attribute tells the debugger not to break here. It is debugger metadata only: it has no
-    // effect at runtime, and none on a build that is not being debugged. It needs .NET 9 or later,
-    // so it could not be used while this project targeted net8.0.
-    [DebuggerDisableUserUnhandledExceptions]
+    // perform the redirect (see the comment at the call site). Nothing in our code catches it, so
+    // under Just My Code the debugger reports it as "Exception User-Unhandled" and halts on every
+    // sign-in, sign-out and Manage redirect -- which looks exactly like a hung login. Press
+    // Continue (F5) and the redirect completes; nothing is actually wrong.
+    //
+    // There is no code fix for this. DebuggerDisableUserUnhandledExceptionsAttribute does not
+    // help, though it reads as though it should: it suppresses the break only for an exception
+    // that the attributed method *catches*, and this one passes straight through. It belongs on
+    // the framework method that catches it, which is not ours to annotate. It was tried here and
+    // removed.
+    //
+    // The fix is a per-developer Visual Studio setting -- Exception Settings, "Continue When
+    // Unhandled in User Code" on Microsoft.AspNetCore.Components.NavigationException. See
+    // "The debugger stops on NavigationException" in README.md.
     [DoesNotReturn]
     public void RedirectTo(string? uri)
     {

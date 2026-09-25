@@ -96,6 +96,32 @@ public static class DefaultAdminProvisioner
             await userManager.AddToRoleAsync(existing, GovernanceRoles.Administrator);
         }
 
+        // Configuration is the source of truth for this account's password, not just at the moment
+        // it is created. Without this, editing DefaultAdmin:Password on a deployment that already
+        // has the account does nothing at all, and the only symptom is that the documented password
+        // does not work -- indistinguishable from a broken login. It is a bootstrap account that
+        // retires itself the moment a real administrator exists, so config winning is what anyone
+        // editing that setting expects.
+        if (!await userManager.CheckPasswordAsync(existing, password))
+        {
+            var token = await userManager.GeneratePasswordResetTokenAsync(existing);
+            var reset = await userManager.ResetPasswordAsync(existing, token, password);
+            if (reset.Succeeded)
+            {
+                logger.LogWarning(
+                    "Reset the bootstrap administrator '{UserName}' to the configured " +
+                    "DefaultAdmin:Password.", userName);
+            }
+            else
+            {
+                logger.LogError(
+                    "Could not apply the configured DefaultAdmin:Password to '{UserName}': {Errors}. " +
+                    "The account keeps its previous password.",
+                    userName,
+                    string.Join("; ", reset.Errors.Select(e => e.Description)));
+            }
+        }
+
         await SetActiveAsync(userManager, existing, active: true, logger);
     }
 

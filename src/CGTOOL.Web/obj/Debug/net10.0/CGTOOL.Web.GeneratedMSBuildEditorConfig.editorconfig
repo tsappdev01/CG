@@ -223,12 +223,20 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxEZWNsYXJhdGlvbnNTZXR1cFBhZ2UucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Claude.AI/CG/src/CGTOOL.Web/Components/Pages/Admin/DepartmentDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxEZXBhcnRtZW50RGV0YWlsLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Claude.AI/CG/src/CGTOOL.Web/Components/Pages/Admin/Departments.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxEZXBhcnRtZW50cy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Claude.AI/CG/src/CGTOOL.Web/Components/Pages/Admin/InsiderDeclarationReport.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxJbnNpZGVyRGVjbGFyYXRpb25SZXBvcnQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CG/src/CGTOOL.Web/Components/Pages/Admin/JobTitleDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pblxKb2JUaXRsZURldGFpbC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Claude.AI/CG/src/CGTOOL.Web/Components/Pages/Admin/JobTitles.razor]
@@ -345,6 +353,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Claude.AI/CG/src/CGTOOL.Web/Components/Shared/SortableHeader.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcU29ydGFibGVIZWFkZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CG/src/CGTOOL.Web/Components/Shared/TablePager.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcVGFibGVQYWdlci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Claude.AI/CG/src/CGTOOL.Web/Components/Shared/ToggleSwitch.razor]

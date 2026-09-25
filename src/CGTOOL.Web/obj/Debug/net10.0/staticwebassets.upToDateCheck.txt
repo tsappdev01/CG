@@ -26,7 +26,10 @@ wwwroot\uploads\coi-trade-licenses\9-aaf2a4d12e4747bd9c1aed46c418c70f-0.pdf
 wwwroot\uploads\coi-trade-licenses\9-af8b5d1d7c3f4b4899563e874c8920fd-0.pdf
 wwwroot\uploads\coi-trade-licenses\9-c007563b59e34cad9304a9098e472b13-0.pdf
 wwwroot\uploads\company-logos\1.jpg
+wwwroot\uploads\company-logos\17.jpg
 wwwroot\uploads\company-logos\2.jpg
+wwwroot\uploads\company-logos\3.jpg
+wwwroot\uploads\company-logos\6.jpg
 wwwroot\uploads\insider-declarations\10-emirates-id.pdf
 wwwroot\uploads\insider-declarations\10-passport.pdf
 wwwroot\uploads\insider-declarations\10-trade-licence.pdf
@@ -60,10 +63,10 @@ wwwroot\uploads\profile-pictures\e97346cb-d4a9-4079-9528-80ca9e410bb8.jpg
 wwwroot\uploads\profile-pictures\f3f24b17-82e7-44b4-9351-7364d7c36380.jpg
 C:\Users\nayyar\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.12\build\..\_framework\blazor.web.js
 C:\Users\nayyar\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.12\build\..\_framework\blazor.server.js
-C:\Users\nayyar\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.12\_framework\blazor.server.js
-C:\Users\nayyar\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.12\_framework\blazor.web.js
-C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\js\idle-lock.js
-C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\js\download.js
-C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\bootstrap\bootstrap.min.css.map
 C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\bootstrap\bootstrap.min.css
+C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\bootstrap\bootstrap.min.css.map
+C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\js\download.js
+C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\js\idle-lock.js
+C:\Users\nayyar\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.12\_framework\blazor.web.js
+C:\Users\nayyar\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.12\_framework\blazor.server.js
 C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\app.css

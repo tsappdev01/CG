@@ -183,6 +183,8 @@ C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\compressed\u9wt3tgvoq-{0}-mhulq
 C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\compressed\41rrz0j3j1-{0}-vn133x2txy-vn133x2txy.gz
 C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\compressed\lljzyj2jul-{0}-9hsif5t8mt-9hsif5t8mt.gz
 C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\compressed\kdg4p969ul-{0}-dwu72t6gfx-dwu72t6gfx.gz
+C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\compressed\ev15n0qj76-{0}-weg04ch85b-weg04ch85b.gz
+C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\compressed\o6oxquconb-{0}-weg04ch85b-weg04ch85b.gz
 C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\staticwebassets.build.json
 C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\staticwebassets.build.json.cache
 C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\staticwebassets.development.json
@@ -195,6 +197,4 @@ C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\refint\CGTOOL.Web.dll
 C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\CGTOOL.Web.pdb
 C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\CGTOOL.Web.genruntimeconfig.cache
 C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\ref\CGTOOL.Web.dll
-C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\compressed\ev15n0qj76-{0}-weg04ch85b-weg04ch85b.gz
-C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\compressed\o6oxquconb-{0}-weg04ch85b-weg04ch85b.gz
-C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\compressed\dprakam72e-{0}-4r66mhfvfa-4r66mhfvfa.gz
+C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\compressed\dprakam72e-{0}-eooklnhbne-eooklnhbne.gz

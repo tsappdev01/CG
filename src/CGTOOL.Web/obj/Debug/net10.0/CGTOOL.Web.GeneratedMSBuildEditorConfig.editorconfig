@@ -175,6 +175,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBcHAucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Claude.AI/CG/src/CGTOOL.Web/Components/Layout/ActingAsRestore.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcQWN0aW5nQXNSZXN0b3JlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Claude.AI/CG/src/CGTOOL.Web/Components/Layout/AdminImpersonationBanner.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcQWRtaW5JbXBlcnNvbmF0aW9uQmFubmVyLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
@@ -193,6 +197,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Claude.AI/CG/src/CGTOOL.Web/Components/Layout/ImpersonationBanner.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcSW1wZXJzb25hdGlvbkJhbm5lci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Claude.AI/CG/src/CGTOOL.Web/Components/Layout/SwitchProfileDialog.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcU3dpdGNoUHJvZmlsZURpYWxvZy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Claude.AI/CG/src/CGTOOL.Web/Components/Layout/ToastContainer.razor]
@@ -293,10 +301,6 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Claude.AI/CG/src/CGTOOL.Web/Components/Pages/Error.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xFcnJvci5yYXpvcg==
-build_metadata.AdditionalFiles.CssScope = 
-
-[C:/Claude.AI/CG/src/CGTOOL.Web/Components/Pages/Impersonate.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xJbXBlcnNvbmF0ZS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Claude.AI/CG/src/CGTOOL.Web/Components/Pages/MyDeclarations.razor]

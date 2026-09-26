@@ -1,5 +1,43 @@
 [
   {
+    "ContainingType": "CGTOOL.Web.Components.Account.AdminImpersonationEndpoints\u002B\u003C\u003Ec",
+    "Method": "\u003CMapAdminImpersonationEndpoints\u003Eb__0_1",
+    "RelativePath": "Account/ImpersonateEnd",
+    "HttpMethod": "POST",
+    "IsController": false,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CGTOOL.Web.Components.Account.AdminImpersonationEndpoints\u002B\u003C\u003Ec",
+    "Method": "\u003CMapAdminImpersonationEndpoints\u003Eb__0_0",
+    "RelativePath": "Account/ImpersonateStart",
+    "HttpMethod": "POST",
+    "IsController": false,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "userId",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
     "ContainingType": "Microsoft.AspNetCore.Routing.IdentityComponentsEndpointRouteBuilderExtensions\u002B\u003C\u003Ec",
     "Method": "\u003CMapAdditionalIdentityEndpoints\u003Eb__0_1",
     "RelativePath": "Account/Logout",
@@ -78,6 +116,44 @@
         "IsRequired": true
       }
     ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CGTOOL.Web.Components.Account.SwitchProfileEndpoints\u002B\u003C\u003Ec",
+    "Method": "\u003CMapSwitchProfileEndpoints\u003Eb__0_0",
+    "RelativePath": "Account/SwitchProfile",
+    "HttpMethod": "POST",
+    "IsController": false,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "memberId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CGTOOL.Web.Components.Account.SwitchProfileEndpoints\u002B\u003C\u003Ec",
+    "Method": "\u003CMapSwitchProfileEndpoints\u003Eb__0_1",
+    "RelativePath": "Account/SwitchProfileEnd",
+    "HttpMethod": "POST",
+    "IsController": false,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": [
       {
         "Type": "System.Void",

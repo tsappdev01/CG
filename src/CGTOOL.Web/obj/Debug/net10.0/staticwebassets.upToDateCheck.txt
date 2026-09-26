@@ -70,10 +70,10 @@ wwwroot\uploads\profile-pictures\e97346cb-d4a9-4079-9528-80ca9e410bb8.jpg
 wwwroot\uploads\profile-pictures\f3f24b17-82e7-44b4-9351-7364d7c36380.jpg
 C:\Users\nayyar\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.12\build\..\_framework\blazor.web.js
 C:\Users\nayyar\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.12\build\..\_framework\blazor.server.js
-C:\Users\nayyar\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.12\_framework\blazor.server.js
-C:\Users\nayyar\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.12\_framework\blazor.web.js
-C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\js\idle-lock.js
-C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\js\download.js
-C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\bootstrap\bootstrap.min.css.map
-C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\bootstrap\bootstrap.min.css
 C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\app.css
+C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\bootstrap\bootstrap.min.css
+C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\bootstrap\bootstrap.min.css.map
+C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\js\download.js
+C:\Claude.AI\CG\src\CGTOOL.Web\wwwroot\js\idle-lock.js
+C:\Users\nayyar\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.12\_framework\blazor.web.js
+C:\Users\nayyar\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.12\_framework\blazor.server.js

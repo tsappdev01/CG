@@ -115,6 +115,8 @@ public partial class MyWorkspace : ComponentBase
                 f.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
                 || (f.Organization?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
                 || (f.IdentificationNumber?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (f.EmiratesIdNumber?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (f.PassportNumber?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
                 || (f.Occupation?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false));
         }
 
@@ -138,6 +140,17 @@ public partial class MyWorkspace : ComponentBase
 
     private static string RelationLabel(RelativeRelationship relationship) =>
         RelativeOptions.FirstOrDefault(o => o.Value == relationship).Label ?? relationship.ToString();
+
+    /// <summary>What the "Emirates ID / Passport" column shows. The typed IdentificationNumber is no
+    /// longer editable -- the number now comes off the uploaded document -- but rows captured before
+    /// that still carry one, so it stays as the last fallback rather than having those rows go
+    /// blank.</summary>
+    private static string? IdentifierOf(FamilyMember f)
+    {
+        if (!string.IsNullOrWhiteSpace(f.EmiratesIdNumber)) return f.EmiratesIdNumber;
+        if (!string.IsNullOrWhiteSpace(f.PassportNumber)) return f.PassportNumber;
+        return string.IsNullOrWhiteSpace(f.IdentificationNumber) ? null : f.IdentificationNumber;
+    }
 
     private static string HoldingLabel(RelatedPartyHoldingNature nature) =>
         nature == RelatedPartyHoldingNature.None ? "—" : nature.ToString();

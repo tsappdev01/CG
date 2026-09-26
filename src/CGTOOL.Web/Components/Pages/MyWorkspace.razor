@@ -87,7 +87,7 @@
                                 <tr class="cg-data-row">
                                     <td class="cg-cell-name">@f.Name</td>
                                     <td>@RelationLabel(f.Relationship)</td>
-                                    <td class="mono">@(string.IsNullOrWhiteSpace(f.IdentificationNumber) ? "—" : f.IdentificationNumber)</td>
+                                    <td class="mono">@(IdentifierOf(f) ?? "—")</td>
                                     <td class="mono">@(string.IsNullOrWhiteSpace(f.NinNumber) ? "—" : f.NinNumber)</td>
                                     <td>@(string.IsNullOrWhiteSpace(f.Nationality) ? "—" : f.Nationality)</td>
                                     <td>@(string.IsNullOrWhiteSpace(f.Occupation) ? "—" : f.Occupation)</td>
@@ -232,10 +232,6 @@
                             <option value="@opt.Value">@opt.Label</option>
                         }
                     </select>
-                </label>
-                <label class="cg-field">
-                    <span>Emirates ID / Passport</span>
-                    <input class="cg-input" @bind="_relativeForm.IdentificationNumber" maxlength="60" />
                 </label>
                 <label class="cg-field">
                     <span>NIN Number</span>

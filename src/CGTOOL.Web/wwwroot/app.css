@@ -2344,6 +2344,17 @@ select.cg-input {
 .cg-doc-progress { width: 120px; height: 6px; }
 .cg-col-relname { min-width: 190px; }
 .cg-captured-grid { margin-top: 12px; }
+.cg-confirm-modal { width: min(460px, calc(100vw - 32px)); }
+/* The confirming button is the dialog's primary action, so it is solid the way Save is
+   elsewhere -- cg-critical stays an outline everywhere else, where it sits in a row of
+   equals rather than being the thing the dialog is asking about. */
+.cg-confirm-modal .cg-modal-foot .cg-action-btn.cg-critical:not(:disabled) {
+    background: var(--cg-critical);
+    border-color: var(--cg-critical);
+    color: #FFFFFF;
+}
+.cg-confirm-modal .cg-modal-foot .cg-action-btn.cg-critical:not(:disabled):hover { filter: brightness(.94); }
+.cg-confirm-modal .cg-modal-body p { margin: 0 0 10px; font-size: 13.5px; }
 
 @media (max-width: 1200px) {
     .cg-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 18px; }

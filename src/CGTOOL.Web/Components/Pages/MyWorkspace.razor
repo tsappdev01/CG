@@ -109,7 +109,7 @@
                                     <td>
                                         <span class="cg-row-actions">
                                             <button type="button" class="cg-icon-btn" title="Edit @f.Name" @onclick="() => OpenEditRelative(f)"><span class="cg-ico cg-ico-pencil" aria-hidden="true"></span></button>
-                                            <button type="button" class="cg-icon-btn cg-icon-btn-danger" title="Remove @f.Name" @onclick="() => RemoveFamilyMemberAsync(f)"><span class="cg-ico cg-ico-trash" aria-hidden="true"></span></button>
+                                            <button type="button" class="cg-icon-btn cg-icon-btn-danger" title="Remove @f.Name" @onclick="() => AskRemoveRelative(f)"><span class="cg-ico cg-ico-trash" aria-hidden="true"></span></button>
                                         </span>
                                     </td>
                                 </tr>
@@ -185,7 +185,7 @@
                                     <td>
                                         <span class="cg-row-actions">
                                             <button type="button" class="cg-icon-btn" title="Edit @c.CompanyName" @onclick="() => OpenEditCompany(c)"><span class="cg-ico cg-ico-pencil" aria-hidden="true"></span></button>
-                                            <button type="button" class="cg-icon-btn cg-icon-btn-danger" title="Remove @c.CompanyName" @onclick="() => RemoveCompanyAsync(c)"><span class="cg-ico cg-ico-trash" aria-hidden="true"></span></button>
+                                            <button type="button" class="cg-icon-btn cg-icon-btn-danger" title="Remove @c.CompanyName" @onclick="() => AskRemoveCompany(c)"><span class="cg-ico cg-ico-trash" aria-hidden="true"></span></button>
                                         </span>
                                     </td>
                                 </tr>
@@ -417,6 +417,60 @@
         <div class="cg-modal-foot">
             <button type="button" class="cg-action-btn" @onclick="CloseCompanyDialog">@(_companyTarget is null ? "Cancel" : "Close")</button>
             <button type="button" class="cg-action-btn cg-good" @onclick="SaveCompanyAsync">Save</button>
+        </div>
+    </div>
+}
+
+@* Delete asks first. The record is gone from the screen afterwards but not from the record: the
+   audit entry carries every field it held, which is what the warning promises. *@
+@if (_pendingDeleteRelative is { } pendingRelative)
+{
+    <div class="cg-modal-backdrop" @onclick="CancelRemoveRelative"></div>
+    <div class="cg-modal cg-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="cg-del-relative-title">
+        <div class="cg-modal-head">
+            <div>
+                <h2 id="cg-del-relative-title">Delete this related party?</h2>
+                <p class="cg-subtitle">@pendingRelative.Name — @RelationLabel(pendingRelative.Relationship)</p>
+            </div>
+            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="CancelRemoveRelative">×</button>
+        </div>
+
+        <div class="cg-modal-body">
+            <p>This removes the record and its details from your workspace. It cannot be undone here.</p>
+            @if (RelativeDocuments(pendingRelative).Count > 0)
+            {
+                <p class="cg-hint">Its attached documents (@string.Join(", ", RelativeDocuments(pendingRelative).Select(d => d.Short))) stay on file.</p>
+            }
+            <p class="cg-hint">The audit trail keeps a full record of what was deleted, when, and under whose name.</p>
+        </div>
+
+        <div class="cg-modal-foot">
+            <button type="button" class="cg-action-btn" @onclick="CancelRemoveRelative">Cancel</button>
+            <button type="button" class="cg-action-btn cg-critical" @onclick="ConfirmRemoveRelativeAsync">Delete</button>
+        </div>
+    </div>
+}
+
+@if (_pendingDeleteCompany is { } pendingCompany)
+{
+    <div class="cg-modal-backdrop" @onclick="CancelRemoveCompany"></div>
+    <div class="cg-modal cg-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="cg-del-company-title">
+        <div class="cg-modal-head">
+            <div>
+                <h2 id="cg-del-company-title">Delete this company?</h2>
+                <p class="cg-subtitle">@pendingCompany.CompanyName</p>
+            </div>
+            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="CancelRemoveCompany">×</button>
+        </div>
+
+        <div class="cg-modal-body">
+            <p>This removes the company and its details from your workspace. It cannot be undone here.</p>
+            <p class="cg-hint">Its attached documents stay on file, and the audit trail keeps a full record of what was deleted, when, and under whose name.</p>
+        </div>
+
+        <div class="cg-modal-foot">
+            <button type="button" class="cg-action-btn" @onclick="CancelRemoveCompany">Cancel</button>
+            <button type="button" class="cg-action-btn cg-critical" @onclick="ConfirmRemoveCompanyAsync">Delete</button>
         </div>
     </div>
 }

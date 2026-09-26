@@ -173,6 +173,11 @@ public partial class MyWorkspace : ComponentBase
     private string _occupationChoice = string.Empty;
     private string _occupationOther = string.Empty;
 
+    // Delete asks first, and the record is held here rather than deleted from the grid's own
+    // iteration: the button that starts it is inside the loop over that list.
+    private FamilyMember? _pendingDeleteRelative;
+    private OwnedCompany? _pendingDeleteCompany;
+
     private bool _relativeDialogOpen;
     private FamilyMember? _relativeForm;
     private FamilyMember? _relativeTarget;
@@ -335,11 +340,14 @@ public partial class MyWorkspace : ComponentBase
         return changes;
     }
 
+    /// <summary>Every field, not the interesting ones: once the row is deleted the audit entry is
+    /// the only place it still exists, so anything left out of here is gone. The document paths are
+    /// included because the uploaded files are deliberately left on disk -- a deletion that also
+    /// destroyed the evidence would not be much of a record.</summary>
     private static string SnapshotOf(FamilyMember f) => string.Join("; ",
     [
         $"Name: {Show(f.Name)}",
         $"Relation: {RelationshipLabel(f.Relationship)}",
-        $"Emirates ID / Passport: {Show(f.IdentificationNumber)}",
         $"NIN Number: {Show(f.NinNumber)}",
         $"Nationality: {Show(f.Nationality)}",
         $"Occupation / Business: {Show(f.Occupation)}",
@@ -347,8 +355,14 @@ public partial class MyWorkspace : ComponentBase
         $"Nature Of Holding: {HoldingLabel(f.NatureOfHolding)}",
         $"Ownership %: {Show(Pct(f.OwnershipPercentage))}",
         $"Emirates ID No: {Show(f.EmiratesIdNumber)}",
+        $"Emirates ID Expiry: {Show(Day(f.EmiratesIdExpiryDate))}",
         $"Passport No: {Show(f.PassportNumber)}",
+        $"Passport Expiry: {Show(Day(f.PassportExpiryDate))}",
         $"Trade License No: {Show(f.TradeLicenceNumber)}",
+        $"Trade License Legal Name: {Show(f.TradeLicenceLegalName)}",
+        $"Trade License Expiry: {Show(Day(f.TradeLicenceExpiryDate))}",
+        $"Emirates ID / Passport (typed): {Show(f.IdentificationNumber)}",
+        $"Documents: {Show(string.Join(", ", new[] { f.EmiratesIdPath, f.PassportPath, f.TradeLicencePath }.Where(d => !string.IsNullOrWhiteSpace(d))))}",
     ]);
 
     private static string SnapshotOf(OwnedCompany c) => string.Join("; ",
@@ -357,6 +371,10 @@ public partial class MyWorkspace : ComponentBase
         $"Nature Of Holding: {HoldingLabel(c.NatureOfHolding)}",
         $"Ownership %: {Show(Pct(c.OwnershipPercentage))}",
         $"Trade License No: {Show(c.TradeLicenceNumber)}",
+        $"Trade License Legal Name: {Show(c.TradeLicenceLegalName)}",
+        $"Trade License Expiry: {Show(Day(c.TradeLicenceExpiryDate))}",
+        $"Trade License Details (typed): {Show(c.TradeLicenseDetails)}",
+        $"Documents: {Show(string.Join(", ", new[] { c.TradeLicensePath, c.MoaPath, c.PoaPath }.Where(d => !string.IsNullOrWhiteSpace(d))))}",
     ]);
 
     private static List<(string Path, string Short)> RelativeDocuments(FamilyMember f)
@@ -493,6 +511,23 @@ public partial class MyWorkspace : ComponentBase
         Toasts.ShowSuccess("Related party saved.");
     }
 
+    private void AskRemoveRelative(FamilyMember familyMember)
+    {
+        _pendingDeleteCompany = null;
+        _pendingDeleteRelative = familyMember;
+    }
+
+    private void CancelRemoveRelative() => _pendingDeleteRelative = null;
+
+    private async Task ConfirmRemoveRelativeAsync()
+    {
+        if (_pendingDeleteRelative is { } familyMember)
+        {
+            _pendingDeleteRelative = null;
+            await RemoveFamilyMemberAsync(familyMember);
+        }
+    }
+
     private async Task RemoveFamilyMemberAsync(FamilyMember familyMember)
     {
         if (_effectiveMember is null) return;
@@ -588,6 +623,23 @@ public partial class MyWorkspace : ComponentBase
 
         CloseCompanyDialog();
         Toasts.ShowSuccess("Company saved.");
+    }
+
+    private void AskRemoveCompany(OwnedCompany company)
+    {
+        _pendingDeleteRelative = null;
+        _pendingDeleteCompany = company;
+    }
+
+    private void CancelRemoveCompany() => _pendingDeleteCompany = null;
+
+    private async Task ConfirmRemoveCompanyAsync()
+    {
+        if (_pendingDeleteCompany is { } company)
+        {
+            _pendingDeleteCompany = null;
+            await RemoveCompanyAsync(company);
+        }
     }
 
     private async Task RemoveCompanyAsync(OwnedCompany company)

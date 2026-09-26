@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.JSInterop;
 using CGTOOL.Web.Data;
 using CGTOOL.Web.Data.Governance;
 
@@ -27,8 +28,22 @@ public partial class Dashboard
         public DateTime DueDateUtc { get; init; }
     }
 
+    /// <summary>What one of the two category cards says. Pending and Overdue are disjoint -- a row
+    /// past its due date is counted as overdue and not also as pending, so the three numbers add up
+    /// to the total and the bar can be read straight across.</summary>
+    private record CategoryCard(string Title, int Total, int Complete, int Pending, int Overdue)
+    {
+        public int Percent => Total == 0 ? 0 : (int)Math.Round(Complete * 100.0 / Total);
+        public double CompleteWidth => Total == 0 ? 0 : Complete * 100.0 / Total;
+        public double OverdueWidth => Total == 0 ? 0 : Overdue * 100.0 / Total;
+    }
+
     private List<ComplianceRow>? _rows;
     private List<DeclarationReminderLog>? _reminderLogs;
+    /// <summary>How many reminders each category is configured to send, for the "n of N" on each row.</summary>
+    private Dictionary<DeclarationCycleType, int> _reminderTargets = [];
+    private string _search = string.Empty;
+    private bool _logOpen;
     private readonly HashSet<(int MemberId, DeclarationCategory Category, int Year, int Quarter)> _selected = [];
     private int _yearFilter;
     private int _quarterFilter;
@@ -124,6 +139,10 @@ public partial class Dashboard
             .OrderByDescending(l => l.SentAtUtc)
             .ToListAsync();
 
+        _reminderTargets = await db.DeclarationCycleSetups
+            .AsNoTracking()
+            .ToDictionaryAsync(s => s.Type, s => s.ReminderCount);
+
         _selected.Clear();
     }
 
@@ -138,10 +157,78 @@ public partial class Dashboard
     private IEnumerable<ComplianceRow> RowsForPeriod() => (_rows ?? [])
         .Where(r => (_yearFilter == 0 || r.Year == _yearFilter) && (_quarterFilter == 0 || r.Quarter == _quarterFilter));
 
-    private int InsiderPendingCount => RowsForPeriod().Count(r => r.Category == DeclarationCategory.InsiderTrading && !r.Complete);
-    private int InsiderCompleteCount => RowsForPeriod().Count(r => r.Category == DeclarationCategory.InsiderTrading && r.Complete);
-    private int CoiPendingCount => RowsForPeriod().Count(r => r.Category == DeclarationCategory.ConflictOfInterest && !r.Complete);
-    private int CoiCompleteCount => RowsForPeriod().Count(r => r.Category == DeclarationCategory.ConflictOfInterest && r.Complete);
+    /// <summary>Pending and past its due date. Read against UAE time, the same clock the due dates
+    /// and the notification schedule are set in.</summary>
+    private static bool IsOverdue(ComplianceRow r) => !r.Complete && r.DueDateUtc < DateTime.UtcNow;
+
+    private static string StatusOf(ComplianceRow r) => r.Complete ? "Complete" : IsOverdue(r) ? "Overdue" : "Pending";
+
+    private List<CategoryCard> Cards()
+    {
+        var rows = RowsForPeriod().ToList();
+        return
+        [
+            CardFor("Insider Trading", rows.Where(r => r.Category == DeclarationCategory.InsiderTrading)),
+            CardFor("Related Party & COI", rows.Where(r => r.Category == DeclarationCategory.ConflictOfInterest)),
+        ];
+    }
+
+    private static CategoryCard CardFor(string title, IEnumerable<ComplianceRow> rows)
+    {
+        var list = rows.ToList();
+        var overdue = list.Count(IsOverdue);
+        return new CategoryCard(title, list.Count, list.Count(r => r.Complete), list.Count(r => !r.Complete) - overdue, overdue);
+    }
+
+    /// <summary>The soonest due date still ahead of us in the selected period -- what the header
+    /// counts down to. Null once everything in scope is past due or there is nothing in scope.</summary>
+    private DateTime? NextDueDateUtc => RowsForPeriod()
+        .Where(r => !r.Complete && r.DueDateUtc >= DateTime.UtcNow)
+        .Select(r => (DateTime?)r.DueDateUtc)
+        .OrderBy(d => d)
+        .FirstOrDefault();
+
+    private int? DaysUntilDue => NextDueDateUtc is { } due ? (int)Math.Ceiling((UaeTime.FromUtc(due).Date - UaeTime.Now.Date).TotalDays) : null;
+
+    /// <summary>Reminders sent for the period on screen, however they were sent -- from this table or
+    /// by the scheduler.</summary>
+    private int RemindersForPeriod => (_reminderLogs ?? [])
+        .Count(l => (_yearFilter == 0 || l.Year == _yearFilter) && (_quarterFilter == 0 || l.Quarter == _quarterFilter));
+
+    private int CountByStatus(string status) => RowsForPeriod().Count(r => StatusOf(r).Equals(status, StringComparison.OrdinalIgnoreCase));
+
+    private bool AnyFilterApplied =>
+        _search.Length > 0 || _yearFilter != 0 || _quarterFilter != 0 || _categoryFilter.Length > 0 || _statusFilter.Length > 0;
+
+    private void ClearFilters()
+    {
+        _search = string.Empty;
+        _yearFilter = 0;
+        _quarterFilter = 0;
+        _categoryFilter = string.Empty;
+        _statusFilter = string.Empty;
+        ResetToFirstPage();
+    }
+
+    private void PickStatus(string status)
+    {
+        _statusFilter = _statusFilter == status ? string.Empty : status;
+        ResetToFirstPage();
+    }
+
+    /// <summary>Two letters for the row avatar: first and last word of the name, so "Khalid Al
+    /// Mansoori" reads KM rather than KA.</summary>
+    private static string InitialsOf(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return "?";
+        return parts.Length == 1
+            ? parts[0][..1].ToUpperInvariant()
+            : $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+
+    private int ReminderTargetFor(ComplianceRow r) =>
+        _reminderTargets.TryGetValue(ToLogCategory(r.Category), out var n) ? n : 0;
 
     private List<ComplianceRow> FilteredRows()
     {
@@ -150,8 +237,16 @@ public partial class Dashboard
         if (_categoryFilter == "insider") query = query.Where(r => r.Category == DeclarationCategory.InsiderTrading);
         else if (_categoryFilter == "coi") query = query.Where(r => r.Category == DeclarationCategory.ConflictOfInterest);
 
-        if (_statusFilter == "complete") query = query.Where(r => r.Complete);
-        else if (_statusFilter == "pending") query = query.Where(r => !r.Complete);
+        if (_search.Length > 0)
+        {
+            var term = _search.Trim();
+            query = query.Where(r =>
+                r.MemberName.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                r.Email.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                (r.CompanyName ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (_statusFilter.Length > 0) query = query.Where(r => StatusOf(r).Equals(_statusFilter, StringComparison.OrdinalIgnoreCase));
 
         return query
             .OrderByDescending(r => r.Year)
@@ -222,13 +317,23 @@ public partial class Dashboard
     {
         if (_selected.Count == 0 || _rows is null) return;
 
+        var targets = _rows.Where(r => !r.Complete && _selected.Contains(KeyOf(r))).ToList();
+        await SendRemindersAsync(targets);
+    }
+
+    /// <summary>The per-row "Remind" button: the same send as the bulk action, for one person, so a
+    /// single chaser does not mean selecting a checkbox and clearing it again afterwards.</summary>
+    private Task RemindOneAsync(ComplianceRow row) => SendRemindersAsync([row]);
+
+    private async Task SendRemindersAsync(List<ComplianceRow> targets)
+    {
+        if (targets.Count == 0) return;
+
         _sendingReminders = true;
         try
         {
             var state = await AuthState.GetAuthenticationStateAsync();
             var actorName = state.User.Identity?.Name ?? "unknown";
-
-            var targets = _rows.Where(r => !r.Complete && _selected.Contains(KeyOf(r))).ToList();
 
             foreach (var row in targets)
             {
@@ -256,7 +361,9 @@ public partial class Dashboard
                     $"Sent {label} declaration reminder to {row.MemberName} (Q{row.Quarter} {row.Year})");
             }
 
-            Toasts.ShowSuccess($"Reminder sent to {targets.Count} user(s).");
+            Toasts.ShowSuccess(targets.Count == 1
+                ? $"Reminder sent to {targets[0].MemberName}."
+                : $"Reminder sent to {targets.Count} user(s).");
             await LoadAsync();
         }
         finally
@@ -264,4 +371,45 @@ public partial class Dashboard
             _sendingReminders = false;
         }
     }
+
+    private async Task RefreshAsync()
+    {
+        await LoadAsync();
+        Toasts.ShowSuccess("Dashboard refreshed.");
+    }
+
+    /// <summary>Exports what is on screen -- the filtered rows, not the whole table -- so the export
+    /// matches the question the filters were set to answer.</summary>
+    private async Task ExportCsvAsync()
+    {
+        var rows = FilteredRows();
+        var csv = new System.Text.StringBuilder();
+        csv.AppendLine("User,Email,Entity,Category,Period,Status,Submitted,Reminders sent,Last reminder,Due date");
+
+        foreach (var r in rows)
+        {
+            csv.AppendLine(string.Join(",", new[]
+            {
+                r.MemberName, r.Email, r.CompanyName ?? string.Empty, CategoryLabel(r.Category),
+                $"Q{r.Quarter} {r.Year}", StatusOf(r),
+                r.SubmittedAtUtc?.ToLocalDisplay("dd/MM/yyyy HH:mm") ?? string.Empty,
+                ReminderCountFor(r).ToString(),
+                LastReminderAtFor(r)?.ToLocalDisplay("dd/MM/yyyy HH:mm") ?? string.Empty,
+                r.DueDateUtc.ToLocalDisplay("dd/MM/yyyy"),
+            }.Select(Csv)));
+        }
+
+        // A BOM so Excel opens a file of Arabic names and em dashes as UTF-8 rather than mangling it.
+        var name = $"declaration-compliance-{DateTime.UtcNow:yyyyMMdd}.csv";
+        var bytes = System.Text.Encoding.UTF8.GetPreamble()
+            .Concat(System.Text.Encoding.UTF8.GetBytes(csv.ToString()))
+            .ToArray();
+        await JS.InvokeVoidAsync("downloadFileFromBase64", name, "text/csv", Convert.ToBase64String(bytes));
+
+        var actor = (await AuthState.GetAuthenticationStateAsync()).User.Identity?.Name ?? "unknown";
+        await AuditLog.LogAsync(actor, AuditAction.Update, "Dashboard", "ComplianceExport",
+            $"Exported {rows.Count} declaration compliance record(s)");
+    }
+
+    private static string Csv(string value) => $"\"{value.Replace("\"", "\"\"")}\"";
 }

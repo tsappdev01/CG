@@ -1,5 +1,7 @@
 .cg-shell {
-    max-width: 1180px;
+    /* Four summary cards across, and a ten-column table under them: the old 1180px made both
+       scroll sideways on a normal office screen. */
+    max-width: 1340px;
     margin: 0 auto;
 }
 
@@ -13,61 +15,185 @@
 }
 
 /* ---------- Header ---------- */
-.cg-topbar {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--cg-line);
-    flex-wrap: wrap;
-}
-
-.cg-brand {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-}
-
-.cg-brand-mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 6px;
-    background: var(--cg-accent);
-    color: var(--cg-surface);
-    font-weight: 700;
-    font-size: 13px;
-    flex-shrink: 0;
-    transform: translateY(3px);
-}
-
-.cg-topbar h1 {
-    font-size: 19px;
-    font-weight: 650;
-    letter-spacing: -0.01em;
-    margin: 0;
-    text-wrap: balance;
-}
-
-.cg-subtitle {
-    color: var(--cg-ink-muted);
-    font-size: 13px;
-    margin-top: 2px;
-}
-
 .cg-asof {
     text-align: right;
     color: var(--cg-ink-muted);
     font-size: 12px;
 }
 
-.cg-asof .val {
-    color: var(--cg-ink);
+.cg-dash-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding-bottom: 18px;
+}
+
+.cg-dash-head h1 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 2px 0 0;
+}
+
+.cg-eyebrow {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--cg-gold);
+}
+
+.cg-dash-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cg-asof-label { font-size: 12px; color: var(--cg-ink-muted); }
+.cg-asof-value { font-size: 13.5px; font-weight: 600; color: var(--cg-ink); }
+
+/* ---------- Summary cards ---------- */
+.cg-dash-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) repeat(2, minmax(190px, 0.62fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 1100px) {
+    .cg-dash-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+    .cg-dash-cards { grid-template-columns: minmax(0, 1fr); }
+}
+
+.cg-dash-cards .cg-card {
+    margin-bottom: 0;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+}
+
+.cg-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.cg-dash-cards .cg-card-title { margin: 0; font-size: 15px; }
+
+.cg-card-note { font-size: 12.5px; color: var(--cg-ink-muted); }
+
+.cg-card-figure { display: flex; align-items: baseline; gap: 9px; }
+.cg-card-pct { font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+
+/* The bar is the card's three numbers read across: complete, then overdue at the far end, with
+   the untinted remainder in between standing for pending. */
+.cg-meter {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--cg-line);
+    overflow: hidden;
+    display: flex;
+}
+.cg-meter-done { background: var(--cg-good); }
+.cg-meter-over { background: var(--cg-critical); margin-left: auto; }
+
+.cg-card-split {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+.cg-card-split > div { display: flex; flex-direction: column; gap: 1px; }
+.cg-card-num { font-size: 17px; font-weight: 700; color: var(--cg-accent-ink); }
+.cg-card-num.good { color: var(--cg-good); }
+.cg-card-num.bad { color: var(--cg-critical); }
+
+.cg-stat-card { gap: 5px !important; justify-content: center; }
+.cg-stat-value { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
+.cg-stat-foot { font-size: 12.5px; color: var(--cg-ink-muted); }
+.cg-stat-foot.urgent { color: var(--cg-critical); font-weight: 650; }
+
+/* ---------- Filters ---------- */
+/* Filters, the table and the pager are one card: they are one thing to use, and stacking three
+   bordered blocks put two hairlines between every step of it. */
+.cg-dash-table { padding: 0 !important; overflow: hidden; }
+
+.cg-dash-filters {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    border-bottom: 1px solid var(--cg-line);
+}
+
+.cg-filter-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+.cg-filter-row-end { justify-content: space-between; align-items: center; }
+
+.cg-filter { display: flex; flex-direction: column; gap: 4px; }
+.cg-filter > span { font-size: 12px; font-weight: 600; color: var(--cg-ink-muted); }
+.cg-filter .cg-input { min-width: 130px; width: auto; }
+.cg-filter-grow { flex: 1 1 240px; }
+.cg-filter-grow .cg-input { width: 100%; }
+
+.cg-link-btn {
+    height: 38px;
+    padding: 0 12px;
+    border: none;
+    background: transparent;
+    color: var(--cg-accent);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.cg-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.cg-chips .cg-chip {
+    padding: 7px 13px;
+    font-size: 12.5px;
+    cursor: pointer;
+    box-shadow: none;
+    color: var(--cg-ink-muted);
+}
+.cg-chips .cg-chip span { color: var(--cg-ink); }
+.cg-chips .cg-chip:hover { border-color: var(--cg-line-strong); }
+.cg-chips .cg-chip.active { background: var(--cg-navy); border-color: var(--cg-navy); color: #fff; }
+.cg-chips .cg-chip.active span { color: #fff; }
+.cg-chips .cg-chip.good.active { background: var(--cg-good); border-color: var(--cg-good); }
+.cg-chips .cg-chip.bad.active { background: var(--cg-critical); border-color: var(--cg-critical); }
+
+/* ---------- Selection bar ---------- */
+.cg-selbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 20px;
+    background: var(--cg-navy);
+    color: #fff;
+    font-size: 13.5px;
     font-weight: 600;
 }
+.cg-selbar > div { display: flex; gap: 10px; }
+.cg-selbar button { height: 34px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.cg-selbar-ghost { padding: 0 13px; border: 1px solid rgba(255, 255, 255, 0.42); background: transparent; color: #fff; }
+.cg-selbar-go { padding: 0 15px; border: none; background: var(--cg-gold); color: var(--cg-navy-deep); font-weight: 700; }
+.cg-selbar button:disabled { opacity: 0.6; cursor: default; }
+
+.cg-pager { padding: 12px 20px; margin: 0; }
+
 
 /* ---------- Controls ---------- */
 /* .cg-kpis / .cg-kpi* moved to app.css (global) -- Investor Relations' Share Register overview
@@ -261,3 +387,121 @@
 @media (max-width: 720px) {
     .cg-detail-inner { grid-template-columns: 1fr; }
 }
+
+/* ---------- Compliance table ---------- */
+.cg-dash-table .cg-table-wrap {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.cg-dash-table .cg-table-wrap table { min-width: 960px; }
+
+/* Ten columns have to fit a normal screen without the Remind button falling off the right edge,
+   so the padding is tighter here than the app's default table and the email truncates. */
+.cg-dash-table thead th { cursor: default; padding-left: 12px; padding-right: 12px; }
+.cg-dash-table td { padding-left: 12px; padding-right: 12px; }
+.cg-dash-table thead th:first-child, .cg-dash-table td:first-child { padding-left: 20px; }
+.cg-dash-table thead th:last-child, .cg-dash-table td:last-child { padding-right: 20px; }
+.cg-dash-table .cg-col-check { width: 44px; }
+
+/* Entity names run long ("Dubai Investments Park Development Company"); the full name is in the
+   export and the tooltip, the column only has to identify it. */
+.cg-dash-table .cg-col-entity {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* An overdue row is the one thing on this screen that wants finding without reading, so it gets a
+   left edge as well as its pill. */
+.cg-dash-table tbody tr.cg-data-row.is-overdue td:first-child { border-left-color: var(--cg-critical); }
+
+.cg-dash-table tbody tr.cg-data-row { cursor: default; }
+
+.cg-person { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+.cg-avatar {
+    width: 32px;
+    height: 32px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--cg-accent-tint);
+    color: var(--cg-accent-ink);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
+.cg-person-text { display: flex; flex-direction: column; min-width: 0; }
+.cg-person-name { font-weight: 600; }
+.cg-person-sub {
+    font-size: 11.5px;
+    color: var(--cg-ink-faint);
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cg-cat-pill {
+    font-size: 11.5px;
+    font-weight: 650;
+    padding: 2px 9px;
+    border-radius: 6px;
+}
+.cg-cat-pill.insider { background: var(--cg-accent-tint); color: var(--cg-accent-ink); }
+.cg-cat-pill.coi { background: var(--cg-surface-sunken); color: var(--cg-ink-muted); }
+
+.cg-status-pill.complete { background: var(--cg-good-tint); color: var(--cg-good); }
+.cg-status-pill.overdue { background: var(--cg-critical-tint); color: var(--cg-critical); }
+
+/* How much chasing this person has already had, without counting digits. */
+.cg-dots { display: inline-flex; align-items: center; gap: 4px; }
+.cg-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--cg-line-strong);
+}
+.cg-dot.on { background: var(--cg-warning); }
+.cg-dots-text { font-size: 11.5px; color: var(--cg-ink-muted); margin-left: 5px; }
+
+.cg-row-btn {
+    height: 31px;
+    padding: 0 12px;
+    border: 1px solid var(--cg-line-strong);
+    border-radius: 8px;
+    background: var(--cg-surface);
+    color: var(--cg-accent);
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 650;
+    cursor: pointer;
+}
+.cg-row-btn:hover { border-color: var(--cg-accent); background: var(--cg-accent-tint); }
+.cg-row-btn:disabled { opacity: 0.55; cursor: default; }
+
+.cg-empty-state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 48px 20px; text-align: center; }
+.cg-empty-title { font-size: 15px; font-weight: 650; color: var(--cg-ink); }
+
+/* ---------- Reminder log ---------- */
+.cg-log-head {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cg-ink);
+    text-align: left;
+    cursor: pointer;
+}
+.cg-log-toggle { font-size: 13px; font-weight: 650; color: var(--cg-accent); }
+.cg-log-head + * { margin-top: 14px; }

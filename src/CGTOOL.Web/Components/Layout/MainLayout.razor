@@ -1,5 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @inject ClientContext ClientContext
+@inject ActingAsCookie ActingAs
 @inject PersistentComponentState AppState
 @implements IDisposable
 
@@ -13,6 +14,8 @@
         <DefaultAdminBanner @rendermode="InteractiveServer" />
         <AdminImpersonationBanner @rendermode="InteractiveServer" />
         <ImpersonationBanner @rendermode="InteractiveServer" />
+        @* Before @Body, so the acting-as profile is in place by the time a page reads it. *@
+        <ActingAsRestore @rendermode="InteractiveServer" />
         <article class="content">
             @Body
         </article>
@@ -39,10 +42,15 @@
     {
         ClientContext.CaptureOnce(HttpContext);
 
+        // The acting-as profile lives in a signed cookie so it survives a refresh; only this static
+        // render can read it, so it is handed to the circuit the same way the client context is.
+        var actingAs = ActingAs.Read(HttpContext);
+
         // Handed to the circuit, which cannot read HttpContext itself and does not share this scope.
         _persisting = AppState.RegisterOnPersisting(() =>
         {
             AppState.PersistAsJson(ClientContextSnapshot.PersistenceKey, ClientContext.Snapshot());
+            AppState.PersistAsJson(ImpersonationContext.StorageKey, actingAs);
             return Task.CompletedTask;
         });
     }

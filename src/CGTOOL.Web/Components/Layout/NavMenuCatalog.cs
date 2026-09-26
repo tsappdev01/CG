@@ -23,7 +23,6 @@ public static class NavMenuCatalog
         new("MyAccount.Declarations", "Declarations", "MyAccount"),
 
         new("AdminPanel.UserManagement", "User Management", "AdminPanel"),
-        new("AdminPanel.Impersonate", "Impersonate", "AdminPanel"),
         new("AdminPanel.ClaimAdmin", "Claim Administrator Role", "AdminPanel"),
         new("AdminPanel.Company", "Company", "AdminPanel"),
         new("AdminPanel.Departments", "Departments", "AdminPanel"),

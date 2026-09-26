@@ -1,32 +1,43 @@
 @implements IDisposable
 @inject ImpersonationContext Impersonation
-@inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 
+@* Stays on screen for as long as this user is filing as somebody else, and goes the moment they
+   switch back -- it is the only thing telling them whose name their next submission carries. *@
 @if (Impersonation.ActingMemberId is not null)
 {
-    <div class="cg-impersonation-banner">
-        Acting on behalf of <b>@Impersonation.ActingMemberName</b>
-        <button type="button" class="cg-action-btn" @onclick="EndAsync">End impersonation</button>
+    <div class="cg-acting-banner" role="status" aria-live="polite">
+        <div class="cg-acting-text">
+            <span class="cg-acting-ico" aria-hidden="true"></span>
+            <span class="cg-acting-title">You have logged in as @Impersonation.ActingMemberName</span>
+            <span class="cg-acting-sub">Signed in as @_myName · every action is recorded in the audit trail</span>
+        </div>
+        <form action="Account/SwitchProfileEnd" method="post">
+            <AntiforgeryToken />
+            <button type="submit" class="cg-acting-back">Switch back to my profile</button>
+        </form>
     </div>
 }
 
 @code {
-    protected override void OnInitialized()
-    {
-        Impersonation.Changed += StateHasChanged;
-    }
+    private string? _myName;
 
-    private async Task EndAsync()
+    protected override void OnInitialized() => Impersonation.Changed += StateHasChanged;
+
+    protected override async Task OnParametersSetAsync()
     {
-        var name = Impersonation.ActingMemberName;
+        if (_myName is not null || Impersonation.ActingMemberId is null) return;
+
         var state = await AuthState.GetAuthenticationStateAsync();
-        await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.ImpersonationEnd, "Member", null, $"Ended acting on behalf of {name}");
-        Impersonation.End();
+        var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (userId is null) return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _myName = await db.Members.AsNoTracking().Where(m => m.ApplicationUserId == userId)
+            .Select(m => m.FullName).FirstOrDefaultAsync()
+            ?? state.User.Identity?.Name;
     }
 
-    public void Dispose()
-    {
-        Impersonation.Changed -= StateHasChanged;
-    }
+    public void Dispose() => Impersonation.Changed -= StateHasChanged;
 }

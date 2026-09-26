@@ -73,7 +73,6 @@
                                     <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.UserManagement");@HideOf("AdminPanel.UserManagement")"><NavLink class="nav-link" href="admin/user-management">@LabelOf("AdminPanel.UserManagement")</NavLink></div>
                                 </Authorized>
                             </AuthorizeView>
-                            <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.Impersonate");@HideOf("AdminPanel.Impersonate")"><NavLink class="nav-link" href="impersonate">@LabelOf("AdminPanel.Impersonate")</NavLink></div>
                             <div class="nav-item px-3" style="order:@OrderOf("AdminPanel.ClaimAdmin");@HideOf("AdminPanel.ClaimAdmin")"><NavLink class="nav-link" href="admin/setup">@LabelOf("AdminPanel.ClaimAdmin")</NavLink></div>
 
                             <AuthorizeView Roles="@GovernanceRoles.Administrator" Context="setupCtx">

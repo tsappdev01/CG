@@ -4,6 +4,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthState
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ImpersonationContext Impersonation
 
 <AuthorizeView>
     <Authorized>
@@ -33,11 +34,11 @@
                         }
                         else
                         {
-                            <span class="cg-appbar-avatar cg-appbar-avatar-initials">@Initials(_displayName)</span>
+                            <span class="cg-appbar-avatar cg-appbar-avatar-initials @(Impersonation.ActingMemberId is null ? "" : "acting")">@Initials(Impersonation.ActingMemberName ?? _displayName)</span>
                         }
                         <span class="cg-appbar-user-text">
-                            <span class="cg-appbar-user-name">@_displayName</span>
-                            <span class="cg-appbar-user-role">@_roleLabel</span>
+                            <span class="cg-appbar-user-name">@(Impersonation.ActingMemberName ?? _displayName)</span>
+                            <span class="cg-appbar-user-role">@(Impersonation.ActingMemberId is null ? _roleLabel : "Acting on behalf")</span>
                         </span>
                         <span class="cg-appbar-caret @(_menuOpen ? "open" : "")" aria-hidden="true"></span>
                     </button>
@@ -59,6 +60,29 @@
                                 Manage your account
                             </a>
 
+                            @* Acting for someone else belongs with the identity you are signed in
+                               as, not in a nav section -- it is a change of who you are filing as. *@
+                            @if (_profileCount > 0)
+                            {
+                                <button type="button" class="cg-appbar-menu-item cg-appbar-menu-switch" role="menuitem"
+                                        @onclick="OpenSwitch">
+                                    <span class="cg-appbar-menu-ico cg-ico-switch" aria-hidden="true"></span>
+                                    <span class="cg-appbar-menu-grow">Switch profile</span>
+                                    <span class="cg-appbar-menu-count">@_profileCount</span>
+                                </button>
+                            }
+
+                            @if (Impersonation.ActingMemberId is not null)
+                            {
+                                <form action="Account/SwitchProfileEnd" method="post" class="cg-appbar-menu-form">
+                                    <AntiforgeryToken />
+                                    <button type="submit" class="cg-appbar-menu-item cg-appbar-menu-back" role="menuitem">
+                                        <span class="cg-appbar-menu-ico cg-ico-back" aria-hidden="true"></span>
+                                        Switch back to @_displayName
+                                    </button>
+                                </form>
+                            }
+
                             <form action="Account/Logout" method="post" class="cg-appbar-menu-form">
                                 <AntiforgeryToken />
                                 <input type="hidden" name="ReturnUrl" value="Account/Login" />
@@ -72,6 +96,8 @@
                 </div>
             </div>
         </header>
+
+        <SwitchProfileDialog Show="_switchOpen" OnClose="() => _switchOpen = false" />
     </Authorized>
 </AuthorizeView>
 
@@ -82,11 +108,20 @@
     private bool _showNotifications;
     private int _pendingCount;
     private bool _menuOpen;
+    private bool _switchOpen;
+    private int _profileCount;
 
     protected override async Task OnInitializedAsync()
     {
         NavigationManager.LocationChanged += OnLocationChanged;
+        Impersonation.Changed += StateHasChanged;
         await RefreshAsync();
+    }
+
+    private void OpenSwitch()
+    {
+        _menuOpen = false;
+        _switchOpen = true;
     }
 
     // The top bar is a persistent layout component, so it uses its own short-lived DbContext rather
@@ -123,6 +158,13 @@
         {
             _pendingCount = await db.MemberNotifications.CountAsync(n => n.Status == MemberNotificationStatus.Pending);
         }
+
+        // How many people have authorised this user to file for them. Zero means no menu entry --
+        // most people never act for anyone and should not be offered a switch to nowhere.
+        var meId = await db.Members.Where(m => m.ApplicationUserId == userId).Select(m => (int?)m.Id).FirstOrDefaultAsync();
+        _profileCount = meId is { } id
+            ? await db.MemberImpersonationApprovals.CountAsync(a => a.ImpersonatorId == id && a.Member!.Active)
+            : 0;
     }
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -141,5 +183,9 @@
         return (parts[0][..1] + parts[^1][..1]).ToUpperInvariant();
     }
 
-    public void Dispose() => NavigationManager.LocationChanged -= OnLocationChanged;
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+        Impersonation.Changed -= StateHasChanged;
+    }
 }

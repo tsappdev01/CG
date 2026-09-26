@@ -1,0 +1,18 @@
+@inject ImpersonationContext Impersonation
+@inject PersistentComponentState AppState
+
+@* Renders nothing. The acting-as profile is read from its cookie during the static render (see
+   MainLayout) and handed across to the circuit here, which is a different DI scope and cannot read
+   HttpContext itself. Exactly one component may do this: TryTakeFromJson removes the value.
+
+   It sits above @Body in the layout so this runs before any page's OnInitialized, which is what
+   lets a page read the acting-as profile on its very first load rather than resolving the
+   signed-in user's own record and filing under their name. *@
+
+@code {
+    protected override void OnInitialized()
+    {
+        AppState.TryTakeFromJson<ActingAsSnapshot?>(ImpersonationContext.StorageKey, out var snapshot);
+        Impersonation.MarkRestored(snapshot?.MemberId, snapshot?.MemberName);
+    }
+}

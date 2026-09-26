@@ -1,0 +1,129 @@
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthState
+@inject ImpersonationContext Impersonation
+
+@* The people this user may file for. Choosing one posts to /Account/SwitchProfile, which is what
+   sets the cookie the acting-as profile is kept in -- see SwitchProfileEndpoints. *@
+@if (Show)
+{
+    <div class="cg-modal-backdrop" @onclick="OnClose"></div>
+    <div class="cg-modal cg-switch-modal" role="dialog" aria-modal="true" aria-labelledby="cg-switch-title">
+        <div class="cg-modal-head">
+            <div>
+                <h2 id="cg-switch-title">Switch profile</h2>
+                <p class="cg-subtitle">People you are authorised to act on behalf of. Your own sign-in stays recorded against everything you do.</p>
+            </div>
+            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="OnClose">×</button>
+        </div>
+
+        <div class="cg-modal-body">
+            @if (_profiles is null)
+            {
+                <p class="cg-loading"><em>Loading…</em></p>
+            }
+            else if (_profiles.Count == 0)
+            {
+                <div class="cg-empty-state">
+                    <div class="cg-empty-title">No one has authorised you yet</div>
+                    <div>An administrator sets this on a person's own record, under "Someone may file on their behalf".</div>
+                </div>
+            }
+            else
+            {
+                <label class="cg-field">
+                    <span>Search</span>
+                    <input type="search" class="cg-input" placeholder="Name, email or company"
+                           value="@_search" @oninput="e => _search = e.Value?.ToString() ?? string.Empty" />
+                </label>
+
+                <div class="cg-profile-list">
+                    @foreach (var p in Filtered())
+                    {
+                        var current = p.Id == Impersonation.ActingMemberId;
+                        <form method="post" action="/Account/SwitchProfile" class="cg-profile-form">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="memberId" value="@p.Id" />
+                            <button type="submit" class="cg-profile-row @(current ? "current" : "")" disabled="@current">
+                                <span class="cg-avatar">@Initials(p.FullName)</span>
+                                <span class="cg-profile-text">
+                                    <span class="cg-profile-name">@p.FullName</span>
+                                    <span class="cg-profile-sub">@(string.IsNullOrWhiteSpace(p.JobTitle) ? "—" : p.JobTitle) · @(p.Company?.Name ?? "—")</span>
+                                    <span class="cg-profile-scope">May file: @ScopeOf(p)</span>
+                                </span>
+                                @if (current)
+                                {
+                                    <span class="cg-profile-tag">Current</span>
+                                }
+                            </button>
+                        </form>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="cg-modal-foot">
+            <button type="button" class="cg-action-btn" @onclick="OnClose">Cancel</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private List<Member>? _profiles;
+    private string _search = string.Empty;
+    private bool _loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Show || _loaded) return;
+        _loaded = true;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (userId is null) { _profiles = []; return; }
+
+        var me = await db.Members.AsNoTracking().FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
+        if (me is null) { _profiles = []; return; }
+
+        _profiles = await db.Members
+            .AsNoTracking()
+            .Include(m => m.Company)
+            .Where(m => m.Active && db.MemberImpersonationApprovals.Any(a => a.ImpersonatorId == me.Id && a.MemberId == m.Id))
+            .OrderBy(m => m.FullName)
+            .ToListAsync();
+    }
+
+    private List<Member> Filtered()
+    {
+        var all = _profiles ?? [];
+        if (_search.Trim() is not { Length: > 0 } term) return all;
+
+        return all.Where(m =>
+            m.FullName.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            (m.Email ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            (m.Company?.Name ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    /// <summary>What may actually be filed for this person -- their own declaration access, which is
+    /// what the submission pages go on to enforce. Stated here so the choice is informed rather than
+    /// discovered at the point of filing.</summary>
+    private static string ScopeOf(Member m)
+    {
+        List<string> scopes = [];
+        if (m.InsiderTradingAccess) scopes.Add("Insider Trading");
+        if (m.RelatedPartyRegisterAccess) scopes.Add("Related Party Register");
+        if (m.ConflictOfInterestAccess) scopes.Add("Conflict of Interest");
+        return scopes.Count == 0 ? "nothing yet" : string.Join(", ", scopes);
+    }
+
+    private static string Initials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return "?";
+        return parts.Length == 1 ? parts[0][..1].ToUpperInvariant() : $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+}

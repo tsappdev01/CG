@@ -116,6 +116,7 @@ builder.Services.AddScoped<IFamilyMemberWriter, FamilyMemberWriter>();
 builder.Services.AddScoped<IOwnedCompanyWriter, OwnedCompanyWriter>();
 
 builder.Services.AddScoped<ImpersonationContext>();
+builder.Services.AddSingleton<ActingAsCookie>();
 builder.Services.AddScoped<ToastService>();
 builder.Services.AddScoped<ClientContext>();
 builder.Services.AddHttpContextAccessor();
@@ -270,6 +271,7 @@ app.MapRazorComponents<App>()
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
 app.MapAdminImpersonationEndpoints();
+app.MapSwitchProfileEndpoints();
 
 // UAE PASS OAuth2 login callback (see UaePassAuthService/SubmitRelatedPartyCoiDeclaration). A plain
 // minimal API endpoint, not a Blazor component -- the external redirect out to UAE PASS and back

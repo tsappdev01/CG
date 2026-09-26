@@ -2964,18 +2964,11 @@ button.cg-appbar-user {
 .cg-signin-head a, .cg-signin-foot a { color: #E7C77F; font-size: 13.5px; }
 .cg-signin-head a:hover, .cg-signin-foot a:hover { color: #fff; }
 
-/* The supplied logo is a flat PNG whose own background is a navy gradient, so it cannot blend
-   into the stage. Rather than pretend, it is given a rounded panel of its own -- the same lockup
-   it has in the sidebar, which reads as deliberate instead of as a mismatched patch. */
-.cg-signin-brand {
-    display: inline-flex;
-    align-items: center;
-    padding: 10px 14px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, .06);
-    border: 1px solid rgba(255, 255, 255, .10);
-}
-.cg-signin-brand img { height: 40px; display: block; border-radius: 6px; }
+/* di-logo-en-transparent.png is the supplied logo with its navy background matted out, so it
+   sits directly on the stage with nothing around it -- the panel that used to be here existed
+   only to make the original file's opaque rectangle look deliberate. */
+.cg-signin-brand { display: inline-flex; align-items: center; }
+.cg-signin-brand img { height: 38px; display: block; }
 
 .cg-signin-main {
     position: relative;

@@ -2964,14 +2964,18 @@ button.cg-appbar-user {
 .cg-signin-head a, .cg-signin-foot a { color: #E7C77F; font-size: 13.5px; }
 .cg-signin-head a:hover, .cg-signin-foot a:hover { color: #fff; }
 
-.cg-signin-brand { display: flex; align-items: center; gap: 12px; }
-.cg-signin-mark {
-    width: 40px; height: 40px; flex: none; border-radius: 50%;
-    background: #C8952E; color: #0D2B57;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 16px;
+/* The supplied logo is a flat PNG whose own background is a navy gradient, so it cannot blend
+   into the stage. Rather than pretend, it is given a rounded panel of its own -- the same lockup
+   it has in the sidebar, which reads as deliberate instead of as a mismatched patch. */
+.cg-signin-brand {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .10);
 }
-.cg-signin-wordmark { font-size: 18px; font-weight: 700; line-height: 1.1; color: #fff; }
+.cg-signin-brand img { height: 40px; display: block; border-radius: 6px; }
 
 .cg-signin-main {
     position: relative;

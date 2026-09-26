@@ -73,6 +73,7 @@ public partial class DeclarationsSetupPage
     private bool _pendingSendConfirm;
     private bool _pendingScheduleConfirm;
     private string _confirmMessage = string.Empty;
+    private string? _confirmDetail;
     private int? _pendingCompanyId;
 
     private static int QuarterOf(DateTime date) => ((date.Month - 1) / 3) + 1;
@@ -358,7 +359,7 @@ public partial class DeclarationsSetupPage
     private DateTime ScheduledSendUtc() =>
         UaeTime.ToUtc(_scheduleSendDate, _setup?.ReminderTimeOfDay ?? new TimeOnly(8, 0));
 
-    private void PrepareSendNow()
+    private async Task PrepareSendNowAsync()
     {
         if (_setup is null) return;
 
@@ -378,10 +379,27 @@ public partial class DeclarationsSetupPage
             ? $"A notification was already sent to {entityLabel} on {priorRun.SentAtUtc.ToLocalDisplay():dd MMM yyyy}. Send again now for {periodLabel}?"
             : $"Send this notification now to all active users in {entityLabel} for {periodLabel}?";
 
+        // Counted from the same query the send itself uses, so the number on the button is the
+        // number of people who get an email -- not an estimate that drifts from it.
+        _confirmDetail = $"Total Member(s): {await CountRecipientsAsync(companyId)}";
+
         _pendingSendConfirm = true;
     }
 
     private void CancelSendConfirm() => _pendingSendConfirm = false;
+
+    /// <summary>How many people the notification would reach right now. Uses the same resolution
+    /// the send does -- active, with an email address, in the chosen entity -- rather than counting
+    /// members, which would promise emails to people who have no address on file.</summary>
+    private async Task<int> CountRecipientsAsync(int? companyId)
+    {
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var recipients = await DeclarationCycleReminderHostedService.ResolveRecipientsAsync(db, companyId, default);
+        return recipients.Count;
+    }
 
     private async Task ConfirmSendNowAsync()
     {
@@ -427,7 +445,7 @@ public partial class DeclarationsSetupPage
         await LoadRunsAsync();
     }
 
-    private void PrepareScheduleSend()
+    private async Task PrepareScheduleSendAsync()
     {
         if (_setup is null) return;
 
@@ -458,6 +476,11 @@ public partial class DeclarationsSetupPage
         _confirmMessage = priorRun is not null
             ? $"A notification was already sent to {entityLabel} on {priorRun.SentAtUtc.ToLocalDisplay():dd MMM yyyy}. Schedule another for {_scheduleSendDate:dd MMM yyyy} at {ScheduleTimeLabel} UAE time ({periodLabel})?"
             : $"Schedule this notification to send to {entityLabel} on {_scheduleSendDate:dd MMM yyyy} at {ScheduleTimeLabel} UAE time ({periodLabel})?";
+
+        // "Today" because the recipients are resolved again when it fires: someone joining or
+        // leaving between now and then changes who receives it, and saying so is cheaper than
+        // explaining the discrepancy later.
+        _confirmDetail = $"Total Member(s) today: {await CountRecipientsAsync(companyId)} — the list is resolved again when it sends.";
 
         _pendingScheduleConfirm = true;
     }

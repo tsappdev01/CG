@@ -2,6 +2,10 @@
 {
     <div class="cg-confirm-prompt @(Critical ? "cg-confirm-prompt-critical" : "")">
         <p>@Message</p>
+        @if (!string.IsNullOrWhiteSpace(Detail))
+        {
+            <p class="cg-confirm-detail">@Detail</p>
+        }
         <div class="cg-actions">
             <button type="button" class="cg-action-btn @(Critical ? "cg-critical" : "cg-good")" @onclick="() => OnConfirm.InvokeAsync()">@ConfirmLabel</button>
             <button type="button" class="cg-action-btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
@@ -12,6 +16,10 @@
 @code {
     [Parameter] public bool Show { get; set; }
     [Parameter] public string Message { get; set; } = "Are you sure?";
+
+    /// <summary>A second line under the question -- what the caller wants counted or spelled out
+    /// before the person commits, such as how many people a notification is about to reach.</summary>
+    [Parameter] public string? Detail { get; set; }
     [Parameter] public string ConfirmLabel { get; set; } = "Confirm";
     [Parameter] public bool Critical { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }

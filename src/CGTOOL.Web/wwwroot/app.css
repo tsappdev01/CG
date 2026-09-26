@@ -2346,6 +2346,7 @@ select.cg-input {
 .cg-captured-grid { margin-top: 12px; }
 .cg-confirm-modal { width: min(460px, calc(100vw - 32px)); }
 .cg-duplicate-modal { width: min(560px, calc(100vw - 32px)); }
+.cg-confirm-detail { margin: 6px 0 0; font-size: 13px; font-weight: 650; }
 .cg-duplicate-card {
     border: 1px solid var(--cg-line);
     border-left: 3px solid var(--cg-warning);

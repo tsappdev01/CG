@@ -168,12 +168,12 @@
                     <input type="date" class="cg-input" value="@_dueDate.ToString("yyyy-MM-dd")" @onchange="e => _dueDate = DateTime.Parse((string)e.Value!)" />
                 </label>
                 <div class="cg-actions">
-                    <button type="button" class="cg-action-btn cg-good" disabled="@_sending" @onclick="PrepareSendNow">@(_sending ? "Sending…" : "Send now")</button>
+                    <button type="button" class="cg-action-btn cg-good" disabled="@_sending" @onclick="PrepareSendNowAsync">@(_sending ? "Sending…" : "Send now")</button>
                 </div>
 
                 @if (_pendingSendConfirm)
                 {
-                    <ConfirmPrompt Show="true" Message="@_confirmMessage" ConfirmLabel="Send" OnConfirm="ConfirmSendNowAsync" OnCancel="CancelSendConfirm" />
+                    <ConfirmPrompt Show="true" Message="@_confirmMessage" Detail="@_confirmDetail" ConfirmLabel="Send" OnConfirm="ConfirmSendNowAsync" OnCancel="CancelSendConfirm" />
                 }
 
                 <h2>Schedule send</h2>
@@ -183,12 +183,12 @@
                     <p class="cg-subtitle">Fires at @ScheduleTimeLabel (UAE Standard Time) on the chosen date — the reminder time set on the template tab.</p>
                 </label>
                 <div class="cg-actions">
-                    <button type="button" class="cg-action-btn" disabled="@_scheduling" @onclick="PrepareScheduleSend">@(_scheduling ? "Scheduling…" : "Schedule send")</button>
+                    <button type="button" class="cg-action-btn" disabled="@_scheduling" @onclick="PrepareScheduleSendAsync">@(_scheduling ? "Scheduling…" : "Schedule send")</button>
                 </div>
 
                 @if (_pendingScheduleConfirm)
                 {
-                    <ConfirmPrompt Show="true" Message="@_confirmMessage" ConfirmLabel="Schedule" OnConfirm="ConfirmScheduleSendAsync" OnCancel="CancelScheduleConfirm" />
+                    <ConfirmPrompt Show="true" Message="@_confirmMessage" Detail="@_confirmDetail" ConfirmLabel="Schedule" OnConfirm="ConfirmScheduleSendAsync" OnCancel="CancelScheduleConfirm" />
                 }
             </div>
         }

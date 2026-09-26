@@ -45,8 +45,6 @@ public partial class SubmitInsiderDeclaration
     // Set when answering "yes" turns up relatives in My Workspace that are not in the grid yet.
     // Offered once per answer rather than on every click: a member who said no to the offer and
     // started typing should not be asked again each time they touch the button.
-    private bool _offerWorkspacePull;
-    private int _workspacePullCount;
 
     // The other direction: rows typed here that My Workspace has never heard of. Offered once, on
     // Next, when the rows are finished -- asking as each one is typed would interrupt a half-filled
@@ -431,24 +429,14 @@ public partial class SubmitInsiderDeclaration
         var changed = _relativesHaveNin != haveNin;
         _relativesHaveNin = haveNin;
 
-        if (!haveNin)
-        {
-            _offerWorkspacePull = false;
-            return;
-        }
+        if (!haveNin) return;
 
         if (!changed) return;
 
-        _workspacePullCount = (await LoadableRelativesAsync()).Count;
-        _offerWorkspacePull = _workspacePullCount > 0;
-    }
-
-    private void DeclineWorkspacePull() => _offerWorkspacePull = false;
-
-    private async Task AcceptWorkspacePullAsync()
-    {
-        _offerWorkspacePull = false;
-        await PullRelativesFromWorkspaceAsync();
+        // Loaded, not offered: the answer to "shall I fill this from the relatives you already
+        // recorded?" is always yes, and every declaration should start from what is on file rather
+        // than from an empty grid. The button below re-loads after a relative is added elsewhere.
+        await PullRelativesFromWorkspaceAsync(silentWhenEmpty: true);
     }
 
     /// <summary>The relatives this grid could take: recorded in My Workspace, carrying a NIN, and
@@ -481,7 +469,7 @@ public partial class SubmitInsiderDeclaration
     ///
     /// Rows already in the grid are left alone rather than replaced -- anything typed here, including
     /// the Additional column that My Workspace has no equivalent for, survives a second pull.</summary>
-    private async Task PullRelativesFromWorkspaceAsync()
+    private async Task PullRelativesFromWorkspaceAsync(bool silentWhenEmpty = false)
     {
         if (_effectiveMember is null) return;
 
@@ -495,14 +483,16 @@ public partial class SubmitInsiderDeclaration
 
         if (onFile == 0)
         {
-            Toasts.ShowError("No relatives with a NIN are recorded in My Workspace. Add them there first, or enter them here.");
+            // Silent when this ran on its own: arriving at a question to be told nothing happened
+            // is noise. Pressing the button is asking, and an answer is owed.
+            if (!silentWhenEmpty) Toasts.ShowError("No relatives with a NIN are recorded in My Workspace. Add them there first, or enter them here.");
             return;
         }
 
         var loadable = await LoadableRelativesAsync();
         if (loadable.Count == 0)
         {
-            Toasts.ShowSuccess("Every relative with a NIN in My Workspace is already listed here.");
+            if (!silentWhenEmpty) Toasts.ShowSuccess("Every relative with a NIN in My Workspace is already listed here.");
             return;
         }
 
@@ -517,14 +507,13 @@ public partial class SubmitInsiderDeclaration
         }
 
         var alreadyListed = onFile - loadable.Count;
-        _offerWorkspacePull = false;
 
-        await LogGridChangeAsync($"Pulled {loadable.Count} relative(s) into the relatives' NIN grid from My Workspace"
+        await LogGridChangeAsync($"Loaded {loadable.Count} relative(s) into the relatives' NIN grid from My Workspace"
             + (alreadyListed > 0 ? $"; {alreadyListed} already listed." : "."));
 
         Toasts.ShowSuccess(alreadyListed == 0
-            ? $"Added {loadable.Count} relative(s) from My Workspace. Check the NINs before continuing."
-            : $"Added {loadable.Count} relative(s) from My Workspace; {alreadyListed} were already listed.");
+            ? $"Loaded {loadable.Count} relative(s) from My Workspace. Check the NINs before continuing."
+            : $"Loaded {loadable.Count} relative(s) from My Workspace; {alreadyListed} were already listed.");
     }
 
     private async Task RemoveNinHolderAsync(NinHolderRow row)
@@ -913,6 +902,135 @@ public partial class SubmitInsiderDeclaration
         _ => "Trade Licence",
     };
 
+
+    // ---------- the shareholding grid and My Workspace ----------
+
+    /// <summary>Answering yes is the moment the member would start typing relatives they have
+    /// already recorded, so the grid fills itself from the register -- relation, name and NIN, the
+    /// three columns My Workspace has an answer for. The share count and the Additional note are
+    /// this declaration's own and stay empty.
+    ///
+    /// Only relatives with a NIN come across: this grid is about who holds shares, and a holding is
+    /// held through a NIN. Runs once, and never over rows already there.</summary>
+    private bool _shareholdersAutoLoaded;
+
+    private async Task ChooseHoldsSharesAsync(bool holdsShares)
+    {
+        var changed = _holdsSharesInDI != holdsShares;
+        _holdsSharesInDI = holdsShares;
+
+        if (!holdsShares || !changed) return;
+
+        await AutoLoadShareholdersAsync();
+    }
+
+    private async Task AutoLoadShareholdersAsync()
+    {
+        if (_shareholdersAutoLoaded || _effectiveMember is null) return;
+        _shareholdersAutoLoaded = true;
+
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var relatives = await db.FamilyMembers.AsNoTracking()
+            .Where(f => f.MemberId == _effectiveMember.Id && f.NinNumber != null && f.NinNumber != "")
+            .OrderBy(f => f.Name)
+            .ToListAsync();
+
+        var added = 0;
+        foreach (var relative in relatives)
+        {
+            var listed = _relatives.Any(r => !r.IsSelf && (
+                string.Equals(r.RelativeName.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(r.NinNumber.Trim(), relative.NinNumber!.Trim(), StringComparison.OrdinalIgnoreCase)));
+
+            if (listed) continue;
+
+            _relatives.Add(new RelativeRow
+            {
+                Relationship = relative.Relationship,
+                RelativeName = relative.Name,
+                NinNumber = relative.NinNumber!,
+            });
+            added++;
+        }
+
+        if (added == 0) return;
+
+        await LogGridChangeAsync($"Loaded {added} relative(s) into the shareholding grid from My Workspace.");
+        Toasts.ShowSuccess($"Loaded {added} relative(s) from My Workspace. Enter the shares each of them holds, and remove any who hold none.");
+    }
+
+    /// <summary>Shareholding rows the register has never heard of -- the same question the relatives'
+    /// NIN grid asks on Next, asked here before submission for the same reason: a relative entered
+    /// once and never saved is one the member types again every quarter. "Self" is not a relative.</summary>
+    private bool _offerShareholderSave;
+    private readonly List<RelativeRow> _shareholdersNewToWorkspace = [];
+
+    private async Task<List<RelativeRow>> ShareholdersNotInWorkspaceAsync()
+    {
+        if (_effectiveMember is null) return [];
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var onFile = await db.FamilyMembers.AsNoTracking()
+            .Where(f => f.MemberId == _effectiveMember.Id)
+            .Select(f => new { f.Name, f.NinNumber })
+            .ToListAsync();
+
+        return _relatives
+            .Where(r => !r.IsSelf && !string.IsNullOrWhiteSpace(r.RelativeName))
+            .Where(r => !onFile.Any(f =>
+                string.Equals(f.Name.Trim(), r.RelativeName.Trim(), StringComparison.OrdinalIgnoreCase)
+                || (!string.IsNullOrWhiteSpace(f.NinNumber)
+                    && string.Equals(f.NinNumber.Trim(), r.NinNumber.Trim(), StringComparison.OrdinalIgnoreCase))))
+            .ToList();
+    }
+
+    private async Task DeclineShareholderSaveAsync()
+    {
+        _offerShareholderSave = false;
+        _shareholdersNewToWorkspace.Clear();
+        await ContinueToReviewAsync();
+    }
+
+    private async Task AcceptShareholderSaveAsync()
+    {
+        _offerShareholderSave = false;
+        if (_effectiveMember is null) { await ContinueToReviewAsync(); return; }
+
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var actorName = state.User.Identity?.Name ?? "unknown";
+        var isImpersonating = Impersonation.ActingMemberId is not null;
+        var namesAdded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var saved = 0;
+
+        foreach (var row in _shareholdersNewToWorkspace)
+        {
+            if (!namesAdded.Add(row.RelativeName.Trim())) continue;
+
+            var relative = new FamilyMember
+            {
+                MemberId = _effectiveMember.Id,
+                Name = row.RelativeName.Trim(),
+                Relationship = row.Relationship,
+                NinNumber = string.IsNullOrWhiteSpace(row.NinNumber) ? null : row.NinNumber.Trim(),
+            };
+            relative.Id = await FamilyMemberWriter.InsertAsync(relative);
+            saved++;
+
+            await AuditLog.LogAsync(actorName, AuditAction.Create, nameof(FamilyMember), relative.Id.ToString(),
+                $"Added related party {relative.Name} ({RelationshipLabel(relative.Relationship)}), NIN {Nin.Show(relative.NinNumber)}, from the Insider Trading declaration's shareholding grid.",
+                actingOnBehalfOf: isImpersonating ? _effectiveMember.FullName : null);
+        }
+
+        _shareholdersNewToWorkspace.Clear();
+        Toasts.ShowSuccess($"Added {saved} related part{(saved == 1 ? "y" : "ies")} to My Workspace.");
+        await ContinueToReviewAsync();
+    }
+
     // Screen 1 "Next" -- Functional Spec §3.1/§3.2/§8 validation.
     private async Task GoToCapture2Async()
     {
@@ -1118,6 +1236,24 @@ public partial class SubmitInsiderDeclaration
             }
         }
 
+        // Same offer the relatives' NIN grid makes on Next: a shareholder typed straight into the
+        // declaration is gone once it is submitted, and next quarter starts from nothing again.
+        if (_holdsSharesInDI)
+        {
+            _shareholdersNewToWorkspace.Clear();
+            _shareholdersNewToWorkspace.AddRange(await ShareholdersNotInWorkspaceAsync());
+            if (_shareholdersNewToWorkspace.Count > 0)
+            {
+                _offerShareholderSave = true;
+                return;
+            }
+        }
+
+        await ContinueToReviewAsync();
+    }
+
+    private async Task ContinueToReviewAsync()
+    {
         if (_effectiveMember is null || _run is null) return;
 
         try

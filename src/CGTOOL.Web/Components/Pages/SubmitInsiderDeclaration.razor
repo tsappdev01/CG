@@ -94,16 +94,6 @@
                     </div>
                 </label>
 
-                @if (_offerWorkspacePull)
-                {
-                    <ConfirmPrompt Show="true"
-                                   Message="Load your relatives from My Workspace?"
-                                   Detail="@($"{_workspacePullCount} relative(s) with a NIN are on file there. Their relation, name and NIN come across; anything already in the grid is left alone.")"
-                                   ConfirmLabel="Load them"
-                                   CancelLabel="Not now"
-                                   OnConfirm="AcceptWorkspacePullAsync"
-                                   OnCancel="DeclineWorkspacePull" />
-                }
                 @if (_relativesHaveNin)
                 {
                     <div class="cg-table-wrap">
@@ -147,9 +137,9 @@
                     </div>
                     <div class="cg-actions">
                         <button type="button" class="cg-action-btn" @onclick="AddNinHolderAsync">+ Add relative</button>
-                        <button type="button" class="cg-action-btn" @onclick="PullRelativesFromWorkspaceAsync">Pull from My Workspace</button>
+                        <button type="button" class="cg-action-btn cg-good" @onclick="() => PullRelativesFromWorkspaceAsync(false)">Load from My Workspace</button>
                     </div>
-                    <p class="cg-hint">Brings across the relatives in My Workspace that have a NIN recorded — relation, name and NIN — without touching rows already here.</p>
+                    <p class="cg-hint">Your relatives with a NIN in My Workspace are loaded here for you. Use the button to load again after adding one there; rows already here are never touched.</p>
                 }
 
                 <div class="cg-actions">
@@ -292,11 +282,12 @@
                 </div>
 
                 <label class="cg-field">
-                    <span>Do you or your relatives hold shares in DI PJSC?</span>
+                    <span>Have shares in Dubai Investments PJSC?</span>
                     <div class="cg-yesno">
-                        <button type="button" class="cg-action-btn @(_holdsSharesInDI ? "cg-good" : "")" @onclick="() => _holdsSharesInDI = true">I / my relatives hold shares in DI</button>
-                        <button type="button" class="cg-action-btn @(!_holdsSharesInDI ? "cg-good" : "")" @onclick="() => _holdsSharesInDI = false">Neither I / my relatives hold shares in DI</button>
+                        <button type="button" class="cg-action-btn @(_holdsSharesInDI ? "cg-good" : "")" @onclick="() => ChooseHoldsSharesAsync(true)">Yes</button>
+                        <button type="button" class="cg-action-btn @(!_holdsSharesInDI ? "cg-good" : "")" @onclick="() => ChooseHoldsSharesAsync(false)">No</button>
                     </div>
+                    <span class="cg-hint">Held by you or by any of your relatives.</span>
                 </label>
                 @if (_holdsSharesInDI)
                 {
@@ -355,6 +346,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <p class="cg-hint">Your relatives with a NIN in My Workspace are loaded here for you — enter the shares each one holds, and remove any who hold none.</p>
                     <div class="cg-actions">
                         <button type="button" class="cg-action-btn" @onclick="AddRelativeAsync">+ Add shareholder</button>
                         @if (!_relatives.Any(r => r.IsSelf))
@@ -369,6 +361,17 @@
                     <button type="button" class="cg-action-btn" disabled="@_savingDraft" @onclick="SaveDraftAsync">@(_savingDraft ? "Saving…" : "Save as Draft")</button>
                     <button type="button" class="cg-action-btn cg-good" disabled="@(ExpiredDocuments().Count > 0)" @onclick="GoToReviewAsync">Proceed to Submission</button>
                 </div>
+                @if (_offerShareholderSave)
+                {
+                    <ConfirmPrompt Show="true"
+                                   Message="Add these shareholders to My Workspace as well?"
+                                   Detail="@($"{string.Join(", ", _shareholdersNewToWorkspace.Select(r => r.RelativeName))} — not recorded there yet. Saved once, they are loaded into every future declaration instead of retyped.")"
+                                   ConfirmLabel="Add to My Workspace"
+                                   CancelLabel="Not now"
+                                   OnConfirm="AcceptShareholderSaveAsync"
+                                   OnCancel="DeclineShareholderSaveAsync" />
+                }
+
                 @if (ExpiredDocuments() is { Count: > 0 } expiredNow)
                 {
                     <p class="cg-error">

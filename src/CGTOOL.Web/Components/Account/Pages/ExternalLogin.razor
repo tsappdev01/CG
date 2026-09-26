@@ -1,48 +1,17 @@
 ﻿@page "/Account/ExternalLogin"
 
-@using System.ComponentModel.DataAnnotations
 @using System.Security.Claims
-@using System.Text
-@using System.Text.Encodings.Web
 @using Microsoft.AspNetCore.Identity
-@using Microsoft.AspNetCore.WebUtilities
 @using CGTOOL.Web.Data
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
-@inject IUserStore<ApplicationUser> UserStore
-@inject IEmailSender<ApplicationUser> EmailSender
-@inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 @inject ILogger<ExternalLogin> Logger
 
-<PageTitle>Register</PageTitle>
+<PageTitle>Sign in</PageTitle>
 
 <StatusMessage Message="@message" />
-<h1>Register</h1>
-<h2>Associate your @ProviderDisplayName account.</h2>
-<hr />
-
-<div  class="alert alert-info">
-    You've successfully authenticated with <strong>@ProviderDisplayName</strong>.
-    Please enter an email address for this site below and click the Register button to finish
-    logging in.
-</div>
-
-<div class="row">
-    <div class="col-md-4">
-        <EditForm Model="Input" OnValidSubmit="OnValidSubmitAsync" FormName="confirmation" method="post">
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.Email" class="form-control" autocomplete="email" placeholder="Please enter your email." />
-                <label for="email" class="form-label">Email</label>
-                <ValidationMessage For="() => Input.Email" />
-            </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
-        </EditForm>
-    </div>
-</div>
 
 @code {
     public const string LoginCallbackAction = "LoginCallback";
@@ -52,9 +21,6 @@
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
-
-    [SupplyParameterFromForm]
-    private InputModel Input { get; set; } = new();
 
     [SupplyParameterFromQuery]
     private string? RemoteError { get; set; }
@@ -130,6 +96,16 @@
         if (!string.IsNullOrEmpty(email))
         {
             var existingUser = await UserManager.FindByEmailAsync(email);
+
+            // Deactivating a user locks their login out. ExternalLoginSignInAsync above honours
+            // that, but SignInAsync below does not check anything -- so without this, a deactivated
+            // person signing in through SSO for the first time, before their login was ever linked,
+            // would be let straight in.
+            if (existingUser is not null && await UserManager.IsLockedOutAsync(existingUser))
+            {
+                RedirectManager.RedirectTo("Account/Lockout");
+            }
+
             if (existingUser is not null)
             {
                 var addLoginResult = await UserManager.AddLoginAsync(existingUser, externalLoginInfo);
@@ -143,43 +119,14 @@
             }
         }
 
-        // If the user does not have an account, then ask the user to create an account.
-        Input.Email = email ?? "";
-    }
-
-    private async Task OnValidSubmitAsync()
-    {
-        var emailStore = GetEmailStore();
-        var user = CreateUser();
-
-        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
-        await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
-
-        var result = await UserManager.CreateAsync(user);
-        if (result.Succeeded)
-        {
-            result = await UserManager.AddLoginAsync(user, externalLoginInfo);
-            if (result.Succeeded)
-            {
-                Logger.LogInformation("User created an account using {Name} provider.", externalLoginInfo.LoginProvider);
-
-                var userId = await UserManager.GetUserIdAsync(user);
-                var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
-                code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-
-                var callbackUrl = NavigationManager.GetUriWithQueryParameters(
-                    NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
-                    new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code });
-                await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
-
-                // Self-registration is not part of this application: accounts come from Entra ID,
-                // so there is no confirmation page to send anyone to.
-                await SignInManager.SignInAsync(user, isPersistent: false, externalLoginInfo.LoginProvider);
-                RedirectManager.RedirectTo(ReturnUrl);
-            }
-        }
-
-        message = $"Error: {string.Join(",", result.Errors.Select(error => error.Description))}";
+        // No account here, and no self-registration: everyone in this application is provisioned
+        // from the directory or the user list upload, with an entity, a department and declaration
+        // access an administrator decided on. Signing in with a tenant account that nobody has been
+        // set up would otherwise put a governance tool inside the reach of the whole tenant.
+        Logger.LogWarning("Refused {LoginProvider} sign-in for {Email}: no account exists.", externalLoginInfo.LoginProvider, email ?? "(no email claim)");
+        RedirectManager.RedirectToWithStatus("Account/Login",
+            $"Error: {email ?? "That account"} is not set up in this application. Ask an administrator to add you, then sign in again.",
+            HttpContext);
     }
 
     private async Task StampSignInAsync(ApplicationUser? user)
@@ -187,34 +134,5 @@
         if (user is null) return;
         user.LastSignInUtc = DateTime.UtcNow;
         await UserManager.UpdateAsync(user);
-    }
-
-    private ApplicationUser CreateUser()
-    {
-        try
-        {
-            return Activator.CreateInstance<ApplicationUser>();
-        }
-        catch
-        {
-            throw new InvalidOperationException($"Can't create an instance of '{nameof(ApplicationUser)}'. " +
-                $"Ensure that '{nameof(ApplicationUser)}' is not an abstract class and has a parameterless constructor");
-        }
-    }
-
-    private IUserEmailStore<ApplicationUser> GetEmailStore()
-    {
-        if (!UserManager.SupportsUserEmail)
-        {
-            throw new NotSupportedException("The default UI requires a user store with email support.");
-        }
-        return (IUserEmailStore<ApplicationUser>)UserStore;
-    }
-
-    private sealed class InputModel
-    {
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; } = "";
     }
 }

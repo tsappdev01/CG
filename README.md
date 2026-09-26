@@ -625,6 +625,13 @@ https://localhost:7184/signin-oidc-azuread
 Two different permissions are needed, and they are easy to confuse: **delegated** `User.Read` for
 signing in, and **application** `User.Read.All`, with admin consent, for the directory sync.
 
+Signing in with SSO does not create an account. A tenant identity is matched to an existing account
+by its login, or failing that by email address -- at which point the SSO login is linked to it, so
+the account keeps its roles, entity and declaration access. An identity that matches nothing is
+refused and told to ask an administrator: people are provisioned by the directory sync or the user
+list upload, and self-registration would otherwise put a governance tool within reach of everyone
+in the tenant.
+
 Anything set here can still be overridden per machine or per environment without editing the file —
 `dotnet user-secrets set "AzureAd:ClientSecret" "…"` on a developer machine, or the environment
 variable `AzureAd__ClientSecret` in a deployment. That is worth doing for the client secret in

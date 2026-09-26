@@ -404,6 +404,67 @@ public partial class SubmitInsiderDeclaration
         await LogGridChangeAsync("Added a blank row to the relatives' NIN grid.");
     }
 
+    /// <summary>Fills the relatives' NIN grid from the member's own My Workspace register instead of
+    /// retyping it every quarter. Only relatives that actually have a NIN recorded come across: the
+    /// question this grid answers is which relatives hold one, and a row without a NIN fails the
+    /// minimum-length rule and blocks Next.
+    ///
+    /// Rows already in the grid are left alone rather than replaced -- anything typed here, including
+    /// the Additional column that My Workspace has no equivalent for, survives a second pull.</summary>
+    private async Task PullRelativesFromWorkspaceAsync()
+    {
+        if (_effectiveMember is null) return;
+
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var relatives = await db.FamilyMembers.AsNoTracking()
+            .Where(f => f.MemberId == _effectiveMember.Id && f.NinNumber != null && f.NinNumber != "")
+            .OrderBy(f => f.Name)
+            .ToListAsync();
+
+        if (relatives.Count == 0)
+        {
+            Toasts.ShowError("No relatives with a NIN are recorded in My Workspace. Add them there first, or enter them here.");
+            return;
+        }
+
+        var added = 0;
+        var alreadyListed = 0;
+
+        foreach (var relative in relatives)
+        {
+            var duplicate = _ninHolders.Any(h =>
+                string.Equals(h.NinNumber.Trim(), relative.NinNumber!.Trim(), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(h.NameOfShareHolder.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            if (duplicate) { alreadyListed++; continue; }
+
+            _ninHolders.Add(new NinHolderRow
+            {
+                Relationship = relative.Relationship,
+                NameOfShareHolder = relative.Name,
+                NinNumber = relative.NinNumber!,
+            });
+            added++;
+        }
+
+        if (added == 0)
+        {
+            Toasts.ShowSuccess("Every relative with a NIN in My Workspace is already listed here.");
+            return;
+        }
+
+        await LogGridChangeAsync($"Pulled {added} relative(s) into the relatives' NIN grid from My Workspace"
+            + (alreadyListed > 0 ? $"; {alreadyListed} already listed." : "."));
+
+        Toasts.ShowSuccess(alreadyListed == 0
+            ? $"Added {added} relative(s) from My Workspace. Check the NINs before continuing."
+            : $"Added {added} relative(s) from My Workspace; {alreadyListed} were already listed.");
+    }
+
     private async Task RemoveNinHolderAsync(NinHolderRow row)
     {
         _ninHolders.Remove(row);

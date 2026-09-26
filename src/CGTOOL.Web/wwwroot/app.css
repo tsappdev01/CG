@@ -2438,6 +2438,15 @@ select.cg-input {
 }
 .cg-pill-required { border-color: var(--cg-accent); color: var(--cg-accent); background: var(--cg-accent-tint); }
 .cg-pill-done { border-color: var(--cg-good); color: var(--cg-good); background: #F0FDF4; }
+/* Sits before a company's name, so the register shows at a glance which ones the member runs
+   rather than making them open each row to find out. */
+.cg-pill-role {
+    border-color: var(--cg-accent);
+    color: var(--cg-accent);
+    background: var(--cg-accent-tint);
+    margin-right: 8px;
+    vertical-align: middle;
+}
 .cg-pill-status { margin-left: auto; }
 .cg-doc-card-source {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;

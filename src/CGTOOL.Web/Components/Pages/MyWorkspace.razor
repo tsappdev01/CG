@@ -354,7 +354,13 @@
                             @foreach (var c in _companies)
                             {
                                 <tr class="cg-data-row">
-                                    <td class="cg-cell-name">@c.CompanyName</td>
+                                    <td class="cg-cell-name">
+                                        @if (c.ServesAsBoardMemberOrExecutive)
+                                        {
+                                            <span class="cg-pill cg-pill-role" title="You serve as a board member or senior executive of this company">Board / Exec</span>
+                                        }
+                                        @c.CompanyName
+                                    </td>
                                     <td>@HoldingLabel(c.NatureOfHolding)</td>
                                     <td>@(c.OwnershipPercentage is { } pct ? $"{pct:0.##}%" : "—")</td>
                                     <td>@DocumentCell(c.TradeLicensePath)</td>

@@ -25,6 +25,8 @@
             <DataAnnotationsValidator />
             <h1 data-icon="building">@(_editing.Id == 0 ? "New company" : $"Edit — {_editing.Name}")</h1>
 
+            <p class="cg-form-intro">Anything marked <span class="cg-req-mark">*</span> is needed before you can save.</p>
+
             <label class="cg-field"><span>Short code</span><InputText class="cg-input" @bind-Value="_editing.ShortCode" maxlength="20" /><ValidationMessage For="() => _editing.ShortCode" class="cg-error" /></label>
             <label class="cg-field"><span>Company name</span><InputText class="cg-input" @bind-Value="_editing.Name" maxlength="160" /><ValidationMessage For="() => _editing.Name" class="cg-error" /></label>
 
@@ -74,25 +76,29 @@
                 </select>
             </label>
 
+            @* Both authorities are required: an entity with neither cannot take an RP Transaction
+               through approval, and the failure would only show up at submission time. *@
             <label class="cg-field">
-                <span>Authorized / approving authority</span>
+                <span>Authorized / approving authority <em class="cg-req-mark">*</em></span>
                 <select class="cg-input" @bind="_editing.ApprovingAuthorityMemberId">
-                    <option value="">None</option>
+                    <option value="">Choose a user…</option>
                     @foreach (var m in _members)
                     {
                         <option value="@m.Id">@m.FullName</option>
                     }
                 </select>
+                <ValidationMessage For="() => _editing.ApprovingAuthorityMemberId" class="cg-error" />
             </label>
             <label class="cg-field">
-                <span>Delegate authority</span>
+                <span>Delegate authority <em class="cg-req-mark">*</em></span>
                 <select class="cg-input" @bind="_editing.DelegateAuthorityMemberId">
-                    <option value="">None</option>
+                    <option value="">Choose a user…</option>
                     @foreach (var m in _members)
                     {
                         <option value="@m.Id">@m.FullName</option>
                     }
                 </select>
+                <ValidationMessage For="() => _editing.DelegateAuthorityMemberId" class="cg-error" />
             </label>
 
             <div class="cg-actions">

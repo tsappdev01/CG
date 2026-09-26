@@ -76,6 +76,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasIndex(r => r.AuditLogEntryId)
             .IsUnique();
 
+        // [Required] on these two is a form rule, not a column rule: the page refuses to save an
+        // entity without them, while entities created before the rule keep their NULL and can be
+        // corrected. Without this EF would read the attribute as NOT NULL and a migration would
+        // write 0 -- an id no member has -- into every one of those rows.
+        builder.Entity<Company>().Property(c => c.ApprovingAuthorityMemberId).IsRequired(false);
+        builder.Entity<Company>().Property(c => c.DelegateAuthorityMemberId).IsRequired(false);
+
         builder.Entity<Company>()
             .HasOne(c => c.ApprovingAuthorityMember)
             .WithMany()
@@ -98,11 +105,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasForeignKey(m => m.CompanyId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Restrict, not SetNull: deleting a department that still has people in it must be refused,
+        // not quietly answered by emptying everyone's department field. Same rule as the Company
+        // authority keys below -- move the users first, then the department can go.
         builder.Entity<Member>()
             .HasOne(m => m.Department)
             .WithMany(d => d.Members)
             .HasForeignKey(m => m.DepartmentId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<Member>()
             .HasOne(m => m.ReportingManager)

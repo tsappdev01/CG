@@ -29,11 +29,17 @@ public class Company
     [MaxLength(80)]
     public string? GroupName { get; set; }
 
-    /// <summary>The single User who holds authorized/approving authority for this entity.</summary>
+    /// <summary>The single User who holds authorized/approving authority for this entity. Required:
+    /// an entity without one cannot take an RP Transaction through approval at all. Nullable rather
+    /// than a NOT NULL column so entities created before the rule still load and can be corrected;
+    /// the form is what refuses to save one empty.</summary>
+    [Required(ErrorMessage = "Choose the user who holds approving authority for this entity.")]
     public int? ApprovingAuthorityMemberId { get; set; }
     public Member? ApprovingAuthorityMember { get; set; }
 
-    /// <summary>The single User delegated authority for this entity.</summary>
+    /// <summary>The single User delegated authority for this entity -- who acts when the approving
+    /// authority cannot. Required for the same reason, and on the same terms.</summary>
+    [Required(ErrorMessage = "Choose the user who holds delegate authority for this entity.")]
     public int? DelegateAuthorityMemberId { get; set; }
     public Member? DelegateAuthorityMember { get; set; }
 

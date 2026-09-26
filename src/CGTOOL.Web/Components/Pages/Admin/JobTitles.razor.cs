@@ -39,6 +39,12 @@ public partial class JobTitles
 
     private int MemberCount(string name) => _memberCounts.GetValueOrDefault(name);
 
+    /// <summary>A job title held by at least one user cannot be withdrawn: those Member rows are its
+    /// child records, and taking the title out of the list while people still carry it leaves their
+    /// record pointing at something the picklist no longer offers -- which then silently changes the
+    /// next time anyone saves them. Move those users to another title first.</summary>
+    private bool IsInUse(JobTitle jobTitle) => MemberCount(jobTitle.Name) > 0;
+
     private void AddNew() => Nav.NavigateTo("/admin/job-titles/0");
 
     private void Edit(JobTitle jobTitle) => Nav.NavigateTo($"/admin/job-titles/{jobTitle.Id}");
@@ -120,10 +126,19 @@ public partial class JobTitles
     {
         if (_bulkSetActive is not { } targetActive || _jobTitles is null) return;
 
+        var changed = 0;
+        var blocked = new List<string>();
+
         foreach (var id in _selectedIds.ToList())
         {
             var jobTitle = _jobTitles.FirstOrDefault(j => j.Id == id);
             if (jobTitle is null || jobTitle.Active == targetActive) continue;
+
+            if (!targetActive && IsInUse(jobTitle))
+            {
+                blocked.Add($"{jobTitle.Name} ({MemberCount(jobTitle.Name)})");
+                continue;
+            }
 
             jobTitle.Active = targetActive;
             await JobTitleWriter.SetActiveAsync(jobTitle.Id, targetActive);
@@ -134,9 +149,15 @@ public partial class JobTitles
                 targetActive ? AuditAction.Reactivate : AuditAction.Deactivate,
                 nameof(JobTitle), jobTitle.Id.ToString(), jobTitle.Name,
                 justification: justification);
+            changed++;
         }
 
-        Toasts.ShowSuccess($"{_selectedIds.Count} job title(s) {(targetActive ? "reactivated" : "deactivated")}.");
+        if (changed > 0) Toasts.ShowSuccess($"{changed} job title(s) {(targetActive ? "reactivated" : "deactivated")}.");
+        if (blocked.Count > 0)
+        {
+            Toasts.ShowError($"Still in use, so not withdrawn: {string.Join(", ", blocked)}. Move those users to another title first.");
+        }
+
         _bulkSetActive = null;
         _selectedIds.Clear();
         await LoadAsync();
@@ -148,6 +169,13 @@ public partial class JobTitles
     private async Task ToggleActiveAsync(string justification)
     {
         if (_pendingJustify is null) return;
+
+        if (_pendingJustify.Active && IsInUse(_pendingJustify))
+        {
+            Toasts.ShowError($"{_pendingJustify.Name} is held by {MemberCount(_pendingJustify.Name)} user(s). Move them to another title before withdrawing it.");
+            _pendingJustify = null;
+            return;
+        }
 
         _pendingJustify.Active = !_pendingJustify.Active;
         await JobTitleWriter.SetActiveAsync(_pendingJustify.Id, _pendingJustify.Active);

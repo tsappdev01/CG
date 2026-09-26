@@ -70,6 +70,11 @@ public partial class Departments
 
     private int MemberCount(int departmentId) => _memberCounts.GetValueOrDefault(departmentId);
 
+    /// <summary>A department with users in it cannot be withdrawn: those Member rows are its child
+    /// records, and the foreign key refuses the delete outright. Withdrawing it instead would leave
+    /// them in a department the picklist no longer offers. Move those users first.</summary>
+    private bool IsInUse(Department department) => MemberCount(department.Id) > 0;
+
     private List<Department> SortedDepartments()
     {
         if (_departments is null) return [];
@@ -127,10 +132,19 @@ public partial class Departments
     {
         if (_bulkSetActive is not { } targetActive || _departments is null) return;
 
+        var changed = 0;
+        var blocked = new List<string>();
+
         foreach (var id in _selectedIds.ToList())
         {
             var department = _departments.FirstOrDefault(d => d.Id == id);
             if (department is null || department.Active == targetActive) continue;
+
+            if (!targetActive && IsInUse(department))
+            {
+                blocked.Add($"{department.Name} ({MemberCount(department.Id)})");
+                continue;
+            }
 
             department.Active = targetActive;
             await DepartmentWriter.SetActiveAsync(department.Id, targetActive);
@@ -141,9 +155,15 @@ public partial class Departments
                 targetActive ? AuditAction.Reactivate : AuditAction.Deactivate,
                 nameof(Department), department.Id.ToString(), department.Name,
                 justification: justification);
+            changed++;
         }
 
-        Toasts.ShowSuccess($"{_selectedIds.Count} department(s) {(targetActive ? "reactivated" : "deactivated")}.");
+        if (changed > 0) Toasts.ShowSuccess($"{changed} department(s) {(targetActive ? "reactivated" : "deactivated")}.");
+        if (blocked.Count > 0)
+        {
+            Toasts.ShowError($"Still has users, so not withdrawn: {string.Join(", ", blocked)}. Move those users to another department first.");
+        }
+
         _bulkSetActive = null;
         _selectedIds.Clear();
         await LoadAsync();
@@ -153,6 +173,13 @@ public partial class Departments
     private async Task ToggleActiveAsync(string justification)
     {
         if (_pendingJustify is null) return;
+
+        if (_pendingJustify.Active && IsInUse(_pendingJustify))
+        {
+            Toasts.ShowError($"{_pendingJustify.Name} still has {MemberCount(_pendingJustify.Id)} user(s). Move them to another department before withdrawing it.");
+            _pendingJustify = null;
+            return;
+        }
 
         _pendingJustify.Active = !_pendingJustify.Active;
         await DepartmentWriter.SetActiveAsync(_pendingJustify.Id, _pendingJustify.Active);

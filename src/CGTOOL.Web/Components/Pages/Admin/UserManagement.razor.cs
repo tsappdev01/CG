@@ -344,18 +344,52 @@ public partial class UserManagement
 
     private void DeselectAll() => _selectedIds.Clear();
 
+    /// <summary>The entities that hold this user as their approving or delegate authority. A user
+    /// who is one cannot be removed while that is true: the Company row referring to them is a child
+    /// record, the database refuses the delete outright (the foreign keys are Restrict), and taking
+    /// the person out of service some other way would break RP Transaction approval for that entity
+    /// without saying so -- the failure would only surface when someone tried to submit one.
+    ///
+    /// Reassign the authority on the entity first, then the user can be deactivated.</summary>
+    private async Task<List<string>> AuthorityHoldingsAsync(int memberId)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        return await db.Companies
+            .AsNoTracking()
+            .Where(c => c.ApprovingAuthorityMemberId == memberId || c.DelegateAuthorityMemberId == memberId)
+            .OrderBy(c => c.Name)
+            .Select(c => c.Name)
+            .ToListAsync();
+    }
+
     private async Task BulkSetActiveAsync(string justification)
     {
         if (_bulkSetActive is not { } targetActive || _members is null) return;
+
+        var changed = 0;
+        var blocked = new List<string>();
 
         foreach (var id in _selectedIds.ToList())
         {
             var member = _members.FirstOrDefault(m => m.Id == id);
             if (member is null || member.Active == targetActive) continue;
+
+            if (!targetActive && (await AuthorityHoldingsAsync(member.Id)).Count > 0)
+            {
+                blocked.Add(member.FullName);
+                continue;
+            }
+
             await SetMemberActiveAsync(member, targetActive, justification);
+            changed++;
         }
 
-        Toasts.ShowSuccess($"{_selectedIds.Count} user(s) {(targetActive ? "reactivated" : "deactivated")}.");
+        if (changed > 0) Toasts.ShowSuccess($"{changed} user(s) {(targetActive ? "reactivated" : "deactivated")}.");
+        if (blocked.Count > 0)
+        {
+            Toasts.ShowError($"{string.Join(", ", blocked)} {(blocked.Count == 1 ? "is an" : "are an")} approving or delegate authority on an entity. Reassign it on the entity first.");
+        }
+
         _bulkSetActive = null;
         _selectedIds.Clear();
         await LoadAsync();
@@ -366,6 +400,18 @@ public partial class UserManagement
         if (_pendingJustify is null) return;
 
         var member = _pendingJustify;
+
+        if (member.Active)
+        {
+            var holdings = await AuthorityHoldingsAsync(member.Id);
+            if (holdings.Count > 0)
+            {
+                Toasts.ShowError($"{member.FullName} holds approving or delegate authority for {string.Join(", ", holdings)}. Reassign it on the entity before deactivating them.");
+                _pendingJustify = null;
+                return;
+            }
+        }
+
         await SetMemberActiveAsync(member, !member.Active, justification);
 
         Toasts.ShowSuccess($"{member.FullName} {(member.Active ? "reactivated" : "deactivated")}.");

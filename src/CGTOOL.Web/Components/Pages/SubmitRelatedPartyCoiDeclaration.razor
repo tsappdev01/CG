@@ -5,6 +5,7 @@
 @using System.Security.Claims
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IRelatedPartyCoiDeclarationWriter Writer
+@inject IFamilyMemberWriter FamilyMemberWriter
 @inject IActivityEmailSender EmailSender
 @inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState
@@ -75,34 +76,39 @@
                 <div class="cg-info-callout">
                     <p><b>Note 2 — Relative:</b> Father, mother, brother, sister, children, spouse, father-in-law, mother-in-law, and children of the spouse.</p>
                 </div>
-                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                <label class="cg-switch cg-nothing-switch">
                     <input type="checkbox" @bind="_nothingRelatives" />
-                    <span>I have nothing to declare in this section.</span>
+                    <span class="cg-switch-track" aria-hidden="true"></span>
+                    <span class="cg-switch-label">I have nothing to declare in this section.</span>
                 </label>
                 @if (!_nothingRelatives)
                 {
                     <div class="cg-table-wrap">
                         <table>
-                            <thead><tr><th>Name</th><th>Relationship</th><th></th></tr></thead>
+                            <thead><tr><th>Name</th><th>Relationship</th><th>On file</th><th></th></tr></thead>
                             <tbody>
                                 @foreach (var r in _relatives)
                                 {
                                     <tr class="cg-data-row">
-                                        <td><input class="cg-input" @bind="r.Name" maxlength="120" /></td>
                                         <td>
-                                            <select class="cg-input" @bind="r.Relationship">
+                                            <input class="cg-input" @bind="r.Name" @bind:after="() => SyncRelativeToWorkspaceAsync(r)" maxlength="120" />
+                                        </td>
+                                        <td>
+                                            <select class="cg-input" @bind="r.Relationship" @bind:after="() => SyncRelativeToWorkspaceAsync(r)">
                                                 @foreach (var opt in RelativeOptions)
                                                 {
                                                     <option value="@opt.Value">@opt.Label</option>
                                                 }
                                             </select>
                                         </td>
-                                        <td><button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveRelative(r)">Remove</button></td>
+                                        <td>@(r.FamilyMemberId is null ? "This declaration only" : "In My Workspace")</td>
+                                        <td><button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveRelative(r)">Remove</button></td>
                                     </tr>
                                 }
                             </tbody>
                         </table>
                     </div>
+                    <p class="cg-hint">Your relatives from My Workspace are listed here for you. Editing a name or relationship updates the register too; removing one asks whether it should go from there as well.</p>
                     <div class="cg-actions">
                         <button type="button" class="cg-action-btn" @onclick="AddRelative">+ Add relative</button>
                         @if (_myFamilyMembers.Count > 0)
@@ -120,9 +126,10 @@
                 }
 
                 <h3>Companies in which you own ≥30% of paid-up share capital</h3>
-                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                <label class="cg-switch cg-nothing-switch">
                     <input type="checkbox" @bind="_nothingSelfOwned" />
-                    <span>I have nothing to declare in this section.</span>
+                    <span class="cg-switch-track" aria-hidden="true"></span>
+                    <span class="cg-switch-label">I have nothing to declare in this section.</span>
                 </label>
                 @if (!_nothingSelfOwned)
                 {
@@ -150,9 +157,10 @@
                 }
 
                 <h3>Companies in which a relative owns ≥30% of its shares</h3>
-                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                <label class="cg-switch cg-nothing-switch">
                     <input type="checkbox" @bind="_nothingRelativeOwned" />
-                    <span>I have nothing to declare in this section.</span>
+                    <span class="cg-switch-track" aria-hidden="true"></span>
+                    <span class="cg-switch-label">I have nothing to declare in this section.</span>
                 </label>
                 @if (!_nothingRelativeOwned)
                 {
@@ -180,9 +188,10 @@
                 }
 
                 <h3>Companies in which you serve as board member or senior executive</h3>
-                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                <label class="cg-switch cg-nothing-switch">
                     <input type="checkbox" @bind="_nothingBoardRoles" />
-                    <span>I have nothing to declare in this section.</span>
+                    <span class="cg-switch-track" aria-hidden="true"></span>
+                    <span class="cg-switch-label">I have nothing to declare in this section.</span>
                 </label>
                 @if (!_nothingBoardRoles)
                 {
@@ -239,9 +248,10 @@
                         escalate the matter to the Corporate Affairs Office of DI for further decision making on the matter.
                     </p>
                 }
-                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                <label class="cg-switch cg-nothing-switch">
                     <input type="checkbox" @bind="_nothingConflicts" />
-                    <span>I have nothing to declare in this section.</span>
+                    <span class="cg-switch-track" aria-hidden="true"></span>
+                    <span class="cg-switch-label">I have nothing to declare in this section.</span>
                 </label>
                 @if (!_nothingConflicts)
                 {
@@ -371,3 +381,30 @@
         }
     }
 </div>
+
+@* Removing a relative that came from the register is two different acts wearing one button, so it
+   asks which one is meant rather than guessing. *@
+@if (_pendingRelativeRemoval is { } pendingRelative)
+{
+    <div class="cg-modal-backdrop" @onclick="CancelRemoveRelative"></div>
+    <div class="cg-modal cg-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="cg-coi-del-title">
+        <div class="cg-modal-head">
+            <div>
+                <h2 id="cg-coi-del-title">Remove @pendingRelative.Name?</h2>
+                <p class="cg-subtitle">@RelationshipLabel(pendingRelative.Relationship) — also recorded in My Workspace.</p>
+            </div>
+            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="CancelRemoveRelative">×</button>
+        </div>
+
+        <div class="cg-modal-body">
+            <p>Remove them from My Workspace as well, or only from this declaration?</p>
+            <p class="cg-hint">Removing from My Workspace deletes the related party and everything recorded against them there — documents, NIN, nature of holding. Removing from this declaration leaves the register untouched, and they will be listed again on your next one.</p>
+        </div>
+
+        <div class="cg-modal-foot">
+            <button type="button" class="cg-action-btn" @onclick="CancelRemoveRelative">Cancel</button>
+            <button type="button" class="cg-action-btn" @onclick="RemoveRelativeFromDeclarationOnly">This declaration only</button>
+            <button type="button" class="cg-action-btn cg-critical" @onclick="RemoveRelativeEverywhereAsync">Remove from both</button>
+        </div>
+    </div>
+}

@@ -95,6 +95,11 @@ public partial class SubmitRelatedPartyCoiDeclaration
         public Guid Key { get; } = Guid.NewGuid();
         public string Name { get; set; } = string.Empty;
         public RelativeRelationship Relationship { get; set; } = RelativeRelationship.Father;
+
+        /// <summary>The My Workspace record this row came from, where it came from one. What makes
+        /// an edit here reach the register, and what the delete prompt has to offer to remove.
+        /// Null for a row typed straight into the declaration.</summary>
+        public int? FamilyMemberId { get; set; }
     }
 
     public class CompanyRow
@@ -211,6 +216,21 @@ public partial class SubmitRelatedPartyCoiDeclaration
             _attestationName = _effectiveMember.FullName;
         }
 
+        // A new declaration starts from the register rather than from an empty table: these are the
+        // same people, and the member has already listed them once.
+        if (_run is not null && !_isEditing && _relatives.Count == 0)
+        {
+            foreach (var familyMember in _myFamilyMembers)
+            {
+                _relatives.Add(new RelativeRow
+                {
+                    Name = familyMember.Name,
+                    Relationship = familyMember.Relationship,
+                    FamilyMemberId = familyMember.Id,
+                });
+            }
+        }
+
         _step = _run is null ? Step.NotDue : Step.Form;
     }
 
@@ -269,7 +289,12 @@ public partial class SubmitRelatedPartyCoiDeclaration
         var relativeRowsByDbId = new Dictionary<int, RelativeRow>();
         foreach (var r in declaration.Relatives)
         {
-            var row = new RelativeRow { Name = r.Name, Relationship = r.Relationship };
+            // Matched by name: the declaration stores the answer, not a link to the register, and
+            // the link is what lets an edit here reach My Workspace.
+            var linked = _myFamilyMembers.FirstOrDefault(f =>
+                string.Equals(f.Name.Trim(), r.Name.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            var row = new RelativeRow { Name = r.Name, Relationship = r.Relationship, FamilyMemberId = linked?.Id };
             _relatives.Add(row);
             relativeRowsByDbId[r.Id] = row;
         }
@@ -336,6 +361,83 @@ public partial class SubmitRelatedPartyCoiDeclaration
     }
 
     private void AddRelative() => _relatives.Add(new RelativeRow());
+
+    /// <summary>Writes a change made here back to the member's register, for a row that came from
+    /// it. The two are the same person: correcting a name on the declaration and leaving My
+    /// Workspace saying something else would put the mistake back next quarter.</summary>
+    private async Task SyncRelativeToWorkspaceAsync(RelativeRow row)
+    {
+        if (_effectiveMember is null || row.FamilyMemberId is not { } id) return;
+        if (string.IsNullOrWhiteSpace(row.Name)) return;
+
+        var familyMember = _myFamilyMembers.FirstOrDefault(f => f.Id == id);
+        if (familyMember is null) return;
+
+        var name = row.Name.Trim();
+        if (string.Equals(familyMember.Name, name, StringComparison.Ordinal)
+            && familyMember.Relationship == row.Relationship)
+        {
+            return;
+        }
+
+        var before = $"{familyMember.Name} ({RelationshipLabel(familyMember.Relationship)})";
+        familyMember.Name = name;
+        familyMember.Relationship = row.Relationship;
+        await FamilyMemberWriter.UpdateAsync(familyMember);
+
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var actorName = state.User.Identity?.Name ?? "unknown";
+        await AuditLog.LogAsync(actorName, AuditAction.Update, nameof(FamilyMember), familyMember.Id.ToString(),
+            $"Edited related party from the Related Party & COI declaration: {before} \u2192 {name} ({RelationshipLabel(row.Relationship)}).",
+            actingOnBehalfOf: Impersonation.ActingMemberId is not null ? _effectiveMember.FullName : null);
+    }
+
+    // Removing a relative asks how far the removal should reach: out of this declaration, or out of
+    // the register as well. Held here while the question is on screen.
+    private RelativeRow? _pendingRelativeRemoval;
+
+    private void AskRemoveRelative(RelativeRow row)
+    {
+        // Nothing to ask about a row that only exists here.
+        if (row.FamilyMemberId is null) { RemoveRelative(row); return; }
+        _pendingRelativeRemoval = row;
+    }
+
+    private void CancelRemoveRelative() => _pendingRelativeRemoval = null;
+
+    private void RemoveRelativeFromDeclarationOnly()
+    {
+        if (_pendingRelativeRemoval is { } row)
+        {
+            _pendingRelativeRemoval = null;
+            RemoveRelative(row);
+        }
+    }
+
+    private async Task RemoveRelativeEverywhereAsync()
+    {
+        if (_pendingRelativeRemoval is not { } row) return;
+        _pendingRelativeRemoval = null;
+
+        if (_effectiveMember is not null && row.FamilyMemberId is { } id)
+        {
+            var familyMember = _myFamilyMembers.FirstOrDefault(f => f.Id == id);
+            await FamilyMemberWriter.DeleteAsync(id);
+            _myFamilyMembers.RemoveAll(f => f.Id == id);
+
+            var state = await AuthState.GetAuthenticationStateAsync();
+            var actorName = state.User.Identity?.Name ?? "unknown";
+            await AuditLog.LogAsync(actorName, AuditAction.Delete, nameof(FamilyMember), id.ToString(),
+                $"Deleted related party {familyMember?.Name ?? row.Name} ({RelationshipLabel(row.Relationship)}) "
+                + "from My Workspace, via the Related Party & COI declaration.",
+                actingOnBehalfOf: Impersonation.ActingMemberId is not null ? _effectiveMember.FullName : null);
+
+            Toasts.ShowSuccess("Removed from this declaration and from My Workspace.");
+        }
+
+        RemoveRelative(row);
+    }
+
     private void RemoveRelative(RelativeRow row)
     {
         _relatives.Remove(row);
@@ -365,7 +467,12 @@ public partial class SubmitRelatedPartyCoiDeclaration
         var familyMember = _myFamilyMembers.FirstOrDefault(f => f.Id == id);
         if (familyMember is null) return;
 
-        _relatives.Add(new RelativeRow { Name = familyMember.Name, Relationship = familyMember.Relationship });
+        _relatives.Add(new RelativeRow
+        {
+            Name = familyMember.Name,
+            Relationship = familyMember.Relationship,
+            FamilyMemberId = familyMember.Id,
+        });
         _pickFamilyMemberId = null;
     }
 

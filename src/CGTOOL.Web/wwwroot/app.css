@@ -2373,6 +2373,9 @@ select.cg-input {
 .cg-switch input:checked + .cg-switch-track::after { transform: translateX(20px); }
 .cg-switch input:focus-visible + .cg-switch-track { outline: 2px solid var(--cg-accent); outline-offset: 2px; }
 .cg-switch-label { font-size: 13px; font-weight: 650; }
+/* A "nothing to declare" switch sits alone above its section rather than in a form grid. */
+.cg-nothing-switch { margin: 4px 0 14px; }
+.cg-nothing-switch .cg-switch-label { font-weight: 600; }
 
 /* ---------- My Documents ---------- */
 .cg-doc-panel {

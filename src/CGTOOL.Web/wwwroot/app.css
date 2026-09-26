@@ -2939,3 +2939,139 @@ button.cg-appbar-user {
     .cg-progress-track.indeterminate .cg-progress-fill { animation: none; }
     .cg-progress-fill { transition: none; }
 }
+
+/* ---------- Sign-in screen ---------- */
+/* Fixed colours rather than the app's tokens: this is the one screen with no application chrome
+   around it, it is always the navy stage, and it must not follow the viewer's dark-mode setting
+   half way and end up a navy card on a near-black field. */
+.cg-signin-stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: #0D2B57;
+    color: #fff;
+    overflow: auto;
+}
+
+.cg-signin-grid { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+.cg-signin-head,
+.cg-signin-foot { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 56px; flex: none; }
+.cg-signin-head { min-height: 88px; }
+.cg-signin-foot { min-height: 56px; font-size: 13px; color: #B9C6DB; }
+
+.cg-signin-head a, .cg-signin-foot a { color: #E7C77F; font-size: 13.5px; }
+.cg-signin-head a:hover, .cg-signin-foot a:hover { color: #fff; }
+
+.cg-signin-brand { display: flex; align-items: center; gap: 12px; }
+.cg-signin-mark {
+    width: 40px; height: 40px; flex: none; border-radius: 50%;
+    background: #C8952E; color: #0D2B57;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px;
+}
+.cg-signin-wordmark { font-size: 18px; font-weight: 700; line-height: 1.1; color: #fff; }
+
+.cg-signin-main {
+    position: relative;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 96px;
+    padding: 24px 56px 60px;
+    flex-wrap: wrap;
+}
+
+.cg-signin-pitch { width: 520px; max-width: 100%; display: flex; flex-direction: column; gap: 18px; }
+.cg-signin-eyebrow {
+    font-size: 13px; font-weight: 600; color: #E7C77F;
+    text-transform: uppercase; letter-spacing: 0.12em;
+}
+/* Georgia rather than a webfont: this server is reached from inside the network and a Google
+   Fonts request would block the first paint, or hang, on a machine with no route out. */
+.cg-signin-pitch h1 {
+    margin: 0;
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    font-size: clamp(34px, 4vw, 56px);
+    line-height: 1.08;
+    font-weight: 700;
+    text-wrap: balance;
+}
+.cg-signin-pitch p { margin: 0; font-size: 16px; line-height: 1.6; color: #DCE4F0; }
+
+.cg-signin-card {
+    width: 420px;
+    max-width: 100%;
+    background: #fff;
+    color: #1B2433;
+    border-radius: 18px;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .35);
+}
+
+.cg-signin-rule { height: 4px; width: 56px; background: #C8952E; border-radius: 999px; }
+.cg-signin-welcome { display: flex; flex-direction: column; gap: 6px; }
+.cg-signin-welcome h2 {
+    margin: 0;
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    font-size: 30px; font-weight: 700; color: #0D2B57;
+}
+.cg-signin-welcome p { margin: 0; font-size: 15px; line-height: 1.5; color: #4A5568; }
+
+.cg-signin-notice {
+    margin: 0;
+    padding-top: 16px;
+    border-top: 1px solid #E6E1D6;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #4A5568;
+}
+
+/* The sign-in button, whichever branch drew it. */
+.cg-signin-card .cg-action-btn,
+.cg-signin-card button[type="submit"] {
+    width: 100%;
+    min-height: 56px;
+    border: none;
+    border-radius: 12px;
+    background: #C8952E;
+    color: #0D2B57;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.cg-signin-card .cg-action-btn:hover,
+.cg-signin-card button[type="submit"]:hover { background: #D9A83C; }
+
+.cg-signin-card .cg-info-callout { font-size: 13px; line-height: 1.5; }
+.cg-signin-card .cg-divider { margin: 0; font-size: 12.5px; color: #64748B; text-align: center; }
+.cg-signin-card .form-control { min-height: 48px; }
+/* .alert-danger/.alert-success are styled app-wide as a fixed corner toast. On this page the
+   message is the answer to "why was I sent back here?", so it belongs in the card the person is
+   already looking at -- not floating over the header where it also covers "Need help?". */
+.cg-signin-card .alert-danger,
+.cg-signin-card .alert-success {
+    position: static;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+    .cg-signin-main { gap: 40px; }
+    .cg-signin-pitch { width: 100%; }
+}
+
+@media (max-width: 720px) {
+    .cg-signin-head, .cg-signin-foot, .cg-signin-main { padding-left: 20px; padding-right: 20px; }
+    .cg-signin-main { padding-top: 8px; }
+    .cg-signin-card { padding: 28px 22px; }
+    .cg-signin-foot { flex-direction: column; gap: 4px; align-items: flex-start; padding-bottom: 16px; }
+}

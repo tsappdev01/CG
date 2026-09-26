@@ -1,4 +1,5 @@
 @page "/Account/Login"
+@layout CGTOOL.Web.Components.Account.Shared.SignInLayout
 
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authentication
@@ -13,82 +14,133 @@
 @inject ILogger<Login> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
+@inject IConfiguration Configuration
 
 <PageTitle>DI Corporate Governance Tool — Sign In</PageTitle>
 
-<div class="cg-shell cg-narrow cg-signin">
-    <img src="images/di-logo-en.png" alt="Dubai Investments" class="cg-login-logo" />
-    <h1>Corporate Governance Tool</h1>
+<div class="cg-signin-stage">
+    @* A faint grid and two markers, drawn rather than an image so it costs nothing to serve and
+       scales to any viewport. Hidden from assistive technology: it says nothing. *@
+    <svg class="cg-signin-grid" viewBox="0 0 1440 900" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <g stroke="#C8952E" stroke-opacity="0.14" stroke-width="1">
+            <path d="M0 150 H1440" /><path d="M0 300 H1440" /><path d="M0 450 H1440" />
+            <path d="M0 600 H1440" /><path d="M0 750 H1440" />
+            <path d="M240 0 V900" /><path d="M480 0 V900" /><path d="M720 0 V900" />
+            <path d="M960 0 V900" /><path d="M1200 0 V900" />
+        </g>
+        <circle cx="1200" cy="150" r="6" fill="#C8952E" />
+        <circle cx="240" cy="750" r="6" fill="#C8952E" fill-opacity="0.6" />
+    </svg>
 
-    @if (_useSingleSignOn)
-    {
-        <p class="cg-subtitle">Sign in with your Dubai Investments account.</p>
-
-        @* Why the last attempt was turned away -- that this account is not set up here, or what
-           the provider objected to. It is carried back on a cookie by IdentityRedirectManager and
-           was only rendered on the branch with the credentials form, so in single sign-on mode
-           every refusal came back as a silent bounce to this page with nothing said. *@
-        <StatusMessage />
-
-        <ExternalLoginPicker />
-    }
-    else
-    {
-        @if (_ssoConfigured)
+    <header class="cg-signin-head">
+        @* Drawn rather than the logo file: di-logo-en.png has no alpha channel, so it carries its
+           own background and shows a seam against the navy. *@
+        <div class="cg-signin-brand">
+            <span class="cg-signin-mark" aria-hidden="true">DI</span>
+            <span class="cg-signin-wordmark">Dubai<br />Investments</span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(_supportEmail))
         {
-            <div class="cg-info-callout">
-                <b>First-time setup.</b>
-                No users have been loaded from Entra ID yet, so sign in with the built-in setup
-                account, then load the directory from <b>User Management &rarr; Sync from Entra ID</b>.
-                Once real users exist this page signs in with single sign-on only.
+            <a href="mailto:@_supportEmail">Need help?</a>
+        }
+    </header>
+
+    <main class="cg-signin-main">
+        <div class="cg-signin-pitch">
+            <div class="cg-signin-eyebrow">Corporate Governance Tool</div>
+            <h1>Good governance starts with a signed declaration.</h1>
+            <p>File, review and approve Insider Trading, Related Party and Conflict of Interest declarations across the group.</p>
+        </div>
+
+        <div class="cg-signin-card">
+            <span class="cg-signin-rule" aria-hidden="true"></span>
+            <div class="cg-signin-welcome">
+                <h2>Welcome back</h2>
+                <p>Sign in with your Dubai Investments work account.</p>
             </div>
 
-            @* Offered here too, not just once real users exist: otherwise single sign-on could
-               never be exercised on a fresh deployment (or a developer machine) until the
-               directory had already been synced through it. *@
+        @if (_useSingleSignOn)
+        {
+            @* Why the last attempt was turned away -- that this account is not set up here, or what
+               the provider objected to. It is carried back on a cookie by IdentityRedirectManager and
+               was only rendered on the branch with the credentials form, so in single sign-on mode
+               every refusal came back as a silent bounce to this page with nothing said. *@
+            <StatusMessage />
+
             <ExternalLoginPicker />
-            <p class="cg-divider"><span>or use the setup account</span></p>
         }
         else
         {
-            <div class="cg-info-callout">
-                <b>Single sign-on is not configured for this deployment.</b>
-                Set <code>AzureAd:TenantId</code> and <code>AzureAd:ClientId</code> to sign in with
-                Entra ID. Until then, use the setup account below.
-            </div>
+            @if (_ssoConfigured)
+            {
+                <div class="cg-info-callout">
+                    <b>First-time setup.</b>
+                    No users have been loaded from Entra ID yet, so sign in with the built-in setup
+                    account, then load the directory from <b>User Management &rarr; Sync from Entra ID</b>.
+                    Once real users exist this page signs in with single sign-on only.
+                </div>
+
+                @* Offered here too, not just once real users exist: otherwise single sign-on could
+                   never be exercised on a fresh deployment (or a developer machine) until the
+                   directory had already been synced through it. *@
+                <ExternalLoginPicker />
+                <p class="cg-divider"><span>or use the setup account</span></p>
+            }
+            else
+            {
+                <div class="cg-info-callout">
+                    <b>Single sign-on is not configured for this deployment.</b>
+                    Set <code>AzureAd:TenantId</code> and <code>AzureAd:ClientId</code> to sign in with
+                    Entra ID. Until then, use the setup account below.
+                </div>
+            }
+
+            <section>
+                <StatusMessage Message="@errorMessage" />
+                <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger" role="alert" />
+                    <div class="form-floating mb-3">
+                        <InputText @bind-Value="Input.UserName" class="form-control" autocomplete="username" aria-required="true" placeholder="User name" />
+                        <label for="username" class="form-label">User Name</label>
+                        <ValidationMessage For="() => Input.UserName" class="text-danger" />
+                    </div>
+                    <div class="form-floating mb-3">
+                        <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+                        <label for="password" class="form-label">Password</label>
+                        <ValidationMessage For="() => Input.Password" class="text-danger" />
+                    </div>
+                    <div class="checkbox mb-3">
+                        <label class="form-label">
+                            <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
+                            Remember me
+                        </label>
+                    </div>
+                    <div>
+                        <button type="submit" class="w-100 btn btn-lg btn-primary">Sign in</button>
+                    </div>
+                </EditForm>
+            </section>
         }
 
-        <section>
-            <StatusMessage Message="@errorMessage" />
-            <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
-                <DataAnnotationsValidator />
-                <ValidationSummary class="text-danger" role="alert" />
-                <div class="form-floating mb-3">
-                    <InputText @bind-Value="Input.UserName" class="form-control" autocomplete="username" aria-required="true" placeholder="User name" />
-                    <label for="username" class="form-label">User Name</label>
-                    <ValidationMessage For="() => Input.UserName" class="text-danger" />
-                </div>
-                <div class="form-floating mb-3">
-                    <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
-                    <label for="password" class="form-label">Password</label>
-                    <ValidationMessage For="() => Input.Password" class="text-danger" />
-                </div>
-                <div class="checkbox mb-3">
-                    <label class="form-label">
-                        <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
-                        Remember me
-                    </label>
-                </div>
-                <div>
-                    <button type="submit" class="w-100 btn btn-lg btn-primary">Sign in</button>
-                </div>
-            </EditForm>
-        </section>
-    }
+            <p class="cg-signin-notice">
+                Authorised users only. Access and activity are logged and monitored in line with
+                group IT and SCA policy.
+            </p>
+        </div>
+    </main>
+
+    <footer class="cg-signin-foot">
+        <span>&copy; @DateTime.Now.Year Dubai Investments PJSC</span>
+    </footer>
 </div>
 
 @code {
     private string? errorMessage;
+
+    // Support:Email in appsettings. No address configured, no "Need help?" link -- a mailto: to
+    // nowhere is worse than nothing on the one page someone reaches when they are already stuck.
+    private string? _supportEmail;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -110,6 +162,7 @@
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
         }
 
+        _supportEmail = Configuration["Support:Email"];
         _ssoConfigured = (await SignInManager.GetExternalAuthenticationSchemesAsync()).Any();
 
         // Everyone signs in through Entra ID. The one exception is a deployment that has no real

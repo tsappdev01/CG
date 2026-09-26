@@ -1,0 +1,32 @@
+@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+
+@* A layout of its own, deliberately not nested inside MainLayout: signing in is the one screen
+   whose visitor has no account yet, and AccountLayout gave them the application's sidebar and
+   account menu -- navigation into pages they cannot open, and an account chip for an account they
+   do not have. This one is the whole viewport and nothing else.
+
+   The HttpContext guard is AccountLayout's and has to stay: the identity pages set cookies, which
+   an interactive render cannot do, so a render without an HttpContext forces a server-rendered
+   reload. *@
+@if (HttpContext is null)
+{
+    <p>Loading…</p>
+}
+else
+{
+    @Body
+}
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (HttpContext is null)
+        {
+            NavigationManager.Refresh(forceReload: true);
+        }
+    }
+}

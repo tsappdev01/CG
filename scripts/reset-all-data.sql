@@ -21,20 +21,24 @@
     logins, deleted below), and local sign-in is gone too. To get back in:
       1. Restart the app once (or let it start normally) -- this applies any pending migrations,
          so any table skipped above (if it didn't exist yet) will exist for next time.
-      2. Sign in however this deployment normally authenticates (Windows/AD, Azure AD SSO, or
-         the local dev fallback/Account/Register) -- this creates/links a fresh AspNetUsers row
-         for you with no roles yet.
-      3. Go to /admin/setup and click "Claim administrator access". That page only allows this
-         while zero users hold the Administrator role (see AdminSetup.razor) -- exactly the state
-         this script leaves the database in -- so it grants your account Administrator with no
-         manual SQL required.
+      2. Sign in with the built-in setup account -- DefaultAdmin:UserName / DefaultAdmin:Password
+         in appsettings.json. Startup re-provisions it whenever no real administrator exists,
+         which is what this script leaves behind, and the login page offers it again because it
+         only hides the password form once real users exist.
+
+         SINGLE SIGN-ON CANNOT GET YOU BACK IN. It used to create an account for whoever arrived;
+         it no longer does (see ExternalLogin.razor) -- an identity that matches no account here
+         is refused, and after this script nothing matches. Create people from User Management
+         first, each with a sign-in account, and they can use SSO from then on.
+      3. The setup account already holds Administrator, so there is nothing to claim. /admin/setup
+         remains for a deployment that has real users but none of them an administrator.
       4. From User Management, create/link a Member record for yourself if the app's admin
          screens require one to fully use the account, and re-add any other users' accounts.
 
-    NOTE ON DEMO DATA: GovernanceSeeder.SeedAsync runs on every app startup and re-inserts its
-    sample Companies/Departments/Members/Transactions automatically whenever the Members table is
-    empty (see Program.cs). After this script runs, the NEXT app start will repopulate that
-    sample data unless you delete it again -- it is not an empty database that stays empty.
+    NOTE ON DEMO DATA: GovernanceSeeder.SeedAsync re-inserts sample Companies/Departments/Members
+    whenever the Members table is empty -- but only when Seed:DemoData is true, which it is not by
+    default. On a deployment that has turned it on, the next app start repopulates that sample data
+    and this is not an empty database that stays empty.
 
     Run manually against the CGS database (e.g. via SSMS, Azure Data Studio, or
     `sqlcmd -S UATWEB01 -d CGS -i scripts/reset-all-data.sql`). Not part of the app's normal

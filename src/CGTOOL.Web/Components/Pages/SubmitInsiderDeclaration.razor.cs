@@ -334,8 +334,15 @@ public partial class SubmitInsiderDeclaration
             return;
         }
 
-        // Editing is allowed through the entire due date (comparing dates, not times), per FRD §7.4.
-        if (declaration.DeclarationCycleRun.DueDateUtc.Date < DateTime.UtcNow.Date)
+        // Editing a SUBMITTED declaration is allowed through the entire due date (comparing dates,
+        // not times), per FRD §7.4, and not afterwards: what was filed stands.
+        //
+        // A draft is not a filing, so the window does not apply to it. It used to, and that made
+        // Save as Draft a trap: a member who had saved one was locked out after the due date, while
+        // a member who had never opened the form could still fill it in and submit late -- the
+        // route for a new declaration has no due-date test at all. Pressing Save as Draft is not
+        // the moment to forfeit a declaration.
+        if (!declaration.IsDraft && declaration.DeclarationCycleRun.DueDateUtc.Date < DateTime.UtcNow.Date)
         {
             _step = Step.EditWindowClosed;
             return;

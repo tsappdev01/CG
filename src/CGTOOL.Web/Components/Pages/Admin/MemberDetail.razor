@@ -303,7 +303,19 @@
 
             <AuthorizeView Roles="@GovernanceRoles.Administrator" Context="rolesCtx">
                 <Authorized>
-                    @if (!string.IsNullOrEmpty(_editing.ApplicationUserId))
+                    @* A role is held by the sign-in account, not by the person: with nothing linked
+                       there is nothing to put a role on. Saying so beats drawing no field at all,
+                       which is what this did -- and left "why can I not set their role?" unanswered. *@
+                    @if (string.IsNullOrEmpty(_editing.ApplicationUserId))
+                    {
+                        <div class="cg-ad-status cg-ad-warn">
+                            <b>No role can be set yet.</b> A role belongs to the account someone signs in
+                            with, and this person has none linked. Link one under <b>How they sign in</b>
+                            above — then the role field appears here, and their role shows on the User
+                            Management list.
+                        </div>
+                    }
+                    else
                     {
                         <label class="cg-field">
                             <span>System roles for this login</span>

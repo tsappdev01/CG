@@ -135,8 +135,16 @@ public class DirectoryImporter(
                     updated++;
                 }
 
-                var appUser = await EnsureLoginAccountAsync(user, member, ct);
-                if (appUser is null) continue;
+                var (appUser, accountProblem) = await EnsureLoginAccountAsync(user, member, ct);
+                if (appUser is null)
+                {
+                    // Said out loud rather than only logged. Without a login account the person has
+                    // no role and cannot be given one -- the role field on their record is not even
+                    // drawn -- and an import that reported "added" and stopped there left that to
+                    // be discovered later, with nothing on screen saying why.
+                    problems.Add($"{user.DisplayName}: {accountProblem ?? "no sign-in account could be created, so they have no role and cannot sign in."}");
+                    continue;
+                }
 
                 // A role named in the source is applied; Entra never names one, so its users
                 // keep the Normal User grant EnsureLoginAccountAsync gives a new account.
@@ -231,7 +239,8 @@ public class DirectoryImporter(
     /// provisioning a stranger on first use. The account carries no password -- there is nothing to
     /// sign in with except Entra.
     /// </summary>
-    private async Task<ApplicationUser?> EnsureLoginAccountAsync(DirectoryPerson user, Member member, CancellationToken ct)
+    /// <returns>The account, or null and the reason it could not be made.</returns>
+    private async Task<(ApplicationUser? User, string? Problem)> EnsureLoginAccountAsync(DirectoryPerson user, Member member, CancellationToken ct)
     {
         var address = user.Address!;
         var appUser = await userManager.FindByNameAsync(address) ?? await userManager.FindByEmailAsync(address);
@@ -248,10 +257,9 @@ public class DirectoryImporter(
             var created = await userManager.CreateAsync(appUser);
             if (!created.Succeeded)
             {
-                logger.LogWarning(
-                    "Could not create a login account for {Address}: {Errors}",
-                    address, string.Join("; ", created.Errors.Select(e => e.Description)));
-                return null;
+                var reasons = string.Join("; ", created.Errors.Select(e => e.Description));
+                logger.LogWarning("Could not create a login account for {Address}: {Errors}", address, reasons);
+                return (null, $"no sign-in account could be created for {address} — {reasons}");
             }
 
             await userManager.AddToRoleAsync(appUser, GovernanceRoles.NormalUser);
@@ -267,7 +275,7 @@ public class DirectoryImporter(
             await memberWriter.UpdateAsync(member);
         }
 
-        return appUser;
+        return (appUser, null);
     }
 
     /// <summary>

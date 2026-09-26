@@ -1,9 +1,5 @@
 @using System.Security.Claims
-@inject SignInManager<ApplicationUser> SignInManager
-@inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthState
-@inject IAuditLogger AuditLog
-@inject NavigationManager Nav
 
 <AuthorizeView>
     <Authorized>
@@ -11,7 +7,12 @@
         {
             <div class="cg-impersonation-banner cg-admin-impersonation-banner">
                 Signed in as <b>@context.User.Identity?.Name</b> (support session started by <b>@_originalAdminName</b>)
-                <button type="button" class="cg-action-btn" @onclick="ReturnToAdminAsync">Return to my account</button>
+                @* Ending the session signs the administrator back in, which writes a cookie, so it
+                   has to be a form post rather than a circuit event. *@
+                <form method="post" action="/Account/ImpersonateEnd">
+                    <AntiforgeryToken />
+                    <button type="submit" class="cg-action-btn">Return to my account</button>
+                </form>
             </div>
         }
     </Authorized>
@@ -24,21 +25,5 @@
     {
         var state = await AuthState.GetAuthenticationStateAsync();
         _originalAdminName = state.User.FindFirst(AdminImpersonationClaims.OriginalAdminName)?.Value;
-    }
-
-    private async Task ReturnToAdminAsync()
-    {
-        var state = await AuthState.GetAuthenticationStateAsync();
-        var originalAdminId = state.User.FindFirst(AdminImpersonationClaims.OriginalAdminId)?.Value;
-        var impersonatedName = state.User.Identity?.Name;
-        if (originalAdminId is null) return;
-
-        var admin = await UserManager.FindByIdAsync(originalAdminId);
-        if (admin is null) return;
-
-        await SignInManager.SignInAsync(admin, isPersistent: false);
-        await AuditLog.LogAsync(admin.UserName ?? "unknown", AuditAction.ImpersonationEnd, nameof(ApplicationUser), originalAdminId, $"Ended support session acting as {impersonatedName}");
-
-        Nav.NavigateTo("/", forceLoad: true);
     }
 }

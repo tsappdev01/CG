@@ -11,7 +11,6 @@
 @inject AuthenticationStateProvider AuthState
 @inject UserManager<ApplicationUser> UserManager
 @inject RoleManager<IdentityRole> RoleManager
-@inject SignInManager<ApplicationUser> SignInManager
 @inject IMemberWelcomeEmailSender WelcomeEmailSender
 @inject NavigationManager Nav
 @inject ILogger<MemberDetail> Logger
@@ -336,7 +335,13 @@
                         {
                             <div class="cg-ad-status cg-ad-warn">
                                 Support access: sign in as this user's account for troubleshooting or delegated access. Fully logged.
-                                <button type="button" class="cg-action-btn cg-critical" @onclick="LogInAsAsync">Log in as this user</button>
+                                @* A real form post, not a circuit event: signing in writes a cookie,
+                                   and headers cannot be written once the response has started. *@
+                                <form method="post" action="/Account/ImpersonateStart">
+                                    <AntiforgeryToken />
+                                    <input type="hidden" name="userId" value="@_editing.ApplicationUserId" />
+                                    <button type="submit" class="cg-action-btn cg-critical">Log in as this user</button>
+                                </form>
                             </div>
                         }
                     }

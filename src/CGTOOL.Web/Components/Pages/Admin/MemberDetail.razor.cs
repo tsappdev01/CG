@@ -630,30 +630,6 @@ public partial class MemberDetail
         await LoadAuditAsync();
     }
 
-    private async Task LogInAsAsync()
-    {
-        if (_editing is null || string.IsNullOrEmpty(_editing.ApplicationUserId)) return;
-        if (_editing.ApplicationUserId == _currentUserId) return;
-
-        var targetUser = _users!.FirstOrDefault(u => u.Id == _editing.ApplicationUserId);
-        if (targetUser is null) return;
-
-        var state = await AuthState.GetAuthenticationStateAsync();
-        var adminId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown";
-        var adminName = state.User.Identity?.Name ?? "unknown";
-
-        await AuditLog.LogAsync(adminName, AuditAction.ImpersonationStart, nameof(ApplicationUser), targetUser.Id,
-            $"Administrator support session started: acting as {targetUser.Email}");
-
-        await SignInManager.SignInWithClaimsAsync(targetUser, isPersistent: false,
-        [
-            new Claim(AdminImpersonationClaims.OriginalAdminId, adminId),
-            new Claim(AdminImpersonationClaims.OriginalAdminName, adminName),
-        ]);
-
-        Nav.NavigateTo("/", forceLoad: true);
-    }
-
     private async Task<string> CurrentActorAsync()
     {
         var state = await AuthState.GetAuthenticationStateAsync();

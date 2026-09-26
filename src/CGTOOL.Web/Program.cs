@@ -269,6 +269,7 @@ app.MapRazorComponents<App>()
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
+app.MapAdminImpersonationEndpoints();
 
 // UAE PASS OAuth2 login callback (see UaePassAuthService/SubmitRelatedPartyCoiDeclaration). A plain
 // minimal API endpoint, not a Blazor component -- the external redirect out to UAE PASS and back

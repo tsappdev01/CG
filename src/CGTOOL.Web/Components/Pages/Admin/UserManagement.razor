@@ -162,6 +162,29 @@
                     <a class="cg-action-btn" href="/admin/user-list-template.csv" download>Download template</a>
                 </div>
 
+                @* A directory of a few hundred people takes long enough that a screen showing
+                   nothing reads as a hang, and the upload gets abandoned half-applied. *@
+                @if (_progressPhase != ImportPhase.Idle)
+                {
+                    <div class="cg-import-progress" role="status" aria-live="polite">
+                        <div class="cg-import-progress-head">
+                            <span class="cg-import-progress-label">@ProgressLabel</span>
+                            @if (!ProgressIsIndeterminate)
+                            {
+                                <span class="cg-import-progress-pct mono">@ProgressPercent%</span>
+                            }
+                        </div>
+                        <div class="cg-progress-track @(ProgressIsIndeterminate ? "indeterminate" : "")"
+                             role="progressbar"
+                             aria-valuemin="0" aria-valuemax="100"
+                             aria-valuenow="@(ProgressIsIndeterminate ? null : ProgressPercent.ToString())"
+                             aria-label="@ProgressLabel">
+                            <span class="cg-progress-fill" style="width:@(ProgressIsIndeterminate ? 100 : ProgressPercent)%"></span>
+                        </div>
+                        <p class="cg-subtitle">Leave this page open until it finishes.</p>
+                    </div>
+                }
+
                 @if (_importResult is not null)
                 {
                     <div class="cg-upload-result">

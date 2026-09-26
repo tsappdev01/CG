@@ -49,6 +49,51 @@ public partial class UserManagement
     private bool _syncing;
     private bool _showUpload;
     private bool _importing;
+
+    /// <summary>Which part of the upload is running, so the bar can say what it is waiting on
+    /// rather than just spinning: the three phases have very different durations and only two of
+    /// them can be measured.</summary>
+    private enum ImportPhase { Idle, Uploading, Reading, Importing }
+
+    private ImportPhase _progressPhase = ImportPhase.Idle;
+    private string? _progressName;
+    private long _progressDone;
+    private long _progressTotal;
+    private DateTime _lastRenderUtc = DateTime.MinValue;
+
+    private int ProgressPercent => _progressTotal <= 0 ? 0 : (int)Math.Min(100, _progressDone * 100 / _progressTotal);
+
+    private string ProgressLabel => _progressPhase switch
+    {
+        ImportPhase.Uploading => $"Uploading {_progressName}",
+        ImportPhase.Reading => "Reading the spreadsheet",
+        ImportPhase.Importing => $"Importing {_progressDone} of {_progressTotal} people",
+        _ => string.Empty,
+    };
+
+    /// <summary>Reading the spreadsheet is one synchronous parse with nothing to count, so its bar
+    /// is striped rather than claiming a position it does not know.</summary>
+    private bool ProgressIsIndeterminate => _progressPhase == ImportPhase.Reading;
+
+    /// <summary>A render per 64 KB chunk would be thousands of round trips over the circuit for one
+    /// file and would itself slow the upload down. Ten a second is smooth to watch and cheap.</summary>
+    private async Task ThrottledRenderAsync()
+    {
+        var now = DateTime.UtcNow;
+        if ((now - _lastRenderUtc).TotalMilliseconds < 100) return;
+        _lastRenderUtc = now;
+        await RenderNowAsync();
+    }
+
+    private async Task RenderNowAsync()
+    {
+        _lastRenderUtc = DateTime.UtcNow;
+        await InvokeAsync(StateHasChanged);
+        // Hands the circuit back so the frame is actually sent before the next chunk is read;
+        // without it the whole copy can run to completion inside one continuation and the bar
+        // jumps from nothing to done.
+        await Task.Yield();
+    }
     private string? _importResult;
     private List<string> _importProblems = [];
 
@@ -73,6 +118,11 @@ public partial class UserManagement
         _importing = true;
         _importResult = null;
         _importProblems = [];
+        _progressPhase = ImportPhase.Uploading;
+        _progressName = file.Name;
+        _progressDone = 0;
+        _progressTotal = file.Size;
+        StateHasChanged();
 
         try
         {
@@ -84,9 +134,22 @@ public partial class UserManagement
                 using var buffer = new MemoryStream();
                 await using (var source = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024))
                 {
-                    await source.CopyToAsync(buffer);
+                    // Copied a chunk at a time rather than with CopyToAsync so the bar can move: the
+                    // browser sends the file over the circuit in pieces, and this is the only point
+                    // that knows how much has arrived.
+                    var chunk = new byte[64 * 1024];
+                    int read;
+                    while ((read = await source.ReadAsync(chunk)) > 0)
+                    {
+                        await buffer.WriteAsync(chunk.AsMemory(0, read));
+                        _progressDone += read;
+                        await ThrottledRenderAsync();
+                    }
                 }
                 buffer.Position = 0;
+
+                _progressPhase = ImportPhase.Reading;
+                await RenderNowAsync();
 
                 parsed = UserListWorkbookParser.Parse(buffer, file.Name);
             }
@@ -107,10 +170,21 @@ public partial class UserManagement
             }
 
             var state = await AuthState.GetAuthenticationStateAsync();
+
+            _progressPhase = ImportPhase.Importing;
+            _progressDone = 0;
+            _progressTotal = parsed.People.Count;
+            await RenderNowAsync();
+
             var result = await DirectoryImporter.ImportAsync(
                 parsed.People,
                 state.User.Identity?.Name ?? "unknown",
-                $"User list upload ({file.Name})");
+                $"User list upload ({file.Name})",
+                progress: new Progress<int>(n =>
+                {
+                    _progressDone = n;
+                    _ = ThrottledRenderAsync();
+                }));
 
             _importProblems = [.. parsed.Problems, .. result.Problems];
             _importResult =
@@ -124,6 +198,7 @@ public partial class UserManagement
         finally
         {
             _importing = false;
+            _progressPhase = ImportPhase.Idle;
         }
     }
 

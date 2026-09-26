@@ -14,11 +14,15 @@ public interface IDirectoryImporter
     /// <param name="afterAccount">Run once per person after their login account exists; returns true
     /// when it stored something worth counting. The Entra path uses it to fetch the profile photo,
     /// which a spreadsheet cannot supply.</param>
+    /// <param name="progress">Reports how many people have been dealt with so far, for a caller
+    /// showing a progress bar. A directory of a few hundred takes long enough that a screen with no
+    /// sign of life reads as a hang, and the run gets abandoned half-applied.</param>
     Task<DirectorySyncResult> ImportAsync(
         IReadOnlyList<DirectoryPerson> people,
         string actorName,
         string sourceLabel,
         Func<DirectoryPerson, ApplicationUser, CancellationToken, Task<bool>>? afterAccount = null,
+        IProgress<int>? progress = null,
         CancellationToken ct = default);
 }
 
@@ -49,8 +53,10 @@ public class DirectoryImporter(
         string actorName,
         string sourceLabel,
         Func<DirectoryPerson, ApplicationUser, CancellationToken, Task<bool>>? afterAccount = null,
+        IProgress<int>? progress = null,
         CancellationToken ct = default)
     {
+        var done = 0;
         int created = 0, updated = 0, skipped = 0, photos = 0;
         var problems = new List<string>();
 
@@ -62,6 +68,8 @@ public class DirectoryImporter(
 
         foreach (var user in people)
         {
+            progress?.Report(done++);
+
             ct.ThrowIfCancellationRequested();
 
             if (string.IsNullOrWhiteSpace(user.DisplayName) || string.IsNullOrWhiteSpace(user.Address))

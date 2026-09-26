@@ -266,6 +266,7 @@ public partial class MyWorkspace : ComponentBase
         TradeLicenseDetails = c.TradeLicenseDetails,
         NatureOfHolding = c.NatureOfHolding,
         OwnershipPercentage = c.OwnershipPercentage,
+        ServesAsBoardMemberOrExecutive = c.ServesAsBoardMemberOrExecutive,
         TradeLicensePath = c.TradeLicensePath,
         MoaPath = c.MoaPath,
         PoaPath = c.PoaPath,
@@ -280,6 +281,7 @@ public partial class MyWorkspace : ComponentBase
         to.TradeLicenseDetails = from.TradeLicenseDetails;
         to.NatureOfHolding = from.NatureOfHolding;
         to.OwnershipPercentage = from.OwnershipPercentage;
+        to.ServesAsBoardMemberOrExecutive = from.ServesAsBoardMemberOrExecutive;
         to.TradeLicensePath = from.TradeLicensePath;
         to.MoaPath = from.MoaPath;
         to.PoaPath = from.PoaPath;
@@ -357,6 +359,7 @@ public partial class MyWorkspace : ComponentBase
         Cmp("Name of the Company", before.CompanyName, after.CompanyName);
         Cmp("Nature Of Holding", HoldingLabel(before.NatureOfHolding), HoldingLabel(after.NatureOfHolding));
         Cmp("Ownership %", Pct(before.OwnershipPercentage), Pct(after.OwnershipPercentage));
+        Cmp("Board member or senior executive", YesNo(before.ServesAsBoardMemberOrExecutive), YesNo(after.ServesAsBoardMemberOrExecutive));
         Cmp("Trade License No", before.TradeLicenceNumber, after.TradeLicenceNumber);
         Cmp("Trade License Legal Name", before.TradeLicenceLegalName, after.TradeLicenceLegalName);
         Cmp("Trade License Expiry", Day(before.TradeLicenceExpiryDate), Day(after.TradeLicenceExpiryDate));
@@ -394,6 +397,7 @@ public partial class MyWorkspace : ComponentBase
         $"Name of the Company: {Show(c.CompanyName)}",
         $"Nature Of Holding: {HoldingLabel(c.NatureOfHolding)}",
         $"Ownership %: {Show(Pct(c.OwnershipPercentage))}",
+        $"Board member or senior executive: {YesNo(c.ServesAsBoardMemberOrExecutive)}",
         $"Trade License No: {Show(c.TradeLicenceNumber)}",
         $"Trade License Legal Name: {Show(c.TradeLicenceLegalName)}",
         $"Trade License Expiry: {Show(Day(c.TradeLicenceExpiryDate))}",

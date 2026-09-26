@@ -570,6 +570,15 @@
                     <span>Ownership %</span>
                     <input type="number" step="0.01" min="0" max="100" class="cg-input" placeholder="0-100" @bind="_companyForm.OwnershipPercentage" />
                 </label>
+                <div class="cg-field cg-field-wide">
+                    <span>Serve as board member or senior executive?</span>
+                    <label class="cg-switch">
+                        <input type="checkbox" @bind="_companyForm.ServesAsBoardMemberOrExecutive" />
+                        <span class="cg-switch-track" aria-hidden="true"></span>
+                        <span class="cg-switch-label">@(_companyForm.ServesAsBoardMemberOrExecutive ? "Yes" : "No")</span>
+                    </label>
+                    <span class="cg-hint">What the Related Party &amp; COI declaration asks under "companies in which you serve as board member or senior executive".</span>
+                </div>
             </div>
 
             <h3 class="cg-doc-heading">Documents</h3>

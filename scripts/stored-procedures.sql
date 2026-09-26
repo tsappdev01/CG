@@ -59,6 +59,7 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'EmiratesIdNumber') IS NULL
     OR COL_LENGTH('dbo.OwnedCompanies', 'TradeLicenceNumber') IS NULL
     OR COL_LENGTH('dbo.OwnedCompanies', 'NatureOfHolding') IS NULL
+    OR COL_LENGTH('dbo.OwnedCompanies', 'ServesAsBoardMemberOrExecutive') IS NULL
     OR OBJECT_ID('dbo.MemberDocuments', 'U') IS NULL
     OR COL_LENGTH('dbo.AuditLogEntries', 'RecordHash') IS NULL
     OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
@@ -1886,13 +1887,16 @@ CREATE OR ALTER PROCEDURE dbo.usp_OwnedCompany_Insert
     @TradeLicenseDetails nvarchar(400) = NULL,
     @OwnershipPercentage decimal(5,2) = NULL,
     @NatureOfHolding int = 0,
+    @ServesAsBoardMemberOrExecutive bit = 0,
     @NewId int OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.OwnedCompanies (MemberId, CompanyName, TradeLicenseDetails, OwnershipPercentage, NatureOfHolding)
-    VALUES (@MemberId, @CompanyName, @TradeLicenseDetails, @OwnershipPercentage, @NatureOfHolding);
+    INSERT INTO dbo.OwnedCompanies
+        (MemberId, CompanyName, TradeLicenseDetails, OwnershipPercentage, NatureOfHolding, ServesAsBoardMemberOrExecutive)
+    VALUES
+        (@MemberId, @CompanyName, @TradeLicenseDetails, @OwnershipPercentage, @NatureOfHolding, @ServesAsBoardMemberOrExecutive);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1909,7 +1913,8 @@ CREATE OR ALTER PROCEDURE dbo.usp_OwnedCompany_Update
     @TradeLicenceNumber nvarchar(100) = NULL,
     @TradeLicenceLegalName nvarchar(200) = NULL,
     @TradeLicenceExpiryDate datetime2 = NULL,
-    @NatureOfHolding int = 0
+    @NatureOfHolding int = 0,
+    @ServesAsBoardMemberOrExecutive bit = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1917,7 +1922,8 @@ BEGIN
     SET CompanyName = @CompanyName, TradeLicenseDetails = @TradeLicenseDetails, OwnershipPercentage = @OwnershipPercentage,
         TradeLicensePath = @TradeLicensePath, MoaPath = @MoaPath, PoaPath = @PoaPath,
         TradeLicenceNumber = @TradeLicenceNumber, TradeLicenceLegalName = @TradeLicenceLegalName,
-        TradeLicenceExpiryDate = @TradeLicenceExpiryDate, NatureOfHolding = @NatureOfHolding
+        TradeLicenceExpiryDate = @TradeLicenceExpiryDate, NatureOfHolding = @NatureOfHolding,
+        ServesAsBoardMemberOrExecutive = @ServesAsBoardMemberOrExecutive
     WHERE Id = @Id;
 END
 GO

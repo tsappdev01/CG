@@ -26,6 +26,12 @@ public class OwnedCompany
     /// <summary>Ownership percentage (0-100).</summary>
     public decimal? OwnershipPercentage { get; set; }
 
+    /// <summary>Whether the member sits on this company's board or serves as a senior executive of
+    /// it. Held on the register, like the DI shareholding flag on a relative: it is a standing fact
+    /// about the member's relationship to the company, and it is what the Related Party & COI
+    /// declaration's "board member or senior executive" section is asking for.</summary>
+    public bool ServesAsBoardMemberOrExecutive { get; set; }
+
     [MaxLength(260)]
     public string? TradeLicensePath { get; set; }
 

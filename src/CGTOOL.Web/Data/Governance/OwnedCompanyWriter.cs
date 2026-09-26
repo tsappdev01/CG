@@ -16,7 +16,8 @@ public class OwnedCompanyWriter(IStoredProcedureExecutor sp) : IOwnedCompanyWrit
         new SqlParameter("@CompanyName", company.CompanyName),
         new SqlParameter("@TradeLicenseDetails", (object?)company.TradeLicenseDetails ?? DBNull.Value),
         new SqlParameter("@OwnershipPercentage", (object?)company.OwnershipPercentage ?? DBNull.Value),
-        new SqlParameter("@NatureOfHolding", (int)company.NatureOfHolding));
+        new SqlParameter("@NatureOfHolding", (int)company.NatureOfHolding),
+        new SqlParameter("@ServesAsBoardMemberOrExecutive", company.ServesAsBoardMemberOrExecutive));
 
     public Task UpdateAsync(OwnedCompany company) => sp.ExecuteAsync("dbo.usp_OwnedCompany_Update",
         new SqlParameter("@Id", company.Id),
@@ -24,6 +25,7 @@ public class OwnedCompanyWriter(IStoredProcedureExecutor sp) : IOwnedCompanyWrit
         new SqlParameter("@TradeLicenseDetails", (object?)company.TradeLicenseDetails ?? DBNull.Value),
         new SqlParameter("@OwnershipPercentage", (object?)company.OwnershipPercentage ?? DBNull.Value),
         new SqlParameter("@NatureOfHolding", (int)company.NatureOfHolding),
+        new SqlParameter("@ServesAsBoardMemberOrExecutive", company.ServesAsBoardMemberOrExecutive),
         new SqlParameter("@TradeLicensePath", (object?)company.TradeLicensePath ?? DBNull.Value),
         new SqlParameter("@TradeLicenceNumber", (object?)company.TradeLicenceNumber ?? DBNull.Value),
         new SqlParameter("@TradeLicenceLegalName", (object?)company.TradeLicenceLegalName ?? DBNull.Value),

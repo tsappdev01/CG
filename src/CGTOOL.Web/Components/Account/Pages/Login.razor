@@ -23,6 +23,13 @@
     @if (_useSingleSignOn)
     {
         <p class="cg-subtitle">Sign in with your Dubai Investments account.</p>
+
+        @* Why the last attempt was turned away -- that this account is not set up here, or what
+           the provider objected to. It is carried back on a cookie by IdentityRedirectManager and
+           was only rendered on the branch with the credentials form, so in single sign-on mode
+           every refusal came back as a silent bounce to this page with nothing said. *@
+        <StatusMessage />
+
         <ExternalLoginPicker />
     }
     else

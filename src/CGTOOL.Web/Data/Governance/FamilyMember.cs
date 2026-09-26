@@ -5,8 +5,10 @@ namespace CGTOOL.Web.Data.Governance;
 /// <summary>A member's own persistent "My Workspace &gt; My Family" list -- reference data the member
 /// maintains once, independent of any specific declaration cycle (unlike InsiderDeclarationRelative/
 /// CoiRelative, which are answers captured against one particular submission).</summary>
-/// <summary>Whether the interest in the organization is held directly or through someone else.</summary>
-public enum RelatedPartyInterestType { None, Direct, Indirect }
+/// <summary>How the organization is held. Replaced Direct/Indirect, which described the route to an
+/// interest rather than what the interest is, and could not distinguish a subsidiary from a
+/// minority affiliate -- the thing a reader of the register actually needs to know.</summary>
+public enum RelatedPartyHoldingNature { None, Affiliate, Owned, Subsidiary }
 
 public class FamilyMember
 {
@@ -27,6 +29,11 @@ public class FamilyMember
 
     public DateOnly? DateOfBirth { get; set; }
 
+    /// <summary>National Investor Number. Held per related party because the insider-trading
+    /// declaration asks for the NIN of every relative who holds one, not only the declarant's.</summary>
+    [MaxLength(60)]
+    public string? NinNumber { get; set; }
+
     [MaxLength(80)]
     public string? Nationality { get; set; }
 
@@ -39,7 +46,7 @@ public class FamilyMember
     [MaxLength(160)]
     public string? Organization { get; set; }
 
-    public RelatedPartyInterestType InterestType { get; set; } = RelatedPartyInterestType.None;
+    public RelatedPartyHoldingNature NatureOfHolding { get; set; } = RelatedPartyHoldingNature.None;
 
     /// <summary>Ownership percentage in the organization above (0-100).</summary>
     public decimal? OwnershipPercentage { get; set; }
@@ -49,4 +56,18 @@ public class FamilyMember
 
     [MaxLength(260)]
     public string? PassportPath { get; set; }
+
+    [MaxLength(260)]
+    public string? TradeLicencePath { get; set; }
+
+    /// <summary>Read off the uploaded trade licence by Document Intelligence where it is configured,
+    /// and editable either way: the extraction is a best-effort pattern match over the OCR text, not
+    /// an authoritative read, so the member has to be able to correct it.</summary>
+    [MaxLength(100)]
+    public string? TradeLicenceNumber { get; set; }
+
+    [MaxLength(200)]
+    public string? TradeLicenceLegalName { get; set; }
+
+    public DateTime? TradeLicenceExpiryDate { get; set; }
 }

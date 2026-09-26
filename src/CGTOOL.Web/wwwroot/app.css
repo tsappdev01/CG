@@ -2267,6 +2267,84 @@ select.cg-input {
 .cg-workspace-companies-heading { margin-top: 30px; }
 .cg-companies-card { padding: 20px 22px; }
 
+/* ---------- workspace accordions ---------- */
+.cg-accordion { padding: 0; overflow: hidden; }
+.cg-accordion-head {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 20px 24px;
+    background: transparent;
+    border: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.cg-accordion.is-open .cg-accordion-head { border-bottom: 1px solid var(--cg-line); }
+.cg-accordion-head:hover { background: var(--cg-accent-tint); }
+.cg-accordion-titles { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.cg-accordion-titles .cg-card-title { margin: 0; font-size: 17px; font-weight: 700; color: var(--cg-ink); }
+.cg-accordion-titles .cg-subtitle { margin: 0; }
+.cg-accordion-count {
+    flex: none;
+    min-width: 28px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--cg-accent-tint);
+    color: var(--cg-accent);
+    font-size: 12.5px;
+    font-weight: 700;
+    text-align: center;
+}
+.cg-accordion-chevron {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 3px;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 18l6-6-6-6'/></svg>") center/16px no-repeat;
+    transition: transform .15s ease;
+}
+.cg-accordion.is-open .cg-accordion-chevron { transform: rotate(90deg); }
+.cg-accordion-body { padding: 18px 24px 20px; }
+.cg-companies-controls { justify-content: flex-end; }
+
+/* ---------- attached documents ---------- */
+.cg-doc-chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.cg-doc-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--cg-line);
+    background: var(--cg-accent-tint);
+    color: var(--cg-accent);
+    font-size: 11.5px;
+    font-weight: 650;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.cg-doc-chip:hover { text-decoration: underline; }
+.cg-doc-heading { font-size: 14px; font-weight: 700; margin: 22px 0 10px; color: var(--cg-ink); }
+.cg-doc-uploads { display: flex; flex-direction: column; gap: 10px; }
+.cg-doc-upload {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    border: 1px solid var(--cg-line);
+    border-radius: 10px;
+}
+.cg-doc-upload-label { font-size: 12.5px; font-weight: 650; min-width: 120px; }
+.cg-doc-upload input[type=file] { font-size: 12.5px; max-width: 100%; }
+.cg-doc-upload-state { font-size: 12.5px; color: var(--cg-ink-muted); }
+/* Indeterminate: the browser hands the file over in one go, so there is no honest percentage --
+   this says "in flight", which is what the member needs to know. */
+.cg-doc-progress { width: 120px; height: 6px; }
+.cg-col-relname { min-width: 190px; }
+.cg-captured-grid { margin-top: 12px; }
+
 @media (max-width: 1200px) {
     .cg-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 18px; }
     .cg-summary-item:nth-child(3) { padding-left: 0; border-left: none; }

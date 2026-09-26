@@ -16,11 +16,11 @@ public class FamilyMemberWriter(IStoredProcedureExecutor sp) : IFamilyMemberWrit
         new SqlParameter("@Name", familyMember.Name),
         new SqlParameter("@Relationship", (int)familyMember.Relationship),
         new SqlParameter("@IdentificationNumber", (object?)familyMember.IdentificationNumber ?? DBNull.Value),
-        new SqlParameter("@DateOfBirth", familyMember.DateOfBirth is { } dob ? dob.ToDateTime(TimeOnly.MinValue) : DBNull.Value),
+        new SqlParameter("@NinNumber", (object?)familyMember.NinNumber ?? DBNull.Value),
         new SqlParameter("@Nationality", (object?)familyMember.Nationality ?? DBNull.Value),
         new SqlParameter("@Occupation", (object?)familyMember.Occupation ?? DBNull.Value),
         new SqlParameter("@Organization", (object?)familyMember.Organization ?? DBNull.Value),
-        new SqlParameter("@InterestType", (int)familyMember.InterestType),
+        new SqlParameter("@NatureOfHolding", (int)familyMember.NatureOfHolding),
         new SqlParameter("@OwnershipPercentage", (object?)familyMember.OwnershipPercentage ?? DBNull.Value));
 
     public Task UpdateAsync(FamilyMember familyMember) => sp.ExecuteAsync("dbo.usp_FamilyMember_Update",
@@ -29,12 +29,16 @@ public class FamilyMemberWriter(IStoredProcedureExecutor sp) : IFamilyMemberWrit
         new SqlParameter("@Relationship", (int)familyMember.Relationship),
         new SqlParameter("@EmiratesIdPath", (object?)familyMember.EmiratesIdPath ?? DBNull.Value),
         new SqlParameter("@PassportPath", (object?)familyMember.PassportPath ?? DBNull.Value),
+        new SqlParameter("@TradeLicencePath", (object?)familyMember.TradeLicencePath ?? DBNull.Value),
+        new SqlParameter("@TradeLicenceNumber", (object?)familyMember.TradeLicenceNumber ?? DBNull.Value),
+        new SqlParameter("@TradeLicenceLegalName", (object?)familyMember.TradeLicenceLegalName ?? DBNull.Value),
+        new SqlParameter("@TradeLicenceExpiryDate", (object?)familyMember.TradeLicenceExpiryDate ?? DBNull.Value),
         new SqlParameter("@IdentificationNumber", (object?)familyMember.IdentificationNumber ?? DBNull.Value),
-        new SqlParameter("@DateOfBirth", familyMember.DateOfBirth is { } dob ? dob.ToDateTime(TimeOnly.MinValue) : DBNull.Value),
+        new SqlParameter("@NinNumber", (object?)familyMember.NinNumber ?? DBNull.Value),
         new SqlParameter("@Nationality", (object?)familyMember.Nationality ?? DBNull.Value),
         new SqlParameter("@Occupation", (object?)familyMember.Occupation ?? DBNull.Value),
         new SqlParameter("@Organization", (object?)familyMember.Organization ?? DBNull.Value),
-        new SqlParameter("@InterestType", (int)familyMember.InterestType),
+        new SqlParameter("@NatureOfHolding", (int)familyMember.NatureOfHolding),
         new SqlParameter("@OwnershipPercentage", (object?)familyMember.OwnershipPercentage ?? DBNull.Value));
 
     public Task DeleteAsync(int id) => sp.ExecuteAsync("dbo.usp_FamilyMember_Delete", new SqlParameter("@Id", id));

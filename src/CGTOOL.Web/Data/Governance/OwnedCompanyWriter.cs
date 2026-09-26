@@ -23,6 +23,9 @@ public class OwnedCompanyWriter(IStoredProcedureExecutor sp) : IOwnedCompanyWrit
         new SqlParameter("@TradeLicenseDetails", (object?)company.TradeLicenseDetails ?? DBNull.Value),
         new SqlParameter("@OwnershipPercentage", (object?)company.OwnershipPercentage ?? DBNull.Value),
         new SqlParameter("@TradeLicensePath", (object?)company.TradeLicensePath ?? DBNull.Value),
+        new SqlParameter("@TradeLicenceNumber", (object?)company.TradeLicenceNumber ?? DBNull.Value),
+        new SqlParameter("@TradeLicenceLegalName", (object?)company.TradeLicenceLegalName ?? DBNull.Value),
+        new SqlParameter("@TradeLicenceExpiryDate", (object?)company.TradeLicenceExpiryDate ?? DBNull.Value),
         new SqlParameter("@MoaPath", (object?)company.MoaPath ?? DBNull.Value),
         new SqlParameter("@PoaPath", (object?)company.PoaPath ?? DBNull.Value));
 

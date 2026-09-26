@@ -51,7 +51,11 @@
 */
 IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'IdentificationNumber') IS NULL
-    OR COL_LENGTH('dbo.FamilyMembers', 'InterestType') IS NULL
+    OR COL_LENGTH('dbo.FamilyMembers', 'NatureOfHolding') IS NULL
+    OR COL_LENGTH('dbo.FamilyMembers', 'TradeLicencePath') IS NULL
+    OR COL_LENGTH('dbo.FamilyMembers', 'NinNumber') IS NULL
+    OR COL_LENGTH('dbo.FamilyMembers', 'TradeLicenceNumber') IS NULL
+    OR COL_LENGTH('dbo.OwnedCompanies', 'TradeLicenceNumber') IS NULL
     OR COL_LENGTH('dbo.AuditLogEntries', 'RecordHash') IS NULL
     OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
     OR COL_LENGTH('dbo.DeclarationCycleSetups', 'ReminderDayOfWeek') IS NULL
@@ -60,7 +64,7 @@ BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
     RAISERROR(
-        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party columns, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
         16, 1, @db) WITH NOWAIT;
     SET NOEXEC ON;
 END
@@ -1790,23 +1794,23 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMember_Insert
     @Name nvarchar(120),
     @Relationship int,
     @IdentificationNumber nvarchar(60) = NULL,
-    @DateOfBirth date = NULL,
     @Nationality nvarchar(80) = NULL,
     @Occupation nvarchar(160) = NULL,
     @Organization nvarchar(160) = NULL,
-    @InterestType int = 0,
+    @NatureOfHolding int = 0,
     @OwnershipPercentage decimal(5,2) = NULL,
+    @NinNumber nvarchar(60) = NULL,
     @NewId int OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
 
     INSERT INTO dbo.FamilyMembers
-        (MemberId, Name, Relationship, IdentificationNumber, DateOfBirth, Nationality,
-         Occupation, Organization, InterestType, OwnershipPercentage)
+        (MemberId, Name, Relationship, IdentificationNumber, Nationality,
+         Occupation, Organization, NatureOfHolding, OwnershipPercentage, NinNumber)
     VALUES
-        (@MemberId, @Name, @Relationship, @IdentificationNumber, @DateOfBirth, @Nationality,
-         @Occupation, @Organization, @InterestType, @OwnershipPercentage);
+        (@MemberId, @Name, @Relationship, @IdentificationNumber, @Nationality,
+         @Occupation, @Organization, @NatureOfHolding, @OwnershipPercentage, @NinNumber);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1818,13 +1822,17 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMember_Update
     @Relationship int,
     @EmiratesIdPath nvarchar(260) = NULL,
     @PassportPath nvarchar(260) = NULL,
+    @TradeLicencePath nvarchar(260) = NULL,
+    @TradeLicenceNumber nvarchar(100) = NULL,
+    @TradeLicenceLegalName nvarchar(200) = NULL,
+    @TradeLicenceExpiryDate datetime2 = NULL,
     @IdentificationNumber nvarchar(60) = NULL,
-    @DateOfBirth date = NULL,
     @Nationality nvarchar(80) = NULL,
     @Occupation nvarchar(160) = NULL,
     @Organization nvarchar(160) = NULL,
-    @InterestType int = 0,
-    @OwnershipPercentage decimal(5,2) = NULL
+    @NatureOfHolding int = 0,
+    @OwnershipPercentage decimal(5,2) = NULL,
+    @NinNumber nvarchar(60) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1833,13 +1841,17 @@ BEGIN
         Relationship = @Relationship,
         EmiratesIdPath = @EmiratesIdPath,
         PassportPath = @PassportPath,
+        TradeLicencePath = @TradeLicencePath,
+        TradeLicenceNumber = @TradeLicenceNumber,
+        TradeLicenceLegalName = @TradeLicenceLegalName,
+        TradeLicenceExpiryDate = @TradeLicenceExpiryDate,
         IdentificationNumber = @IdentificationNumber,
-        DateOfBirth = @DateOfBirth,
         Nationality = @Nationality,
         Occupation = @Occupation,
         Organization = @Organization,
-        InterestType = @InterestType,
-        OwnershipPercentage = @OwnershipPercentage
+        NatureOfHolding = @NatureOfHolding,
+        OwnershipPercentage = @OwnershipPercentage,
+        NinNumber = @NinNumber
     WHERE Id = @Id;
 END
 GO
@@ -1877,13 +1889,18 @@ CREATE OR ALTER PROCEDURE dbo.usp_OwnedCompany_Update
     @OwnershipPercentage decimal(5,2) = NULL,
     @TradeLicensePath nvarchar(260) = NULL,
     @MoaPath nvarchar(260) = NULL,
-    @PoaPath nvarchar(260) = NULL
+    @PoaPath nvarchar(260) = NULL,
+    @TradeLicenceNumber nvarchar(100) = NULL,
+    @TradeLicenceLegalName nvarchar(200) = NULL,
+    @TradeLicenceExpiryDate datetime2 = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     UPDATE dbo.OwnedCompanies
     SET CompanyName = @CompanyName, TradeLicenseDetails = @TradeLicenseDetails, OwnershipPercentage = @OwnershipPercentage,
-        TradeLicensePath = @TradeLicensePath, MoaPath = @MoaPath, PoaPath = @PoaPath
+        TradeLicensePath = @TradeLicensePath, MoaPath = @MoaPath, PoaPath = @PoaPath,
+        TradeLicenceNumber = @TradeLicenceNumber, TradeLicenceLegalName = @TradeLicenceLegalName,
+        TradeLicenceExpiryDate = @TradeLicenceExpiryDate
     WHERE Id = @Id;
 END
 GO

@@ -69,243 +69,409 @@
             </div>
         </section>
 
-        <section class="cg-card cg-relatives-card">
-            <div class="cg-relatives-head">
-                <div>
-                    <h2 class="cg-card-title">Relatives &amp; Related Parties</h2>
-                    <p class="cg-subtitle">Add and maintain details of your relatives, in-laws, steps and companies in which you / your relatives have an interest.</p>
-                </div>
-                <button type="button" class="cg-action-btn cg-good cg-btn-add" disabled="@_addingRow" @onclick="StartAddRelative">Add Declaration</button>
-            </div>
+        @* Both registers are accordions: a member with a long relatives list can collapse it to get
+           at the companies below without scrolling past it, and the section a member is not filling
+           in stays out of the way. Both start open so nothing is hidden on first load. *@
+        <section class="cg-card cg-accordion @(_relativesOpen ? "is-open" : "")">
+            <button type="button" class="cg-accordion-head" aria-expanded="@_relativesOpen" @onclick="() => _relativesOpen = !_relativesOpen">
+                <span class="cg-accordion-chevron" aria-hidden="true"></span>
+                <span class="cg-accordion-titles">
+                    <span class="cg-card-title">Relatives &amp; Related Parties</span>
+                    <span class="cg-subtitle">Add and maintain details of your relatives, in-laws, steps and companies in which you / your relatives have an interest.</span>
+                </span>
+                <span class="cg-accordion-count">@_familyMembers.Count</span>
+            </button>
 
-            <div class="cg-controls cg-relatives-filters">
-                <div class="cg-search-wrap">
-                    <input class="cg-input" type="search" placeholder="Search name, company or Emirates ID…"
-                           @bind="_search" @bind:event="oninput" @bind:after="ResetRelativesPage" aria-label="Search related parties" />
+            @if (_relativesOpen)
+            {
+            <div class="cg-accordion-body">
+                <div class="cg-controls cg-relatives-filters">
+                    <div class="cg-search-wrap">
+                        <input class="cg-input" type="search" placeholder="Search name, company or Emirates ID…"
+                               @bind="_search" @bind:event="oninput" @bind:after="ResetRelativesPage" aria-label="Search related parties" />
+                    </div>
+                    <label class="cg-field cg-relation-filter">
+                        <span>Relation</span>
+                        <select class="cg-input" value="@(_relationFilter?.ToString() ?? "")"
+                                @onchange="e => { var v = (string?)e.Value; _relationFilter = string.IsNullOrEmpty(v) ? null : Enum.Parse<RelativeRelationship>(v); ResetRelativesPage(); }">
+                            <option value="">All Relations</option>
+                            @foreach (var opt in RelativeOptions)
+                            {
+                                <option value="@opt.Value">@opt.Label</option>
+                            }
+                        </select>
+                    </label>
+                    <button type="button" class="cg-action-btn cg-good cg-btn-add" @onclick="OpenAddRelative">+ Add</button>
                 </div>
-                <label class="cg-field cg-relation-filter">
+
+                <div class="cg-table-wrap">
+                    <table class="cg-relatives-table">
+                        <thead>
+                            <tr>
+                                <th class="cg-col-relname">Name</th>
+                                <th>Relation</th>
+                                <th>Emirates ID / Passport</th>
+                                <th>NIN Number</th>
+                                <th>Nationality</th>
+                                <th>Occupation / Business</th>
+                                <th>Company / Organization</th>
+                                <th>Nature Of Holding</th>
+                                <th>Ownership %</th>
+                                <th>Documents</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var f in PagedRelatives())
+                            {
+                                var docs = RelativeDocuments(f);
+                                <tr class="cg-data-row">
+                                    <td class="cg-cell-name">@f.Name</td>
+                                    <td>@RelationLabel(f.Relationship)</td>
+                                    <td class="mono">@(string.IsNullOrWhiteSpace(f.IdentificationNumber) ? "—" : f.IdentificationNumber)</td>
+                                    <td class="mono">@(string.IsNullOrWhiteSpace(f.NinNumber) ? "—" : f.NinNumber)</td>
+                                    <td>@(string.IsNullOrWhiteSpace(f.Nationality) ? "—" : f.Nationality)</td>
+                                    <td>@(string.IsNullOrWhiteSpace(f.Occupation) ? "—" : f.Occupation)</td>
+                                    <td>@(string.IsNullOrWhiteSpace(f.Organization) ? "—" : f.Organization)</td>
+                                    <td>@HoldingLabel(f.NatureOfHolding)</td>
+                                    <td>@(f.OwnershipPercentage is { } pct ? $"{pct:0.##}%" : "—")</td>
+                                    <td>
+                                        <span class="cg-doc-chips">
+                                            @foreach (var doc in docs)
+                                            {
+                                                <a class="cg-doc-chip" href="@doc.Path" target="_blank" rel="noopener">@doc.Short</a>
+                                            }
+                                            @if (docs.Count == 0)
+                                            {
+                                                <span class="cg-subtitle">—</span>
+                                            }
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="cg-row-actions">
+                                            <button type="button" class="cg-icon-btn" title="Edit @f.Name" @onclick="() => OpenEditRelative(f)"><span class="cg-ico cg-ico-pencil" aria-hidden="true"></span></button>
+                                            <button type="button" class="cg-icon-btn cg-icon-btn-danger" title="Remove @f.Name" @onclick="() => RemoveFamilyMemberAsync(f)"><span class="cg-ico cg-ico-trash" aria-hidden="true"></span></button>
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+
+                            @if (RelativesTotal == 0)
+                            {
+                                <tr><td colspan="11" class="cg-empty-state">No related parties recorded yet. Use <b>+ Add</b> to add one.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="cg-table-foot">
+                    <span>Showing @FirstRelativeOnPage - @LastRelativeOnPage of @RelativesTotal records</span>
+                    <div class="cg-pager">
+                        <button type="button" title="Previous page" disabled="@(_page <= 1)" @onclick="() => GoToRelativesPage(_page - 1)">‹</button>
+                        @for (var n = 1; n <= RelativesPages; n++)
+                        {
+                            var target = n;
+                            <button type="button" class="@(target == _page ? "active" : "")" @onclick="() => GoToRelativesPage(target)">@target</button>
+                        }
+                        <button type="button" title="Next page" disabled="@(_page >= RelativesPages)" @onclick="() => GoToRelativesPage(_page + 1)">›</button>
+                    </div>
+                </div>
+            </div>
+            }
+        </section>
+
+        @* Kept below the related parties rather than dropped: the Related Party & COI declaration
+           offers these as an "Add from My Companies" picker, so removing them would take a feature
+           away from that wizard. *@
+        <section class="cg-card cg-accordion @(_companiesOpen ? "is-open" : "")">
+            <button type="button" class="cg-accordion-head" aria-expanded="@_companiesOpen" @onclick="() => _companiesOpen = !_companiesOpen">
+                <span class="cg-accordion-chevron" aria-hidden="true"></span>
+                <span class="cg-accordion-titles">
+                    <span class="cg-card-title">My Companies</span>
+                    <span class="cg-subtitle">Companies you hold an interest in, with their trade licence, MOA and POA on file.</span>
+                </span>
+                <span class="cg-accordion-count">@_companies.Count</span>
+            </button>
+
+            @if (_companiesOpen)
+            {
+            <div class="cg-accordion-body">
+                <div class="cg-controls cg-companies-controls">
+                    <button type="button" class="cg-action-btn cg-good cg-btn-add" @onclick="OpenAddCompany">+ Add</button>
+                </div>
+
+                <div class="cg-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name of the Company</th>
+                                <th>Trade License Details</th>
+                                <th>Ownership %</th>
+                                <th>Trade License</th>
+                                <th>MOA</th>
+                                <th>POA <em class="cg-subtitle" style="margin:0;">(optional)</em></th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in _companies)
+                            {
+                                <tr class="cg-data-row">
+                                    <td class="cg-cell-name">@c.CompanyName</td>
+                                    <td>@(string.IsNullOrWhiteSpace(c.TradeLicenseDetails) ? "—" : c.TradeLicenseDetails)</td>
+                                    <td>@(c.OwnershipPercentage is { } pct ? $"{pct:0.##}%" : "—")</td>
+                                    <td>@DocumentCell(c.TradeLicensePath)</td>
+                                    <td>@DocumentCell(c.MoaPath)</td>
+                                    <td>@DocumentCell(c.PoaPath)</td>
+                                    <td>
+                                        <span class="cg-row-actions">
+                                            <button type="button" class="cg-icon-btn" title="Edit @c.CompanyName" @onclick="() => OpenEditCompany(c)"><span class="cg-ico cg-ico-pencil" aria-hidden="true"></span></button>
+                                            <button type="button" class="cg-icon-btn cg-icon-btn-danger" title="Remove @c.CompanyName" @onclick="() => RemoveCompanyAsync(c)"><span class="cg-ico cg-ico-trash" aria-hidden="true"></span></button>
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                            @if (_companies.Count == 0)
+                            {
+                                <tr><td colspan="7" class="cg-empty-state">No companies added yet. Use <b>+ Add</b> to add one.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            }
+        </section>
+    }
+</div>
+
+@* Add and edit both happen here rather than in the row: a related party carries eight fields and
+   three documents, which does not fit a table cell, and a draft row that is abandoned halfway
+   leaves the grid in a half-written state. *@
+@if (_relativeDialogOpen && _relativeForm is not null)
+{
+    <div class="cg-modal-backdrop" @onclick="CloseRelativeDialog"></div>
+    <div class="cg-modal cg-record-modal" role="dialog" aria-modal="true" aria-labelledby="cg-relative-title">
+        <div class="cg-modal-head">
+            <div>
+                <h2 id="cg-relative-title">@(_relativeTarget is null ? "Add relative" : "Edit relative details")</h2>
+                <p class="cg-subtitle">Every add, edit and delete is written to the audit trail against your name.</p>
+            </div>
+            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="CloseRelativeDialog">×</button>
+        </div>
+
+        <div class="cg-modal-body">
+            <div class="cg-form-grid">
+                <label class="cg-field cg-field-wide">
+                    <span>Name <b class="cg-req-mark">*</b></span>
+                    <input class="cg-input" placeholder="Full name" @bind="_relativeForm.Name" maxlength="120" />
+                </label>
+                <label class="cg-field">
                     <span>Relation</span>
-                    <select class="cg-input" value="@(_relationFilter?.ToString() ?? "")"
-                            @onchange="e => { var v = (string?)e.Value; _relationFilter = string.IsNullOrEmpty(v) ? null : Enum.Parse<RelativeRelationship>(v); ResetRelativesPage(); }">
-                        <option value="">All Relations</option>
+                    <select class="cg-input" @bind="_relativeForm.Relationship">
                         @foreach (var opt in RelativeOptions)
                         {
                             <option value="@opt.Value">@opt.Label</option>
                         }
                     </select>
                 </label>
+                <label class="cg-field">
+                    <span>Emirates ID / Passport</span>
+                    <input class="cg-input" @bind="_relativeForm.IdentificationNumber" maxlength="60" />
+                </label>
+                <label class="cg-field">
+                    <span>NIN Number</span>
+                    <input class="cg-input" placeholder="National Investor Number" @bind="_relativeForm.NinNumber" maxlength="60" />
+                </label>
+                <label class="cg-field">
+                    <span>Nationality</span>
+                    <select class="cg-input" @bind="_relativeForm.Nationality">
+                        <option value="">—</option>
+                        @foreach (var country in Countries.All)
+                        {
+                            <option value="@country">@country</option>
+                        }
+                    </select>
+                </label>
+                <label class="cg-field">
+                    <span>Occupation / Business</span>
+                    <input class="cg-input" @bind="_relativeForm.Occupation" maxlength="160" />
+                </label>
+                <label class="cg-field">
+                    <span>Company / Organization</span>
+                    <input class="cg-input" @bind="_relativeForm.Organization" maxlength="160" />
+                </label>
+                <label class="cg-field">
+                    <span>Nature Of Holding</span>
+                    <select class="cg-input" @bind="_relativeForm.NatureOfHolding">
+                        <option value="@RelatedPartyHoldingNature.None">—</option>
+                        <option value="@RelatedPartyHoldingNature.Affiliate">Affiliate</option>
+                        <option value="@RelatedPartyHoldingNature.Owned">Owned</option>
+                        <option value="@RelatedPartyHoldingNature.Subsidiary">Subsidiary</option>
+                    </select>
+                </label>
+                <label class="cg-field">
+                    <span>Ownership %</span>
+                    <input type="number" step="0.01" min="0" max="100" class="cg-input" @bind="_relativeForm.OwnershipPercentage" />
+                </label>
             </div>
 
-            <div class="cg-table-wrap">
-                <table class="cg-relatives-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Relation</th>
-                            <th>Emirates ID / Passport</th>
-                            <th>Date of Birth</th>
-                            <th>Nationality</th>
-                            <th>Occupation / Business</th>
-                            <th>Company / Organization</th>
-                            <th>Interest Type</th>
-                            <th>Ownership %</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (_addingRow && _draft is not null)
-                        {
-                            <tr class="cg-data-row cg-row-editing">
-                                <td><input class="cg-input" placeholder="Full name" @bind="_draft.Name" maxlength="120" /></td>
-                                <td>
-                                    <select class="cg-input" @bind="_draft.Relationship">
-                                        @foreach (var opt in RelativeOptions)
-                                        {
-                                            <option value="@opt.Value">@opt.Label</option>
-                                        }
-                                    </select>
-                                </td>
-                                <td><input class="cg-input" @bind="_draft.IdentificationNumber" maxlength="60" /></td>
-                                <td><input type="date" class="cg-input" @bind="_draft.DateOfBirth" /></td>
-                                <td><input class="cg-input" @bind="_draft.Nationality" maxlength="80" /></td>
-                                <td><input class="cg-input" @bind="_draft.Occupation" maxlength="160" /></td>
-                                <td><input class="cg-input" @bind="_draft.Organization" maxlength="160" /></td>
-                                <td>
-                                    <select class="cg-input" @bind="_draft.InterestType">
-                                        <option value="@RelatedPartyInterestType.None">—</option>
-                                        <option value="@RelatedPartyInterestType.Direct">Direct</option>
-                                        <option value="@RelatedPartyInterestType.Indirect">Indirect</option>
-                                    </select>
-                                </td>
-                                <td><input type="number" step="0.01" min="0" max="100" class="cg-input" @bind="_draft.OwnershipPercentage" /></td>
-                                <td>
-                                    <span class="cg-row-actions">
-                                        <button type="button" class="cg-action-btn cg-good" @onclick="AddFamilyMemberAsync">Save</button>
-                                        <button type="button" class="cg-action-btn" @onclick="CancelAddRelative">Cancel</button>
-                                    </span>
-                                </td>
-                            </tr>
-                        }
-
-                        @foreach (var f in PagedRelatives())
-                        {
-                            if (_editingId == f.Id)
-                            {
-                                <tr class="cg-data-row cg-row-editing">
-                                    <td><input class="cg-input" @bind="f.Name" maxlength="120" /></td>
-                                    <td>
-                                        <select class="cg-input" @bind="f.Relationship">
-                                            @foreach (var opt in RelativeOptions)
-                                            {
-                                                <option value="@opt.Value">@opt.Label</option>
-                                            }
-                                        </select>
-                                    </td>
-                                    <td><input class="cg-input" @bind="f.IdentificationNumber" maxlength="60" /></td>
-                                    <td><input type="date" class="cg-input" @bind="f.DateOfBirth" /></td>
-                                    <td><input class="cg-input" @bind="f.Nationality" maxlength="80" /></td>
-                                    <td><input class="cg-input" @bind="f.Occupation" maxlength="160" /></td>
-                                    <td><input class="cg-input" @bind="f.Organization" maxlength="160" /></td>
-                                    <td>
-                                        <select class="cg-input" @bind="f.InterestType">
-                                            <option value="@RelatedPartyInterestType.None">—</option>
-                                            <option value="@RelatedPartyInterestType.Direct">Direct</option>
-                                            <option value="@RelatedPartyInterestType.Indirect">Indirect</option>
-                                        </select>
-                                    </td>
-                                    <td><input type="number" step="0.01" min="0" max="100" class="cg-input" @bind="f.OwnershipPercentage" /></td>
-                                    <td>
-                                        <span class="cg-row-actions">
-                                            <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveFamilyMemberAsync(f)">Save</button>
-                                            <button type="button" class="cg-action-btn" @onclick="CancelEditRelative">Cancel</button>
-                                        </span>
-                                    </td>
-                                </tr>
-                            }
-                            else
-                            {
-                                <tr class="cg-data-row">
-                                    <td class="cg-cell-name">@f.Name</td>
-                                    <td>@RelationLabel(f.Relationship)</td>
-                                    <td class="mono">@(string.IsNullOrWhiteSpace(f.IdentificationNumber) ? "—" : f.IdentificationNumber)</td>
-                                    <td>@(f.DateOfBirth?.ToString("dd MMM yyyy") ?? "—")</td>
-                                    <td>@(string.IsNullOrWhiteSpace(f.Nationality) ? "—" : f.Nationality)</td>
-                                    <td>@(string.IsNullOrWhiteSpace(f.Occupation) ? "—" : f.Occupation)</td>
-                                    <td>@(string.IsNullOrWhiteSpace(f.Organization) ? "—" : f.Organization)</td>
-                                    <td>@InterestLabel(f.InterestType)</td>
-                                    <td>@(f.OwnershipPercentage is { } pct ? $"{pct:0.##}%" : "—")</td>
-                                    <td>
-                                        <span class="cg-row-actions">
-                                            <button type="button" class="cg-icon-btn" title="Edit @f.Name" @onclick="() => StartEditRelative(f)"><span class="cg-ico cg-ico-pencil" aria-hidden="true"></span></button>
-                                            <button type="button" class="cg-icon-btn cg-icon-btn-danger" title="Remove @f.Name" @onclick="() => RemoveFamilyMemberAsync(f)"><span class="cg-ico cg-ico-trash" aria-hidden="true"></span></button>
-                                        </span>
-                                    </td>
-                                </tr>
-                            }
-                        }
-
-                        @if (RelativesTotal == 0 && !_addingRow)
-                        {
-                            <tr><td colspan="10" class="cg-empty-state">No related parties recorded yet. Use <b>Add Declaration</b> to add one.</td></tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="cg-table-foot">
-                <span>Showing @FirstRelativeOnPage - @LastRelativeOnPage of @RelativesTotal records</span>
-                <div class="cg-pager">
-                    <button type="button" title="Previous page" disabled="@(_page <= 1)" @onclick="() => GoToRelativesPage(_page - 1)">‹</button>
-                    @for (var n = 1; n <= RelativesPages; n++)
-                    {
-                        var target = n;
-                        <button type="button" class="@(target == _page ? "active" : "")" @onclick="() => GoToRelativesPage(target)">@target</button>
-                    }
-                    <button type="button" title="Next page" disabled="@(_page >= RelativesPages)" @onclick="() => GoToRelativesPage(_page + 1)">›</button>
+            <h3 class="cg-doc-heading">Documents</h3>
+            @if (_relativeTarget is null)
+            {
+                <p class="cg-hint">Save the relative first — the documents are filed under the saved record, and this dialog stays open so you can attach them straight away.</p>
+            }
+            else
+            {
+                <div class="cg-doc-uploads">
+                    @RelativeUpload("emirates-id", "Emirates ID", _relativeTarget.EmiratesIdPath)
+                    @RelativeUpload("passport", "Passport", _relativeTarget.PassportPath)
+                    @RelativeUpload("trade-licence", "Trade License", _relativeTarget.TradeLicencePath)
                 </div>
-            </div>
-        </section>
+                <p class="cg-hint">JPEG, PNG or PDF, up to 1 MB. Uploading replaces the document already on file.</p>
 
-        @* Kept below the related parties rather than dropped: the Related Party & COI declaration
-           offers these as an "Add from My Companies" picker, so removing them would take a feature
-           away from that wizard. *@
-        <h2 class="cg-section-heading cg-workspace-companies-heading">My Companies</h2>
-        <div class="cg-card cg-companies-card">
-            <div class="cg-table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name of the Company</th>
-                            <th>Trade License Details</th>
-                            <th>Ownership %</th>
-                            <th>Trade License</th>
-                            <th>MOA</th>
-                            <th>POA <em class="cg-subtitle" style="margin:0;">(optional)</em></th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="cg-data-row">
-                            <td><input class="cg-input" placeholder="Company name" @bind="_newCompanyName" maxlength="160" /></td>
-                            <td><input class="cg-input" placeholder="Trade license details" @bind="_newCompanyTradeLicenseDetails" maxlength="400" /></td>
-                            <td><input type="number" class="cg-input" placeholder="0-100" min="0" max="100" step="0.01" @bind="_newCompanyOwnership" /></td>
-                            <td class="cg-subtitle">Save first</td>
-                            <td class="cg-subtitle">Save first</td>
-                            <td class="cg-subtitle">Save first</td>
-                            <td><button type="button" class="cg-action-btn cg-good" @onclick="AddCompanyAsync">Add company</button></td>
-                        </tr>
-                        @foreach (var c in _companies)
-                        {
-                            <tr class="cg-data-row">
-                                <td><input class="cg-input" @bind="c.CompanyName" maxlength="160" /></td>
-                                <td><input class="cg-input" @bind="c.TradeLicenseDetails" maxlength="400" /></td>
-                                <td><input type="number" class="cg-input" min="0" max="100" step="0.01" @bind="c.OwnershipPercentage" /></td>
-                                <td>
-                                    <InputFile OnChange="e => OnTradeLicenseSelectedAsync(c, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploading(c.Id, "trade-license")" />
-                                    @if (IsUploading(c.Id, "trade-license"))
-                                    {
-                                        <span class="cg-subtitle">Uploading…</span>
-                                    }
-                                    else if (!string.IsNullOrEmpty(c.TradeLicensePath))
-                                    {
-                                        <a href="@c.TradeLicensePath" target="_blank" class="cg-subtitle">✓ view</a>
-                                    }
-                                </td>
-                                <td>
-                                    <InputFile OnChange="e => OnMoaSelectedAsync(c, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploading(c.Id, "moa")" />
-                                    @if (IsUploading(c.Id, "moa"))
-                                    {
-                                        <span class="cg-subtitle">Uploading…</span>
-                                    }
-                                    else if (!string.IsNullOrEmpty(c.MoaPath))
-                                    {
-                                        <a href="@c.MoaPath" target="_blank" class="cg-subtitle">✓ view</a>
-                                    }
-                                </td>
-                                <td>
-                                    <InputFile OnChange="e => OnPoaSelectedAsync(c, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploading(c.Id, "poa")" />
-                                    @if (IsUploading(c.Id, "poa"))
-                                    {
-                                        <span class="cg-subtitle">Uploading…</span>
-                                    }
-                                    else if (!string.IsNullOrEmpty(c.PoaPath))
-                                    {
-                                        <a href="@c.PoaPath" target="_blank" class="cg-subtitle">✓ view</a>
-                                    }
-                                </td>
-                                <td>
-                                    <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveCompanyAsync(c)">Save</button>
-                                    <button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveCompanyAsync(c)">Remove</button>
-                                </td>
-                            </tr>
-                        }
-                        @if (_companies.Count == 0)
-                        {
-                            <tr><td colspan="7" class="cg-subtitle">No companies added yet.</td></tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+                <h3 class="cg-doc-heading">From the trade licence</h3>
+                <p class="cg-hint">Read off the uploaded licence automatically where document capture is configured. Always check them — the reading is a best-effort match, not an authoritative one — and correct anything wrong before saving.</p>
+                <div class="cg-form-grid cg-captured-grid">
+                    <label class="cg-field">
+                        <span>Trade License No</span>
+                        <input class="cg-input" @bind="_relativeForm.TradeLicenceNumber" maxlength="100" />
+                    </label>
+                    <label class="cg-field">
+                        <span>Expiry</span>
+                        <input type="date" class="cg-input" @bind="_relativeForm.TradeLicenceExpiryDate" />
+                    </label>
+                    <label class="cg-field cg-field-wide">
+                        <span>Legal Name</span>
+                        <input class="cg-input" @bind="_relativeForm.TradeLicenceLegalName" maxlength="200" />
+                    </label>
+                </div>
+            }
         </div>
-    }
-</div>
+
+        <div class="cg-modal-foot">
+            <button type="button" class="cg-action-btn" @onclick="CloseRelativeDialog">@(_relativeTarget is null ? "Cancel" : "Close")</button>
+            <button type="button" class="cg-action-btn cg-good" @onclick="SaveRelativeAsync">Save</button>
+        </div>
+    </div>
+}
+
+@if (_companyDialogOpen && _companyForm is not null)
+{
+    <div class="cg-modal-backdrop" @onclick="CloseCompanyDialog"></div>
+    <div class="cg-modal cg-record-modal" role="dialog" aria-modal="true" aria-labelledby="cg-company-title">
+        <div class="cg-modal-head">
+            <div>
+                <h2 id="cg-company-title">@(_companyTarget is null ? "Add company" : "Edit company details")</h2>
+                <p class="cg-subtitle">Every add, edit and delete is written to the audit trail against your name.</p>
+            </div>
+            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="CloseCompanyDialog">×</button>
+        </div>
+
+        <div class="cg-modal-body">
+            <div class="cg-form-grid">
+                <label class="cg-field cg-field-wide">
+                    <span>Name of the Company <b class="cg-req-mark">*</b></span>
+                    <input class="cg-input" placeholder="Company name" @bind="_companyForm.CompanyName" maxlength="160" />
+                </label>
+                <label class="cg-field cg-field-wide">
+                    <span>Trade License Details</span>
+                    <input class="cg-input" placeholder="Trade license details" @bind="_companyForm.TradeLicenseDetails" maxlength="400" />
+                </label>
+                <label class="cg-field">
+                    <span>Ownership %</span>
+                    <input type="number" step="0.01" min="0" max="100" class="cg-input" placeholder="0-100" @bind="_companyForm.OwnershipPercentage" />
+                </label>
+            </div>
+
+            <h3 class="cg-doc-heading">Documents</h3>
+            @if (_companyTarget is null)
+            {
+                <p class="cg-hint">Save the company first — the documents are filed under the saved record, and this dialog stays open so you can attach them straight away.</p>
+            }
+            else
+            {
+                <div class="cg-doc-uploads">
+                    @CompanyUpload("trade-license", "Trade License", _companyTarget.TradeLicensePath)
+                    @CompanyUpload("moa", "MOA", _companyTarget.MoaPath)
+                    @CompanyUpload("poa", "POA (optional)", _companyTarget.PoaPath)
+                </div>
+                <p class="cg-hint">JPEG, PNG or PDF, up to 10 MB. Uploading replaces the document already on file.</p>
+
+                <h3 class="cg-doc-heading">From the trade licence</h3>
+                <p class="cg-hint">Read off the uploaded licence automatically where document capture is configured. Always check them — the reading is a best-effort match, not an authoritative one — and correct anything wrong before saving.</p>
+                <div class="cg-form-grid cg-captured-grid">
+                    <label class="cg-field">
+                        <span>Trade License No</span>
+                        <input class="cg-input" @bind="_companyForm.TradeLicenceNumber" maxlength="100" />
+                    </label>
+                    <label class="cg-field">
+                        <span>Expiry</span>
+                        <input type="date" class="cg-input" @bind="_companyForm.TradeLicenceExpiryDate" />
+                    </label>
+                    <label class="cg-field cg-field-wide">
+                        <span>Legal Name</span>
+                        <input class="cg-input" @bind="_companyForm.TradeLicenceLegalName" maxlength="200" />
+                    </label>
+                </div>
+            }
+        </div>
+
+        <div class="cg-modal-foot">
+            <button type="button" class="cg-action-btn" @onclick="CloseCompanyDialog">@(_companyTarget is null ? "Cancel" : "Close")</button>
+            <button type="button" class="cg-action-btn cg-good" @onclick="SaveCompanyAsync">Save</button>
+        </div>
+    </div>
+}
+
+@code {
+    // Razor templates rather than code-behind: an upload cell is markup, and a RenderTreeBuilder
+    // version of it would be unreadable for no gain. The InputFile stays on screen (disabled) while
+    // the upload runs rather than being swapped out for the progress bar: removing it mid-upload
+    // disposes the component the browser is still streaming the file through.
+    private RenderFragment RelativeUpload(string kind, string label, string? path) => @<div class="cg-doc-upload">
+        <span class="cg-doc-upload-label">@label</span>
+        <InputFile OnChange="e => UploadRelativeDocumentAsync(kind, label, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploading(_relativeTarget!.Id, kind)" />
+        @if (IsUploading(_relativeTarget!.Id, kind))
+        {
+            <span class="cg-doc-upload-state">Uploading…</span>
+            <progress class="cg-doc-progress"></progress>
+        }
+        else if (!string.IsNullOrEmpty(path))
+        {
+            <a class="cg-doc-chip" href="@path" target="_blank" rel="noopener">View</a>
+        }
+        else
+        {
+            <span class="cg-subtitle">Not attached</span>
+        }
+    </div>;
+
+    private RenderFragment CompanyUpload(string kind, string label, string? path) => @<div class="cg-doc-upload">
+        <span class="cg-doc-upload-label">@label</span>
+        <InputFile OnChange="e => UploadCompanyDocumentAsync(kind, label, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploading(_companyTarget!.Id, kind)" />
+        @if (IsUploading(_companyTarget!.Id, kind))
+        {
+            <span class="cg-doc-upload-state">Uploading…</span>
+            <progress class="cg-doc-progress"></progress>
+        }
+        else if (!string.IsNullOrEmpty(path))
+        {
+            <a class="cg-doc-chip" href="@path" target="_blank" rel="noopener">View</a>
+        }
+        else
+        {
+            <span class="cg-subtitle">Not attached</span>
+        }
+    </div>;
+
+    private RenderFragment DocumentCell(string? path) => @<text>
+        @if (string.IsNullOrEmpty(path))
+        {
+            <span class="cg-subtitle">—</span>
+        }
+        else
+        {
+            <a class="cg-doc-chip" href="@path" target="_blank" rel="noopener">View</a>
+        }
+    </text>;
+}

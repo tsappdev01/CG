@@ -24,6 +24,16 @@ public class OwnedCompany
     [MaxLength(260)]
     public string? TradeLicensePath { get; set; }
 
+    /// <summary>Read off the uploaded trade licence by Document Intelligence where it is configured,
+    /// and editable either way -- see the same fields on FamilyMember.</summary>
+    [MaxLength(100)]
+    public string? TradeLicenceNumber { get; set; }
+
+    [MaxLength(200)]
+    public string? TradeLicenceLegalName { get; set; }
+
+    public DateTime? TradeLicenceExpiryDate { get; set; }
+
     [MaxLength(260)]
     public string? MoaPath { get; set; }
 

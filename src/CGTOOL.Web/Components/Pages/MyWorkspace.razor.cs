@@ -36,12 +36,6 @@ public partial class MyWorkspace : ComponentBase
     private int _page = 1;
     private const int RelativesPageSize = 10;
 
-    // Declaration summary strip.
-    private string? _lastDeclared;
-    private bool _hasSubmitted;
-    private string? _declarationPeriod;
-    private string? _nextDueDate;
-
     private const long MaxIdUploadBytes = 1 * 1024 * 1024;
     private const long MaxCompanyDocUploadBytes = 10 * 1024 * 1024;
 
@@ -103,46 +97,6 @@ public partial class MyWorkspace : ComponentBase
             .Where(c => c.MemberId == _effectiveMember.Id)
             .OrderBy(c => c.Id)
             .ToListAsync());
-
-        await LoadDeclarationSummaryAsync();
-    }
-
-    /// <summary>The summary strip reads the member's latest Insider Trading declaration and the run
-    /// it answered, so the period and due date shown are the ones the member is actually being asked
-    /// for rather than a calendar quarter worked out here.</summary>
-    private async Task LoadDeclarationSummaryAsync()
-    {
-        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
-        // sharing that one lets this race, or outlive, whatever else in the circuit is using
-        // it -- which kills the circuit and takes the page with it.
-        await using var db = await DbFactory.CreateDbContextAsync();
-
-        if (_effectiveMember is null) return;
-
-        var latest = await db.InsiderDeclarations
-            .Include(d => d.DeclarationCycleRun)
-            .Where(d => d.MemberId == _effectiveMember.Id && !d.IsDraft)
-            .OrderByDescending(d => d.SubmittedAtUtc)
-            .FirstOrDefaultAsync();
-
-        if (latest is not null)
-        {
-            _hasSubmitted = true;
-            _lastDeclared = latest.SubmittedAtUtc.ToLocalDisplay("MMM dd, yyyy");
-            _declarationPeriod = latest.DeclarationCycleRun is { } run ? $"Q{run.PeriodQuarter} {run.PeriodYear}" : null;
-            _nextDueDate = latest.DeclarationCycleRun?.DueDateUtc.ToLocalDisplay("MMM dd, yyyy");
-            return;
-        }
-
-        // Nothing submitted yet: fall back to the open run so the member can still see what is due.
-        var open = await db.DeclarationCycleRuns
-            .Where(r => r.Type == DeclarationCycleType.InsiderTrading && r.Sent && !r.Recalled)
-            .OrderByDescending(r => r.PeriodYear).ThenByDescending(r => r.PeriodQuarter)
-            .FirstOrDefaultAsync();
-
-        _hasSubmitted = false;
-        _declarationPeriod = open is null ? null : $"Q{open.PeriodQuarter} {open.PeriodYear}";
-        _nextDueDate = open?.DueDateUtc.ToLocalDisplay("MMM dd, yyyy");
     }
 
     private IEnumerable<FamilyMember> FilteredRelatives()

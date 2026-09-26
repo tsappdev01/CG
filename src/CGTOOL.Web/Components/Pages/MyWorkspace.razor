@@ -11,15 +11,11 @@
         <span>My Workspace</span>
     </nav>
 
-    <div class="cg-workspace-head">
-        <div>
-            <h1>Insider Trading &amp; Related Party Declaration</h1>
-            <p class="cg-subtitle">Disclose your related parties, close family members, in-laws, steps and companies for compliance with CG and regulatory requirements.</p>
-        </div>
-        <div class="cg-info-callout cg-workspace-notice">
-            This declaration is mandatory for all Insiders, BOD members and key management personnel.
-            Please ensure the information is complete and up to date.
-        </div>
+    @* Title and the declaration summary strip both dropped: the breadcrumb already names the page,
+       and the summary repeated what My Declarations shows in full. *@
+    <div class="cg-info-callout cg-workspace-notice">
+        This declaration is mandatory for all Insiders, BOD members and key management personnel.
+        Please ensure the information is complete and up to date.
     </div>
 
     @if (!_loaded)
@@ -35,43 +31,6 @@
     }
     else
     {
-        <section class="cg-card cg-summary-card">
-            <h2 class="cg-card-title">Declaration Summary</h2>
-            <div class="cg-summary-grid">
-                <div class="cg-summary-item">
-                    <span class="cg-summary-ico cg-ico-calendar" aria-hidden="true"></span>
-                    <div>
-                        <span class="cg-summary-label">Last Declared</span>
-                        <span class="cg-summary-value">@(_lastDeclared ?? "—")</span>
-                    </div>
-                </div>
-                <div class="cg-summary-item">
-                    <span class="cg-summary-ico @(_hasSubmitted ? "cg-ico-check-green" : "cg-ico-pending")" aria-hidden="true"></span>
-                    <div>
-                        <span class="cg-summary-label">Status</span>
-                        <span class="cg-summary-value @(_hasSubmitted ? "good" : "warn")">@(_hasSubmitted ? "Submitted" : "Not submitted")</span>
-                    </div>
-                </div>
-                <div class="cg-summary-item">
-                    <span class="cg-summary-ico cg-ico-page" aria-hidden="true"></span>
-                    <div>
-                        <span class="cg-summary-label">Declaration Period</span>
-                        <span class="cg-summary-value">@(_declarationPeriod ?? "—")</span>
-                    </div>
-                </div>
-                <div class="cg-summary-item">
-                    <span class="cg-summary-ico cg-ico-clock" aria-hidden="true"></span>
-                    <div>
-                        <span class="cg-summary-label">Next Due Date</span>
-                        <span class="cg-summary-value">@(_nextDueDate ?? "—")</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        @* Both registers are accordions: a member with a long relatives list can collapse it to get
-           at the companies below without scrolling past it, and the section a member is not filling
-           in stays out of the way. Both start open so nothing is hidden on first load. *@
         <section class="cg-card cg-accordion @(_relativesOpen ? "is-open" : "")">
             <button type="button" class="cg-accordion-head" aria-expanded="@_relativesOpen" @onclick="() => _relativesOpen = !_relativesOpen">
                 <span class="cg-accordion-chevron" aria-hidden="true"></span>

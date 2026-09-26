@@ -2192,7 +2192,7 @@ select.cg-input {
 }
 .cg-workspace-head h1 { font-size: 29px; margin-bottom: 6px; }
 .cg-workspace-head > div:first-child { flex: 1 1 520px; min-width: 0; }
-.cg-workspace-notice { flex: 0 1 430px; margin: 0; font-size: 12.5px; }
+.cg-workspace-notice { flex: 0 1 430px; font-size: 12.5px; margin: 0 0 18px; }
 
 /* ---------- declaration summary strip ---------- */
 .cg-summary-card { padding: 20px 24px; }

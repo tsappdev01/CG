@@ -432,7 +432,11 @@ public partial class MyWorkspace : ComponentBase
         _ => string.IsNullOrWhiteSpace(document.Title) ? "Other document" : document.Title!,
     };
 
-    private bool IsUploadingDocument(MemberDocumentKind kind, int id) => _uploadingDocs.Contains((id, $"member-{kind}"));
+    /// <summary>Keyed by kind rather than by row id: a new Other document has no id until it is
+    /// written, and the flag has to survive that.</summary>
+    private readonly HashSet<MemberDocumentKind> _uploadingKinds = [];
+
+    private bool IsUploadingDocument(MemberDocumentKind kind) => _uploadingKinds.Contains(kind);
 
     private async Task OnMemberDocumentSelectedAsync(MemberDocumentKind kind, MemberDocument? existing, InputFileChangeEventArgs e)
     {
@@ -442,37 +446,53 @@ public partial class MyWorkspace : ComponentBase
         if (extension is null) { Toasts.ShowError("Only JPEG, PNG, or PDF files are supported."); return; }
         if (e.File.Size > MaxMemberDocumentBytes) { Toasts.ShowError("File must be 10 MB or smaller."); return; }
 
-        // A new Other document gets its row before the file, so the file has an id to be named
-        // after; the three named kinds reuse theirs.
-        var document = existing;
-        if (document is null)
+        // The browser's file is read to a temporary file FIRST, before the row is written and before
+        // anything re-renders. The stream is served through the InputFile component that raised this
+        // event: a render that moves or replaces that element mid-read kills the read
+        // ("Cannot read properties of null (reading '_blazorFilesById')"), and writing the row
+        // re-renders, because the panel draws itself from the list the row joins.
+        var temporaryFile = Path.GetTempFileName();
+        try
         {
-            document = new MemberDocument
+            await using (var stream = e.File.OpenReadStream(MaxMemberDocumentBytes))
+            await using (var buffer = File.Create(temporaryFile))
             {
-                MemberId = _effectiveMember.Id,
-                Kind = kind,
-                UploadedAtUtc = DateTime.UtcNow,
-            };
-            document.Id = await DocumentWriter.InsertAsync(document);
-            _documents.Add(document);
+                await stream.CopyToAsync(buffer);
+            }
+        }
+        catch (Exception ex)
+        {
+            File.Delete(temporaryFile);
+            Toasts.ShowError($"The file could not be read ({ex.Message}). Try again.");
+            return;
         }
 
-        var key = (document.Id, $"member-{kind}");
-        _uploadingDocs.Add(key);
+        _uploadingKinds.Add(kind);
         StateHasChanged();
         try
         {
+            // A new Other document gets its row now, so the stored file has an id to be named after;
+            // the three named kinds reuse theirs.
+            var document = existing;
+            if (document is null)
+            {
+                document = new MemberDocument
+                {
+                    MemberId = _effectiveMember.Id,
+                    Kind = kind,
+                    UploadedAtUtc = DateTime.UtcNow,
+                };
+                document.Id = await DocumentWriter.InsertAsync(document);
+                _documents.Add(document);
+            }
+
             var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "my-workspace", "documents");
             Directory.CreateDirectory(uploadsDir);
             foreach (var stale in Directory.GetFiles(uploadsDir, $"{document.Id}-*.*")) File.Delete(stale);
 
             var fileName = $"{document.Id}-{kind.ToString().ToLowerInvariant()}{extension}";
             var filePath = Path.Combine(uploadsDir, fileName);
-            await using (var stream = e.File.OpenReadStream(MaxMemberDocumentBytes))
-            await using (var file = File.Create(filePath))
-            {
-                await stream.CopyToAsync(file);
-            }
+            File.Move(temporaryFile, filePath, overwrite: true);
 
             document.FilePath = $"/uploads/my-workspace/documents/{fileName}";
             document.OriginalFileName = e.File.Name;
@@ -486,11 +506,13 @@ public partial class MyWorkspace : ComponentBase
             await AuditLog.LogAsync(actorName, AuditAction.Update, nameof(MemberDocument), document.Id.ToString(),
                 $"Uploaded {KindTitle(document)}: {e.File.Name}. {captured}");
 
+            _addingOtherDocument = false;
             Toasts.ShowSuccess($"{KindTitle(document)} uploaded.");
         }
         finally
         {
-            _uploadingDocs.Remove(key);
+            _uploadingKinds.Remove(kind);
+            if (File.Exists(temporaryFile)) File.Delete(temporaryFile);
         }
     }
 

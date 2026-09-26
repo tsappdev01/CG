@@ -57,18 +57,15 @@
                                 <p class="cg-subtitle">@named.Blurb</p>
                             </div>
                             <div class="cg-doc-panel-file">
-                                @if (IsUploadingDocument(kind, doc?.Id ?? 0))
+                                <InputFile OnChange="e => OnMemberDocumentSelectedAsync(kind, doc, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploadingDocument(kind)" />
+                                @if (IsUploadingDocument(kind))
                                 {
-                                    <span class="cg-doc-upload-state">Uploading…</span>
+                                    <span class="cg-doc-upload-state">Reading…</span>
                                     <progress class="cg-doc-progress"></progress>
                                 }
-                                else
+                                else if (doc is not null && !string.IsNullOrEmpty(doc.FilePath))
                                 {
-                                    <InputFile OnChange="e => OnMemberDocumentSelectedAsync(kind, doc, e)" accept=".png,.jpg,.jpeg,.pdf" />
-                                    @if (doc is not null && !string.IsNullOrEmpty(doc.FilePath))
-                                    {
-                                        <a class="cg-doc-chip" href="@doc.FilePath" target="_blank" rel="noopener">View</a>
-                                    }
+                                    <a class="cg-doc-chip" href="@doc.FilePath" target="_blank" rel="noopener">View</a>
                                 }
                             </div>
                         </div>
@@ -136,14 +133,14 @@
                         <div class="cg-doc-panel-file">
                             @if (_addingOtherDocument)
                             {
-                                @if (IsUploadingDocument(MemberDocumentKind.Other, 0))
+                                <InputFile OnChange="e => OnMemberDocumentSelectedAsync(MemberDocumentKind.Other, null, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploadingDocument(MemberDocumentKind.Other)" />
+                                @if (IsUploadingDocument(MemberDocumentKind.Other))
                                 {
-                                    <span class="cg-doc-upload-state">Uploading…</span>
+                                    <span class="cg-doc-upload-state">Reading…</span>
                                     <progress class="cg-doc-progress"></progress>
                                 }
                                 else
                                 {
-                                    <InputFile OnChange="e => OnMemberDocumentSelectedAsync(MemberDocumentKind.Other, null, e)" accept=".png,.jpg,.jpeg,.pdf" />
                                     <button type="button" class="cg-action-btn" @onclick="CancelOtherDocument">Cancel</button>
                                 }
                             }

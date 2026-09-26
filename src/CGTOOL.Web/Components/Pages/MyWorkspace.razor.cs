@@ -155,6 +155,11 @@ public partial class MyWorkspace : ComponentBase
     private bool _relativesOpen = true;
     private bool _companiesOpen = true;
 
+    // The occupation picker binds to these rather than to the entity: the entity keeps one column,
+    // and "Other" plus what was typed is only a way of filling it in.
+    private string _occupationChoice = string.Empty;
+    private string _occupationOther = string.Empty;
+
     private bool _relativeDialogOpen;
     private FamilyMember? _relativeForm;
     private FamilyMember? _relativeTarget;
@@ -324,6 +329,33 @@ public partial class MyWorkspace : ComponentBase
 
     // ---------- relatives ----------
 
+    private void LoadOccupationChoice(string? occupation)
+    {
+        if (string.IsNullOrWhiteSpace(occupation))
+        {
+            _occupationChoice = string.Empty;
+            _occupationOther = string.Empty;
+        }
+        else if (Occupations.IsListed(occupation))
+        {
+            _occupationChoice = occupation;
+            _occupationOther = string.Empty;
+        }
+        else
+        {
+            // Typed before this list existed, or typed into the "Other" box last time.
+            _occupationChoice = Occupations.Other;
+            _occupationOther = occupation;
+        }
+    }
+
+    private string? ChosenOccupation() => _occupationChoice switch
+    {
+        "" => null,
+        Occupations.Other => string.IsNullOrWhiteSpace(_occupationOther) ? null : _occupationOther.Trim(),
+        var listed => listed,
+    };
+
     private void OpenAddRelative()
     {
         if (_effectiveMember is null) return;
@@ -335,6 +367,7 @@ public partial class MyWorkspace : ComponentBase
             Relationship = RelativeRelationship.Spouse,
             Nationality = Countries.Default,
         };
+        LoadOccupationChoice(null);
         _relativesOpen = true;
         _relativeDialogOpen = true;
     }
@@ -344,6 +377,7 @@ public partial class MyWorkspace : ComponentBase
         _relativeTarget = familyMember;
         _relativeBefore = CopyOf(familyMember);
         _relativeForm = CopyOf(familyMember);
+        LoadOccupationChoice(familyMember.Occupation);
         _relativeDialogOpen = true;
     }
 
@@ -364,6 +398,13 @@ public partial class MyWorkspace : ComponentBase
             Toasts.ShowError("Enter the related party's name.");
             return;
         }
+        if (_occupationChoice == Occupations.Other && string.IsNullOrWhiteSpace(_occupationOther))
+        {
+            Toasts.ShowError("Enter the occupation or business.");
+            return;
+        }
+
+        _relativeForm.Occupation = ChosenOccupation();
         if (_relativeForm.OwnershipPercentage is < 0 or > 100)
         {
             Toasts.ShowError("Ownership must be between 0 and 100.");
@@ -387,6 +428,7 @@ public partial class MyWorkspace : ComponentBase
             _relativeTarget = saved;
             _relativeBefore = CopyOf(saved);
             _relativeForm = CopyOf(saved);
+            LoadOccupationChoice(saved.Occupation);
             Toasts.ShowSuccess("Related party added. You can now attach documents.");
             return;
         }

@@ -253,8 +253,22 @@
                 </label>
                 <label class="cg-field">
                     <span>Occupation / Business</span>
-                    <input class="cg-input" @bind="_relativeForm.Occupation" maxlength="160" />
+                    <select class="cg-input" @bind="_occupationChoice">
+                        <option value="">—</option>
+                        @foreach (var occupation in Occupations.All)
+                        {
+                            <option value="@occupation">@occupation</option>
+                        }
+                        <option value="@Occupations.Other">Other</option>
+                    </select>
                 </label>
+                @if (_occupationChoice == Occupations.Other)
+                {
+                    <label class="cg-field">
+                        <span>Occupation / Business (other)</span>
+                        <input class="cg-input" placeholder="Type the occupation or business" @bind="_occupationOther" maxlength="160" />
+                    </label>
+                }
                 <label class="cg-field">
                     <span>Company / Organization</span>
                     <input class="cg-input" @bind="_relativeForm.Organization" maxlength="160" />

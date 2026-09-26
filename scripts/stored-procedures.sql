@@ -54,11 +54,13 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'InterestType') IS NULL
     OR COL_LENGTH('dbo.AuditLogEntries', 'RecordHash') IS NULL
     OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
+    OR COL_LENGTH('dbo.DeclarationCycleSetups', 'ReminderDayOfWeek') IS NULL
+    OR COL_LENGTH('dbo.DeclarationCycleSetups', 'ReminderTimeOfDay') IS NULL
 BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
     RAISERROR(
-        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party columns, AuditLogEntries.RecordHash, AuditLogReviews). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party columns, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
         16, 1, @db) WITH NOWAIT;
     SET NOEXEC ON;
 END
@@ -831,9 +833,9 @@ BEGIN
     IF @NewId IS NULL
     BEGIN
         INSERT INTO dbo.DeclarationCycleSetups
-            (Type, ReminderCount, ReminderFrequency, EmailSubject, EmailBody, CreatedAtUtc, ModifiedAtUtc)
+            (Type, ReminderCount, ReminderDayOfWeek, ReminderTimeOfDay, EmailSubject, EmailBody, CreatedAtUtc, ModifiedAtUtc)
         VALUES
-            (@Type, 0, 1 /* Weekly */, '', '', SYSUTCDATETIME(), SYSUTCDATETIME());
+            (@Type, 0, 6 /* Saturday */, '08:00', '', '', SYSUTCDATETIME(), SYSUTCDATETIME());
         SET @NewId = SCOPE_IDENTITY();
     END
 END
@@ -842,7 +844,8 @@ GO
 CREATE OR ALTER PROCEDURE dbo.usp_DeclarationCycleSetup_Update
     @Id int,
     @ReminderCount int,
-    @ReminderFrequency int,
+    @ReminderDayOfWeek int,
+    @ReminderTimeOfDay time(0),
     @EmailSubject nvarchar(200),
     @EmailBody nvarchar(max)
 AS
@@ -850,7 +853,8 @@ BEGIN
     SET NOCOUNT ON;
     UPDATE dbo.DeclarationCycleSetups
     SET ReminderCount = @ReminderCount,
-        ReminderFrequency = @ReminderFrequency,
+        ReminderDayOfWeek = @ReminderDayOfWeek,
+        ReminderTimeOfDay = @ReminderTimeOfDay,
         EmailSubject = @EmailSubject,
         EmailBody = @EmailBody,
         ModifiedAtUtc = SYSUTCDATETIME()
@@ -858,7 +862,8 @@ BEGIN
 END
 GO
 
--- @SentAtUtc is either "now" (Send Now) or a future date at 08:00 (Schedule Send, @Sent = 0 until the
+-- @SentAtUtc is either "now" (Send Now) or a future date at the configured reminder time, UAE
+-- Standard Time (Schedule Send, @Sent = 0 until the
 -- hosted service fires it and calls usp_DeclarationCycleRun_MarkSent).
 CREATE OR ALTER PROCEDURE dbo.usp_DeclarationCycleRun_Insert
     @DeclarationCycleSetupId int,

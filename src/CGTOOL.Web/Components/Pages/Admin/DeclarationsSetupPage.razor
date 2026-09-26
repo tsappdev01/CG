@@ -79,12 +79,31 @@
                     <InputNumber class="cg-input" @bind-Value="_setup.ReminderCount" />
                 </label>
 
+                <div class="cg-field">
+                    <span>Reminder day</span>
+                    @* Reminders are weekly, so the cadence is the day itself -- ordered from Saturday,
+                       the way the UAE week is read. *@
+                    <div class="cg-day-picker" role="radiogroup" aria-label="Reminder day">
+                        @foreach (var day in ReminderDays)
+                        {
+                            var current = day;
+                            <button type="button" class="cg-day-chip @(_setup.ReminderDayOfWeek == current ? "active" : "")"
+                                    role="radio" aria-checked="@(_setup.ReminderDayOfWeek == current)"
+                                    @onclick="() => _setup.ReminderDayOfWeek = current">@ShortDayName(current)</button>
+                        }
+                    </div>
+                </div>
+
                 <label class="cg-field">
-                    <span>Reminder frequency</span>
-                    <select class="cg-input" @bind="_setup.ReminderFrequency">
-                        <option value="@CycleReminderFrequency.Daily">Daily</option>
-                        <option value="@CycleReminderFrequency.Weekly">Weekly</option>
-                    </select>
+                    <span>Reminder time</span>
+                    <input type="time" class="cg-input" style="max-width:180px;"
+                           value="@_setup.ReminderTimeOfDay.ToString("HH:mm")"
+                           @onchange="OnReminderTimeChanged" />
+                    <p class="cg-subtitle">
+                        Reminders go out weekly, on @DayName(_setup.ReminderDayOfWeek) at
+                        @_setup.ReminderTimeOfDay.ToString("HH:mm") UAE Standard Time (UTC+4). A scheduled
+                        send fires at this time too, on the date you choose.
+                    </p>
                 </label>
 
                 <label class="cg-field">
@@ -161,7 +180,7 @@
                 <label class="cg-field">
                     <span>Send on date</span>
                     <input type="date" class="cg-input" value="@_scheduleSendDate.ToString("yyyy-MM-dd")" @onchange="e => _scheduleSendDate = DateTime.Parse((string)e.Value!)" />
-                    <p class="cg-subtitle">Always fires at 08:00 (local time) on the chosen date.</p>
+                    <p class="cg-subtitle">Fires at @ScheduleTimeLabel (UAE Standard Time) on the chosen date — the reminder time set on the template tab.</p>
                 </label>
                 <div class="cg-actions">
                     <button type="button" class="cg-action-btn" disabled="@_scheduling" @onclick="PrepareScheduleSend">@(_scheduling ? "Scheduling…" : "Schedule send")</button>

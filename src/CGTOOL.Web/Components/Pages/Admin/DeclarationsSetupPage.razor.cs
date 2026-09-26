@@ -272,7 +272,8 @@ public partial class DeclarationsSetupPage
     {
         var changes = new List<string>();
         if (before.ReminderCount != after.ReminderCount) changes.Add($"Reminder count {before.ReminderCount} → {after.ReminderCount}");
-        if (before.ReminderFrequency != after.ReminderFrequency) changes.Add($"Reminder frequency {before.ReminderFrequency} → {after.ReminderFrequency}");
+        if (before.ReminderDayOfWeek != after.ReminderDayOfWeek) changes.Add($"Reminder day {before.ReminderDayOfWeek} → {after.ReminderDayOfWeek}");
+        if (before.ReminderTimeOfDay != after.ReminderTimeOfDay) changes.Add($"Reminder time {before.ReminderTimeOfDay:HH\\:mm} → {after.ReminderTimeOfDay:HH\\:mm} (UAE)");
         if (before.EmailSubject != after.EmailSubject) changes.Add($"Email subject '{before.EmailSubject}' → '{after.EmailSubject}'");
         if (before.EmailBody != after.EmailBody) changes.Add("Email template body changed");
         return changes;
@@ -283,7 +284,8 @@ public partial class DeclarationsSetupPage
         Id = s.Id,
         Type = s.Type,
         ReminderCount = s.ReminderCount,
-        ReminderFrequency = s.ReminderFrequency,
+        ReminderDayOfWeek = s.ReminderDayOfWeek,
+        ReminderTimeOfDay = s.ReminderTimeOfDay,
         EmailSubject = s.EmailSubject,
         EmailBody = s.EmailBody,
     };
@@ -330,6 +332,31 @@ public partial class DeclarationsSetupPage
     /// displaying the wrong calendar date for a plain due date.</summary>
     private static DateTime LocalDateToUtc(DateTime localDate, int hour = 0) =>
         DateTime.SpecifyKind(localDate.Date.AddHours(hour), DateTimeKind.Local).ToUniversalTime();
+
+    /// <summary>The week as the UAE reads it, Saturday first.</summary>
+    public static readonly DayOfWeek[] ReminderDays =
+    [
+        DayOfWeek.Saturday, DayOfWeek.Sunday, DayOfWeek.Monday, DayOfWeek.Tuesday,
+        DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday,
+    ];
+
+    private static string ShortDayName(DayOfWeek day) => day.ToString()[..3].ToUpperInvariant();
+
+    private static string DayName(DayOfWeek day) => day.ToString();
+
+    private string ScheduleTimeLabel => _setup?.ReminderTimeOfDay.ToString("HH:mm") ?? "08:00";
+
+    /// <summary>&lt;input type="time"&gt; posts "HH:mm" (or "HH:mm:ss" in some browsers); an empty box
+    /// leaves the setting as it was rather than silently resetting it to midnight.</summary>
+    private void OnReminderTimeChanged(ChangeEventArgs e)
+    {
+        if (_setup is null) return;
+        if (TimeOnly.TryParse(e.Value as string, out var time)) _setup.ReminderTimeOfDay = time;
+    }
+
+    /// <summary>A scheduled send fires at the configured reminder time, in UAE Standard Time.</summary>
+    private DateTime ScheduledSendUtc() =>
+        UaeTime.ToUtc(_scheduleSendDate, _setup?.ReminderTimeOfDay ?? new TimeOnly(8, 0));
 
     private void PrepareSendNow()
     {
@@ -429,8 +456,8 @@ public partial class DeclarationsSetupPage
         var priorRun = MostRecentSentRun(companyId);
         var periodLabel = $"Q{_periodQuarter} {_periodYear}";
         _confirmMessage = priorRun is not null
-            ? $"A notification was already sent to {entityLabel} on {priorRun.SentAtUtc.ToLocalDisplay():dd MMM yyyy}. Schedule another for {_scheduleSendDate:dd MMM yyyy} at 08:00 ({periodLabel})?"
-            : $"Schedule this notification to send to {entityLabel} on {_scheduleSendDate:dd MMM yyyy} at 08:00 ({periodLabel})?";
+            ? $"A notification was already sent to {entityLabel} on {priorRun.SentAtUtc.ToLocalDisplay():dd MMM yyyy}. Schedule another for {_scheduleSendDate:dd MMM yyyy} at {ScheduleTimeLabel} UAE time ({periodLabel})?"
+            : $"Schedule this notification to send to {entityLabel} on {_scheduleSendDate:dd MMM yyyy} at {ScheduleTimeLabel} UAE time ({periodLabel})?";
 
         _pendingScheduleConfirm = true;
     }
@@ -449,7 +476,7 @@ public partial class DeclarationsSetupPage
             DeclarationCycleSetupId = _setup.Id,
             Type = Type,
             CompanyId = _pendingCompanyId,
-            SentAtUtc = LocalDateToUtc(_scheduleSendDate, hour: 8),
+            SentAtUtc = ScheduledSendUtc(),
             PeriodYear = _periodYear,
             PeriodQuarter = _periodQuarter,
             DueDateUtc = LocalDateToUtc(_dueDate),
@@ -459,9 +486,9 @@ public partial class DeclarationsSetupPage
 
         var entityLabel = EntityLabel(_pendingCompanyId);
         await AuditLog.LogAsync(await CurrentActorAsync(), AuditAction.Create, nameof(DeclarationCycleRun), Type.ToString(),
-            $"{PageHeading} scheduled to send {run.SentAtUtc.ToLocalDisplay():yyyy-MM-dd} 08:00 to {entityLabel}, due {_dueDate:yyyy-MM-dd}");
+            $"{PageHeading} scheduled to send {run.SentAtUtc.ToUaeDisplay("yyyy-MM-dd HH:mm")} UAE time to {entityLabel}, due {_dueDate:yyyy-MM-dd}");
 
-        Toasts.ShowSuccess($"Scheduled to send on {run.SentAtUtc.ToLocalDisplay():yyyy-MM-dd} at 08:00.");
+        Toasts.ShowSuccess($"Scheduled to send on {run.SentAtUtc.ToUaeDisplay("yyyy-MM-dd")} at {ScheduleTimeLabel} UAE time.");
         _scheduling = false;
         await LoadRunsAsync();
     }
@@ -510,7 +537,7 @@ public partial class DeclarationsSetupPage
 
         await RunWriter.DeleteAsync(run.Id);
         await AuditLog.LogAsync(await CurrentActorAsync(), AuditAction.Delete, nameof(DeclarationCycleRun), Type.ToString(),
-            $"Cancelled scheduled {PageHeading} send for {run.SentAtUtc.ToLocalDisplay():yyyy-MM-dd} 08:00");
+            $"Cancelled scheduled {PageHeading} send for {run.SentAtUtc.ToUaeDisplay("yyyy-MM-dd HH:mm")} UAE time");
 
         Toasts.ShowSuccess("Scheduled send cancelled.");
         await LoadRunsAsync();

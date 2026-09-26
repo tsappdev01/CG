@@ -3,8 +3,9 @@ using Microsoft.EntityFrameworkCore;
 namespace CGTOOL.Web.Data.Governance;
 
 /// <summary>Fires scheduled ("Schedule Send") notification runs once their target time arrives, and
-/// sends the remaining reminder emails for each already-sent DeclarationCycleRun, at the cadence
-/// configured on its DeclarationCycleSetup (Daily/Weekly), until ReminderCount is reached.</summary>
+/// sends the remaining reminder emails for each already-sent DeclarationCycleRun on the weekday and
+/// time configured on its DeclarationCycleSetup -- read in UAE Standard Time -- until ReminderCount
+/// is reached.</summary>
 public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFactory, ILogger<DeclarationCycleReminderHostedService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -26,8 +27,9 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
                 logger.LogError(ex, "Declaration cycle check failed.");
             }
 
-            // Hourly (not daily) so a "Schedule Send" targeting 08:00 fires reasonably close to that time.
-            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+            // Both a scheduled send and a weekly reminder name a time of day, so the tick has to be
+            // short enough that "08:00" means 08:00 and not "some time before 09:00".
+            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
         }
     }
 
@@ -60,9 +62,7 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
             var setup = run.DeclarationCycleSetup!;
             if (run.RemindersSent >= setup.ReminderCount) continue;
 
-            var intervalDays = setup.ReminderFrequency == CycleReminderFrequency.Daily ? 1 : 7;
-            var lastSent = run.LastReminderSentUtc ?? run.SentAtUtc;
-            if ((DateTime.UtcNow - lastSent).TotalDays < intervalDays) continue;
+            if (!IsReminderDue(setup, run.LastReminderSentUtc ?? run.SentAtUtc)) continue;
 
             var recipients = await ResolveRecipientsAsync(db, run.CompanyId, ct);
             var reminderNumber = run.RemindersSent + 1;
@@ -87,6 +87,19 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
             run.RemindersSent++;
             run.LastReminderSentUtc = sentAt;
         }
+    }
+
+    /// <summary>A reminder is due once the configured weekday has come round in UAE time and its time
+    /// of day has passed. The slots are a week apart by construction, so the only thing to guard
+    /// against is sending twice inside one slot -- hence "not already sent today". The notification
+    /// itself counts as the last send, so the first reminder waits for the next slot after it.</summary>
+    public static bool IsReminderDue(DeclarationCycleSetup setup, DateTime lastSentUtc)
+    {
+        var now = UaeTime.Now;
+        if (now.DayOfWeek != setup.ReminderDayOfWeek) return false;
+        if (now.TimeOfDay < setup.ReminderTimeOfDay.ToTimeSpan()) return false;
+
+        return UaeTime.FromUtc(lastSentUtc).Date < now.Date;
     }
 
     /// <summary>Shared by "Send Now"/schedule-firing: resolves recipients, sends the notification, and

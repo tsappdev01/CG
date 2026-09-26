@@ -14,12 +14,10 @@ public enum DeclarationCycleType
     ScheduledMaintenance,
 }
 
-public enum CycleReminderFrequency { Daily, Weekly }
-
 /// <summary>One configuration row per DeclarationCycleType (singleton, like ScheduledActivity) -- how
-/// many reminders to send and how often, and the email template used when an admin sends or schedules
-/// a cycle. Scheduling itself (when the notification goes out, and its due date) is set explicitly per
-/// send/schedule action on DeclarationCycleRun rather than as a recurring policy here.</summary>
+/// many reminders to send, which day and time of the week they go out on, and the email template used
+/// when an admin sends or schedules a cycle. Which period a notification covers, and its due date, are
+/// still set per send/schedule action on DeclarationCycleRun rather than as a recurring policy here.</summary>
 public class DeclarationCycleSetup
 {
     public int Id { get; set; }
@@ -29,7 +27,13 @@ public class DeclarationCycleSetup
     [Range(0, 20)]
     public int ReminderCount { get; set; }
 
-    public CycleReminderFrequency ReminderFrequency { get; set; } = CycleReminderFrequency.Weekly;
+    /// <summary>Reminders go out once a week, on this day. Saturday by default: the UAE working week
+    /// opens on Sunday, so a Saturday reminder is waiting when people come in.</summary>
+    public DayOfWeek ReminderDayOfWeek { get; set; } = DayOfWeek.Saturday;
+
+    /// <summary>The time of day reminders are sent, and the time a "Schedule Send" fires on its chosen
+    /// date. Read as UAE Standard Time (see UaeTime), never as the server's own time zone.</summary>
+    public TimeOnly ReminderTimeOfDay { get; set; } = new(8, 0);
 
     [Required, MaxLength(200)]
     public string EmailSubject { get; set; } = string.Empty;

@@ -2796,3 +2796,14 @@ button.cg-appbar-user {
 .cg-decl-badge.warn { background: #fdf1dc; color: #8a5a06; }
 .cg-decl-badge.none { background: var(--cg-surface-muted, #eef0f4); color: var(--cg-ink-muted); }
 .cg-audit-pill.active .cg-decl-badge { background: rgba(255, 255, 255, .22); color: #fff; }
+
+/* Reminder day picker — the weekly cadence is the day, so the seven days are the control. */
+.cg-day-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+.cg-day-chip {
+    min-width: 52px; padding: 9px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--cg-line-strong); background: var(--cg-surface);
+    font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em;
+    color: var(--cg-ink-muted);
+}
+.cg-day-chip:hover { border-color: var(--cg-accent); color: var(--cg-accent); }
+.cg-day-chip.active { background: var(--cg-navy); border-color: var(--cg-navy); color: #fff; }

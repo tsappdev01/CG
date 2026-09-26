@@ -21,7 +21,8 @@ public class DeclarationCycleSetupWriter(IStoredProcedureExecutor sp) : IDeclara
         "dbo.usp_DeclarationCycleSetup_Update",
         new SqlParameter("@Id", setup.Id),
         new SqlParameter("@ReminderCount", setup.ReminderCount),
-        new SqlParameter("@ReminderFrequency", (int)setup.ReminderFrequency),
+        new SqlParameter("@ReminderDayOfWeek", (int)setup.ReminderDayOfWeek),
+        new SqlParameter("@ReminderTimeOfDay", setup.ReminderTimeOfDay.ToTimeSpan()),
         new SqlParameter("@EmailSubject", setup.EmailSubject),
         new SqlParameter("@EmailBody", setup.EmailBody));
 }

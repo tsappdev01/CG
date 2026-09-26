@@ -48,6 +48,12 @@ public partial class SubmitInsiderDeclaration
     private bool _offerWorkspacePull;
     private int _workspacePullCount;
 
+    // The other direction: rows typed here that My Workspace has never heard of. Offered once, on
+    // Next, when the rows are finished -- asking as each one is typed would interrupt a half-filled
+    // row that has no name yet.
+    private bool _offerWorkspaceSave;
+    private readonly List<NinHolderRow> _newToWorkspace = [];
+
     // Functional Spec §4: a single combined question replaces the old separate "do you hold shares" /
     // "do your relatives hold shares" pair. The declarant's own holding, if any, is captured as a
     // grid row with IsSelf=true rather than via separate fields.
@@ -697,7 +703,7 @@ public partial class SubmitInsiderDeclaration
     }
 
     // Screen 1 "Next" -- Functional Spec §3.1/§3.2/§8 validation.
-    private void GoToCapture2()
+    private async Task GoToCapture2Async()
     {
         if (_hasNin && !IsValidNin(_ninNumber))
         {
@@ -727,8 +733,95 @@ public partial class SubmitInsiderDeclaration
             }
         }
 
+        // Relatives typed here that My Workspace does not have are worth keeping: the register is
+        // what next quarter's declaration pulls from, so a relative entered once and never saved is
+        // one the member types again every quarter. Asked here, on Next, because that is when the
+        // rows are finished.
+        if (_relativesHaveNin)
+        {
+            _newToWorkspace.Clear();
+            _newToWorkspace.AddRange(await RowsNotInWorkspaceAsync());
+            if (_newToWorkspace.Count > 0)
+            {
+                _offerWorkspaceSave = true;
+                return;
+            }
+        }
+
         // Give the declarant a last chance to go back and correct anything before moving on --
         // ConfirmCapture2 is what actually advances to Screen 2.
+        _pendingCapture1Confirm = true;
+    }
+
+    /// <summary>Grid rows that no relative in My Workspace matches, by NIN or by name. Either way of
+    /// matching is enough: a member who typed the name differently but the same NIN has not created
+    /// a second person.</summary>
+    private async Task<List<NinHolderRow>> RowsNotInWorkspaceAsync()
+    {
+        if (_effectiveMember is null) return [];
+
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var onFile = await db.FamilyMembers.AsNoTracking()
+            .Where(f => f.MemberId == _effectiveMember.Id)
+            .Select(f => new { f.Name, f.NinNumber })
+            .ToListAsync();
+
+        return _ninHolders
+            .Where(h => !string.IsNullOrWhiteSpace(h.NameOfShareHolder))
+            .Where(h => !onFile.Any(f =>
+                string.Equals(f.Name.Trim(), h.NameOfShareHolder.Trim(), StringComparison.OrdinalIgnoreCase)
+                || (!string.IsNullOrWhiteSpace(f.NinNumber)
+                    && string.Equals(f.NinNumber.Trim(), h.NinNumber.Trim(), StringComparison.OrdinalIgnoreCase))))
+            .ToList();
+    }
+
+    private void DeclineWorkspaceSave()
+    {
+        _offerWorkspaceSave = false;
+        _newToWorkspace.Clear();
+        _pendingCapture1Confirm = true;
+    }
+
+    /// <summary>Writes the new rows into My Workspace as related parties, then carries on to the
+    /// confirmation. Only the three fields this grid holds are set; everything else on a related
+    /// party is left for the member to fill in there, so nothing is invented on their behalf.</summary>
+    private async Task AcceptWorkspaceSaveAsync()
+    {
+        _offerWorkspaceSave = false;
+        if (_effectiveMember is null) { _pendingCapture1Confirm = true; return; }
+
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var actorName = state.User.Identity?.Name ?? "unknown";
+        var isImpersonating = Impersonation.ActingMemberId is not null;
+        var saved = 0;
+        var namesAdded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var row in _newToWorkspace)
+        {
+            // Two rows for the same person in one grid would otherwise become two related parties.
+            if (!namesAdded.Add(row.NameOfShareHolder.Trim())) continue;
+
+            var relative = new FamilyMember
+            {
+                MemberId = _effectiveMember.Id,
+                Name = row.NameOfShareHolder.Trim(),
+                Relationship = row.Relationship,
+                NinNumber = string.IsNullOrWhiteSpace(row.NinNumber) ? null : row.NinNumber.Trim(),
+            };
+            relative.Id = await FamilyMemberWriter.InsertAsync(relative);
+            saved++;
+
+            await AuditLog.LogAsync(actorName, AuditAction.Create, nameof(FamilyMember), relative.Id.ToString(),
+                $"Added related party {relative.Name} ({RelationshipLabel(relative.Relationship)}), NIN {Nin.Show(relative.NinNumber)}, from the Insider Trading declaration.",
+                actingOnBehalfOf: isImpersonating ? _effectiveMember.FullName : null);
+        }
+
+        _newToWorkspace.Clear();
+        Toasts.ShowSuccess($"Added {saved} related part{(saved == 1 ? "y" : "ies")} to My Workspace.");
         _pendingCapture1Confirm = true;
     }
 

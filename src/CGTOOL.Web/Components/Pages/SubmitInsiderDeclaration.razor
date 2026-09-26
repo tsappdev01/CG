@@ -5,6 +5,7 @@
 @using System.Security.Claims
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IInsiderDeclarationWriter Writer
+@inject IFamilyMemberWriter FamilyMemberWriter
 @inject IActivityEmailSender EmailSender
 @inject SqlDbMailSender SqlMail
 @inject IAuditLogger AuditLog
@@ -99,6 +100,7 @@
                                    Message="Load your relatives from My Workspace?"
                                    Detail="@($"{_workspacePullCount} relative(s) with a NIN are on file there. Their relation, name and NIN come across; anything already in the grid is left alone.")"
                                    ConfirmLabel="Load them"
+                                   CancelLabel="Not now"
                                    OnConfirm="AcceptWorkspacePullAsync"
                                    OnCancel="DeclineWorkspacePull" />
                 }
@@ -151,8 +153,19 @@
                 }
 
                 <div class="cg-actions">
-                    <button type="button" class="cg-action-btn cg-good" @onclick="GoToCapture2">Next</button>
+                    <button type="button" class="cg-action-btn cg-good" @onclick="GoToCapture2Async">Next</button>
                 </div>
+
+                @if (_offerWorkspaceSave)
+                {
+                    <ConfirmPrompt Show="true"
+                                   Message="Add these relatives to My Workspace as well?"
+                                   Detail="@($"{string.Join(", ", _newToWorkspace.Select(r => r.NameOfShareHolder))} — not recorded there yet. Saved once, they can be pulled into every future declaration instead of retyped.")"
+                                   ConfirmLabel="Add to My Workspace"
+                                   CancelLabel="Not now"
+                                   OnConfirm="AcceptWorkspaceSaveAsync"
+                                   OnCancel="DeclineWorkspaceSave" />
+                }
 
                 <ConfirmPrompt Show="_pendingCapture1Confirm"
                                Message="Please confirm all information entered above is correct before proceeding — you can still come back and edit it, but double-check now."

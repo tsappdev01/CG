@@ -8,7 +8,7 @@
         }
         <div class="cg-actions">
             <button type="button" class="cg-action-btn @(Critical ? "cg-critical" : "cg-good")" @onclick="() => OnConfirm.InvokeAsync()">@ConfirmLabel</button>
-            <button type="button" class="cg-action-btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+            <button type="button" class="cg-action-btn" @onclick="() => OnCancel.InvokeAsync()">@CancelLabel</button>
         </div>
     </div>
 }
@@ -21,6 +21,10 @@
     /// before the person commits, such as how many people a notification is about to reach.</summary>
     [Parameter] public string? Detail { get; set; }
     [Parameter] public string ConfirmLabel { get; set; } = "Confirm";
+
+    /// <summary>"Cancel" is right when declining abandons the action, and wrong when it just
+    /// declines an offer and carries on -- "Not now" there.</summary>
+    [Parameter] public string CancelLabel { get; set; } = "Cancel";
     [Parameter] public bool Critical { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }

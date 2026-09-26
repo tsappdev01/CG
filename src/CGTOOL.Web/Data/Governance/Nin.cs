@@ -22,6 +22,9 @@ public static class Nin
 
     public const string Hint = "Letters and digits only, at least 10 characters.";
 
+    /// <summary>For log lines and summaries, where a missing NIN has to read as something.</summary>
+    public static string Show(string? nin) => string.IsNullOrWhiteSpace(nin) ? "none" : nin.Trim();
+
     public static string ErrorFor(string what) =>
         $"Enter a valid NIN for {what}: letters and digits only (no special characters), at least {MinimumLength} characters.";
 }

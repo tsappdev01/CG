@@ -15,6 +15,7 @@ public class OwnedCompanyWriter(IStoredProcedureExecutor sp) : IOwnedCompanyWrit
         new SqlParameter("@MemberId", company.MemberId),
         new SqlParameter("@CompanyName", company.CompanyName),
         new SqlParameter("@TradeLicenseDetails", (object?)company.TradeLicenseDetails ?? DBNull.Value),
+        new SqlParameter("@PrincipalBusinessActivity", (object?)company.PrincipalBusinessActivity ?? DBNull.Value),
         new SqlParameter("@OwnershipPercentage", (object?)company.OwnershipPercentage ?? DBNull.Value),
         new SqlParameter("@NatureOfHolding", (int)company.NatureOfHolding),
         new SqlParameter("@ServesAsBoardMemberOrExecutive", company.ServesAsBoardMemberOrExecutive));
@@ -23,6 +24,7 @@ public class OwnedCompanyWriter(IStoredProcedureExecutor sp) : IOwnedCompanyWrit
         new SqlParameter("@Id", company.Id),
         new SqlParameter("@CompanyName", company.CompanyName),
         new SqlParameter("@TradeLicenseDetails", (object?)company.TradeLicenseDetails ?? DBNull.Value),
+        new SqlParameter("@PrincipalBusinessActivity", (object?)company.PrincipalBusinessActivity ?? DBNull.Value),
         new SqlParameter("@OwnershipPercentage", (object?)company.OwnershipPercentage ?? DBNull.Value),
         new SqlParameter("@NatureOfHolding", (int)company.NatureOfHolding),
         new SqlParameter("@ServesAsBoardMemberOrExecutive", company.ServesAsBoardMemberOrExecutive),

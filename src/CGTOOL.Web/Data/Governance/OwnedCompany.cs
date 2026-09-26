@@ -23,6 +23,11 @@ public class OwnedCompany
     /// member's own is answering half the question.</summary>
     public RelatedPartyHoldingNature NatureOfHolding { get; set; } = RelatedPartyHoldingNature.None;
 
+    /// <summary>What the company actually does. Same field, same length, as the one the Related
+    /// Party & COI declaration asks for against each company, so what is recorded here answers it.</summary>
+    [MaxLength(400)]
+    public string? PrincipalBusinessActivity { get; set; }
+
     /// <summary>Ownership percentage (0-100).</summary>
     public decimal? OwnershipPercentage { get; set; }
 

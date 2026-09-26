@@ -264,6 +264,7 @@ public partial class MyWorkspace : ComponentBase
         MemberId = c.MemberId,
         CompanyName = c.CompanyName,
         TradeLicenseDetails = c.TradeLicenseDetails,
+        PrincipalBusinessActivity = c.PrincipalBusinessActivity,
         NatureOfHolding = c.NatureOfHolding,
         OwnershipPercentage = c.OwnershipPercentage,
         ServesAsBoardMemberOrExecutive = c.ServesAsBoardMemberOrExecutive,
@@ -279,6 +280,7 @@ public partial class MyWorkspace : ComponentBase
     {
         to.CompanyName = from.CompanyName;
         to.TradeLicenseDetails = from.TradeLicenseDetails;
+        to.PrincipalBusinessActivity = from.PrincipalBusinessActivity;
         to.NatureOfHolding = from.NatureOfHolding;
         to.OwnershipPercentage = from.OwnershipPercentage;
         to.ServesAsBoardMemberOrExecutive = from.ServesAsBoardMemberOrExecutive;
@@ -357,6 +359,7 @@ public partial class MyWorkspace : ComponentBase
         }
 
         Cmp("Name of the Company", before.CompanyName, after.CompanyName);
+        Cmp("Principal Business Activity", before.PrincipalBusinessActivity, after.PrincipalBusinessActivity);
         Cmp("Nature Of Holding", HoldingLabel(before.NatureOfHolding), HoldingLabel(after.NatureOfHolding));
         Cmp("Ownership %", Pct(before.OwnershipPercentage), Pct(after.OwnershipPercentage));
         Cmp("Board member or senior executive", YesNo(before.ServesAsBoardMemberOrExecutive), YesNo(after.ServesAsBoardMemberOrExecutive));
@@ -395,6 +398,7 @@ public partial class MyWorkspace : ComponentBase
     private static string SnapshotOf(OwnedCompany c) => string.Join("; ",
     [
         $"Name of the Company: {Show(c.CompanyName)}",
+        $"Principal Business Activity: {Show(c.PrincipalBusinessActivity)}",
         $"Nature Of Holding: {HoldingLabel(c.NatureOfHolding)}",
         $"Ownership %: {Show(Pct(c.OwnershipPercentage))}",
         $"Board member or senior executive: {YesNo(c.ServesAsBoardMemberOrExecutive)}",
@@ -928,6 +932,8 @@ public partial class MyWorkspace : ComponentBase
         }
 
         _companyForm.CompanyName = _companyForm.CompanyName.Trim();
+        _companyForm.PrincipalBusinessActivity = string.IsNullOrWhiteSpace(_companyForm.PrincipalBusinessActivity)
+            ? null : _companyForm.PrincipalBusinessActivity.Trim();
         var actorName = await CurrentActorNameAsync();
 
         if (_companyTarget is null)

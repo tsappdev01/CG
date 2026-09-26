@@ -43,6 +43,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<DeclarationReminderLog> DeclarationReminderLogs => Set<DeclarationReminderLog>();
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<OwnedCompany> OwnedCompanies => Set<OwnedCompany>();
+    public DbSet<MemberDocument> MemberDocuments => Set<MemberDocument>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

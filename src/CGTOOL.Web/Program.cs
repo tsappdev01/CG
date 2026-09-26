@@ -145,6 +145,7 @@ builder.Services.AddScoped<IRelatedPartyTransactionWriter, RelatedPartyTransacti
 builder.Services.AddScoped<IDeclarationReminderLogWriter, DeclarationReminderLogWriter>();
 builder.Services.AddScoped<IFamilyMemberWriter, FamilyMemberWriter>();
 builder.Services.AddScoped<IOwnedCompanyWriter, OwnedCompanyWriter>();
+builder.Services.AddScoped<IMemberDocumentWriter, MemberDocumentWriter>();
 
 builder.Services.AddScoped<ImpersonationContext>();
 builder.Services.AddSingleton<ActingAsCookie>();

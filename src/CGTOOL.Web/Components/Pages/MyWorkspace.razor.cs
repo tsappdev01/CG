@@ -13,6 +13,7 @@ public partial class MyWorkspace : ComponentBase
     [Inject] private IDbContextFactory<ApplicationDbContext> DbFactory { get; set; } = default!;
     [Inject] private IFamilyMemberWriter FamilyMemberWriter { get; set; } = default!;
     [Inject] private IOwnedCompanyWriter CompanyWriter { get; set; } = default!;
+    [Inject] private IMemberDocumentWriter DocumentWriter { get; set; } = default!;
     [Inject] private IAuditLogger AuditLog { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthState { get; set; } = default!;
     [Inject] private ImpersonationContext Impersonation { get; set; } = default!;
@@ -29,6 +30,7 @@ public partial class MyWorkspace : ComponentBase
 
     private readonly List<FamilyMember> _familyMembers = [];
     private readonly List<OwnedCompany> _companies = [];
+    private readonly List<MemberDocument> _documents = [];
 
     // Relatives table: search, relation filter and paging.
     private string _search = string.Empty;
@@ -96,6 +98,12 @@ public partial class MyWorkspace : ComponentBase
         _companies.AddRange(await db.OwnedCompanies.AsNoTracking()
             .Where(c => c.MemberId == _effectiveMember.Id)
             .OrderBy(c => c.Id)
+            .ToListAsync());
+
+        _documents.Clear();
+        _documents.AddRange(await db.MemberDocuments.AsNoTracking()
+            .Where(d => d.MemberId == _effectiveMember.Id)
+            .OrderBy(d => d.Kind).ThenBy(d => d.Id)
             .ToListAsync());
     }
 
@@ -165,6 +173,7 @@ public partial class MyWorkspace : ComponentBase
     // _*Form is the working copy the dialog binds to, and _*Before is the snapshot the audit entry
     // is diffed against. Binding the dialog straight to the grid row would leave half-typed edits
     // on screen after a cancel, and would leave nothing to diff against.
+    private bool _documentsOpen = true;
     private bool _relativesOpen = true;
     private bool _companiesOpen = true;
 
@@ -182,6 +191,8 @@ public partial class MyWorkspace : ComponentBase
     private List<DuplicateMatch> _duplicateMatches = [];
     private bool _duplicateAcknowledged;
 
+    private MemberDocument? _pendingDeleteDocument;
+    private bool _addingOtherDocument;
     private FamilyMember? _pendingDeleteRelative;
     private OwnedCompany? _pendingDeleteCompany;
 
@@ -392,6 +403,200 @@ public partial class MyWorkspace : ComponentBase
         if (!string.IsNullOrEmpty(f.TradeLicencePath)) docs.Add((f.TradeLicencePath, "Trade licence"));
         return docs;
     }
+
+
+    // ---------- my documents ----------
+
+    private const long MaxMemberDocumentBytes = 10 * 1024 * 1024;
+
+    private static readonly (MemberDocumentKind Kind, string Title, string Blurb)[] NamedDocumentKinds =
+    [
+        (MemberDocumentKind.EmiratesId, "Emirates ID", "Number, name on the ID, expiry and date of birth."),
+        (MemberDocumentKind.Passport, "Passport", "Number, nationality, issue and expiry dates."),
+        (MemberDocumentKind.TradeLicence, "Trade License", "Licence number, legal name and expiry."),
+    ];
+
+    /// <summary>A person has one Emirates ID, so these three are looked up rather than listed --
+    /// uploading again replaces what is on file. "Other" is the list.</summary>
+    private MemberDocument? DocumentOf(MemberDocumentKind kind) =>
+        kind == MemberDocumentKind.Other ? null : _documents.FirstOrDefault(d => d.Kind == kind);
+
+    private List<MemberDocument> OtherDocuments() =>
+        _documents.Where(d => d.Kind == MemberDocumentKind.Other).OrderBy(d => d.Id).ToList();
+
+    private static string KindTitle(MemberDocument document) => document.Kind switch
+    {
+        MemberDocumentKind.EmiratesId => "Emirates ID",
+        MemberDocumentKind.Passport => "Passport",
+        MemberDocumentKind.TradeLicence => "Trade License",
+        _ => string.IsNullOrWhiteSpace(document.Title) ? "Other document" : document.Title!,
+    };
+
+    private bool IsUploadingDocument(MemberDocumentKind kind, int id) => _uploadingDocs.Contains((id, $"member-{kind}"));
+
+    private async Task OnMemberDocumentSelectedAsync(MemberDocumentKind kind, MemberDocument? existing, InputFileChangeEventArgs e)
+    {
+        if (_effectiveMember is null) return;
+
+        var extension = ExtensionFor(e.File.ContentType);
+        if (extension is null) { Toasts.ShowError("Only JPEG, PNG, or PDF files are supported."); return; }
+        if (e.File.Size > MaxMemberDocumentBytes) { Toasts.ShowError("File must be 10 MB or smaller."); return; }
+
+        // A new Other document gets its row before the file, so the file has an id to be named
+        // after; the three named kinds reuse theirs.
+        var document = existing;
+        if (document is null)
+        {
+            document = new MemberDocument
+            {
+                MemberId = _effectiveMember.Id,
+                Kind = kind,
+                UploadedAtUtc = DateTime.UtcNow,
+            };
+            document.Id = await DocumentWriter.InsertAsync(document);
+            _documents.Add(document);
+        }
+
+        var key = (document.Id, $"member-{kind}");
+        _uploadingDocs.Add(key);
+        StateHasChanged();
+        try
+        {
+            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "my-workspace", "documents");
+            Directory.CreateDirectory(uploadsDir);
+            foreach (var stale in Directory.GetFiles(uploadsDir, $"{document.Id}-*.*")) File.Delete(stale);
+
+            var fileName = $"{document.Id}-{kind.ToString().ToLowerInvariant()}{extension}";
+            var filePath = Path.Combine(uploadsDir, fileName);
+            await using (var stream = e.File.OpenReadStream(MaxMemberDocumentBytes))
+            await using (var file = File.Create(filePath))
+            {
+                await stream.CopyToAsync(file);
+            }
+
+            document.FilePath = $"/uploads/my-workspace/documents/{fileName}";
+            document.OriginalFileName = e.File.Name;
+            document.UploadedAtUtc = DateTime.UtcNow;
+
+            var captured = await CaptureDocumentAsync(document, filePath);
+
+            await DocumentWriter.UpdateAsync(document);
+
+            var actorName = await CurrentActorNameAsync();
+            await AuditLog.LogAsync(actorName, AuditAction.Update, nameof(MemberDocument), document.Id.ToString(),
+                $"Uploaded {KindTitle(document)}: {e.File.Name}. {captured}");
+
+            Toasts.ShowSuccess($"{KindTitle(document)} uploaded.");
+        }
+        finally
+        {
+            _uploadingDocs.Remove(key);
+        }
+    }
+
+    /// <summary>Reads what the document says into the fields beside it, with the model that suits
+    /// the kind. Returns what it read, for the audit line. Nothing is read for an Other document:
+    /// there is no telling what it is, so there is no model to ask.</summary>
+    private async Task<string> CaptureDocumentAsync(MemberDocument document, string filePath)
+    {
+        if (!DocIntel.IsConfigured) return "Document capture is not configured; the details are typed in.";
+
+        if (document.Kind == MemberDocumentKind.TradeLicence)
+        {
+            var licence = await ReadTradeLicenceAsync(filePath);
+            if (licence is null) return "No details were read from it.";
+
+            if (!string.IsNullOrWhiteSpace(licence.LicenceNumber)) document.DocumentNumber = licence.LicenceNumber;
+            if (!string.IsNullOrWhiteSpace(licence.BusinessName)) document.HolderName = licence.BusinessName;
+            if (licence.ExpiryDate is not null) document.ExpiryDate = licence.ExpiryDate;
+            return CapturedNote(licence);
+        }
+
+        if (document.Kind == MemberDocumentKind.Other) return "Other documents are not read automatically.";
+
+        var id = await ReadIdDocumentAsync(filePath);
+        if (id is null) return "No details were read from it.";
+
+        if (!string.IsNullOrWhiteSpace(id.DocumentNumber)) document.DocumentNumber = id.DocumentNumber;
+        if (id.DateOfExpiration is not null) document.ExpiryDate = id.DateOfExpiration;
+        if (id.DateOfBirth is not null) document.DateOfBirth = id.DateOfBirth;
+        if (id.DateOfIssue is not null) document.IssueDate = id.DateOfIssue;
+
+        var holder = string.Join(" ", new[] { id.FirstName, id.LastName }.Where(n => !string.IsNullOrWhiteSpace(n)));
+        if (!string.IsNullOrWhiteSpace(holder)) document.HolderName = holder;
+
+        if (document.Kind == MemberDocumentKind.Passport && !string.IsNullOrWhiteSpace(id.CountryRegion))
+        {
+            document.Nationality = id.CountryRegion;
+        }
+
+        return $"Read from it -- No: {Show(id.DocumentNumber)}; Name: {Show(holder)}; "
+               + $"Expiry: {Show(Day(id.DateOfExpiration))}; Issued: {Show(Day(id.DateOfIssue))}; "
+               + $"Date of birth: {Show(Day(id.DateOfBirth))}.";
+    }
+
+    private async Task SaveDocumentAsync(MemberDocument document)
+    {
+        if (_effectiveMember is null) return;
+
+        if (document.Kind == MemberDocumentKind.Other && string.IsNullOrWhiteSpace(document.Title))
+        {
+            Toasts.ShowError("Name the document.");
+            return;
+        }
+
+        document.Title = string.IsNullOrWhiteSpace(document.Title) ? null : document.Title.Trim();
+        await DocumentWriter.UpdateAsync(document);
+
+        var actorName = await CurrentActorNameAsync();
+        await AuditLog.LogAsync(actorName, AuditAction.Update, nameof(MemberDocument), document.Id.ToString(),
+            $"Saved {KindTitle(document)} details. {SnapshotOf(document)}");
+
+        Toasts.ShowSuccess($"{KindTitle(document)} saved.");
+    }
+
+    private void AskRemoveDocument(MemberDocument document) => _pendingDeleteDocument = document;
+
+    private void CancelRemoveDocument() => _pendingDeleteDocument = null;
+
+    private async Task ConfirmRemoveDocumentAsync()
+    {
+        if (_pendingDeleteDocument is not { } document) return;
+        _pendingDeleteDocument = null;
+
+        if (_effectiveMember is null) return;
+
+        var title = KindTitle(document);
+        await DocumentWriter.DeleteAsync(document.Id);
+        _documents.Remove(document);
+
+        var actorName = await CurrentActorNameAsync();
+        await AuditLog.LogAsync(actorName, AuditAction.Delete, nameof(MemberDocument), document.Id.ToString(),
+            $"Deleted {title}. {SnapshotOf(document)}");
+
+        Toasts.ShowSuccess($"{title} removed.");
+    }
+
+    private void AddOtherDocument()
+    {
+        if (_effectiveMember is null) return;
+        _documentsOpen = true;
+        _addingOtherDocument = true;
+    }
+
+    private void CancelOtherDocument() => _addingOtherDocument = false;
+
+    private static string SnapshotOf(MemberDocument d) => string.Join("; ",
+    [
+        $"Document: {KindTitle(d)}",
+        $"Number: {Show(d.DocumentNumber)}",
+        $"Name: {Show(d.HolderName)}",
+        $"Nationality: {Show(d.Nationality)}",
+        $"Issued: {Show(Day(d.IssueDate))}",
+        $"Expiry: {Show(Day(d.ExpiryDate))}",
+        $"Date of birth: {Show(Day(d.DateOfBirth))}",
+        $"File: {Show(d.OriginalFileName)}",
+    ]);
 
     // ---------- relatives ----------
 

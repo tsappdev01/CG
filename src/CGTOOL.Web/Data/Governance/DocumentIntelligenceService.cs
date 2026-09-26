@@ -12,7 +12,9 @@ public record IdDocumentExtraction(
     string? FirstName,
     string? LastName,
     DateTime? DateOfExpiration,
-    string? CountryRegion);
+    string? CountryRegion,
+    DateTime? DateOfBirth = null,
+    DateTime? DateOfIssue = null);
 
 /// <summary>Extracted fields from a trade licence. Unlike Emirates ID/passport, Document Intelligence
 /// has no purpose-built prebuilt model for trade licences (there's no such document type in its
@@ -88,12 +90,22 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         var expiry = GetDate(document, "DateOfExpiration");
         expiry ??= text.Length > 0 ? IdDocumentTextParser.FindExpiry(text) : null;
 
+        // Date of birth and date of issue are on the card and in the model's field set, but are
+        // among the first it drops on a bilingual Emirates ID, so they fall back to the text too.
+        var dateOfBirth = GetDate(document, "DateOfBirth");
+        dateOfBirth ??= text.Length > 0 ? IdDocumentTextParser.FindDateOfBirth(text) : null;
+
+        var issued = GetDate(document, "DateOfIssue");
+        issued ??= text.Length > 0 ? IdDocumentTextParser.FindIssueDate(text) : null;
+
         return new IdDocumentExtraction(
             DocumentNumber: number,
             FirstName: GetString(document, "FirstName"),
             LastName: GetString(document, "LastName"),
             DateOfExpiration: expiry,
-            CountryRegion: GetString(document, "CountryRegion"));
+            CountryRegion: GetString(document, "CountryRegion"),
+            DateOfBirth: dateOfBirth,
+            DateOfIssue: issued);
     }
 
     private static string? GetString(AnalyzedDocument? document, string fieldName) =>

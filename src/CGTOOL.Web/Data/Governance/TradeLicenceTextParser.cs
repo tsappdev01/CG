@@ -186,5 +186,15 @@ public static class IdDocumentTextParser
     public static string? FindPassportNumber(string text) =>
         DocumentTextParser.FindValue(text, PassportNumberLabels);
 
+    private static readonly string[] DateOfBirthLabels =
+        ["date of birth", "birth date", "d.o.b", "dob", "تاريخ الميلاد"];
+
+    private static readonly string[] IssueDateLabels =
+        ["date of issue", "issue date", "issued on", "تاريخ الإصدار", "تاريخ الاصدار"];
+
     public static DateTime? FindExpiry(string text) => DocumentTextParser.FindDate(text, ExpiryLabels);
+
+    public static DateTime? FindDateOfBirth(string text) => DocumentTextParser.FindDate(text, DateOfBirthLabels);
+
+    public static DateTime? FindIssueDate(string text) => DocumentTextParser.FindDate(text, IssueDateLabels);
 }

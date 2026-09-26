@@ -31,6 +31,175 @@
     }
     else
     {
+        @* The member's own documents, above the registers: the Emirates ID, passport and trade
+           licence a declaration asks for every quarter, uploaded once and read for what they say. *@
+        <section class="cg-card cg-accordion @(_documentsOpen ? "is-open" : "")">
+            <button type="button" class="cg-accordion-head" aria-expanded="@_documentsOpen" @onclick="() => _documentsOpen = !_documentsOpen">
+                <span class="cg-accordion-chevron" aria-hidden="true"></span>
+                <span class="cg-accordion-titles">
+                    <span class="cg-card-title">My Documents</span>
+                    <span class="cg-subtitle">Your Emirates ID, passport, trade licence and anything else on file. The details are read off each one where document capture is configured — check them.</span>
+                </span>
+                <span class="cg-accordion-count">@_documents.Count(d => !string.IsNullOrEmpty(d.FilePath))</span>
+            </button>
+
+            @if (_documentsOpen)
+            {
+            <div class="cg-accordion-body">
+                @foreach (var named in NamedDocumentKinds)
+                {
+                    var kind = named.Kind;
+                    var doc = DocumentOf(kind);
+                    <div class="cg-doc-panel">
+                        <div class="cg-doc-panel-head">
+                            <div>
+                                <h3>@named.Title</h3>
+                                <p class="cg-subtitle">@named.Blurb</p>
+                            </div>
+                            <div class="cg-doc-panel-file">
+                                @if (IsUploadingDocument(kind, doc?.Id ?? 0))
+                                {
+                                    <span class="cg-doc-upload-state">Uploading…</span>
+                                    <progress class="cg-doc-progress"></progress>
+                                }
+                                else
+                                {
+                                    <InputFile OnChange="e => OnMemberDocumentSelectedAsync(kind, doc, e)" accept=".png,.jpg,.jpeg,.pdf" />
+                                    @if (doc is not null && !string.IsNullOrEmpty(doc.FilePath))
+                                    {
+                                        <a class="cg-doc-chip" href="@doc.FilePath" target="_blank" rel="noopener">View</a>
+                                    }
+                                }
+                            </div>
+                        </div>
+
+                        @if (doc is not null && !string.IsNullOrEmpty(doc.FilePath))
+                        {
+                            <div class="cg-form-grid cg-captured-grid">
+                                <label class="cg-field">
+                                    <span>@(kind == MemberDocumentKind.TradeLicence ? "Trade License No" : kind == MemberDocumentKind.Passport ? "Passport No" : "Emirates ID No")</span>
+                                    <input class="cg-input" @bind="doc.DocumentNumber" maxlength="100" />
+                                </label>
+                                <label class="cg-field">
+                                    <span>@(kind == MemberDocumentKind.TradeLicence ? "Legal Name" : "Name on ID")</span>
+                                    <input class="cg-input" @bind="doc.HolderName" maxlength="200" />
+                                </label>
+                                @if (kind == MemberDocumentKind.Passport)
+                                {
+                                    <label class="cg-field">
+                                        <span>Nationality</span>
+                                        <select class="cg-input" @bind="doc.Nationality">
+                                            <option value="">—</option>
+                                            @foreach (var country in Countries.All)
+                                            {
+                                                <option value="@country">@country</option>
+                                            }
+                                        </select>
+                                    </label>
+                                    <label class="cg-field">
+                                        <span>Issue Date</span>
+                                        <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                                               @bind:get="UaeDate.Show(doc.IssueDate)"
+                                               @bind:set="v => SetDate(v, d => doc.IssueDate = d)" />
+                                    </label>
+                                }
+                                <label class="cg-field">
+                                    <span>Expiry Date</span>
+                                    <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                                           @bind:get="UaeDate.Show(doc.ExpiryDate)"
+                                           @bind:set="v => SetDate(v, d => doc.ExpiryDate = d)" />
+                                </label>
+                                @if (kind == MemberDocumentKind.EmiratesId)
+                                {
+                                    <label class="cg-field">
+                                        <span>Date of Birth</span>
+                                        <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                                               @bind:get="UaeDate.Show(doc.DateOfBirth)"
+                                               @bind:set="v => SetDate(v, d => doc.DateOfBirth = d)" />
+                                    </label>
+                                }
+                            </div>
+                            <div class="cg-actions cg-doc-panel-actions">
+                                <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveDocumentAsync(doc)">Save</button>
+                                <button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveDocument(doc)">Remove</button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="cg-doc-panel">
+                    <div class="cg-doc-panel-head">
+                        <div>
+                            <h3>Other Documents</h3>
+                            <p class="cg-subtitle">Anything else worth keeping on file — a visa, a power of attorney, a certificate. Name it yourself; these are not read automatically.</p>
+                        </div>
+                        <div class="cg-doc-panel-file">
+                            @if (_addingOtherDocument)
+                            {
+                                @if (IsUploadingDocument(MemberDocumentKind.Other, 0))
+                                {
+                                    <span class="cg-doc-upload-state">Uploading…</span>
+                                    <progress class="cg-doc-progress"></progress>
+                                }
+                                else
+                                {
+                                    <InputFile OnChange="e => OnMemberDocumentSelectedAsync(MemberDocumentKind.Other, null, e)" accept=".png,.jpg,.jpeg,.pdf" />
+                                    <button type="button" class="cg-action-btn" @onclick="CancelOtherDocument">Cancel</button>
+                                }
+                            }
+                            else
+                            {
+                                <button type="button" class="cg-action-btn cg-good cg-btn-add" @onclick="AddOtherDocument">Add</button>
+                            }
+                        </div>
+                    </div>
+
+                    @foreach (var other in OtherDocuments())
+                    {
+                        <div class="cg-form-grid cg-captured-grid">
+                            <label class="cg-field">
+                                <span>Document name <b class="cg-req-mark">*</b></span>
+                                <input class="cg-input" placeholder="What this document is" @bind="other.Title" maxlength="120" />
+                            </label>
+                            <label class="cg-field">
+                                <span>Reference No</span>
+                                <input class="cg-input" @bind="other.DocumentNumber" maxlength="100" />
+                            </label>
+                            <label class="cg-field">
+                                <span>Expiry Date</span>
+                                <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                                       @bind:get="UaeDate.Show(other.ExpiryDate)"
+                                       @bind:set="v => SetDate(v, d => other.ExpiryDate = d)" />
+                            </label>
+                            <label class="cg-field">
+                                <span>File</span>
+                                <span class="cg-doc-panel-file">
+                                    @if (!string.IsNullOrEmpty(other.FilePath))
+                                    {
+                                        <a class="cg-doc-chip" href="@other.FilePath" target="_blank" rel="noopener">@(string.IsNullOrWhiteSpace(other.OriginalFileName) ? "View" : other.OriginalFileName)</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="cg-subtitle">Not attached</span>
+                                    }
+                                </span>
+                            </label>
+                            <div class="cg-actions cg-doc-panel-actions cg-field-wide">
+                                <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveDocumentAsync(other)">Save</button>
+                                <button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveDocument(other)">Remove</button>
+                            </div>
+                        </div>
+                    }
+
+                    @if (OtherDocuments().Count == 0 && !_addingOtherDocument)
+                    {
+                        <p class="cg-subtitle">Nothing else on file.</p>
+                    }
+                </div>
+            </div>
+            }
+        </section>
+
         <section class="cg-card cg-accordion @(_relativesOpen ? "is-open" : "")">
             <button type="button" class="cg-accordion-head" aria-expanded="@_relativesOpen" @onclick="() => _relativesOpen = !_relativesOpen">
                 <span class="cg-accordion-chevron" aria-hidden="true"></span>
@@ -429,6 +598,30 @@
 
 @* Delete asks first. The record is gone from the screen afterwards but not from the record: the
    audit entry carries every field it held, which is what the warning promises. *@
+@if (_pendingDeleteDocument is { } pendingDocument)
+{
+    <div class="cg-modal-backdrop" @onclick="CancelRemoveDocument"></div>
+    <div class="cg-modal cg-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="cg-del-doc-title">
+        <div class="cg-modal-head">
+            <div>
+                <h2 id="cg-del-doc-title">Delete this document?</h2>
+                <p class="cg-subtitle">@KindTitle(pendingDocument)</p>
+            </div>
+            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="CancelRemoveDocument">×</button>
+        </div>
+
+        <div class="cg-modal-body">
+            <p>This removes the document and the details read from it. It cannot be undone here.</p>
+            <p class="cg-hint">The uploaded file stays on disk, and the audit trail keeps a full record of what was deleted, when, and under whose name.</p>
+        </div>
+
+        <div class="cg-modal-foot">
+            <button type="button" class="cg-action-btn" @onclick="CancelRemoveDocument">Cancel</button>
+            <button type="button" class="cg-action-btn cg-critical" @onclick="ConfirmRemoveDocumentAsync">Delete</button>
+        </div>
+    </div>
+}
+
 @if (_pendingDeleteRelative is { } pendingRelative)
 {
     <div class="cg-modal-backdrop" @onclick="CancelRemoveRelative"></div>

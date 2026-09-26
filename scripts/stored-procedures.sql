@@ -58,6 +58,7 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'EmiratesIdNumber') IS NULL
     OR COL_LENGTH('dbo.OwnedCompanies', 'TradeLicenceNumber') IS NULL
     OR COL_LENGTH('dbo.OwnedCompanies', 'NatureOfHolding') IS NULL
+    OR OBJECT_ID('dbo.MemberDocuments', 'U') IS NULL
     OR COL_LENGTH('dbo.AuditLogEntries', 'RecordHash') IS NULL
     OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
     OR COL_LENGTH('dbo.DeclarationCycleSetups', 'ReminderDayOfWeek') IS NULL
@@ -66,7 +67,7 @@ BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
     RAISERROR(
-        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
         16, 1, @db) WITH NOWAIT;
     SET NOEXEC ON;
 END
@@ -1923,6 +1924,74 @@ AS
 BEGIN
     SET NOCOUNT ON;
     DELETE FROM dbo.OwnedCompanies WHERE Id = @Id;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_MemberDocument_Insert
+    @MemberId int,
+    @Kind int,
+    @Title nvarchar(120) = NULL,
+    @FilePath nvarchar(260) = NULL,
+    @OriginalFileName nvarchar(260) = NULL,
+    @DocumentNumber nvarchar(100) = NULL,
+    @HolderName nvarchar(200) = NULL,
+    @Nationality nvarchar(80) = NULL,
+    @ExpiryDate datetime2 = NULL,
+    @IssueDate datetime2 = NULL,
+    @DateOfBirth datetime2 = NULL,
+    @UploadedAtUtc datetime2,
+    @NewId int OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO dbo.MemberDocuments
+        (MemberId, Kind, Title, FilePath, OriginalFileName, DocumentNumber, HolderName,
+         Nationality, ExpiryDate, IssueDate, DateOfBirth, UploadedAtUtc)
+    VALUES
+        (@MemberId, @Kind, @Title, @FilePath, @OriginalFileName, @DocumentNumber, @HolderName,
+         @Nationality, @ExpiryDate, @IssueDate, @DateOfBirth, @UploadedAtUtc);
+
+    SET @NewId = SCOPE_IDENTITY();
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_MemberDocument_Update
+    @Id int,
+    @Title nvarchar(120) = NULL,
+    @FilePath nvarchar(260) = NULL,
+    @OriginalFileName nvarchar(260) = NULL,
+    @DocumentNumber nvarchar(100) = NULL,
+    @HolderName nvarchar(200) = NULL,
+    @Nationality nvarchar(80) = NULL,
+    @ExpiryDate datetime2 = NULL,
+    @IssueDate datetime2 = NULL,
+    @DateOfBirth datetime2 = NULL,
+    @UploadedAtUtc datetime2
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE dbo.MemberDocuments
+    SET Title = @Title,
+        FilePath = @FilePath,
+        OriginalFileName = @OriginalFileName,
+        DocumentNumber = @DocumentNumber,
+        HolderName = @HolderName,
+        Nationality = @Nationality,
+        ExpiryDate = @ExpiryDate,
+        IssueDate = @IssueDate,
+        DateOfBirth = @DateOfBirth,
+        UploadedAtUtc = @UploadedAtUtc
+    WHERE Id = @Id;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_MemberDocument_Delete
+    @Id int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM dbo.MemberDocuments WHERE Id = @Id;
 END
 GO
 

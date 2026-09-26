@@ -172,36 +172,79 @@ PDFsharp has no GDI to fall back on for font resolution on .NET
 (`PdfFontResolver`, registered once via `GlobalFontSettings.FontResolver` in
 `Program.cs`).
 
-## Configure Insider Trading declaration ID document auto-capture (OCR)
+## Configure document auto-capture (Azure AI Document Intelligence)
 
-The Insider Trading declaration wizard (`SubmitInsiderDeclaration.razor`) can
-auto-fill the Emirates ID / Passport number, name, and expiry date fields from
-the uploaded file using Azure AI Document Intelligence's `prebuilt-idDocument`
-model (`DocumentIntelligenceService`). It's optional — when not configured,
-`NotConfiguredDocumentIntelligenceService` is registered instead and the
-declarant just types those fields in by hand, same as every other field on
-the form.
+One Azure AI Document Intelligence resource serves every auto-capture in the
+app, through `IDocumentIntelligenceService`. It is optional everywhere: with no
+endpoint and key configured, `NotConfiguredDocumentIntelligenceService` is
+registered instead, every field it would have filled is simply typed in, and
+nothing else changes.
 
-Set these as user-secrets (never commit a real endpoint or key to
-`appsettings.json` — the checked-in values are empty placeholders):
+Two places use it:
+
+| Where | Document | Model | Fills |
+| --- | --- | --- | --- |
+| Insider Trading declaration wizard (`SubmitInsiderDeclaration.razor`) | Emirates ID / passport | `prebuilt-idDocument` | Document number, name, expiry |
+| My Workspace — relatives and My Companies (`MyWorkspace.razor`) | Trade licence | `prebuilt-layout` | Trade License No, Expiry, Legal Name |
+
+### The two settings
+
+```
+DocumentIntelligence:Endpoint   https://<resource-name>.cognitiveservices.azure.com
+DocumentIntelligence:ApiKey     <KEY 1 or KEY 2 from the resource's "Keys and Endpoint" page>
+```
+
+Never commit a real endpoint or key to `appsettings.json` — the checked-in
+values are empty placeholders, and a key committed here is a key in the
+history of every clone. On a developer machine use user-secrets:
 
 ```bash
 cd src/CGTOOL.Web
-dotnet user-secrets set "DocumentIntelligence:Endpoint" "https://<your-resource-name>.cognitiveservices.azure.com"
-dotnet user-secrets set "DocumentIntelligence:ApiKey" "<key from the Azure resource's Keys and Endpoint page>"
+dotnet user-secrets set "DocumentIntelligence:Endpoint" "https://<resource-name>.cognitiveservices.azure.com"
+dotnet user-secrets set "DocumentIntelligence:ApiKey" "<key>"
 ```
 
-In production, set the same two keys via the App Service's Application
-Settings, or better, reference them from Azure Key Vault — never as a literal
-value checked into any file in this repo.
+On the IIS server, set them as environment variables on the app pool (or in the
+site's `web.config` `environmentVariables`), which override `appsettings.json`:
 
-Every field Document Intelligence fills stays a normal, editable input, and
-extraction failures (unreadable file, service down, not configured) just fall
-back to manual entry rather than blocking the upload — OCR here is a
-convenience, not a dependency. Its accuracy is generally strong on passports
-and typical national IDs but has been observed to be less consistent
+```
+DocumentIntelligence__Endpoint=https://<resource-name>.cognitiveservices.azure.com
+DocumentIntelligence__ApiKey=<key>
+```
+
+In App Service, the same two keys as Application Settings, or better, as Key
+Vault references. `IDocumentIntelligenceService` is registered once at startup
+(`Program.cs`), so the app has to be restarted after the settings change --
+adding them to a running site does nothing until the app pool recycles.
+
+To check it took: open a relative in My Workspace and upload a trade licence.
+Configured, the "From the trade licence" fields fill in and the toast asks you
+to check them; unconfigured, they stay empty and no call is made.
+
+### What to expect from each model
+
+The ID capture uses a purpose-built model and is generally strong on passports
+and typical national IDs, but has been observed to be less consistent
 specifically on UAE Emirates ID cards (bilingual layout, `784-YYYY-NNNNNNN-C`
 ID format); verify a few real cards after configuring it.
+
+The trade licence capture is rougher, and deliberately so. Document
+Intelligence has no prebuilt trade-licence model -- there is no such document
+type in its catalogue, and training a custom one needs a labelled sample set
+this app does not have -- so `AnalyzeTradeLicenceAsync` runs the
+general-purpose `prebuilt-layout` model and pattern-matches likely labels
+("licence no", "trade name", "expiry date", ...) over the OCR text. Treat it as
+a first pass that saves typing, not as an authoritative read.
+
+Everything either model fills stays a normal editable field, and a failure --
+unreadable file, service down, not configured -- falls back to manual entry
+rather than blocking the upload. The audit trail records what was read off a
+trade licence, so a wrong value that was accepted can be traced back to the
+extraction rather than to the member.
+
+If a key is ever pasted into a chat, an email or a ticket, rotate it: the Azure
+resource carries two keys precisely so one can be regenerated while the other
+keeps the app running.
 
 ## Enable Change Data Capture (CDC)
 

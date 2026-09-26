@@ -251,9 +251,7 @@
                                 <th>NIN Number</th>
                                 <th>Nationality</th>
                                 <th>Occupation / Business</th>
-                                <th>Company / Organization</th>
-                                <th>Nature Of Holding</th>
-                                <th>Ownership %</th>
+                                <th>Companies held</th>
                                 <th>Documents</th>
                                 <th>Actions</th>
                             </tr>
@@ -269,9 +267,24 @@
                                     <td class="mono">@(string.IsNullOrWhiteSpace(f.NinNumber) ? "—" : f.NinNumber)</td>
                                     <td>@(string.IsNullOrWhiteSpace(f.Nationality) ? "—" : f.Nationality)</td>
                                     <td>@(string.IsNullOrWhiteSpace(f.Occupation) ? "—" : f.Occupation)</td>
-                                    <td>@(string.IsNullOrWhiteSpace(f.Organization) ? "—" : f.Organization)</td>
-                                    <td>@HoldingLabel(f.NatureOfHolding)</td>
-                                    <td>@(f.OwnershipPercentage is { } pct ? $"{pct:0.##}%" : "—")</td>
+                                    <td>
+                                        @if (f.Holdings.Count == 0)
+                                        {
+                                            <span class="cg-subtitle">—</span>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var holding in f.Holdings)
+                                            {
+                                                <div class="cg-holding-line">
+                                                    <span class="cg-holding-name">@holding.CompanyName</span>
+                                                    <span class="cg-subtitle">
+                                                        @HoldingLabel(holding.NatureOfHolding)@(holding.OwnershipPercentage is { } pct ? $" · {pct:0.##}%" : "")
+                                                    </span>
+                                                </div>
+                                            }
+                                        }
+                                    </td>
                                     <td>
                                         <span class="cg-doc-chips">
                                             @foreach (var doc in docs)
@@ -295,7 +308,7 @@
 
                             @if (RelativesTotal == 0)
                             {
-                                <tr><td colspan="11" class="cg-empty-state">No related parties recorded yet. Use <b>+ Add</b> to add one.</td></tr>
+                                <tr><td colspan="9" class="cg-empty-state">No related parties recorded yet. Use <b>+ Add</b> to add one.</td></tr>
                             }
                         </tbody>
                     </table>
@@ -455,23 +468,44 @@
                         <input class="cg-input" placeholder="Type the occupation or business" @bind="_occupationOther" maxlength="160" />
                     </label>
                 }
-                <label class="cg-field">
-                    <span>Company / Organization</span>
-                    <input class="cg-input" @bind="_relativeForm.Organization" maxlength="160" />
-                </label>
-                <label class="cg-field">
-                    <span>Nature Of Holding</span>
-                    <select class="cg-input" @bind="_relativeForm.NatureOfHolding">
-                        <option value="@RelatedPartyHoldingNature.None">—</option>
-                        <option value="@RelatedPartyHoldingNature.Affiliate">Affiliate</option>
-                        <option value="@RelatedPartyHoldingNature.Owned">Owned</option>
-                        <option value="@RelatedPartyHoldingNature.Subsidiary">Subsidiary</option>
-                    </select>
-                </label>
-                <label class="cg-field">
-                    <span>Ownership %</span>
-                    <input type="number" step="0.01" min="0" max="100" class="cg-input" @bind="_relativeForm.OwnershipPercentage" />
-                </label>
+                <div class="cg-field cg-field-wide">
+                    <span>Companies held</span>
+                    <span class="cg-hint">A relative can hold interests in several companies — add one row for each.</span>
+
+                    @foreach (var holding in _relativeForm.Holdings)
+                    {
+                        <div class="cg-holding-row">
+                            <label class="cg-field">
+                                <span>Company / Organization</span>
+                                <input class="cg-input" placeholder="Company name" @bind="holding.CompanyName" maxlength="160" />
+                            </label>
+                            <label class="cg-field">
+                                <span>Nature Of Holding</span>
+                                <select class="cg-input" @bind="holding.NatureOfHolding">
+                                    <option value="@RelatedPartyHoldingNature.None">—</option>
+                                    <option value="@RelatedPartyHoldingNature.Affiliate">Affiliate</option>
+                                    <option value="@RelatedPartyHoldingNature.Owned">Owned</option>
+                                    <option value="@RelatedPartyHoldingNature.Subsidiary">Subsidiary</option>
+                                </select>
+                            </label>
+                            <label class="cg-field">
+                                <span>Ownership %</span>
+                                <input type="number" step="0.01" min="0" max="100" class="cg-input" @bind="holding.OwnershipPercentage" />
+                            </label>
+                            <button type="button" class="cg-icon-btn cg-icon-btn-danger" title="Remove this company"
+                                    @onclick="() => RemoveHolding(holding)"><span class="cg-ico cg-ico-trash" aria-hidden="true"></span></button>
+                        </div>
+                    }
+
+                    @if (_relativeForm.Holdings.Count == 0)
+                    {
+                        <p class="cg-subtitle">No companies recorded for this relative.</p>
+                    }
+
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn" @onclick="AddHolding">+ Add company</button>
+                    </div>
+                </div>
                 <div class="cg-field cg-field-wide">
                     <span>Have shares in Dubai Investments PJSC?</span>
                     <label class="cg-switch">

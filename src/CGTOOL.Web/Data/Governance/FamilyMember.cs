@@ -40,21 +40,15 @@ public class FamilyMember
     [MaxLength(160)]
     public string? Occupation { get; set; }
 
-    /// <summary>The company or organization this relative is connected to, if any. Held here rather
-    /// than as an OwnedCompany because it describes the relative's own interest, not a company the
-    /// member holds documents for.</summary>
-    [MaxLength(160)]
-    public string? Organization { get; set; }
-
-    public RelatedPartyHoldingNature NatureOfHolding { get; set; } = RelatedPartyHoldingNature.None;
+    /// <summary>The companies this relative holds an interest in. A list because a relative can
+    /// hold several; it replaced a single Organization/NatureOfHolding/OwnershipPercentage on this
+    /// record, which could only ever describe one.</summary>
+    public List<FamilyMemberHolding> Holdings { get; set; } = [];
 
     /// <summary>Whether this relative holds shares in Dubai Investments PJSC. Kept on the register
     /// rather than asked afresh each quarter: it is a fact about the person that rarely changes,
     /// and it is what decides who the Insider Trading declaration's shareholding grid starts with.</summary>
     public bool HoldsDiShares { get; set; }
-
-    /// <summary>Ownership percentage in the organization above (0-100).</summary>
-    public decimal? OwnershipPercentage { get; set; }
 
     [MaxLength(260)]
     public string? EmiratesIdPath { get; set; }

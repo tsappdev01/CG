@@ -14,6 +14,7 @@ public partial class MyWorkspace : ComponentBase
     [Inject] private IFamilyMemberWriter FamilyMemberWriter { get; set; } = default!;
     [Inject] private IOwnedCompanyWriter CompanyWriter { get; set; } = default!;
     [Inject] private IMemberDocumentWriter DocumentWriter { get; set; } = default!;
+    [Inject] private IFamilyMemberHoldingWriter HoldingWriter { get; set; } = default!;
     [Inject] private IAuditLogger AuditLog { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthState { get; set; } = default!;
     [Inject] private ImpersonationContext Impersonation { get; set; } = default!;
@@ -90,6 +91,7 @@ public partial class MyWorkspace : ComponentBase
 
         _familyMembers.Clear();
         _familyMembers.AddRange(await db.FamilyMembers.AsNoTracking()
+            .Include(f => f.Holdings)
             .Where(f => f.MemberId == _effectiveMember.Id)
             .OrderBy(f => f.Id)
             .ToListAsync());
@@ -121,7 +123,7 @@ public partial class MyWorkspace : ComponentBase
             var q = _search.Trim();
             query = query.Where(f =>
                 f.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
-                || (f.Organization?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                || f.Holdings.Any(h => h.CompanyName.Contains(q, StringComparison.OrdinalIgnoreCase))
                 || (f.IdentificationNumber?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
                 || (f.EmiratesIdNumber?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
                 || (f.PassportNumber?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
@@ -219,9 +221,14 @@ public partial class MyWorkspace : ComponentBase
         DateOfBirth = f.DateOfBirth,
         Nationality = f.Nationality,
         Occupation = f.Occupation,
-        Organization = f.Organization,
-        NatureOfHolding = f.NatureOfHolding,
-        OwnershipPercentage = f.OwnershipPercentage,
+        Holdings = f.Holdings.Select(h => new FamilyMemberHolding
+        {
+            Id = h.Id,
+            FamilyMemberId = h.FamilyMemberId,
+            CompanyName = h.CompanyName,
+            NatureOfHolding = h.NatureOfHolding,
+            OwnershipPercentage = h.OwnershipPercentage,
+        }).ToList(),
         HoldsDiShares = f.HoldsDiShares,
         EmiratesIdPath = f.EmiratesIdPath,
         EmiratesIdNumber = f.EmiratesIdNumber,
@@ -244,9 +251,14 @@ public partial class MyWorkspace : ComponentBase
         to.DateOfBirth = from.DateOfBirth;
         to.Nationality = from.Nationality;
         to.Occupation = from.Occupation;
-        to.Organization = from.Organization;
-        to.NatureOfHolding = from.NatureOfHolding;
-        to.OwnershipPercentage = from.OwnershipPercentage;
+        to.Holdings = from.Holdings.Select(h => new FamilyMemberHolding
+        {
+            Id = h.Id,
+            FamilyMemberId = h.FamilyMemberId,
+            CompanyName = h.CompanyName,
+            NatureOfHolding = h.NatureOfHolding,
+            OwnershipPercentage = h.OwnershipPercentage,
+        }).ToList();
         to.HoldsDiShares = from.HoldsDiShares;
         to.EmiratesIdPath = from.EmiratesIdPath;
         to.EmiratesIdNumber = from.EmiratesIdNumber;
@@ -302,6 +314,17 @@ public partial class MyWorkspace : ComponentBase
 
     private static string YesNo(bool value) => value ? "Yes" : "No";
 
+    /// <summary>The whole list on one line, for the audit trail: a relative's holdings change as a
+    /// set -- one added, one sold -- and a per-row diff would read as a shuffle rather than a
+    /// change.</summary>
+    private static string DescribeHoldings(FamilyMember f) => string.Join(", ",
+        f.Holdings.Select(h => $"{h.CompanyName} ({HoldingLabel(h.NatureOfHolding)}"
+            + (h.OwnershipPercentage is { } pct ? $", {pct:0.##}%)" : ")")));
+
+    private static string HoldingsCell(FamilyMember f) => f.Holdings.Count == 0
+        ? "—"
+        : string.Join(", ", f.Holdings.Select(h => h.CompanyName));
+
     /// <summary>Applies a typed date, complaining rather than silently clearing what is stored when
     /// it cannot be read -- the input re-renders from the stored value, so a typo does not take the
     /// captured date with it.</summary>
@@ -334,9 +357,7 @@ public partial class MyWorkspace : ComponentBase
         Cmp("NIN Number", before.NinNumber, after.NinNumber);
         Cmp("Nationality", before.Nationality, after.Nationality);
         Cmp("Occupation / Business", before.Occupation, after.Occupation);
-        Cmp("Company / Organization", before.Organization, after.Organization);
-        Cmp("Nature Of Holding", HoldingLabel(before.NatureOfHolding), HoldingLabel(after.NatureOfHolding));
-        Cmp("Ownership %", Pct(before.OwnershipPercentage), Pct(after.OwnershipPercentage));
+        Cmp("Holdings", DescribeHoldings(before), DescribeHoldings(after));
         Cmp("Holds DI shares", YesNo(before.HoldsDiShares), YesNo(after.HoldsDiShares));
         Cmp("Emirates ID No", before.EmiratesIdNumber, after.EmiratesIdNumber);
         Cmp("Emirates ID Expiry", Day(before.EmiratesIdExpiryDate), Day(after.EmiratesIdExpiryDate));
@@ -382,9 +403,7 @@ public partial class MyWorkspace : ComponentBase
         $"NIN Number: {Show(f.NinNumber)}",
         $"Nationality: {Show(f.Nationality)}",
         $"Occupation / Business: {Show(f.Occupation)}",
-        $"Company / Organization: {Show(f.Organization)}",
-        $"Nature Of Holding: {HoldingLabel(f.NatureOfHolding)}",
-        $"Ownership %: {Show(Pct(f.OwnershipPercentage))}",
+        $"Holdings: {Show(DescribeHoldings(f))}",
         $"Holds DI shares: {YesNo(f.HoldsDiShares)}",
         $"Emirates ID No: {Show(f.EmiratesIdNumber)}",
         $"Emirates ID Expiry: {Show(Day(f.EmiratesIdExpiryDate))}",
@@ -729,10 +748,57 @@ public partial class MyWorkspace : ComponentBase
             string.IsNullOrWhiteSpace(f.EmiratesIdNumber) ? null : $"Emirates ID {f.EmiratesIdNumber}",
             string.IsNullOrWhiteSpace(f.Nationality) ? null : f.Nationality,
             string.IsNullOrWhiteSpace(f.Occupation) ? null : f.Occupation,
-            string.IsNullOrWhiteSpace(f.Organization) ? null : f.Organization,
-            f.NatureOfHolding == RelatedPartyHoldingNature.None ? null : HoldingLabel(f.NatureOfHolding),
-            f.OwnershipPercentage is { } pct ? $"{pct:0.##}%" : null,
+            f.Holdings.Count == 0 ? null : HoldingsCell(f),
         }.Where(part => part is not null));
+
+
+    // ---------- a relative's holdings ----------
+
+    private void AddHolding()
+    {
+        if (_relativeForm is null) return;
+        _relativeForm.Holdings.Add(new FamilyMemberHolding { FamilyMemberId = _relativeForm.Id });
+    }
+
+    private void RemoveHolding(FamilyMemberHolding holding) => _relativeForm?.Holdings.Remove(holding);
+
+    /// <summary>Writes the form's list over the saved one: rows that are gone are deleted, new ones
+    /// inserted, changed ones updated. Done as a diff rather than delete-all-and-reinsert so the
+    /// holdings keep their ids, and so the audit trail is not a wall of deletions every save.</summary>
+    private async Task SaveHoldingsAsync(FamilyMember target, List<FamilyMemberHolding> wanted)
+    {
+        var keep = wanted
+            .Where(h => !string.IsNullOrWhiteSpace(h.CompanyName))
+            .ToList();
+
+        foreach (var gone in target.Holdings.Where(existing => keep.All(h => h.Id != existing.Id)).ToList())
+        {
+            await HoldingWriter.DeleteAsync(gone.Id);
+        }
+
+        foreach (var holding in keep)
+        {
+            holding.CompanyName = holding.CompanyName.Trim();
+
+            if (holding.Id == 0)
+            {
+                holding.FamilyMemberId = target.Id;
+                holding.Id = await HoldingWriter.InsertAsync(holding);
+                continue;
+            }
+
+            var existing = target.Holdings.FirstOrDefault(h => h.Id == holding.Id);
+            if (existing is null
+                || existing.CompanyName != holding.CompanyName
+                || existing.NatureOfHolding != holding.NatureOfHolding
+                || existing.OwnershipPercentage != holding.OwnershipPercentage)
+            {
+                await HoldingWriter.UpdateAsync(holding);
+            }
+        }
+
+        target.Holdings = keep;
+    }
 
     private void OpenAddRelative()
     {
@@ -797,9 +863,16 @@ public partial class MyWorkspace : ComponentBase
         }
 
         _relativeForm.Occupation = ChosenOccupation();
-        if (_relativeForm.OwnershipPercentage is < 0 or > 100)
+
+        if (_relativeForm.Holdings.Any(h => h.OwnershipPercentage is < 0 or > 100))
         {
             Toasts.ShowError("Ownership must be between 0 and 100.");
+            return;
+        }
+        if (_relativeForm.Holdings.Any(h => string.IsNullOrWhiteSpace(h.CompanyName)
+                                            && (h.OwnershipPercentage is not null || h.NatureOfHolding != RelatedPartyHoldingNature.None)))
+        {
+            Toasts.ShowError("Name the company on every holding, or remove the row.");
             return;
         }
 
@@ -823,6 +896,8 @@ public partial class MyWorkspace : ComponentBase
         {
             var saved = CopyOf(_relativeForm);
             saved.Id = await FamilyMemberWriter.InsertAsync(_relativeForm);
+            saved.Holdings = [];
+            await SaveHoldingsAsync(saved, _relativeForm.Holdings);
             _familyMembers.Add(saved);
 
             await AuditLog.LogAsync(actorName, AuditAction.Create, nameof(FamilyMember), saved.Id.ToString(),
@@ -848,6 +923,7 @@ public partial class MyWorkspace : ComponentBase
 
         _relativeForm.Id = _relativeTarget.Id;
         await FamilyMemberWriter.UpdateAsync(_relativeForm);
+        await SaveHoldingsAsync(_relativeTarget, _relativeForm.Holdings);
         CopyInto(_relativeForm, _relativeTarget);
 
         await AuditLog.LogAsync(actorName, AuditAction.Update, nameof(FamilyMember), _relativeTarget.Id.ToString(),

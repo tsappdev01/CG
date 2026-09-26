@@ -19,10 +19,7 @@ public class FamilyMemberWriter(IStoredProcedureExecutor sp) : IFamilyMemberWrit
         new SqlParameter("@NinNumber", (object?)familyMember.NinNumber ?? DBNull.Value),
         new SqlParameter("@HoldsDiShares", familyMember.HoldsDiShares),
         new SqlParameter("@Nationality", (object?)familyMember.Nationality ?? DBNull.Value),
-        new SqlParameter("@Occupation", (object?)familyMember.Occupation ?? DBNull.Value),
-        new SqlParameter("@Organization", (object?)familyMember.Organization ?? DBNull.Value),
-        new SqlParameter("@NatureOfHolding", (int)familyMember.NatureOfHolding),
-        new SqlParameter("@OwnershipPercentage", (object?)familyMember.OwnershipPercentage ?? DBNull.Value));
+        new SqlParameter("@Occupation", (object?)familyMember.Occupation ?? DBNull.Value));
 
     public Task UpdateAsync(FamilyMember familyMember) => sp.ExecuteAsync("dbo.usp_FamilyMember_Update",
         new SqlParameter("@Id", familyMember.Id),
@@ -42,10 +39,7 @@ public class FamilyMemberWriter(IStoredProcedureExecutor sp) : IFamilyMemberWrit
         new SqlParameter("@NinNumber", (object?)familyMember.NinNumber ?? DBNull.Value),
         new SqlParameter("@HoldsDiShares", familyMember.HoldsDiShares),
         new SqlParameter("@Nationality", (object?)familyMember.Nationality ?? DBNull.Value),
-        new SqlParameter("@Occupation", (object?)familyMember.Occupation ?? DBNull.Value),
-        new SqlParameter("@Organization", (object?)familyMember.Organization ?? DBNull.Value),
-        new SqlParameter("@NatureOfHolding", (int)familyMember.NatureOfHolding),
-        new SqlParameter("@OwnershipPercentage", (object?)familyMember.OwnershipPercentage ?? DBNull.Value));
+        new SqlParameter("@Occupation", (object?)familyMember.Occupation ?? DBNull.Value));
 
     public Task DeleteAsync(int id) => sp.ExecuteAsync("dbo.usp_FamilyMember_Delete", new SqlParameter("@Id", id));
 }

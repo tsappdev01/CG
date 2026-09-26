@@ -2345,6 +2345,22 @@ select.cg-input {
 .cg-col-relname { min-width: 190px; }
 .cg-captured-grid { margin-top: 12px; }
 
+/* A relative's holdings: one row per company, the remove button aligned with the inputs. */
+.cg-holding-row {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, .8fr) auto;
+    gap: 10px;
+    align-items: end;
+    margin-top: 10px;
+}
+.cg-holding-row .cg-icon-btn { margin-bottom: 2px; }
+.cg-holding-line { display: flex; flex-direction: column; gap: 1px; margin-bottom: 6px; }
+.cg-holding-line:last-child { margin-bottom: 0; }
+.cg-holding-name { font-weight: 600; }
+@media (max-width: 760px) {
+    .cg-holding-row { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* ---------- switch ---------- */
 .cg-switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
 .cg-switch input { position: absolute; opacity: 0; width: 0; height: 0; }

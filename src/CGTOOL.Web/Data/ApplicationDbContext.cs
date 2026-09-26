@@ -44,6 +44,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<OwnedCompany> OwnedCompanies => Set<OwnedCompany>();
     public DbSet<MemberDocument> MemberDocuments => Set<MemberDocument>();
+    public DbSet<FamilyMemberHolding> FamilyMemberHoldings => Set<FamilyMemberHolding>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -217,8 +218,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasPrecision(5, 2);
 
         // Same shape as OwnedCompany's, and as the stored procedure's decimal(5,2) parameter.
-        builder.Entity<FamilyMember>()
-            .Property(f => f.OwnershipPercentage)
+        // Cascade: a holding describes a relative's interest and has no meaning once the relative
+        // is gone, so removing one takes its holdings with it rather than leaving orphans behind.
+        builder.Entity<FamilyMemberHolding>()
+            .HasOne(h => h.FamilyMember)
+            .WithMany(f => f.Holdings)
+            .HasForeignKey(h => h.FamilyMemberId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<FamilyMemberHolding>()
+            .Property(h => h.OwnershipPercentage)
             .HasPrecision(5, 2);
 
         builder.Entity<JobTitle>()

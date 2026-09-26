@@ -164,6 +164,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
         _myFamilyMembers.Clear();
         _myFamilyMembers.AddRange(await db.FamilyMembers.AsNoTracking()
+            .Include(f => f.Holdings)
             .Where(f => f.MemberId == _effectiveMember.Id)
             .OrderBy(f => f.Id)
             .ToListAsync());
@@ -530,24 +531,28 @@ public partial class SubmitRelatedPartyCoiDeclaration
         // A relative's company is recorded on the relative -- the organization they hold, and how
         // much of it -- so this section is built from the relatives, not from My Companies. The row
         // is linked to that relative where the declaration already lists them.
+        // Every qualifying holding, not one per relative: a relative with two companies over the
+        // threshold has two to declare, and the register now records both.
         var relativeOwned = _myFamilyMembers
-            .Where(f => f.OwnershipPercentage >= DeclarableOwnershipPercentage
-                        && !string.IsNullOrWhiteSpace(f.Organization))
+            .SelectMany(f => f.Holdings
+                .Where(h => h.OwnershipPercentage >= DeclarableOwnershipPercentage
+                            && !string.IsNullOrWhiteSpace(h.CompanyName))
+                .Select(h => (Relative: f, Holding: h)))
             .ToList();
 
         if (relativeOwned.Count > 0)
         {
-            foreach (var relative in relativeOwned)
+            foreach (var (relative, holding) in relativeOwned)
             {
                 if (_relativeOwnedCompanies.Any(r =>
-                        string.Equals(r.LegalCompanyName.Trim(), relative.Organization!.Trim(), StringComparison.OrdinalIgnoreCase)))
+                        string.Equals(r.LegalCompanyName.Trim(), holding.CompanyName.Trim(), StringComparison.OrdinalIgnoreCase)))
                 {
                     continue;
                 }
 
                 _relativeOwnedCompanies.Add(new CompanyRow
                 {
-                    LegalCompanyName = relative.Organization!.Trim(),
+                    LegalCompanyName = holding.CompanyName.Trim(),
                     LinkedRelativeKey = _relatives
                         .FirstOrDefault(r => string.Equals(r.Name.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase))?.Key,
                 });

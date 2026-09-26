@@ -62,6 +62,7 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.OwnedCompanies', 'ServesAsBoardMemberOrExecutive') IS NULL
     OR COL_LENGTH('dbo.OwnedCompanies', 'PrincipalBusinessActivity') IS NULL
     OR OBJECT_ID('dbo.MemberDocuments', 'U') IS NULL
+    OR OBJECT_ID('dbo.FamilyMemberHoldings', 'U') IS NULL
     OR COL_LENGTH('dbo.AuditLogEntries', 'RecordHash') IS NULL
     OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
     OR COL_LENGTH('dbo.DeclarationCycleSetups', 'ReminderDayOfWeek') IS NULL
@@ -70,7 +71,7 @@ BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
     RAISERROR(
-        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
         16, 1, @db) WITH NOWAIT;
     SET NOEXEC ON;
 END
@@ -1802,9 +1803,6 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMember_Insert
     @IdentificationNumber nvarchar(60) = NULL,
     @Nationality nvarchar(80) = NULL,
     @Occupation nvarchar(160) = NULL,
-    @Organization nvarchar(160) = NULL,
-    @NatureOfHolding int = 0,
-    @OwnershipPercentage decimal(5,2) = NULL,
     @NinNumber nvarchar(60) = NULL,
     @HoldsDiShares bit = 0,
     @NewId int OUTPUT
@@ -1814,10 +1812,10 @@ BEGIN
 
     INSERT INTO dbo.FamilyMembers
         (MemberId, Name, Relationship, IdentificationNumber, Nationality,
-         Occupation, Organization, NatureOfHolding, OwnershipPercentage, NinNumber, HoldsDiShares)
+         Occupation, NinNumber, HoldsDiShares)
     VALUES
         (@MemberId, @Name, @Relationship, @IdentificationNumber, @Nationality,
-         @Occupation, @Organization, @NatureOfHolding, @OwnershipPercentage, @NinNumber, @HoldsDiShares);
+         @Occupation, @NinNumber, @HoldsDiShares);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1840,9 +1838,6 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMember_Update
     @IdentificationNumber nvarchar(60) = NULL,
     @Nationality nvarchar(80) = NULL,
     @Occupation nvarchar(160) = NULL,
-    @Organization nvarchar(160) = NULL,
-    @NatureOfHolding int = 0,
-    @OwnershipPercentage decimal(5,2) = NULL,
     @NinNumber nvarchar(60) = NULL,
     @HoldsDiShares bit = 0
 AS
@@ -1864,9 +1859,6 @@ BEGIN
         IdentificationNumber = @IdentificationNumber,
         Nationality = @Nationality,
         Occupation = @Occupation,
-        Organization = @Organization,
-        NatureOfHolding = @NatureOfHolding,
-        OwnershipPercentage = @OwnershipPercentage,
         NinNumber = @NinNumber,
         HoldsDiShares = @HoldsDiShares
     WHERE Id = @Id;
@@ -2008,6 +2000,48 @@ AS
 BEGIN
     SET NOCOUNT ON;
     DELETE FROM dbo.MemberDocuments WHERE Id = @Id;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_FamilyMemberHolding_Insert
+    @FamilyMemberId int,
+    @CompanyName nvarchar(160),
+    @NatureOfHolding int = 0,
+    @OwnershipPercentage decimal(5,2) = NULL,
+    @NewId int OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO dbo.FamilyMemberHoldings (FamilyMemberId, CompanyName, NatureOfHolding, OwnershipPercentage)
+    VALUES (@FamilyMemberId, @CompanyName, @NatureOfHolding, @OwnershipPercentage);
+
+    SET @NewId = SCOPE_IDENTITY();
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_FamilyMemberHolding_Update
+    @Id int,
+    @CompanyName nvarchar(160),
+    @NatureOfHolding int = 0,
+    @OwnershipPercentage decimal(5,2) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE dbo.FamilyMemberHoldings
+    SET CompanyName = @CompanyName,
+        NatureOfHolding = @NatureOfHolding,
+        OwnershipPercentage = @OwnershipPercentage
+    WHERE Id = @Id;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_FamilyMemberHolding_Delete
+    @Id int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM dbo.FamilyMemberHoldings WHERE Id = @Id;
 END
 GO
 

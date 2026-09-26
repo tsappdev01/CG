@@ -204,21 +204,6 @@
                 </div>
 
                 <div class="cg-choice-grid cg-choice-grid-compact">
-                    <label class="cg-choice @(_editing.IsBoardMember ? "on" : "")">
-                        <input type="checkbox" @bind="_editing.IsBoardMember" />
-                        <span class="cg-choice-body"><span class="cg-choice-title">Board member</span></span>
-                    </label>
-                    <label class="cg-choice @(_editing.IsExecutiveManagement ? "on" : "")">
-                        <input type="checkbox" @bind="_editing.IsExecutiveManagement" />
-                        <span class="cg-choice-body"><span class="cg-choice-title">Executive Management</span></span>
-                    </label>
-                    <label class="cg-choice @(_editing.IsExternalMember ? "on" : "")">
-                        <input type="checkbox" @bind="_editing.IsExternalMember" />
-                        <span class="cg-choice-body">
-                            <span class="cg-choice-title">External member</span>
-                            <span class="cg-choice-desc">Not a direct DI Group employee.</span>
-                        </span>
-                    </label>
                     <label class="cg-choice @(_editing.CanBeImpersonated ? "on" : "")">
                         <input type="checkbox" @bind="_editing.CanBeImpersonated" />
                         <span class="cg-choice-body">

@@ -96,21 +96,13 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         }
     }
 
-    // Label fragments (lowercased) that a trade licence is likely to print next to each field --
-    // order matters within each array, first match wins, since a document can have several
-    // plausible-looking labels (e.g. "Trade Name" and "Licence Name").
-    private static readonly string[] LicenceNumberLabels = ["licence no", "license no", "licence number", "license number", "reg no", "registration no"];
-    private static readonly string[] BusinessNameLabels = ["trade name", "business name", "legal name", "company name", "establishment name"];
-    private static readonly string[] ExpiryLabels = ["expiry date", "expiration date", "valid until", "valid till", "renewal date"];
-
     // Model ID: "prebuilt-document" doesn't exist on the API version this resource serves (404
-    // ModelNotFound) -- it was retired in favor of "prebuilt-layout", the stable general-purpose model
-    // available on every Document Intelligence resource/API version. Deliberately does NOT request
-    // DocumentAnalysisFeature.KeyValuePairs either: that structured extraction is a paid add-on
-    // capability rejected outright by some resource tiers/model combinations (400 InvalidArgument,
-    // "The feature is invalid or not supported"). Scanning the plain extracted text for these labels
-    // instead works everywhere, at the cost of being a rougher pattern match rather than a structured
-    // key/value lookup.
+    // ModelNotFound) -- it was retired in favor of "prebuilt-layout", the stable general-purpose
+    // model available on every Document Intelligence resource/API version. Deliberately does NOT
+    // request DocumentAnalysisFeature.KeyValuePairs either: that structured extraction is a paid
+    // add-on capability rejected outright by some resource tiers/model combinations (400
+    // InvalidArgument, "The feature is invalid or not supported"). Reading the labels out of the
+    // plain extracted text instead works everywhere -- see TradeLicenceTextParser.
     public async Task<TradeLicenceExtraction?> AnalyzeTradeLicenceAsync(Stream fileStream, CancellationToken cancellationToken = default)
     {
         if (_client is null) return null;
@@ -122,42 +114,8 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         var text = operation.Value.Content;
         if (string.IsNullOrWhiteSpace(text)) return null;
 
-        return new TradeLicenceExtraction(
-            LicenceNumber: FindValueInText(text, LicenceNumberLabels),
-            BusinessName: FindValueInText(text, BusinessNameLabels),
-            ExpiryDate: ParseDate(FindValueInText(text, ExpiryLabels)));
+        return TradeLicenceTextParser.Parse(text);
     }
-
-    // Looks for a label fragment on each line of the extracted text and returns whatever follows it
-    // on that same line (after trimming the colon/dash/dot that usually separates label from value);
-    // if the label sits alone (e.g. as a column header with the value on the next line), falls back to
-    // that next line instead.
-    private static string? FindValueInText(string text, string[] labelFragments)
-    {
-        var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-
-        foreach (var label in labelFragments)
-        {
-            for (var i = 0; i < lines.Length; i++)
-            {
-                var line = lines[i].Trim();
-                var idx = line.IndexOf(label, StringComparison.OrdinalIgnoreCase);
-                if (idx < 0) continue;
-
-                var afterLabel = line[(idx + label.Length)..].Trim().TrimStart(':', '-', '.').Trim();
-                if (afterLabel.Length > 0) return afterLabel;
-
-                if (i + 1 < lines.Length && !string.IsNullOrWhiteSpace(lines[i + 1]))
-                {
-                    return lines[i + 1].Trim();
-                }
-            }
-        }
-        return null;
-    }
-
-    private static DateTime? ParseDate(string? text) =>
-        !string.IsNullOrWhiteSpace(text) && DateTime.TryParse(text, out var date) ? date.Date : null;
 }
 
 /// <summary>Used when DocumentIntelligence:Endpoint/ApiKey aren't configured -- AnalyzeIdDocumentAsync

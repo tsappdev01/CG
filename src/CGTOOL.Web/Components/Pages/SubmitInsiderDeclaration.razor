@@ -76,7 +76,12 @@
                 {
                     <label class="cg-field">
                         <span>NIN Number</span>
-                        <input class="cg-input" @bind="_ninNumber" maxlength="40" placeholder="Alphanumeric, minimum 10 characters" />
+                        <input class="cg-input@(NinFieldClass(_ninNumber))" @bind="_ninNumber" @bind:event="oninput"
+                               maxlength="40" minlength="@Nin.MinimumLength" placeholder="Alphanumeric, minimum 10 characters" />
+                        @if (Nin.IsInvalidEntry(_ninNumber))
+                        {
+                            <span class="cg-field-error">@Nin.Hint</span>
+                        }
                     </label>
                 }
 
@@ -123,7 +128,14 @@
                                             </select>
                                         </td>
                                         <td><input class="cg-input" @bind="h.NameOfShareHolder" maxlength="120" /></td>
-                                        <td><input class="cg-input" @bind="h.NinNumber" maxlength="40" placeholder="Min. 10 chars" /></td>
+                                        <td>
+                                            <input class="cg-input@(NinFieldClass(h.NinNumber))" @bind="h.NinNumber" @bind:event="oninput"
+                                                   maxlength="40" minlength="@Nin.MinimumLength" placeholder="Min. 10 chars" />
+                                            @if (Nin.IsInvalidEntry(h.NinNumber))
+                                            {
+                                                <span class="cg-field-error">@Nin.Hint</span>
+                                            }
+                                        </td>
                                         <td><input class="cg-input" @bind="h.Additional" maxlength="400" /></td>
                                         <td><button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveNinHolderAsync(h)">Remove</button></td>
                                     </tr>
@@ -287,7 +299,14 @@
                                                 <input class="cg-input" @bind="r.RelativeName" maxlength="120" />
                                             }
                                         </td>
-                                        <td><input class="cg-input" @bind="r.NinNumber" maxlength="40" placeholder="Min. 10 chars" /></td>
+                                        <td>
+                                            <input class="cg-input@(NinFieldClass(r.NinNumber))" @bind="r.NinNumber" @bind:event="oninput"
+                                                   maxlength="40" minlength="@Nin.MinimumLength" placeholder="Min. 10 chars" />
+                                            @if (Nin.IsInvalidEntry(r.NinNumber))
+                                            {
+                                                <span class="cg-field-error">@Nin.Hint</span>
+                                            }
+                                        </td>
                                         <td><input class="cg-input" @bind="r.Additional" maxlength="400" /></td>
                                         <td><button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveRelativeAsync(r)">Remove</button></td>
                                     </tr>

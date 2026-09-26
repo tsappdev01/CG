@@ -235,7 +235,13 @@
                 </label>
                 <label class="cg-field">
                     <span>NIN Number</span>
-                    <input class="cg-input" placeholder="National Investor Number" @bind="_relativeForm.NinNumber" maxlength="60" />
+                    <input class="cg-input@(Nin.IsInvalidEntry(_relativeForm.NinNumber) ? " cg-input-invalid" : "")"
+                           placeholder="National Investor Number" @bind="_relativeForm.NinNumber" @bind:event="oninput"
+                           maxlength="60" minlength="@Nin.MinimumLength" />
+                    @if (Nin.IsInvalidEntry(_relativeForm.NinNumber))
+                    {
+                        <span class="cg-field-error">@Nin.Hint</span>
+                    }
                 </label>
                 <label class="cg-field">
                     <span>Nationality</span>

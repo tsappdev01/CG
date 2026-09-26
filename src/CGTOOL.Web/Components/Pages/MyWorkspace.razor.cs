@@ -536,6 +536,14 @@ public partial class MyWorkspace : ComponentBase
             Toasts.ShowError("Enter the occupation or business.");
             return;
         }
+        // The NIN is optional here -- not every relative has one -- but a NIN that is recorded has
+        // to be a real one. Saved loose, it passes silently until the declaration asks for it,
+        // months later, and refuses to go on.
+        if (Nin.IsInvalidEntry(_relativeForm.NinNumber))
+        {
+            Toasts.ShowError(Nin.ErrorFor(_relativeForm.Name.Trim().Length > 0 ? _relativeForm.Name.Trim() : "this related party"));
+            return;
+        }
 
         _relativeForm.Occupation = ChosenOccupation();
         if (_relativeForm.OwnershipPercentage is < 0 or > 100)
@@ -545,6 +553,7 @@ public partial class MyWorkspace : ComponentBase
         }
 
         _relativeForm.Name = _relativeForm.Name.Trim();
+        _relativeForm.NinNumber = string.IsNullOrWhiteSpace(_relativeForm.NinNumber) ? null : _relativeForm.NinNumber.Trim();
 
         if (!_duplicateAcknowledged)
         {

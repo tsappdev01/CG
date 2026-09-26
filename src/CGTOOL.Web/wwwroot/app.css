@@ -2347,6 +2347,10 @@ select.cg-input {
 .cg-confirm-modal { width: min(460px, calc(100vw - 32px)); }
 .cg-duplicate-modal { width: min(560px, calc(100vw - 32px)); }
 .cg-confirm-detail { margin: 6px 0 0; font-size: 13px; font-weight: 650; }
+/* A box holding something that is not valid, and the line saying why. Only shown once there is
+   something wrong in it -- an empty box is not an error, the person may not have reached it. */
+.cg-input-invalid { border-color: var(--cg-critical); background: var(--cg-critical-tint); }
+.cg-field-error { display: block; margin-top: 4px; font-size: 11.5px; color: var(--cg-critical); }
 .cg-duplicate-card {
     border: 1px solid var(--cg-line);
     border-left: 3px solid var(--cg-warning);

@@ -177,7 +177,7 @@
                             {
                                 <tr class="cg-data-row">
                                     <td class="cg-cell-name">@c.CompanyName</td>
-                                    <td>@(string.IsNullOrWhiteSpace(c.TradeLicenseDetails) ? "—" : c.TradeLicenseDetails)</td>
+                                    <td class="mono">@(LicenceDetailsOf(c) ?? "—")</td>
                                     <td>@(c.OwnershipPercentage is { } pct ? $"{pct:0.##}%" : "—")</td>
                                     <td>@DocumentCell(c.TradeLicensePath)</td>
                                     <td>@DocumentCell(c.MoaPath)</td>
@@ -363,10 +363,6 @@
                 <label class="cg-field cg-field-wide">
                     <span>Name of the Company <b class="cg-req-mark">*</b></span>
                     <input class="cg-input" placeholder="Company name" @bind="_companyForm.CompanyName" maxlength="160" />
-                </label>
-                <label class="cg-field cg-field-wide">
-                    <span>Trade License Details</span>
-                    <input class="cg-input" placeholder="Trade license details" @bind="_companyForm.TradeLicenseDetails" maxlength="400" />
                 </label>
                 <label class="cg-field">
                     <span>Ownership %</span>

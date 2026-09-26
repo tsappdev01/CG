@@ -152,6 +152,15 @@ public partial class MyWorkspace : ComponentBase
         return string.IsNullOrWhiteSpace(f.IdentificationNumber) ? null : f.IdentificationNumber;
     }
 
+    /// <summary>What the "Trade License Details" column shows. Same reasoning as IdentifierOf: the
+    /// number is read off the licence now, and the free-text details typed before that stay visible
+    /// rather than leaving those rows blank.</summary>
+    private static string? LicenceDetailsOf(OwnedCompany c)
+    {
+        if (!string.IsNullOrWhiteSpace(c.TradeLicenceNumber)) return c.TradeLicenceNumber;
+        return string.IsNullOrWhiteSpace(c.TradeLicenseDetails) ? null : c.TradeLicenseDetails;
+    }
+
     private static string HoldingLabel(RelatedPartyHoldingNature nature) =>
         nature == RelatedPartyHoldingNature.None ? "—" : nature.ToString();
 
@@ -551,8 +560,6 @@ public partial class MyWorkspace : ComponentBase
         }
 
         _companyForm.CompanyName = _companyForm.CompanyName.Trim();
-        _companyForm.TradeLicenseDetails = string.IsNullOrWhiteSpace(_companyForm.TradeLicenseDetails)
-            ? null : _companyForm.TradeLicenseDetails.Trim();
         var actorName = await CurrentActorNameAsync();
 
         if (_companyTarget is null)

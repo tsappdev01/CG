@@ -183,6 +183,22 @@
                     @(DocIntel.IsConfigured ? " Fields below will auto-fill from the uploaded Emirates ID / Passport / Trade Licence — please verify before continuing." : "")
                 </p>
 
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn" @onclick="OfferDocumentPullAsync">Pull from My Documents</button>
+                </div>
+                <p class="cg-hint">Brings across the Emirates ID, passport and trade licence already on file in My Workspace — the file and the details — for whichever of them this declaration is still missing.</p>
+
+                @if (_offerDocumentPull)
+                {
+                    <ConfirmPrompt Show="true"
+                                   Message="Bring these across from My Documents?"
+                                   Detail="@($"{string.Join(", ", _pullableDocuments.Select(DocumentPullLabel))} — the file and the details it holds. This declaration keeps its own copy, so changing the document in My Workspace later will not change what you declared here.")"
+                                   ConfirmLabel="Bring them across"
+                                   CancelLabel="Not now"
+                                   OnConfirm="AcceptDocumentPullAsync"
+                                   OnCancel="DeclineDocumentPull" />
+                }
+
                 <div class="cg-field-row">
                     <label class="cg-field">
                         <span>Emirates ID <em class="cg-subtitle" style="margin:0;">(mandatory)</em></span>

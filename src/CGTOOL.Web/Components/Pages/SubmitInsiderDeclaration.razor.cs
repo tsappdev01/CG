@@ -702,6 +702,147 @@ public partial class SubmitInsiderDeclaration
         }
     }
 
+
+    // ---------- pulling the member's own documents in ----------
+
+    private bool _offerDocumentPull;
+    private List<MemberDocument> _pullableDocuments = [];
+
+    /// <summary>The member's My Workspace documents that this screen has a place for and that have
+    /// not been supplied here yet. Other documents are left out: this screen's "Other" slot is one
+    /// file, and there is no telling which of a member's several would be the one meant.</summary>
+    private async Task<List<MemberDocument>> PullableDocumentsAsync()
+    {
+        if (_effectiveMember is null) return [];
+
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var documents = await db.MemberDocuments.AsNoTracking()
+            .Where(d => d.MemberId == _effectiveMember.Id
+                        && d.Kind != MemberDocumentKind.Other
+                        && d.FilePath != null && d.FilePath != "")
+            .ToListAsync();
+
+        return documents.Where(d => d.Kind switch
+        {
+            MemberDocumentKind.EmiratesId => string.IsNullOrWhiteSpace(_emiratesIdPath),
+            MemberDocumentKind.Passport => string.IsNullOrWhiteSpace(_passportPath),
+            MemberDocumentKind.TradeLicence => string.IsNullOrWhiteSpace(_tradeLicencePath),
+            _ => false,
+        }).ToList();
+    }
+
+    private async Task OfferDocumentPullAsync()
+    {
+        _pullableDocuments = await PullableDocumentsAsync();
+
+        if (_pullableDocuments.Count == 0)
+        {
+            Toasts.ShowError("Nothing to bring across: My Documents has no Emirates ID, passport or trade licence that this declaration still needs.");
+            return;
+        }
+
+        _offerDocumentPull = true;
+    }
+
+    private void DeclineDocumentPull()
+    {
+        _offerDocumentPull = false;
+        _pullableDocuments = [];
+    }
+
+    /// <summary>Copies the file as well as the details. The declaration keeps its own copy of what
+    /// was declared: My Workspace is a live register the member keeps up to date, and a submitted
+    /// declaration has to still show the document as it was on the day, not whatever replaced it
+    /// since.</summary>
+    private async Task AcceptDocumentPullAsync()
+    {
+        _offerDocumentPull = false;
+        if (_effectiveMember is null) return;
+
+        var brought = new List<string>();
+
+        foreach (var document in _pullableDocuments)
+        {
+            var copied = CopyIntoDeclaration(document);
+            if (copied is null) continue;
+
+            switch (document.Kind)
+            {
+                case MemberDocumentKind.EmiratesId:
+                    _emiratesIdPath = copied;
+                    if (!string.IsNullOrWhiteSpace(document.DocumentNumber)) _emiratesIdNumber = document.DocumentNumber;
+                    if (!string.IsNullOrWhiteSpace(document.HolderName)) _emiratesIdNameOnCard = document.HolderName;
+                    if (document.ExpiryDate is not null) _emiratesIdExpiryDate = document.ExpiryDate;
+                    brought.Add("Emirates ID");
+                    break;
+
+                case MemberDocumentKind.Passport:
+                    _passportPath = copied;
+                    if (!string.IsNullOrWhiteSpace(document.DocumentNumber)) _passportNumber = document.DocumentNumber;
+                    if (document.ExpiryDate is not null) _passportExpiryDate = document.ExpiryDate;
+                    if (!string.IsNullOrWhiteSpace(document.Nationality)) _passportIssuingCountry = document.Nationality;
+                    brought.Add("passport");
+                    break;
+
+                case MemberDocumentKind.TradeLicence:
+                    _tradeLicencePath = copied;
+                    if (!string.IsNullOrWhiteSpace(document.DocumentNumber)) _tradeLicenceNumber = document.DocumentNumber;
+                    if (!string.IsNullOrWhiteSpace(document.HolderName)) _tradeLicenceLegalName = document.HolderName;
+                    if (document.ExpiryDate is not null) _tradeLicenceExpiryDate = document.ExpiryDate;
+                    brought.Add("trade licence");
+                    break;
+            }
+        }
+
+        _pullableDocuments = [];
+
+        if (brought.Count == 0)
+        {
+            Toasts.ShowError("The files could not be copied from My Documents. Upload them here instead.");
+            return;
+        }
+
+        await LogGridChangeAsync($"Brought {string.Join(", ", brought)} across from My Documents.");
+        Toasts.ShowSuccess($"Brought across your {string.Join(", ", brought)}. Check the details before continuing.");
+    }
+
+    /// <summary>Copies the stored file into this declaration's own uploads folder and returns the
+    /// web path to the copy, or null if the file is missing -- a record can outlive its file, and a
+    /// declaration pointing at a file that is not there is worse than one with nothing attached.</summary>
+    private string? CopyIntoDeclaration(MemberDocument document)
+    {
+        if (_effectiveMember is null || string.IsNullOrWhiteSpace(document.FilePath)) return null;
+
+        var source = Path.Combine(Env.WebRootPath, document.FilePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(source)) return null;
+
+        var kind = document.Kind switch
+        {
+            MemberDocumentKind.EmiratesId => "emirates-id",
+            MemberDocumentKind.Passport => "passport",
+            _ => "trade-licence",
+        };
+
+        var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "insider-declarations");
+        Directory.CreateDirectory(uploadsDir);
+        foreach (var stale in Directory.GetFiles(uploadsDir, $"{_effectiveMember.Id}-{kind}.*")) File.Delete(stale);
+
+        var fileName = $"{_effectiveMember.Id}-{kind}{Path.GetExtension(source)}";
+        File.Copy(source, Path.Combine(uploadsDir, fileName), overwrite: true);
+        return $"/uploads/insider-declarations/{fileName}";
+    }
+
+    private static string DocumentPullLabel(MemberDocument d) => d.Kind switch
+    {
+        MemberDocumentKind.EmiratesId => "Emirates ID",
+        MemberDocumentKind.Passport => "Passport",
+        _ => "Trade Licence",
+    };
+
     // Screen 1 "Next" -- Functional Spec §3.1/§3.2/§8 validation.
     private async Task GoToCapture2Async()
     {

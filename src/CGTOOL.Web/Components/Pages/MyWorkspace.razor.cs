@@ -220,6 +220,7 @@ public partial class MyWorkspace : ComponentBase
         Organization = f.Organization,
         NatureOfHolding = f.NatureOfHolding,
         OwnershipPercentage = f.OwnershipPercentage,
+        HoldsDiShares = f.HoldsDiShares,
         EmiratesIdPath = f.EmiratesIdPath,
         EmiratesIdNumber = f.EmiratesIdNumber,
         EmiratesIdExpiryDate = f.EmiratesIdExpiryDate,
@@ -244,6 +245,7 @@ public partial class MyWorkspace : ComponentBase
         to.Organization = from.Organization;
         to.NatureOfHolding = from.NatureOfHolding;
         to.OwnershipPercentage = from.OwnershipPercentage;
+        to.HoldsDiShares = from.HoldsDiShares;
         to.EmiratesIdPath = from.EmiratesIdPath;
         to.EmiratesIdNumber = from.EmiratesIdNumber;
         to.EmiratesIdExpiryDate = from.EmiratesIdExpiryDate;
@@ -292,6 +294,8 @@ public partial class MyWorkspace : ComponentBase
 
     private static string? Day(DateTime? value) => value?.ToString("dd MMM yyyy");
 
+    private static string YesNo(bool value) => value ? "Yes" : "No";
+
     /// <summary>Applies a typed date, complaining rather than silently clearing what is stored when
     /// it cannot be read -- the input re-renders from the stored value, so a typo does not take the
     /// captured date with it.</summary>
@@ -327,6 +331,7 @@ public partial class MyWorkspace : ComponentBase
         Cmp("Company / Organization", before.Organization, after.Organization);
         Cmp("Nature Of Holding", HoldingLabel(before.NatureOfHolding), HoldingLabel(after.NatureOfHolding));
         Cmp("Ownership %", Pct(before.OwnershipPercentage), Pct(after.OwnershipPercentage));
+        Cmp("Holds DI shares", YesNo(before.HoldsDiShares), YesNo(after.HoldsDiShares));
         Cmp("Emirates ID No", before.EmiratesIdNumber, after.EmiratesIdNumber);
         Cmp("Emirates ID Expiry", Day(before.EmiratesIdExpiryDate), Day(after.EmiratesIdExpiryDate));
         Cmp("Passport No", before.PassportNumber, after.PassportNumber);
@@ -372,6 +377,7 @@ public partial class MyWorkspace : ComponentBase
         $"Company / Organization: {Show(f.Organization)}",
         $"Nature Of Holding: {HoldingLabel(f.NatureOfHolding)}",
         $"Ownership %: {Show(Pct(f.OwnershipPercentage))}",
+        $"Holds DI shares: {YesNo(f.HoldsDiShares)}",
         $"Emirates ID No: {Show(f.EmiratesIdNumber)}",
         $"Emirates ID Expiry: {Show(Day(f.EmiratesIdExpiryDate))}",
         $"Passport No: {Show(f.PassportNumber)}",

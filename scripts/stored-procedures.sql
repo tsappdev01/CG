@@ -54,6 +54,7 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'NatureOfHolding') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'TradeLicencePath') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'NinNumber') IS NULL
+    OR COL_LENGTH('dbo.FamilyMembers', 'HoldsDiShares') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'TradeLicenceNumber') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'EmiratesIdNumber') IS NULL
     OR COL_LENGTH('dbo.OwnedCompanies', 'TradeLicenceNumber') IS NULL
@@ -1803,6 +1804,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMember_Insert
     @NatureOfHolding int = 0,
     @OwnershipPercentage decimal(5,2) = NULL,
     @NinNumber nvarchar(60) = NULL,
+    @HoldsDiShares bit = 0,
     @NewId int OUTPUT
 AS
 BEGIN
@@ -1810,10 +1812,10 @@ BEGIN
 
     INSERT INTO dbo.FamilyMembers
         (MemberId, Name, Relationship, IdentificationNumber, Nationality,
-         Occupation, Organization, NatureOfHolding, OwnershipPercentage, NinNumber)
+         Occupation, Organization, NatureOfHolding, OwnershipPercentage, NinNumber, HoldsDiShares)
     VALUES
         (@MemberId, @Name, @Relationship, @IdentificationNumber, @Nationality,
-         @Occupation, @Organization, @NatureOfHolding, @OwnershipPercentage, @NinNumber);
+         @Occupation, @Organization, @NatureOfHolding, @OwnershipPercentage, @NinNumber, @HoldsDiShares);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1839,7 +1841,8 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMember_Update
     @Organization nvarchar(160) = NULL,
     @NatureOfHolding int = 0,
     @OwnershipPercentage decimal(5,2) = NULL,
-    @NinNumber nvarchar(60) = NULL
+    @NinNumber nvarchar(60) = NULL,
+    @HoldsDiShares bit = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1862,7 +1865,8 @@ BEGIN
         Organization = @Organization,
         NatureOfHolding = @NatureOfHolding,
         OwnershipPercentage = @OwnershipPercentage,
-        NinNumber = @NinNumber
+        NinNumber = @NinNumber,
+        HoldsDiShares = @HoldsDiShares
     WHERE Id = @Id;
 END
 GO

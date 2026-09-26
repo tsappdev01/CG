@@ -282,12 +282,11 @@
                 </div>
 
                 <label class="cg-field">
-                    <span>Have shares in Dubai Investments PJSC?</span>
+                    <span>Do you or your relatives hold shares in DI PJSC?</span>
                     <div class="cg-yesno">
-                        <button type="button" class="cg-action-btn @(_holdsSharesInDI ? "cg-good" : "")" @onclick="() => ChooseHoldsSharesAsync(true)">Yes</button>
-                        <button type="button" class="cg-action-btn @(!_holdsSharesInDI ? "cg-good" : "")" @onclick="() => ChooseHoldsSharesAsync(false)">No</button>
+                        <button type="button" class="cg-action-btn @(_holdsSharesInDI ? "cg-good" : "")" @onclick="() => ChooseHoldsSharesAsync(true)">I / my relatives hold shares in DI</button>
+                        <button type="button" class="cg-action-btn @(!_holdsSharesInDI ? "cg-good" : "")" @onclick="() => ChooseHoldsSharesAsync(false)">Neither I / my relatives hold shares in DI</button>
                     </div>
-                    <span class="cg-hint">Held by you or by any of your relatives.</span>
                 </label>
                 @if (_holdsSharesInDI)
                 {
@@ -346,7 +345,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <p class="cg-hint">Your relatives with a NIN in My Workspace are loaded here for you — enter the shares each one holds, and remove any who hold none.</p>
+                    <p class="cg-hint">The relatives marked as holding DI shares in My Workspace are loaded here for you — enter the shares each one holds.</p>
                     <div class="cg-actions">
                         <button type="button" class="cg-action-btn" @onclick="AddRelativeAsync">+ Add shareholder</button>
                         @if (!_relatives.Any(r => r.IsSelf))

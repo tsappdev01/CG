@@ -934,25 +934,37 @@ public partial class SubmitInsiderDeclaration
         // it -- which kills the circuit and takes the page with it.
         await using var db = await DbFactory.CreateDbContextAsync();
 
+        // Marked as holding DI shares in My Workspace -- not merely having a NIN. A NIN says a
+        // person can hold shares; this grid is about who does, and the member answers that once on
+        // the register instead of again every quarter.
         var relatives = await db.FamilyMembers.AsNoTracking()
-            .Where(f => f.MemberId == _effectiveMember.Id && f.NinNumber != null && f.NinNumber != "")
+            .Where(f => f.MemberId == _effectiveMember.Id && f.HoldsDiShares)
             .OrderBy(f => f.Name)
             .ToListAsync();
+
+        if (relatives.Count == 0)
+        {
+            Toasts.ShowError("No relatives are marked as holding DI shares in My Workspace. Add the rows here, or mark them there so they load next time.");
+            return;
+        }
 
         var added = 0;
         foreach (var relative in relatives)
         {
             var listed = _relatives.Any(r => !r.IsSelf && (
                 string.Equals(r.RelativeName.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase)
-                || string.Equals(r.NinNumber.Trim(), relative.NinNumber!.Trim(), StringComparison.OrdinalIgnoreCase)));
+                || (!string.IsNullOrWhiteSpace(relative.NinNumber)
+                    && string.Equals(r.NinNumber.Trim(), relative.NinNumber.Trim(), StringComparison.OrdinalIgnoreCase))));
 
             if (listed) continue;
 
+            // Loaded even with no NIN on file: someone who holds shares has one, so a blank here is
+            // a gap to fill, and the NIN rule marks it. Leaving them out would hide the holding.
             _relatives.Add(new RelativeRow
             {
                 Relationship = relative.Relationship,
                 RelativeName = relative.Name,
-                NinNumber = relative.NinNumber!,
+                NinNumber = relative.NinNumber ?? string.Empty,
             });
             added++;
         }
@@ -960,7 +972,7 @@ public partial class SubmitInsiderDeclaration
         if (added == 0) return;
 
         await LogGridChangeAsync($"Loaded {added} relative(s) into the shareholding grid from My Workspace.");
-        Toasts.ShowSuccess($"Loaded {added} relative(s) from My Workspace. Enter the shares each of them holds, and remove any who hold none.");
+        Toasts.ShowSuccess($"Loaded {added} relative(s) who hold DI shares from My Workspace. Enter the shares each of them holds.");
     }
 
     /// <summary>Shareholding rows the register has never heard of -- the same question the relatives'

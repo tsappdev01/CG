@@ -48,6 +48,11 @@ public class FamilyMember
 
     public RelatedPartyHoldingNature NatureOfHolding { get; set; } = RelatedPartyHoldingNature.None;
 
+    /// <summary>Whether this relative holds shares in Dubai Investments PJSC. Kept on the register
+    /// rather than asked afresh each quarter: it is a fact about the person that rarely changes,
+    /// and it is what decides who the Insider Trading declaration's shareholding grid starts with.</summary>
+    public bool HoldsDiShares { get; set; }
+
     /// <summary>Ownership percentage in the organization above (0-100).</summary>
     public decimal? OwnershipPercentage { get; set; }
 

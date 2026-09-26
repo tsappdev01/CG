@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CGTOOL.Web")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9f2bb530ecdee49748811c4ae8665c7bd36667ca")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+015e21262f9c8e5e1113261f498676b0133e245e")]
 [assembly: System.Reflection.AssemblyProductAttribute("CGTOOL.Web")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CGTOOL.Web")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

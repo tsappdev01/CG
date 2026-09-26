@@ -263,6 +263,32 @@
                         <p class="cg-hint">Until this is linked, they cannot sign in and see their own declarations.</p>
                     </label>
 
+                    @* The list above only offers accounts that already exist, and a new joiner has
+                       none -- which left no way to finish setting someone up by hand: no account,
+                       so no role field, and single sign-on would turn them away for having no
+                       record to match. This makes the account the import would have made. *@
+                    @if (string.IsNullOrEmpty(_editing.ApplicationUserId) && _editing.Id != 0)
+                    {
+                        <div class="cg-field">
+                            <span>No sign-in account yet</span>
+                            @if (string.IsNullOrWhiteSpace(_editing.Email))
+                            {
+                                <p class="cg-hint">Give them an email address above and save, then an account can be created here.</p>
+                            }
+                            else
+                            {
+                                <button type="button" class="cg-action-btn cg-good" disabled="@_creatingAccount"
+                                        @onclick="CreateSignInAccountAsync">
+                                    @(_creatingAccount ? "Creating…" : $"Create a sign-in account for {_editing.Email}")
+                                </button>
+                                <p class="cg-hint">
+                                    Signs them in through Microsoft with that address, and starts them on Normal User —
+                                    change the role below once the account exists.
+                                </p>
+                            }
+                        </div>
+                    }
+
                     @if (!string.IsNullOrEmpty(_editing.ApplicationUserId))
                     {
                         <label class="cg-field">

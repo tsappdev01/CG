@@ -413,6 +413,81 @@ public partial class MemberDetail
         await LoadAuditAsync();
     }
 
+    private bool _creatingAccount;
+
+    /// <summary>Makes the sign-in account a person needs before they can be given a role or let in
+    /// by single sign-on, for someone being set up by hand rather than through the import.
+    ///
+    /// Deliberately the same rules the import applies (see DirectoryImporter.EnsureLoginAccountAsync)
+    /// so the two ways in produce the same account: username and email are the person's address, the
+    /// email counts as confirmed because the address came from an administrator rather than a
+    /// stranger, and they start on Normal User. No password is set -- they sign in through Microsoft,
+    /// and an account with no password cannot be signed into any other way.</summary>
+    private async Task CreateSignInAccountAsync()
+    {
+        if (_editing is null || _editing.Id == 0 || _creatingAccount) return;
+
+        var address = _editing.Email;
+        if (string.IsNullOrWhiteSpace(address)) return;
+
+        _creatingAccount = true;
+        try
+        {
+            // An account for this address may already exist -- created by an earlier import, or left
+            // behind by a member who was deleted. Linking it is what the administrator meant, and
+            // creating a second one would fail on the unique index anyway.
+            var user = await UserManager.FindByEmailAsync(address) ?? await UserManager.FindByNameAsync(address);
+            var reused = user is not null;
+
+            if (user is null)
+            {
+                user = new ApplicationUser { UserName = address, Email = address, EmailConfirmed = true };
+
+                var created = await UserManager.CreateAsync(user);
+                if (!created.Succeeded)
+                {
+                    Toasts.ShowError($"Could not create the account: {string.Join("; ", created.Errors.Select(e => e.Description))}");
+                    return;
+                }
+
+                await UserManager.AddToRoleAsync(user, GovernanceRoles.NormalUser);
+            }
+
+            // The link is written through the member writer like every other change to a member, so
+            // the "already linked to another user" check in the stored procedure applies here too.
+            _editing.ApplicationUserId = user.Id;
+            try
+            {
+                await MemberWriter.UpdateAsync(_editing);
+            }
+            catch (SqlException ex) when (ex.Number == 50003)
+            {
+                _editing.ApplicationUserId = null;
+                Toasts.ShowError($"{address} is already linked to another user.");
+                return;
+            }
+
+            await AuditLog.LogAsync(await CurrentActorAsync(), AuditAction.Create, nameof(ApplicationUser), user.Id,
+                reused
+                    ? $"Existing sign-in account {address} linked to {_editing.FullName}"
+                    : $"Sign-in account created for {_editing.FullName} ({address}), starting on {GovernanceRoles.NormalUser}");
+
+            Toasts.ShowSuccess(reused
+                ? $"Linked the existing account for {address}."
+                : $"Account created. {_editing.FullName} can now sign in with {address}.");
+
+            // _users is a snapshot taken once at page load, and it is where LoadAuditAsync reads
+            // the role list from -- so a brand new account has to be put into it, or the role field
+            // appears and then reads as having no role.
+            if (!reused) _users!.Add(user);
+            await LoadAuditAsync();
+        }
+        finally
+        {
+            _creatingAccount = false;
+        }
+    }
+
     private async Task ToggleUserRoleAsync(string role, bool isChecked)
     {
         if (_editing is null || string.IsNullOrEmpty(_editing.ApplicationUserId)) return;

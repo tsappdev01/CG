@@ -53,7 +53,11 @@ if (!string.IsNullOrWhiteSpace(azureAdSection["ClientId"]) && !string.IsNullOrWh
         options.ClientSecret = azureAdSection["ClientSecret"];
         options.ResponseType = Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectResponseType.Code;
         options.SaveTokens = true;
-        options.CallbackPath = "/signin-oidc-azuread";
+        // The path Entra redirects back to, and the tail of the redirect URI registered on the
+        // app registration -- the two are one setting in two places and must be identical, so it
+        // is settable rather than compiled in. The default is what existing deployments and their
+        // registrations already use, so leaving it out changes nothing.
+        options.CallbackPath = azureAdSection["CallbackPath"] ?? "/signin-oidc-azuread";
         options.Scope.Add("User.Read");
     });
 }

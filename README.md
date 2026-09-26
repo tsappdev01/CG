@@ -630,6 +630,7 @@ The settings live in `appsettings.json`, alongside the other deployment settings
   "Instance": "https://login.microsoftonline.com/",
   "TenantId": "<directory (tenant) id>",
   "ClientId": "<application (client) id>",
+  "CallbackPath": "/signin-oidc-azuread",
   "ClientSecret": "<client secret value>"
 }
 ```
@@ -637,8 +638,11 @@ The settings live in `appsettings.json`, alongside the other deployment settings
 Single sign-on is registered only when **both** `TenantId` and `ClientId` are filled in; the
 directory sync additionally needs `ClientSecret`. `Instance` only changes for a sovereign cloud.
 
-In the app registration, add a **Web** redirect URI ending in `/signin-oidc-azuread` — the callback
-path is fixed in `Program.cs`. For a developer machine running the `https` launch profile that is:
+In the app registration, add a **Web** redirect URI ending in `CallbackPath` — which defaults to
+`/signin-oidc-azuread`. It is one setting written in two places and the two must match exactly:
+change it here and the registration has to change with it, or sign-in fails with `AADSTS50011`.
+Note that `/signin-oidc` is ASP.NET Core's own default and is *not* what this application uses.
+For a developer machine running the `https` launch profile the URI is:
 
 ```
 https://localhost:7184/signin-oidc-azuread

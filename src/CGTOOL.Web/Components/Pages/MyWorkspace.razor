@@ -302,16 +302,38 @@
                 </div>
                 <p class="cg-hint">JPEG, PNG or PDF, up to 1 MB. Uploading replaces the document already on file.</p>
 
-                <h3 class="cg-doc-heading">From the trade licence</h3>
-                <p class="cg-hint">Read off the uploaded licence automatically where document capture is configured. Always check them — the reading is a best-effort match, not an authoritative one — and correct anything wrong before saving.</p>
+                <h3 class="cg-doc-heading">From the documents</h3>
+                <p class="cg-hint">Read off the uploaded documents automatically where document capture is configured. Always check them — the reading is best-effort, not authoritative — and correct anything wrong before saving. Dates are @UaeDate.Pattern.ToLowerInvariant().</p>
                 <div class="cg-form-grid cg-captured-grid">
+                    <label class="cg-field">
+                        <span>Emirates ID No</span>
+                        <input class="cg-input" @bind="_relativeForm.EmiratesIdNumber" maxlength="60" />
+                    </label>
+                    <label class="cg-field">
+                        <span>Emirates ID Expiry</span>
+                        <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                               @bind:get="UaeDate.Show(_relativeForm.EmiratesIdExpiryDate)"
+                               @bind:set="v => SetDate(v, d => _relativeForm.EmiratesIdExpiryDate = d)" />
+                    </label>
+                    <label class="cg-field">
+                        <span>Passport No</span>
+                        <input class="cg-input" @bind="_relativeForm.PassportNumber" maxlength="60" />
+                    </label>
+                    <label class="cg-field">
+                        <span>Passport Expiry</span>
+                        <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                               @bind:get="UaeDate.Show(_relativeForm.PassportExpiryDate)"
+                               @bind:set="v => SetDate(v, d => _relativeForm.PassportExpiryDate = d)" />
+                    </label>
                     <label class="cg-field">
                         <span>Trade License No</span>
                         <input class="cg-input" @bind="_relativeForm.TradeLicenceNumber" maxlength="100" />
                     </label>
                     <label class="cg-field">
                         <span>Expiry</span>
-                        <input type="date" class="cg-input" @bind="_relativeForm.TradeLicenceExpiryDate" />
+                        <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                               @bind:get="UaeDate.Show(_relativeForm.TradeLicenceExpiryDate)"
+                               @bind:set="v => SetDate(v, d => _relativeForm.TradeLicenceExpiryDate = d)" />
                     </label>
                     <label class="cg-field cg-field-wide">
                         <span>Legal Name</span>
@@ -371,7 +393,7 @@
                 <p class="cg-hint">JPEG, PNG or PDF, up to 10 MB. Uploading replaces the document already on file.</p>
 
                 <h3 class="cg-doc-heading">From the trade licence</h3>
-                <p class="cg-hint">Read off the uploaded licence automatically where document capture is configured. Always check them — the reading is a best-effort match, not an authoritative one — and correct anything wrong before saving.</p>
+                <p class="cg-hint">Read off the uploaded licence automatically where document capture is configured. Always check them — the reading is best-effort, not authoritative — and correct anything wrong before saving. Dates are @UaeDate.Pattern.ToLowerInvariant().</p>
                 <div class="cg-form-grid cg-captured-grid">
                     <label class="cg-field">
                         <span>Trade License No</span>
@@ -379,7 +401,9 @@
                     </label>
                     <label class="cg-field">
                         <span>Expiry</span>
-                        <input type="date" class="cg-input" @bind="_companyForm.TradeLicenceExpiryDate" />
+                        <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                               @bind:get="UaeDate.Show(_companyForm.TradeLicenceExpiryDate)"
+                               @bind:set="v => SetDate(v, d => _companyForm.TradeLicenceExpiryDate = d)" />
                     </label>
                     <label class="cg-field cg-field-wide">
                         <span>Legal Name</span>

@@ -54,8 +54,22 @@ public class FamilyMember
     [MaxLength(260)]
     public string? EmiratesIdPath { get; set; }
 
+    /// <summary>Read off the uploaded Emirates ID by Document Intelligence where it is configured,
+    /// and editable either way. Separate from IdentificationNumber, which the member types and which
+    /// may hold either an Emirates ID or a passport number: these two say which document they came
+    /// from, and carry its expiry.</summary>
+    [MaxLength(60)]
+    public string? EmiratesIdNumber { get; set; }
+
+    public DateTime? EmiratesIdExpiryDate { get; set; }
+
     [MaxLength(260)]
     public string? PassportPath { get; set; }
+
+    [MaxLength(60)]
+    public string? PassportNumber { get; set; }
+
+    public DateTime? PassportExpiryDate { get; set; }
 
     [MaxLength(260)]
     public string? TradeLicencePath { get; set; }

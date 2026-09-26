@@ -55,6 +55,7 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'TradeLicencePath') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'NinNumber') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'TradeLicenceNumber') IS NULL
+    OR COL_LENGTH('dbo.FamilyMembers', 'EmiratesIdNumber') IS NULL
     OR COL_LENGTH('dbo.OwnedCompanies', 'TradeLicenceNumber') IS NULL
     OR COL_LENGTH('dbo.AuditLogEntries', 'RecordHash') IS NULL
     OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
@@ -1821,7 +1822,11 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMember_Update
     @Name nvarchar(120),
     @Relationship int,
     @EmiratesIdPath nvarchar(260) = NULL,
+    @EmiratesIdNumber nvarchar(60) = NULL,
+    @EmiratesIdExpiryDate datetime2 = NULL,
     @PassportPath nvarchar(260) = NULL,
+    @PassportNumber nvarchar(60) = NULL,
+    @PassportExpiryDate datetime2 = NULL,
     @TradeLicencePath nvarchar(260) = NULL,
     @TradeLicenceNumber nvarchar(100) = NULL,
     @TradeLicenceLegalName nvarchar(200) = NULL,
@@ -1840,7 +1845,11 @@ BEGIN
     SET Name = @Name,
         Relationship = @Relationship,
         EmiratesIdPath = @EmiratesIdPath,
+        EmiratesIdNumber = @EmiratesIdNumber,
+        EmiratesIdExpiryDate = @EmiratesIdExpiryDate,
         PassportPath = @PassportPath,
+        PassportNumber = @PassportNumber,
+        PassportExpiryDate = @PassportExpiryDate,
         TradeLicencePath = @TradeLicencePath,
         TradeLicenceNumber = @TradeLicenceNumber,
         TradeLicenceLegalName = @TradeLicenceLegalName,

@@ -70,22 +70,38 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             WaitUntil.Completed, "prebuilt-idDocument", content, cancellationToken: cancellationToken);
 
         var document = operation.Value.Documents.FirstOrDefault();
-        if (document is null) return null;
+        var text = operation.Value.Content ?? string.Empty;
+        if (document is null && text.Length == 0) return null;
+
+        // The structured fields first, then the page text the same call already returned. The
+        // prebuilt model is strong on passports but leaves fields empty often enough on Emirates ID
+        // cards (bilingual layout, an ID number format it was not trained on) that falling back to
+        // the text is the difference between a filled field and a blank one -- and it costs nothing:
+        // the text came back with the response.
+        var number = GetString(document, "DocumentNumber");
+        if (string.IsNullOrWhiteSpace(number) && text.Length > 0)
+        {
+            number = IdDocumentTextParser.FindEmiratesIdNumber(text)
+                     ?? IdDocumentTextParser.FindPassportNumber(text);
+        }
+
+        var expiry = GetDate(document, "DateOfExpiration");
+        expiry ??= text.Length > 0 ? IdDocumentTextParser.FindExpiry(text) : null;
 
         return new IdDocumentExtraction(
-            DocumentNumber: GetString(document, "DocumentNumber"),
+            DocumentNumber: number,
             FirstName: GetString(document, "FirstName"),
             LastName: GetString(document, "LastName"),
-            DateOfExpiration: GetDate(document, "DateOfExpiration"),
+            DateOfExpiration: expiry,
             CountryRegion: GetString(document, "CountryRegion"));
     }
 
-    private static string? GetString(AnalyzedDocument document, string fieldName) =>
-        document.Fields.TryGetValue(fieldName, out var field) ? field.Content : null;
+    private static string? GetString(AnalyzedDocument? document, string fieldName) =>
+        document is not null && document.Fields.TryGetValue(fieldName, out var field) ? field.Content : null;
 
-    private static DateTime? GetDate(AnalyzedDocument document, string fieldName)
+    private static DateTime? GetDate(AnalyzedDocument? document, string fieldName)
     {
-        if (!document.Fields.TryGetValue(fieldName, out var field)) return null;
+        if (document is null || !document.Fields.TryGetValue(fieldName, out var field)) return null;
         try
         {
             return field.ValueDate?.Date;

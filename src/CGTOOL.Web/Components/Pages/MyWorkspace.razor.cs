@@ -185,7 +185,11 @@ public partial class MyWorkspace : ComponentBase
         NatureOfHolding = f.NatureOfHolding,
         OwnershipPercentage = f.OwnershipPercentage,
         EmiratesIdPath = f.EmiratesIdPath,
+        EmiratesIdNumber = f.EmiratesIdNumber,
+        EmiratesIdExpiryDate = f.EmiratesIdExpiryDate,
         PassportPath = f.PassportPath,
+        PassportNumber = f.PassportNumber,
+        PassportExpiryDate = f.PassportExpiryDate,
         TradeLicencePath = f.TradeLicencePath,
         TradeLicenceNumber = f.TradeLicenceNumber,
         TradeLicenceLegalName = f.TradeLicenceLegalName,
@@ -205,7 +209,11 @@ public partial class MyWorkspace : ComponentBase
         to.NatureOfHolding = from.NatureOfHolding;
         to.OwnershipPercentage = from.OwnershipPercentage;
         to.EmiratesIdPath = from.EmiratesIdPath;
+        to.EmiratesIdNumber = from.EmiratesIdNumber;
+        to.EmiratesIdExpiryDate = from.EmiratesIdExpiryDate;
         to.PassportPath = from.PassportPath;
+        to.PassportNumber = from.PassportNumber;
+        to.PassportExpiryDate = from.PassportExpiryDate;
         to.TradeLicencePath = from.TradeLicencePath;
         to.TradeLicenceNumber = from.TradeLicenceNumber;
         to.TradeLicenceLegalName = from.TradeLicenceLegalName;
@@ -246,6 +254,18 @@ public partial class MyWorkspace : ComponentBase
 
     private static string? Day(DateTime? value) => value?.ToString("dd MMM yyyy");
 
+    /// <summary>Applies a typed date, complaining rather than silently clearing what is stored when
+    /// it cannot be read -- the input re-renders from the stored value, so a typo does not take the
+    /// captured date with it.</summary>
+    private void SetDate(string? text, Action<DateTime?> assign)
+    {
+        if (string.IsNullOrWhiteSpace(text)) { assign(null); return; }
+
+        if (UaeDate.Parse(text) is { } date) { assign(date); return; }
+
+        Toasts.ShowError($"Enter the date as {UaeDate.Pattern.ToLowerInvariant()}.");
+    }
+
     /// <summary>The audit trail records what actually changed, field by field, rather than "updated
     /// X": a reviewer reading the trail needs to see the old value as well as the new one.</summary>
     private static List<string> DiffOf(FamilyMember before, FamilyMember after)
@@ -269,6 +289,10 @@ public partial class MyWorkspace : ComponentBase
         Cmp("Company / Organization", before.Organization, after.Organization);
         Cmp("Nature Of Holding", HoldingLabel(before.NatureOfHolding), HoldingLabel(after.NatureOfHolding));
         Cmp("Ownership %", Pct(before.OwnershipPercentage), Pct(after.OwnershipPercentage));
+        Cmp("Emirates ID No", before.EmiratesIdNumber, after.EmiratesIdNumber);
+        Cmp("Emirates ID Expiry", Day(before.EmiratesIdExpiryDate), Day(after.EmiratesIdExpiryDate));
+        Cmp("Passport No", before.PassportNumber, after.PassportNumber);
+        Cmp("Passport Expiry", Day(before.PassportExpiryDate), Day(after.PassportExpiryDate));
         Cmp("Trade License No", before.TradeLicenceNumber, after.TradeLicenceNumber);
         Cmp("Trade License Legal Name", before.TradeLicenceLegalName, after.TradeLicenceLegalName);
         Cmp("Trade License Expiry", Day(before.TradeLicenceExpiryDate), Day(after.TradeLicenceExpiryDate));
@@ -307,6 +331,8 @@ public partial class MyWorkspace : ComponentBase
         $"Company / Organization: {Show(f.Organization)}",
         $"Nature Of Holding: {HoldingLabel(f.NatureOfHolding)}",
         $"Ownership %: {Show(Pct(f.OwnershipPercentage))}",
+        $"Emirates ID No: {Show(f.EmiratesIdNumber)}",
+        $"Passport No: {Show(f.PassportNumber)}",
         $"Trade License No: {Show(f.TradeLicenceNumber)}",
     ]);
 
@@ -597,6 +623,29 @@ public partial class MyWorkspace : ComponentBase
         }
     }
 
+    /// <summary>Same best-effort contract as the trade licence read: prebuilt-idDocument is a
+    /// purpose-built model and stronger than the licence's label matching, but an Emirates ID's
+    /// bilingual layout still defeats it often enough that every field it fills stays editable.</summary>
+    private async Task<IdDocumentExtraction?> ReadIdDocumentAsync(string filePath)
+    {
+        if (!DocIntel.IsConfigured) return null;
+
+        try
+        {
+            await using var stream = File.OpenRead(filePath);
+            return await DocIntel.AnalyzeIdDocumentAsync(stream);
+        }
+        catch (Exception ex)
+        {
+            Toasts.ShowError($"Could not auto-read the document ({ex.Message}). Enter the details manually.");
+            return null;
+        }
+    }
+
+    private static string CapturedNote(IdDocumentExtraction? captured, string label) => captured is null
+        ? "No details were read from it."
+        : $"Read from it -- {label} No: {Show(captured.DocumentNumber)}; Expiry: {Show(Day(captured.DateOfExpiration))}.";
+
     private static string CapturedNote(TradeLicenceExtraction? captured) => captured is null
         ? "No details were read from it."
         : $"Read from it -- Trade License No: {Show(captured.LicenceNumber)}; "
@@ -633,10 +682,21 @@ public partial class MyWorkspace : ComponentBase
 
             var path = $"/uploads/my-workspace/family/{fileName}";
             TradeLicenceExtraction? captured = null;
+            IdDocumentExtraction? capturedId = null;
             switch (kind)
             {
-                case "emirates-id": target.EmiratesIdPath = path; break;
-                case "passport": target.PassportPath = path; break;
+                case "emirates-id":
+                    target.EmiratesIdPath = path;
+                    capturedId = await ReadIdDocumentAsync(filePath);
+                    if (!string.IsNullOrWhiteSpace(capturedId?.DocumentNumber)) target.EmiratesIdNumber = capturedId.DocumentNumber;
+                    if (capturedId?.DateOfExpiration is not null) target.EmiratesIdExpiryDate = capturedId.DateOfExpiration;
+                    break;
+                case "passport":
+                    target.PassportPath = path;
+                    capturedId = await ReadIdDocumentAsync(filePath);
+                    if (!string.IsNullOrWhiteSpace(capturedId?.DocumentNumber)) target.PassportNumber = capturedId.DocumentNumber;
+                    if (capturedId?.DateOfExpiration is not null) target.PassportExpiryDate = capturedId.DateOfExpiration;
+                    break;
                 case "trade-licence":
                     target.TradeLicencePath = path;
                     captured = await ReadTradeLicenceAsync(filePath);
@@ -652,7 +712,11 @@ public partial class MyWorkspace : ComponentBase
             {
                 if (copy is null) continue;
                 copy.EmiratesIdPath = target.EmiratesIdPath;
+                copy.EmiratesIdNumber = target.EmiratesIdNumber;
+                copy.EmiratesIdExpiryDate = target.EmiratesIdExpiryDate;
                 copy.PassportPath = target.PassportPath;
+                copy.PassportNumber = target.PassportNumber;
+                copy.PassportExpiryDate = target.PassportExpiryDate;
                 copy.TradeLicencePath = target.TradeLicencePath;
                 copy.TradeLicenceNumber = target.TradeLicenceNumber;
                 copy.TradeLicenceLegalName = target.TradeLicenceLegalName;
@@ -661,18 +725,20 @@ public partial class MyWorkspace : ComponentBase
 
             var actorName = await CurrentActorNameAsync();
             var detail = $"Attached {label} to related party {target.Name}: {fileName}";
-            if (kind == "trade-licence" && DocIntel.IsConfigured) detail += $" {CapturedNote(captured)}";
+            if (DocIntel.IsConfigured)
+            {
+                if (kind == "trade-licence") detail += $" {CapturedNote(captured)}";
+                else detail += $" {CapturedNote(capturedId, label)}";
+            }
             await AuditLog.LogAsync(actorName, AuditAction.Update, nameof(FamilyMember), target.Id.ToString(), detail);
 
-            if (kind == "trade-licence" && captured is not null
-                && (captured.LicenceNumber is not null || captured.BusinessName is not null || captured.ExpiryDate is not null))
-            {
-                Toasts.ShowSuccess("Trade licence uploaded. The details below were read off it — check them before saving.");
-            }
-            else
-            {
-                Toasts.ShowSuccess($"{label} uploaded.");
-            }
+            var readSomething = kind == "trade-licence"
+                ? captured is not null && (captured.LicenceNumber is not null || captured.BusinessName is not null || captured.ExpiryDate is not null)
+                : capturedId is not null && (capturedId.DocumentNumber is not null || capturedId.DateOfExpiration is not null);
+
+            Toasts.ShowSuccess(readSomething
+                ? $"{label} uploaded. The details below were read off it — check them before saving."
+                : $"{label} uploaded.");
         }
         finally
         {

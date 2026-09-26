@@ -173,9 +173,11 @@ public partial class MyWorkspace : ComponentBase
     // _*Form is the working copy the dialog binds to, and _*Before is the snapshot the audit entry
     // is diffed against. Binding the dialog straight to the grid row would leave half-typed edits
     // on screen after a cancel, and would leave nothing to diff against.
-    private bool _documentsOpen = true;
-    private bool _relativesOpen = true;
-    private bool _companiesOpen = true;
+    // Collapsed on arrival: the page is three registers, and opening all of them at once buries
+    // whichever one the member came for. Adding to a section opens it.
+    private bool _documentsOpen;
+    private bool _relativesOpen;
+    private bool _companiesOpen;
 
     // The occupation picker binds to these rather than to the entity: the entity keeps one column,
     // and "Other" plus what was typed is only a way of filling it in.

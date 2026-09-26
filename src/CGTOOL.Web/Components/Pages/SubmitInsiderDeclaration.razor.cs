@@ -725,6 +725,45 @@ public partial class SubmitInsiderDeclaration
         _ => $"{string.Join(", ", parts.Take(parts.Count - 1))} and {parts[^1]}",
     };
 
+
+    // ---------- the Documents & shareholding step ----------
+
+    /// <summary>Which documents on this step came from My Workspace rather than being uploaded
+    /// here, so each card can say where it got its file.</summary>
+    private readonly HashSet<MemberDocumentKind> _loadedFromWorkspace = [];
+
+    private DateTime? _draftSavedAtUtc;
+
+    private bool HasEmiratesId => !string.IsNullOrWhiteSpace(_emiratesIdPath);
+    private bool HasPassport => !string.IsNullOrWhiteSpace(_passportPath);
+    private bool HasTradeLicence => !string.IsNullOrWhiteSpace(_tradeLicencePath);
+    private bool HasOtherDocument => !string.IsNullOrWhiteSpace(_otherDocumentPath);
+
+    /// <summary>What the step's footer reports: everything mandatory present, nothing expired, and
+    /// the shareholding question answerable. Read rather than enforced -- the Proceed button does
+    /// the enforcing, with a message saying which part is missing.</summary>
+    private bool StepIsComplete =>
+        HasEmiratesId && HasPassport
+        && !string.IsNullOrWhiteSpace(_emiratesIdNumber)
+        && !string.IsNullOrWhiteSpace(_emiratesIdNameOnCard) && _emiratesIdExpiryDate is not null
+        && !string.IsNullOrWhiteSpace(_passportNumber) && _passportExpiryDate is not null
+        && !string.IsNullOrWhiteSpace(_passportIssuingCountry)
+        && ExpiredDocuments().Count == 0;
+
+    private int WorkspaceLoadedCount => _loadedFromWorkspace.Count;
+
+    /// <summary>Applies a typed expiry date, complaining rather than silently clearing what is
+    /// there when it cannot be read. Dates are dd/MM/yyyy everywhere: a native date input renders
+    /// in the browser's locale, which on an en-US machine reads a UAE document's 14/03/2026 as a
+    /// date that does not exist.</summary>
+    private void SetDeclarationDate(string? text, Action<DateTime?> assign)
+    {
+        if (string.IsNullOrWhiteSpace(text)) { assign(null); return; }
+
+        if (UaeDate.Parse(text) is { } date) { assign(date); return; }
+
+        Toasts.ShowError($"Enter the date as {UaeDate.Pattern.ToLowerInvariant()}.");
+    }
     // ---------- pulling the member's own documents in ----------
 
     private bool _offerDocumentPull;
@@ -843,6 +882,7 @@ public partial class SubmitInsiderDeclaration
                     if (!string.IsNullOrWhiteSpace(document.DocumentNumber)) _emiratesIdNumber = document.DocumentNumber;
                     if (!string.IsNullOrWhiteSpace(document.HolderName)) _emiratesIdNameOnCard = document.HolderName;
                     if (document.ExpiryDate is not null) _emiratesIdExpiryDate = document.ExpiryDate;
+                    _loadedFromWorkspace.Add(MemberDocumentKind.EmiratesId);
                     brought.Add("Emirates ID");
                     break;
 
@@ -851,6 +891,7 @@ public partial class SubmitInsiderDeclaration
                     if (!string.IsNullOrWhiteSpace(document.DocumentNumber)) _passportNumber = document.DocumentNumber;
                     if (document.ExpiryDate is not null) _passportExpiryDate = document.ExpiryDate;
                     if (!string.IsNullOrWhiteSpace(document.Nationality)) _passportIssuingCountry = document.Nationality;
+                    _loadedFromWorkspace.Add(MemberDocumentKind.Passport);
                     brought.Add("passport");
                     break;
 
@@ -859,6 +900,7 @@ public partial class SubmitInsiderDeclaration
                     if (!string.IsNullOrWhiteSpace(document.DocumentNumber)) _tradeLicenceNumber = document.DocumentNumber;
                     if (!string.IsNullOrWhiteSpace(document.HolderName)) _tradeLicenceLegalName = document.HolderName;
                     if (document.ExpiryDate is not null) _tradeLicenceExpiryDate = document.ExpiryDate;
+                    _loadedFromWorkspace.Add(MemberDocumentKind.TradeLicence);
                     brought.Add("trade licence");
                     break;
             }
@@ -1417,6 +1459,7 @@ public partial class SubmitInsiderDeclaration
             await AuditLog.LogAsync(actorName, _hadExistingRow ? AuditAction.Update : AuditAction.Create, nameof(InsiderDeclaration), _effectiveMember.Id.ToString(),
                 "Draft saved: " + BuildSummary(), actingOnBehalfOf: isImpersonating ? _effectiveMember.FullName : null);
 
+            _draftSavedAtUtc = DateTime.UtcNow;
             Toasts.ShowSuccess("Declaration saved as draft. You can come back and finish it any time before the due date.");
         }
         finally

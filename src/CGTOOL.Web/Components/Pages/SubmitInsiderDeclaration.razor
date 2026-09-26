@@ -59,11 +59,35 @@
             @period.From.ToString("dd-MM-yyyy") till @period.To.ToString("dd-MM-yyyy").
         </p>
 
-        @if (_step == Step.Capture1 || _step == Step.Capture2)
+        @if (_step == Step.Capture1 || _step == Step.Capture2 || _step == Step.Review)
         {
-            <p class="cg-subtitle">
-                @(_isEditing ? "Editing your submitted declaration. " : "")Due date: <b class="mono">@_run!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</b>
-            </p>
+            <div class="cg-step-head">
+                <p class="cg-subtitle">
+                    @(_isEditing ? "Editing your submitted declaration. " : "")Due date: <b class="mono">@_run!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</b>
+                </p>
+                @if (_draftSavedAtUtc is { } savedAt)
+                {
+                    <span class="cg-draft-pill">Draft saved at @savedAt.ToLocalDisplay("HH:mm")</span>
+                }
+            </div>
+
+            @* Three steps, so the member can see how much is left rather than discovering it. *@
+            <ol class="cg-stepper" aria-label="Progress">
+                <li class="cg-step @(_step == Step.Capture1 ? "is-current" : "is-done")">
+                    <span class="cg-step-num">1</span>
+                    <span class="cg-step-label">Personal details</span>
+                </li>
+                <li class="cg-step-rule @(_step == Step.Capture1 ? "" : "is-done")" aria-hidden="true"></li>
+                <li class="cg-step @(_step == Step.Capture2 ? "is-current" : _step == Step.Review ? "is-done" : "")">
+                    <span class="cg-step-num">2</span>
+                    <span class="cg-step-label">Documents &amp; shareholding</span>
+                </li>
+                <li class="cg-step-rule @(_step == Step.Review ? "is-done" : "")" aria-hidden="true"></li>
+                <li class="cg-step @(_step == Step.Review ? "is-current" : "")">
+                    <span class="cg-step-num">3</span>
+                    <span class="cg-step-label">Review &amp; submit</span>
+                </li>
+            </ol>
         }
 
         @if (_step == Step.Capture1)
@@ -176,11 +200,6 @@
                     @(DocIntel.IsConfigured ? " Fields below will auto-fill from the uploaded Emirates ID / Passport / Trade Licence — please verify before continuing." : "")
                 </p>
 
-                <div class="cg-actions">
-                    <button type="button" class="cg-action-btn cg-good" @onclick="OfferDocumentPullAsync">Load my Documents</button>
-                </div>
-                <p class="cg-hint">Whatever My Workspace holds is loaded for you when this step opens — the file and its details, for whichever slots are still empty. Use the button to load again after adding a document there.</p>
-
                 @if (_offerDocumentPull)
                 {
                     <ConfirmPrompt Show="true"
@@ -192,105 +211,227 @@
                                    OnCancel="DeclineDocumentPull" />
                 }
 
-                <div class="cg-field-row">
-                    <label class="cg-field">
-                        <span>Emirates ID <em class="cg-subtitle" style="margin:0;">(mandatory)</em></span>
-                        <InputFile OnChange="OnEmiratesIdSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingEmiratesId" />
+                <div class="cg-source-banner">
+                    <div class="cg-source-banner-text">
+                        <span class="cg-source-banner-title">
+                            @(WorkspaceLoadedCount > 0
+                                ? $"{WorkspaceLoadedCount} document{(WorkspaceLoadedCount == 1 ? "" : "s")} loaded from My Workspace"
+                                : "Nothing loaded from My Workspace yet")
+                        </span>
+                        <span class="cg-subtitle">Check that each detail below matches your document. Added something new to My Workspace? Reload to pull it in.</span>
+                    </div>
+                    <button type="button" class="cg-action-btn cg-good" @onclick="OfferDocumentPullAsync">Reload from My Workspace</button>
+                </div>
+
+                <h2 class="cg-section-heading">Identity documents</h2>
+                <div class="cg-doc-cards">
+
+                    @* Emirates ID *@
+                    <div class="cg-doc-card @(IsExpiredOn(_emiratesIdExpiryDate) ? "is-expired" : "")">
+                        <div class="cg-doc-card-head">
+                            <span class="cg-doc-card-name">Emirates ID</span>
+                            <span class="cg-pill cg-pill-required">Required</span>
+                            <span class="cg-pill cg-pill-status @(HasEmiratesId ? "cg-pill-done" : "")">@(HasEmiratesId ? "Uploaded" : "Not uploaded")</span>
+                        </div>
+                        <div class="cg-doc-card-source">
+                            <span>
+                                @(_loadedFromWorkspace.Contains(MemberDocumentKind.EmiratesId)
+                                    ? "Loaded from My Workspace"
+                                    : HasEmiratesId ? "Uploaded here" : "JPG, PNG or PDF, up to 1 MB")
+                            </span>
+                            <span class="cg-doc-card-actions">
+                                @if (HasEmiratesId)
+                                {
+                                    <a class="cg-doc-chip" href="@_emiratesIdPath" target="_blank" rel="noopener">View</a>
+                                }
+                                <InputFile OnChange="OnEmiratesIdSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingEmiratesId" />
+                            </span>
+                        </div>
                         @if (_uploadingEmiratesId)
                         {
                             <progress class="cg-upload-progress" max="100" value="@_emiratesIdUploadProgress"></progress>
-                            <span class="cg-subtitle">Uploading… @_emiratesIdUploadProgress%</span>
                         }
-                        else if (!string.IsNullOrEmpty(_emiratesIdPath))
-                        {
-                            <a href="@_emiratesIdPath" target="_blank" class="cg-subtitle">✓ Uploaded — view file</a>
-                        }
-                        else if (_emiratesIdExpiredNeedsReupload)
+                        else if (_emiratesIdExpiredNeedsReupload && !HasEmiratesId)
                         {
                             <p class="cg-error">Your Emirates ID on file has expired — please upload a current copy.</p>
                         }
-                        <input class="cg-input" @bind="_emiratesIdNumber" maxlength="40" placeholder="Emirates ID number" />
-                        <input class="cg-input" @bind="_emiratesIdNameOnCard" maxlength="120" placeholder="Name on card" />
-                        <input type="date" class="cg-input@(IsExpiredOn(_emiratesIdExpiryDate) ? " cg-input-invalid" : "")" @bind="_emiratesIdExpiryDate" placeholder="Expiry date" />
+                        <div class="cg-doc-card-fields">
+                            <label class="cg-field cg-field-wide">
+                                <span>Full name (as on ID)</span>
+                                <input class="cg-input" @bind="_emiratesIdNameOnCard" maxlength="120" />
+                            </label>
+                            <label class="cg-field">
+                                <span>ID number</span>
+                                <input class="cg-input" @bind="_emiratesIdNumber" maxlength="40" />
+                            </label>
+                            <label class="cg-field">
+                                <span>Expiry date</span>
+                                <input class="cg-input@(IsExpiredOn(_emiratesIdExpiryDate) ? " cg-input-invalid" : "")"
+                                       placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                                       @bind:get="UaeDate.Show(_emiratesIdExpiryDate)"
+                                       @bind:set="v => SetDeclarationDate(v, d => _emiratesIdExpiryDate = d)" />
+                            </label>
+                        </div>
                         @if (IsExpiredOn(_emiratesIdExpiryDate))
                         {
-                            <span class="cg-field-error">Expired on @UaeDate.Show(_emiratesIdExpiryDate) — upload a current Emirates ID here, and update it in My Workspace.</span>
+                            <p class="cg-error">Expired on @UaeDate.Show(_emiratesIdExpiryDate) — upload a current Emirates ID here, and update it in My Workspace.</p>
                         }
-                    </label>
-                    <label class="cg-field">
-                        <span>Passport <em class="cg-subtitle" style="margin:0;">(mandatory)</em></span>
-                        <InputFile OnChange="OnPassportSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingPassport" />
+                    </div>
+
+                    @* Passport *@
+                    <div class="cg-doc-card @(IsExpiredOn(_passportExpiryDate) ? "is-expired" : "")">
+                        <div class="cg-doc-card-head">
+                            <span class="cg-doc-card-name">Passport</span>
+                            <span class="cg-pill cg-pill-required">Required</span>
+                            <span class="cg-pill cg-pill-status @(HasPassport ? "cg-pill-done" : "")">@(HasPassport ? "Uploaded" : "Not uploaded")</span>
+                        </div>
+                        <div class="cg-doc-card-source">
+                            <span>
+                                @(_loadedFromWorkspace.Contains(MemberDocumentKind.Passport)
+                                    ? "Loaded from My Workspace"
+                                    : HasPassport ? "Uploaded here" : "JPG, PNG or PDF, up to 1 MB")
+                            </span>
+                            <span class="cg-doc-card-actions">
+                                @if (HasPassport)
+                                {
+                                    <a class="cg-doc-chip" href="@_passportPath" target="_blank" rel="noopener">View</a>
+                                }
+                                <InputFile OnChange="OnPassportSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingPassport" />
+                            </span>
+                        </div>
                         @if (_uploadingPassport)
                         {
                             <progress class="cg-upload-progress" max="100" value="@_passportUploadProgress"></progress>
-                            <span class="cg-subtitle">Uploading… @_passportUploadProgress%</span>
                         }
-                        else if (!string.IsNullOrEmpty(_passportPath))
-                        {
-                            <a href="@_passportPath" target="_blank" class="cg-subtitle">✓ Uploaded — view file</a>
-                        }
-                        else if (_passportExpiredNeedsReupload)
+                        else if (_passportExpiredNeedsReupload && !HasPassport)
                         {
                             <p class="cg-error">Your Passport on file has expired — please upload a current copy.</p>
                         }
-                        <input class="cg-input" @bind="_passportNumber" maxlength="40" placeholder="Passport number" />
-                        <input type="date" class="cg-input@(IsExpiredOn(_passportExpiryDate) ? " cg-input-invalid" : "")" @bind="_passportExpiryDate" placeholder="Expiry date" />
+                        <div class="cg-doc-card-fields">
+                            <label class="cg-field">
+                                <span>Nationality</span>
+                                <input class="cg-input" @bind="_passportIssuingCountry" maxlength="80" />
+                            </label>
+                            <label class="cg-field">
+                                <span>Passport number</span>
+                                <input class="cg-input" @bind="_passportNumber" maxlength="40" />
+                            </label>
+                            <label class="cg-field cg-field-wide">
+                                <span>Expiry date</span>
+                                <input class="cg-input@(IsExpiredOn(_passportExpiryDate) ? " cg-input-invalid" : "")"
+                                       placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                                       @bind:get="UaeDate.Show(_passportExpiryDate)"
+                                       @bind:set="v => SetDeclarationDate(v, d => _passportExpiryDate = d)" />
+                            </label>
+                        </div>
                         @if (IsExpiredOn(_passportExpiryDate))
                         {
-                            <span class="cg-field-error">Expired on @UaeDate.Show(_passportExpiryDate) — upload a current passport here, and update it in My Workspace.</span>
+                            <p class="cg-error">Expired on @UaeDate.Show(_passportExpiryDate) — upload a current passport here, and update it in My Workspace.</p>
                         }
-                        <input class="cg-input" @bind="_passportIssuingCountry" maxlength="80" placeholder="Issuing country" />
-                    </label>
-                </div>
+                    </div>
 
-                <div class="cg-field-row">
-                    <label class="cg-field">
-                        <span>Trade Licence <em class="cg-subtitle" style="margin:0;">(optional)</em></span>
-                        <InputFile OnChange="OnTradeLicenceSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingTradeLicence" />
+                    @* Trade licence *@
+                    <div class="cg-doc-card @(IsExpiredOn(_tradeLicenceExpiryDate) ? "is-expired" : "")">
+                        <div class="cg-doc-card-head">
+                            <span class="cg-doc-card-name">Trade licence</span>
+                            <span class="cg-pill">Optional</span>
+                            <span class="cg-pill cg-pill-status @(HasTradeLicence ? "cg-pill-done" : "")">@(HasTradeLicence ? "Uploaded" : "None added")</span>
+                        </div>
+                        <div class="cg-doc-card-source">
+                            <span>
+                                @(_loadedFromWorkspace.Contains(MemberDocumentKind.TradeLicence)
+                                    ? "Loaded from My Workspace"
+                                    : HasTradeLicence ? "Uploaded here" : "JPG, PNG or PDF, up to 1 MB")
+                            </span>
+                            <span class="cg-doc-card-actions">
+                                @if (HasTradeLicence)
+                                {
+                                    <a class="cg-doc-chip" href="@_tradeLicencePath" target="_blank" rel="noopener">View</a>
+                                }
+                                <InputFile OnChange="OnTradeLicenceSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingTradeLicence" />
+                            </span>
+                        </div>
                         @if (_uploadingTradeLicence)
                         {
                             <progress class="cg-upload-progress" max="100" value="@_tradeLicenceUploadProgress"></progress>
-                            <span class="cg-subtitle">Uploading… @_tradeLicenceUploadProgress%</span>
                         }
-                        else if (!string.IsNullOrEmpty(_tradeLicencePath))
-                        {
-                            <a href="@_tradeLicencePath" target="_blank" class="cg-subtitle">✓ Uploaded — view file</a>
-                        }
-                        else if (_tradeLicenceExpiredNeedsReupload)
+                        else if (_tradeLicenceExpiredNeedsReupload && !HasTradeLicence)
                         {
                             <p class="cg-error">Your Trade Licence on file has expired — please upload a current copy.</p>
                         }
-                        <input class="cg-input" @bind="_tradeLicenceNumber" maxlength="40" placeholder="Licence number" />
-                        <input class="cg-input" @bind="_tradeLicenceLegalName" maxlength="160" placeholder="Business name" />
-                        <input type="date" class="cg-input@(IsExpiredOn(_tradeLicenceExpiryDate) ? " cg-input-invalid" : "")" @bind="_tradeLicenceExpiryDate" placeholder="Expiry date" />
+                        <div class="cg-doc-card-fields">
+                            <label class="cg-field">
+                                <span>Licence number</span>
+                                <input class="cg-input" @bind="_tradeLicenceNumber" maxlength="40" />
+                            </label>
+                            <label class="cg-field">
+                                <span>Expiry date</span>
+                                <input class="cg-input@(IsExpiredOn(_tradeLicenceExpiryDate) ? " cg-input-invalid" : "")"
+                                       placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                                       @bind:get="UaeDate.Show(_tradeLicenceExpiryDate)"
+                                       @bind:set="v => SetDeclarationDate(v, d => _tradeLicenceExpiryDate = d)" />
+                            </label>
+                            <label class="cg-field">
+                                <span>Business name</span>
+                                <input class="cg-input" @bind="_tradeLicenceLegalName" maxlength="160" />
+                            </label>
+                            <label class="cg-field">
+                                <span>Issuing authority</span>
+                                <input class="cg-input" @bind="_tradeLicenceIssuingAuthority" maxlength="160" />
+                            </label>
+                        </div>
                         @if (IsExpiredOn(_tradeLicenceExpiryDate))
                         {
-                            <span class="cg-field-error">Expired on @UaeDate.Show(_tradeLicenceExpiryDate) — upload a current trade licence here, and update it in My Workspace.</span>
+                            <p class="cg-error">Expired on @UaeDate.Show(_tradeLicenceExpiryDate) — upload a current trade licence here, and update it in My Workspace.</p>
                         }
-                        <input class="cg-input" @bind="_tradeLicenceIssuingAuthority" maxlength="160" placeholder="Issuing authority (optional)" />
-                    </label>
-                    <label class="cg-field">
-                        <span>Other Documents <em class="cg-subtitle" style="margin:0;">(optional)</em></span>
-                        <InputFile OnChange="OnOtherDocumentSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingOtherDocument" />
-                        @if (_uploadingOtherDocument)
-                        {
-                            <progress class="cg-upload-progress" max="100" value="@_otherDocumentUploadProgress"></progress>
-                            <span class="cg-subtitle">Uploading… @_otherDocumentUploadProgress%</span>
-                        }
-                        else if (!string.IsNullOrEmpty(_otherDocumentPath))
-                        {
-                            <a href="@_otherDocumentPath" target="_blank" class="cg-subtitle">✓ Uploaded — view file</a>
-                        }
-                    </label>
+                    </div>
+
+                    @* Other documents *@
+                    <div class="cg-doc-card">
+                        <div class="cg-doc-card-head">
+                            <span class="cg-doc-card-name">Other documents</span>
+                            <span class="cg-pill">Optional</span>
+                            <span class="cg-pill cg-pill-status @(HasOtherDocument ? "cg-pill-done" : "")">@(HasOtherDocument ? "Uploaded" : "None added")</span>
+                        </div>
+                        <div class="cg-dropzone">
+                            <span class="cg-dropzone-main">Choose a file to attach</span>
+                            <span class="cg-subtitle">JPG, PNG or PDF, up to 1 MB</span>
+                            <InputFile OnChange="OnOtherDocumentSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingOtherDocument" />
+                            @if (_uploadingOtherDocument)
+                            {
+                                <progress class="cg-upload-progress" max="100" value="@_otherDocumentUploadProgress"></progress>
+                            }
+                            else if (HasOtherDocument)
+                            {
+                                <a class="cg-doc-chip" href="@_otherDocumentPath" target="_blank" rel="noopener">View attached file</a>
+                            }
+                        </div>
+                    </div>
                 </div>
 
-                <label class="cg-field">
-                    <span>Do you or your relatives hold shares in DI PJSC?</span>
-                    <div class="cg-yesno">
-                        <button type="button" class="cg-action-btn @(_holdsSharesInDI ? "cg-good" : "")" @onclick="() => ChooseHoldsSharesAsync(true)">I / my relatives hold shares in DI</button>
-                        <button type="button" class="cg-action-btn @(!_holdsSharesInDI ? "cg-good" : "")" @onclick="() => ChooseHoldsSharesAsync(false)">Neither I / my relatives hold shares in DI</button>
-                    </div>
-                </label>
+                <h2 class="cg-section-heading">Do you or any of your relatives hold shares in DI PJSC?</h2>
+                <p class="cg-subtitle">Relatives: father, mother, brother, sister, children, spouse, father-in-law, mother-in-law, stepchildren.</p>
+
+                <div class="cg-choice-cards" role="radiogroup" aria-label="Do you or any of your relatives hold shares in DI PJSC?">
+                    <button type="button" role="radio" aria-checked="@_holdsSharesInDI"
+                            class="cg-choice-card @(_holdsSharesInDI ? "is-picked" : "")"
+                            @onclick="() => ChooseHoldsSharesAsync(true)">
+                        <span class="cg-choice-dot" aria-hidden="true"></span>
+                        <span class="cg-choice-text">
+                            <span class="cg-choice-title">I / my relatives hold shares in DI</span>
+                            <span class="cg-choice-sub">You will list the holdings below.</span>
+                        </span>
+                    </button>
+                    <button type="button" role="radio" aria-checked="@(!_holdsSharesInDI)"
+                            class="cg-choice-card @(!_holdsSharesInDI ? "is-picked" : "")"
+                            @onclick="() => ChooseHoldsSharesAsync(false)">
+                        <span class="cg-choice-dot" aria-hidden="true"></span>
+                        <span class="cg-choice-text">
+                            <span class="cg-choice-title">Neither I / my relatives hold shares in DI</span>
+                            <span class="cg-choice-sub">You will go straight to review.</span>
+                        </span>
+                    </button>
+                </div>
                 @if (_holdsSharesInDI)
                 {
                     <div class="cg-table-wrap">
@@ -358,10 +499,17 @@
                     </div>
                 }
 
-                <div class="cg-actions">
+                <div class="cg-action-bar">
                     <button type="button" class="cg-action-btn" @onclick="() => _step = Step.Capture1">← Back</button>
-                    <button type="button" class="cg-action-btn" disabled="@_savingDraft" @onclick="SaveDraftAsync">@(_savingDraft ? "Saving…" : "Save as Draft")</button>
-                    <button type="button" class="cg-action-btn cg-good" disabled="@(ExpiredDocuments().Count > 0)" @onclick="GoToReviewAsync">Proceed to Submission</button>
+                    <div class="cg-action-bar-right">
+                        <span class="cg-ready @(StepIsComplete ? "" : "is-not-ready")">
+                            @(StepIsComplete ? "All required details complete" : "Some required details are still missing")
+                        </span>
+                        <button type="button" class="cg-action-btn" disabled="@_savingDraft" @onclick="SaveDraftAsync">@(_savingDraft ? "Saving…" : "Save as draft")</button>
+                        <button type="button" class="cg-action-btn cg-good" disabled="@(ExpiredDocuments().Count > 0)" @onclick="GoToReviewAsync">
+                            @(_holdsSharesInDI ? "Continue to review" : "Continue to review")
+                        </button>
+                    </div>
                 </div>
                 @if (_offerShareholderSave)
                 {
@@ -445,9 +593,10 @@
 
                 <p class="cg-subtitle">Please review carefully. You can still edit this declaration from Declarations until the due date (<b class="mono">@_run!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</b>).</p>
 
-                <label class="cg-field-row" style="align-items:center; gap:8px;">
+                <label class="cg-switch cg-nothing-switch">
                     <input type="checkbox" @bind="_agreeConfirmed" />
-                    <span>I agree and confirm that the information given in this form is true, complete and accurate.</span>
+                    <span class="cg-switch-track" aria-hidden="true"></span>
+                    <span class="cg-switch-label">I agree and confirm that the information given in this form is true, complete and accurate.</span>
                 </label>
 
                 <div class="cg-actions">

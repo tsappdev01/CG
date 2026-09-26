@@ -170,7 +170,7 @@
                 <ConfirmPrompt Show="_pendingCapture1Confirm"
                                Message="Please confirm all information entered above is correct before proceeding — you can still come back and edit it, but double-check now."
                                ConfirmLabel="All information is correct — proceed"
-                               OnConfirm="ConfirmCapture1"
+                               OnConfirm="ConfirmCapture1Async"
                                OnCancel="CancelCapture1Confirm" />
             </div>
         }
@@ -184,16 +184,16 @@
                 </p>
 
                 <div class="cg-actions">
-                    <button type="button" class="cg-action-btn" @onclick="OfferDocumentPullAsync">Pull from My Documents</button>
+                    <button type="button" class="cg-action-btn cg-good" @onclick="OfferDocumentPullAsync">Load my Documents</button>
                 </div>
-                <p class="cg-hint">Brings across the Emirates ID, passport and trade licence already on file in My Workspace — the file and the details — for whichever of them this declaration is still missing.</p>
+                <p class="cg-hint">Whatever My Workspace holds is loaded for you when this step opens — the file and its details, for whichever slots are still empty. Use the button to load again after adding a document there.</p>
 
                 @if (_offerDocumentPull)
                 {
                     <ConfirmPrompt Show="true"
-                                   Message="Bring these across from My Documents?"
+                                   Message="Load these from My Documents?"
                                    Detail="@($"{string.Join(", ", _pullableDocuments.Select(DocumentPullLabel))} — the file and the details it holds. This declaration keeps its own copy, so changing the document in My Workspace later will not change what you declared here.")"
-                                   ConfirmLabel="Bring them across"
+                                   ConfirmLabel="Load them"
                                    CancelLabel="Not now"
                                    OnConfirm="AcceptDocumentPullAsync"
                                    OnCancel="DeclineDocumentPull" />

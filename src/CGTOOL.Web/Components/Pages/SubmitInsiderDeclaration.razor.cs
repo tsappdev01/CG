@@ -768,6 +768,38 @@ public partial class SubmitInsiderDeclaration
 
     private List<MemberDocument> _expiredInWorkspace = [];
 
+    /// <summary>Brings the member's documents across the moment the upload step opens, rather than
+    /// waiting to be asked: the answer is always yes, and a button that has to be pressed before a
+    /// form fills itself is a form that does not fill itself. Runs once per visit to the step, and
+    /// only into slots nothing has filled -- so the carried-over documents from the last
+    /// declaration, which are set before this runs, are never overwritten.
+    ///
+    /// Silent when there is nothing to bring: arriving at a step to be told nothing happened is
+    /// noise. An expired document still speaks up, because that one needs the member to act.</summary>
+    private bool _documentsAutoLoaded;
+
+    private async Task AutoLoadDocumentsAsync()
+    {
+        if (_documentsAutoLoaded) return;
+        _documentsAutoLoaded = true;
+
+        _pullableDocuments = await PullableDocumentsAsync();
+
+        if (_pullableDocuments.Count == 0)
+        {
+            if (_expiredInWorkspace.Count > 0) WarnAboutExpiredInWorkspace();
+            return;
+        }
+
+        if (_expiredInWorkspace.Count > 0) WarnAboutExpiredInWorkspace();
+        await AcceptDocumentPullAsync();
+    }
+
+    private void WarnAboutExpiredInWorkspace() =>
+        Toasts.ShowError($"Your {Join(_expiredInWorkspace.Select(DocumentPullLabel).ToList())} in My Workspace "
+            + $"{(_expiredInWorkspace.Count == 1 ? "has" : "have")} expired and {(_expiredInWorkspace.Count == 1 ? "was" : "were")} not brought across. "
+            + "Upload a current copy there.");
+
     private async Task OfferDocumentPullAsync()
     {
         _pullableDocuments = await PullableDocumentsAsync();
@@ -775,17 +807,13 @@ public partial class SubmitInsiderDeclaration
         if (_pullableDocuments.Count == 0)
         {
             Toasts.ShowError(_expiredInWorkspace.Count > 0
-                ? $"Nothing to bring across: your {Join(_expiredInWorkspace.Select(DocumentPullLabel).ToList())} in My Workspace "
-                  + $"{(_expiredInWorkspace.Count == 1 ? "has" : "have")} expired. Upload a current copy there, then pull it in."
-                : "Nothing to bring across: My Documents has no Emirates ID, passport or trade licence that this declaration still needs.");
+                ? $"Nothing to load: your {Join(_expiredInWorkspace.Select(DocumentPullLabel).ToList())} in My Workspace "
+                  + $"{(_expiredInWorkspace.Count == 1 ? "has" : "have")} expired. Upload a current copy there, then load it in."
+                : "Nothing to load: My Documents has no Emirates ID, passport or trade licence that this declaration still needs.");
             return;
         }
 
-        if (_expiredInWorkspace.Count > 0)
-        {
-            Toasts.ShowError($"Your {Join(_expiredInWorkspace.Select(DocumentPullLabel).ToList())} in My Workspace "
-                + $"{(_expiredInWorkspace.Count == 1 ? "has" : "have")} expired and will not be brought across. Upload a current copy there.");
-        }
+        if (_expiredInWorkspace.Count > 0) WarnAboutExpiredInWorkspace();
 
         _offerDocumentPull = true;
     }
@@ -848,8 +876,8 @@ public partial class SubmitInsiderDeclaration
             return;
         }
 
-        await LogGridChangeAsync($"Brought {string.Join(", ", brought)} across from My Documents.");
-        Toasts.ShowSuccess($"Brought across your {string.Join(", ", brought)}. Check the details before continuing.");
+        await LogGridChangeAsync($"Loaded {string.Join(", ", brought)} from My Documents.");
+        Toasts.ShowSuccess($"Loaded your {string.Join(", ", brought)} from My Documents. Check the details before continuing.");
     }
 
     /// <summary>Copies the stored file into this declaration's own uploads folder and returns the
@@ -1008,10 +1036,11 @@ public partial class SubmitInsiderDeclaration
         _pendingCapture1Confirm = true;
     }
 
-    private void ConfirmCapture1()
+    private async Task ConfirmCapture1Async()
     {
         _pendingCapture1Confirm = false;
         _step = Step.Capture2;
+        await AutoLoadDocumentsAsync();
     }
 
     private void CancelCapture1Confirm() => _pendingCapture1Confirm = false;

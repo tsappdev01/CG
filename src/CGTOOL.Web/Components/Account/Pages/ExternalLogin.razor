@@ -85,9 +85,15 @@
             RedirectManager.RedirectTo("Account/Lockout");
         }
 
-        var email = externalLoginInfo.Principal.HasClaim(c => c.Type == ClaimTypes.Email)
-            ? externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Email)
-            : null;
+        // Entra only issues an "email" claim when the account has a mail attribute, or when someone
+        // has added it as an optional claim. A work account that signs in perfectly well can arrive
+        // with no email at all -- and since this is the only thing tying a tenant identity to a
+        // record here, that person would be turned away for a reason nobody would guess. The user
+        // principal name is the same address in practice, so it stands in.
+        var email = FirstNonEmptyClaim(
+            ClaimTypes.Email,          // "email"
+            "preferred_username",      // the v2.0 token's UPN, present on every work account
+            ClaimTypes.Upn);
 
         // The external login isn't linked yet, but the same person may already have an account
         // (e.g. provisioned earlier via the corporate directory login) under the same email. Link
@@ -127,6 +133,17 @@
         RedirectManager.RedirectToWithStatus("Account/Login",
             $"Error: {email ?? "That account"} is not set up in this application. Ask an administrator to add you, then sign in again.",
             HttpContext);
+    }
+
+    private string? FirstNonEmptyClaim(params string[] claimTypes)
+    {
+        foreach (var type in claimTypes)
+        {
+            var value = externalLoginInfo.Principal.FindFirstValue(type);
+            if (!string.IsNullOrWhiteSpace(value)) return value;
+        }
+
+        return null;
     }
 
     private async Task StampSignInAsync(ApplicationUser? user)

@@ -83,10 +83,20 @@
                 <label class="cg-field">
                     <span>2. Do your relatives have a National Investor Number (NIN)? <em class="cg-subtitle" style="margin:0;">(Father, Mother, Brother, Sister, Children, Spouse, Father-in-Law, Mother-in-Law, Stepchildren)</em></span>
                     <div class="cg-yesno">
-                        <button type="button" class="cg-action-btn @(_relativesHaveNin ? "cg-good" : "")" @onclick="() => _relativesHaveNin = true">Yes, my relatives have a NIN</button>
-                        <button type="button" class="cg-action-btn @(!_relativesHaveNin ? "cg-good" : "")" @onclick="() => _relativesHaveNin = false">No, my relatives do not have a NIN</button>
+                        <button type="button" class="cg-action-btn @(_relativesHaveNin ? "cg-good" : "")" @onclick="() => ChooseRelativesHaveNinAsync(true)">Yes, my relatives have a NIN</button>
+                        <button type="button" class="cg-action-btn @(!_relativesHaveNin ? "cg-good" : "")" @onclick="() => ChooseRelativesHaveNinAsync(false)">No, my relatives do not have a NIN</button>
                     </div>
                 </label>
+
+                @if (_offerWorkspacePull)
+                {
+                    <ConfirmPrompt Show="true"
+                                   Message="Load your relatives from My Workspace?"
+                                   Detail="@($"{_workspacePullCount} relative(s) with a NIN are on file there. Their relation, name and NIN come across; anything already in the grid is left alone.")"
+                                   ConfirmLabel="Load them"
+                                   OnConfirm="AcceptWorkspacePullAsync"
+                                   OnCancel="DeclineWorkspacePull" />
+                }
                 @if (_relativesHaveNin)
                 {
                     <div class="cg-table-wrap">

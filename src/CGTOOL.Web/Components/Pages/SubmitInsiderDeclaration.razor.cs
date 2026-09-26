@@ -42,6 +42,12 @@ public partial class SubmitInsiderDeclaration
     private bool _relativesHaveNin;
     private readonly List<NinHolderRow> _ninHolders = [];
 
+    // Set when answering "yes" turns up relatives in My Workspace that are not in the grid yet.
+    // Offered once per answer rather than on every click: a member who said no to the offer and
+    // started typing should not be asked again each time they touch the button.
+    private bool _offerWorkspacePull;
+    private int _workspacePullCount;
+
     // Functional Spec §4: a single combined question replaces the old separate "do you hold shares" /
     // "do your relatives hold shares" pair. The declarant's own holding, if any, is captured as a
     // grid row with IsSelf=true rather than via separate fields.
@@ -404,6 +410,58 @@ public partial class SubmitInsiderDeclaration
         await LogGridChangeAsync("Added a blank row to the relatives' NIN grid.");
     }
 
+    /// <summary>Answering "yes" is the moment the member is about to type in relatives they have
+    /// very likely already recorded in My Workspace, so that is where the offer belongs. It is only
+    /// made when there is something to load that is not in the grid already, and only when the
+    /// answer changes -- clicking "yes" again is not a fresh question.</summary>
+    private async Task ChooseRelativesHaveNinAsync(bool haveNin)
+    {
+        var changed = _relativesHaveNin != haveNin;
+        _relativesHaveNin = haveNin;
+
+        if (!haveNin)
+        {
+            _offerWorkspacePull = false;
+            return;
+        }
+
+        if (!changed) return;
+
+        _workspacePullCount = (await LoadableRelativesAsync()).Count;
+        _offerWorkspacePull = _workspacePullCount > 0;
+    }
+
+    private void DeclineWorkspacePull() => _offerWorkspacePull = false;
+
+    private async Task AcceptWorkspacePullAsync()
+    {
+        _offerWorkspacePull = false;
+        await PullRelativesFromWorkspaceAsync();
+    }
+
+    /// <summary>The relatives this grid could take: recorded in My Workspace, carrying a NIN, and
+    /// not already listed here.</summary>
+    private async Task<List<FamilyMember>> LoadableRelativesAsync()
+    {
+        if (_effectiveMember is null) return [];
+
+        // Its own short-lived context rather than the circuit-scoped ApplicationDbContext:
+        // sharing that one lets this race, or outlive, whatever else in the circuit is using
+        // it -- which kills the circuit and takes the page with it.
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var relatives = await db.FamilyMembers.AsNoTracking()
+            .Where(f => f.MemberId == _effectiveMember.Id && f.NinNumber != null && f.NinNumber != "")
+            .OrderBy(f => f.Name)
+            .ToListAsync();
+
+        return relatives.Where(r => !AlreadyListed(r)).ToList();
+    }
+
+    private bool AlreadyListed(FamilyMember relative) => _ninHolders.Any(h =>
+        string.Equals(h.NinNumber.Trim(), relative.NinNumber!.Trim(), StringComparison.OrdinalIgnoreCase)
+        || string.Equals(h.NameOfShareHolder.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase));
+
     /// <summary>Fills the relatives' NIN grid from the member's own My Workspace register instead of
     /// retyping it every quarter. Only relatives that actually have a NIN recorded come across: the
     /// question this grid answers is which relatives hold one, and a row without a NIN fails the
@@ -420,49 +478,41 @@ public partial class SubmitInsiderDeclaration
         // it -- which kills the circuit and takes the page with it.
         await using var db = await DbFactory.CreateDbContextAsync();
 
-        var relatives = await db.FamilyMembers.AsNoTracking()
-            .Where(f => f.MemberId == _effectiveMember.Id && f.NinNumber != null && f.NinNumber != "")
-            .OrderBy(f => f.Name)
-            .ToListAsync();
+        var onFile = await db.FamilyMembers.AsNoTracking()
+            .CountAsync(f => f.MemberId == _effectiveMember.Id && f.NinNumber != null && f.NinNumber != "");
 
-        if (relatives.Count == 0)
+        if (onFile == 0)
         {
             Toasts.ShowError("No relatives with a NIN are recorded in My Workspace. Add them there first, or enter them here.");
             return;
         }
 
-        var added = 0;
-        var alreadyListed = 0;
-
-        foreach (var relative in relatives)
+        var loadable = await LoadableRelativesAsync();
+        if (loadable.Count == 0)
         {
-            var duplicate = _ninHolders.Any(h =>
-                string.Equals(h.NinNumber.Trim(), relative.NinNumber!.Trim(), StringComparison.OrdinalIgnoreCase)
-                || string.Equals(h.NameOfShareHolder.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase));
+            Toasts.ShowSuccess("Every relative with a NIN in My Workspace is already listed here.");
+            return;
+        }
 
-            if (duplicate) { alreadyListed++; continue; }
-
+        foreach (var relative in loadable)
+        {
             _ninHolders.Add(new NinHolderRow
             {
                 Relationship = relative.Relationship,
                 NameOfShareHolder = relative.Name,
                 NinNumber = relative.NinNumber!,
             });
-            added++;
         }
 
-        if (added == 0)
-        {
-            Toasts.ShowSuccess("Every relative with a NIN in My Workspace is already listed here.");
-            return;
-        }
+        var alreadyListed = onFile - loadable.Count;
+        _offerWorkspacePull = false;
 
-        await LogGridChangeAsync($"Pulled {added} relative(s) into the relatives' NIN grid from My Workspace"
+        await LogGridChangeAsync($"Pulled {loadable.Count} relative(s) into the relatives' NIN grid from My Workspace"
             + (alreadyListed > 0 ? $"; {alreadyListed} already listed." : "."));
 
         Toasts.ShowSuccess(alreadyListed == 0
-            ? $"Added {added} relative(s) from My Workspace. Check the NINs before continuing."
-            : $"Added {added} relative(s) from My Workspace; {alreadyListed} were already listed.");
+            ? $"Added {loadable.Count} relative(s) from My Workspace. Check the NINs before continuing."
+            : $"Added {loadable.Count} relative(s) from My Workspace; {alreadyListed} were already listed.");
     }
 
     private async Task RemoveNinHolderAsync(NinHolderRow row)

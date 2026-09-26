@@ -197,4 +197,4 @@ C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\refint\CGTOOL.Web.dll
 C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\CGTOOL.Web.pdb
 C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\CGTOOL.Web.genruntimeconfig.cache
 C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\ref\CGTOOL.Web.dll
-C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\compressed\dprakam72e-{0}-eooklnhbne-eooklnhbne.gz
+C:\Claude.AI\CG\src\CGTOOL.Web\obj\Debug\net10.0\compressed\dprakam72e-{0}-0sqvw3ehoq-0sqvw3ehoq.gz

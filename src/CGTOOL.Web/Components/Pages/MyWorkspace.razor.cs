@@ -152,15 +152,6 @@ public partial class MyWorkspace : ComponentBase
         return string.IsNullOrWhiteSpace(f.IdentificationNumber) ? null : f.IdentificationNumber;
     }
 
-    /// <summary>What the "Trade License Details" column shows. Same reasoning as IdentifierOf: the
-    /// number is read off the licence now, and the free-text details typed before that stay visible
-    /// rather than leaving those rows blank.</summary>
-    private static string? LicenceDetailsOf(OwnedCompany c)
-    {
-        if (!string.IsNullOrWhiteSpace(c.TradeLicenceNumber)) return c.TradeLicenceNumber;
-        return string.IsNullOrWhiteSpace(c.TradeLicenseDetails) ? null : c.TradeLicenseDetails;
-    }
-
     private static string HoldingLabel(RelatedPartyHoldingNature nature) =>
         nature == RelatedPartyHoldingNature.None ? "—" : nature.ToString();
 
@@ -248,6 +239,7 @@ public partial class MyWorkspace : ComponentBase
         MemberId = c.MemberId,
         CompanyName = c.CompanyName,
         TradeLicenseDetails = c.TradeLicenseDetails,
+        NatureOfHolding = c.NatureOfHolding,
         OwnershipPercentage = c.OwnershipPercentage,
         TradeLicensePath = c.TradeLicensePath,
         MoaPath = c.MoaPath,
@@ -261,6 +253,7 @@ public partial class MyWorkspace : ComponentBase
     {
         to.CompanyName = from.CompanyName;
         to.TradeLicenseDetails = from.TradeLicenseDetails;
+        to.NatureOfHolding = from.NatureOfHolding;
         to.OwnershipPercentage = from.OwnershipPercentage;
         to.TradeLicensePath = from.TradeLicensePath;
         to.MoaPath = from.MoaPath;
@@ -334,7 +327,7 @@ public partial class MyWorkspace : ComponentBase
         }
 
         Cmp("Name of the Company", before.CompanyName, after.CompanyName);
-        Cmp("Trade License Details", before.TradeLicenseDetails, after.TradeLicenseDetails);
+        Cmp("Nature Of Holding", HoldingLabel(before.NatureOfHolding), HoldingLabel(after.NatureOfHolding));
         Cmp("Ownership %", Pct(before.OwnershipPercentage), Pct(after.OwnershipPercentage));
         Cmp("Trade License No", before.TradeLicenceNumber, after.TradeLicenceNumber);
         Cmp("Trade License Legal Name", before.TradeLicenceLegalName, after.TradeLicenceLegalName);
@@ -361,7 +354,7 @@ public partial class MyWorkspace : ComponentBase
     private static string SnapshotOf(OwnedCompany c) => string.Join("; ",
     [
         $"Name of the Company: {Show(c.CompanyName)}",
-        $"Trade License Details: {Show(c.TradeLicenseDetails)}",
+        $"Nature Of Holding: {HoldingLabel(c.NatureOfHolding)}",
         $"Ownership %: {Show(Pct(c.OwnershipPercentage))}",
         $"Trade License No: {Show(c.TradeLicenceNumber)}",
     ]);

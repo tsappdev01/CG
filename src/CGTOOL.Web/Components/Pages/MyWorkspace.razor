@@ -164,7 +164,7 @@
                         <thead>
                             <tr>
                                 <th>Name of the Company</th>
-                                <th>Trade License Details</th>
+                                <th>Nature Of Holding</th>
                                 <th>Ownership %</th>
                                 <th>Trade License</th>
                                 <th>MOA</th>
@@ -177,7 +177,7 @@
                             {
                                 <tr class="cg-data-row">
                                     <td class="cg-cell-name">@c.CompanyName</td>
-                                    <td class="mono">@(LicenceDetailsOf(c) ?? "—")</td>
+                                    <td>@HoldingLabel(c.NatureOfHolding)</td>
                                     <td>@(c.OwnershipPercentage is { } pct ? $"{pct:0.##}%" : "—")</td>
                                     <td>@DocumentCell(c.TradeLicensePath)</td>
                                     <td>@DocumentCell(c.MoaPath)</td>
@@ -363,6 +363,15 @@
                 <label class="cg-field cg-field-wide">
                     <span>Name of the Company <b class="cg-req-mark">*</b></span>
                     <input class="cg-input" placeholder="Company name" @bind="_companyForm.CompanyName" maxlength="160" />
+                </label>
+                <label class="cg-field">
+                    <span>Nature Of Holding</span>
+                    <select class="cg-input" @bind="_companyForm.NatureOfHolding">
+                        <option value="@RelatedPartyHoldingNature.None">—</option>
+                        <option value="@RelatedPartyHoldingNature.Affiliate">Affiliate</option>
+                        <option value="@RelatedPartyHoldingNature.Owned">Owned</option>
+                        <option value="@RelatedPartyHoldingNature.Subsidiary">Subsidiary</option>
+                    </select>
                 </label>
                 <label class="cg-field">
                     <span>Ownership %</span>

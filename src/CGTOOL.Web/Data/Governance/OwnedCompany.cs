@@ -18,6 +18,11 @@ public class OwnedCompany
     [MaxLength(400)]
     public string? TradeLicenseDetails { get; set; }
 
+    /// <summary>How the company is held -- the same question, and the same answers, as a related
+    /// party's: a register that says "Subsidiary" for a relative's company and nothing for the
+    /// member's own is answering half the question.</summary>
+    public RelatedPartyHoldingNature NatureOfHolding { get; set; } = RelatedPartyHoldingNature.None;
+
     /// <summary>Ownership percentage (0-100).</summary>
     public decimal? OwnershipPercentage { get; set; }
 

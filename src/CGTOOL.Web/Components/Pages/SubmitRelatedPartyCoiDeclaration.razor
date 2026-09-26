@@ -77,9 +77,11 @@
                     <p><b>Note 2 — Relative:</b> Father, mother, brother, sister, children, spouse, father-in-law, mother-in-law, and children of the spouse.</p>
                 </div>
                 <label class="cg-switch cg-nothing-switch">
-                    <input type="checkbox" @bind="_nothingRelatives" />
+                    <input type="checkbox" @bind:get="!_nothingRelatives" @bind:set="v => _nothingRelatives = !v" />
                     <span class="cg-switch-track" aria-hidden="true"></span>
-                    <span class="cg-switch-label">I have nothing to declare in this section.</span>
+                    <span class="cg-switch-label">
+                        @(_nothingRelatives ? "I have nothing to declare in this section." : "I have something to declare in this section.")
+                    </span>
                 </label>
                 @if (!_nothingRelatives)
                 {
@@ -126,10 +128,13 @@
                 }
 
                 <h3>Companies in which you own ≥30% of paid-up share capital</h3>
+                <p class="cg-hint">The companies in My Workspace where your ownership is 30% or more are listed here for you. Switching this section to "nothing to declare" clears them.</p>
                 <label class="cg-switch cg-nothing-switch">
-                    <input type="checkbox" @bind="_nothingSelfOwned" />
+                    <input type="checkbox" @bind:get="!_nothingSelfOwned" @bind:set="v => { _nothingSelfOwned = !v; SetNothingToDeclare(_selfOwnedCompanies, _nothingSelfOwned); }" />
                     <span class="cg-switch-track" aria-hidden="true"></span>
-                    <span class="cg-switch-label">I have nothing to declare in this section.</span>
+                    <span class="cg-switch-label">
+                        @(_nothingSelfOwned ? "I have nothing to declare in this section." : "I have something to declare in this section.")
+                    </span>
                 </label>
                 @if (!_nothingSelfOwned)
                 {
@@ -157,10 +162,13 @@
                 }
 
                 <h3>Companies in which a relative owns ≥30% of its shares</h3>
+                <p class="cg-hint">Built from your relatives in My Workspace whose own holding is 30% or more. Switching this section to "nothing to declare" clears them.</p>
                 <label class="cg-switch cg-nothing-switch">
-                    <input type="checkbox" @bind="_nothingRelativeOwned" />
+                    <input type="checkbox" @bind:get="!_nothingRelativeOwned" @bind:set="v => { _nothingRelativeOwned = !v; SetNothingToDeclare(_relativeOwnedCompanies, _nothingRelativeOwned); }" />
                     <span class="cg-switch-track" aria-hidden="true"></span>
-                    <span class="cg-switch-label">I have nothing to declare in this section.</span>
+                    <span class="cg-switch-label">
+                        @(_nothingRelativeOwned ? "I have nothing to declare in this section." : "I have something to declare in this section.")
+                    </span>
                 </label>
                 @if (!_nothingRelativeOwned)
                 {
@@ -188,10 +196,13 @@
                 }
 
                 <h3>Companies in which you serve as board member or senior executive</h3>
+                <p class="cg-hint">The companies in My Workspace marked "serve as board member or senior executive". Switching this section to "nothing to declare" clears them.</p>
                 <label class="cg-switch cg-nothing-switch">
-                    <input type="checkbox" @bind="_nothingBoardRoles" />
+                    <input type="checkbox" @bind:get="!_nothingBoardRoles" @bind:set="v => { _nothingBoardRoles = !v; SetNothingToDeclare(_boardRoleCompanies, _nothingBoardRoles); }" />
                     <span class="cg-switch-track" aria-hidden="true"></span>
-                    <span class="cg-switch-label">I have nothing to declare in this section.</span>
+                    <span class="cg-switch-label">
+                        @(_nothingBoardRoles ? "I have nothing to declare in this section." : "I have something to declare in this section.")
+                    </span>
                 </label>
                 @if (!_nothingBoardRoles)
                 {
@@ -249,9 +260,11 @@
                     </p>
                 }
                 <label class="cg-switch cg-nothing-switch">
-                    <input type="checkbox" @bind="_nothingConflicts" />
+                    <input type="checkbox" @bind:get="!_nothingConflicts" @bind:set="v => _nothingConflicts = !v" />
                     <span class="cg-switch-track" aria-hidden="true"></span>
-                    <span class="cg-switch-label">I have nothing to declare in this section.</span>
+                    <span class="cg-switch-label">
+                        @(_nothingConflicts ? "I have nothing to declare in this section." : "I have something to declare in this section.")
+                    </span>
                 </label>
                 @if (!_nothingConflicts)
                 {

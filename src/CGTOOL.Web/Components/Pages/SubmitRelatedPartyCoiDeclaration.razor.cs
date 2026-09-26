@@ -231,6 +231,11 @@ public partial class SubmitRelatedPartyCoiDeclaration
             }
         }
 
+        if (_run is not null && !_isEditing)
+        {
+            AutoLoadCompanySections();
+        }
+
         _step = _run is null ? Step.NotDue : Step.Form;
     }
 
@@ -482,11 +487,105 @@ public partial class SubmitRelatedPartyCoiDeclaration
         var company = _myCompanies.FirstOrDefault(c => c.Id == id);
         if (company is null) return;
 
-        var row = new CompanyRow { LegalCompanyName = company.CompanyName };
+        list.Add(RowFor(company));
+    }
+
+    private CompanyRow RowFor(OwnedCompany company)
+    {
+        var row = new CompanyRow
+        {
+            LegalCompanyName = company.CompanyName,
+            PrincipalBusinessActivity = company.PrincipalBusinessActivity ?? string.Empty,
+            TradeLicenseNumber = company.TradeLicenceNumber ?? string.Empty,
+            TradeLicenseExpiryDate = company.TradeLicenceExpiryDate,
+        };
         AddWorkspaceDocument(row, company.TradeLicensePath, "Trade License");
         AddWorkspaceDocument(row, company.MoaPath, "MOA");
         AddWorkspaceDocument(row, company.PoaPath, "POA");
-        list.Add(row);
+        return row;
+    }
+
+    // ---------- the three company sections and My Workspace ----------
+
+    /// <summary>The threshold the two ownership sections are asking about.</summary>
+    private const decimal DeclarableOwnershipPercentage = 30m;
+
+    /// <summary>Each section's question, answered against the register rather than asked again:
+    /// companies the member owns at least 30% of, companies a relative owns at least 30% of, and
+    /// companies the member sits on the board of or runs. Where the register says yes, the section
+    /// is turned on and filled; the member can still turn it off, and turning it off clears what
+    /// was filled in so the answer and the rows never disagree.</summary>
+    private void AutoLoadCompanySections()
+    {
+        LoadSection(
+            _selfOwnedCompanies,
+            _myCompanies.Where(c => c.OwnershipPercentage >= DeclarableOwnershipPercentage).ToList(),
+            ref _nothingSelfOwned);
+
+        LoadSection(
+            _boardRoleCompanies,
+            _myCompanies.Where(c => c.ServesAsBoardMemberOrExecutive).ToList(),
+            ref _nothingBoardRoles);
+
+        // A relative's company is recorded on the relative -- the organization they hold, and how
+        // much of it -- so this section is built from the relatives, not from My Companies. The row
+        // is linked to that relative where the declaration already lists them.
+        var relativeOwned = _myFamilyMembers
+            .Where(f => f.OwnershipPercentage >= DeclarableOwnershipPercentage
+                        && !string.IsNullOrWhiteSpace(f.Organization))
+            .ToList();
+
+        if (relativeOwned.Count > 0)
+        {
+            foreach (var relative in relativeOwned)
+            {
+                if (_relativeOwnedCompanies.Any(r =>
+                        string.Equals(r.LegalCompanyName.Trim(), relative.Organization!.Trim(), StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                _relativeOwnedCompanies.Add(new CompanyRow
+                {
+                    LegalCompanyName = relative.Organization!.Trim(),
+                    LinkedRelativeKey = _relatives
+                        .FirstOrDefault(r => string.Equals(r.Name.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase))?.Key,
+                });
+            }
+
+            _nothingRelativeOwned = false;
+        }
+    }
+
+    private void LoadSection(List<CompanyRow> list, List<OwnedCompany> matches, ref bool nothingToDeclare)
+    {
+        if (matches.Count == 0) return;
+
+        foreach (var company in matches)
+        {
+            if (list.Any(r => string.Equals(r.LegalCompanyName.Trim(), company.CompanyName.Trim(), StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            list.Add(RowFor(company));
+        }
+
+        nothingToDeclare = false;
+    }
+
+    /// <summary>Answering "nothing to declare" empties the section. Leaving the rows behind would
+    /// submit a section that says nothing is declared and lists three companies; and the member who
+    /// turns it off has just said the loaded rows do not belong there.</summary>
+    private void SetNothingToDeclare(List<CompanyRow> list, bool nothingToDeclare)
+    {
+        if (!nothingToDeclare) return;
+
+        foreach (var row in list.Where(r => r.LinkedRelativeKey is not null).ToList())
+        {
+            row.LinkedRelativeKey = null;
+        }
+        list.Clear();
     }
 
     private static void AddWorkspaceDocument(CompanyRow row, string? path, string label)

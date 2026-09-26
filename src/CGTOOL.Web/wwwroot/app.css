@@ -2365,6 +2365,19 @@ select.cg-input {
 .cg-doc-panel-file { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .cg-doc-panel-file input[type=file] { font-size: 12.5px; max-width: 100%; }
 .cg-doc-panel-actions { margin-top: 14px; }
+.cg-doc-panel.is-expired { border-color: var(--cg-critical); background: var(--cg-critical-tint); }
+.cg-pill-critical {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--cg-critical);
+    color: #FFFFFF;
+    font-size: 11px;
+    font-weight: 700;
+    vertical-align: middle;
+}
+.cg-count-critical { background: var(--cg-critical-tint); color: var(--cg-critical); }
 .cg-confirm-modal { width: min(460px, calc(100vw - 32px)); }
 .cg-duplicate-modal { width: min(560px, calc(100vw - 32px)); }
 .cg-confirm-detail { margin: 6px 0 0; font-size: 13px; font-weight: 650; }

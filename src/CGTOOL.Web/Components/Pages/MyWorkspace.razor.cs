@@ -438,6 +438,14 @@ public partial class MyWorkspace : ComponentBase
 
     private bool IsUploadingDocument(MemberDocumentKind kind) => _uploadingKinds.Contains(kind);
 
+    /// <summary>A document whose expiry has passed. The declaration refuses to be submitted on one,
+    /// so it is worth saying here, where the member can actually replace it, rather than leaving
+    /// them to find out at the deadline.</summary>
+    private static bool IsExpired(MemberDocument? document) =>
+        document?.ExpiryDate is { } expiry && expiry.Date < DateTime.UtcNow.Date;
+
+    private int ExpiredDocumentCount => _documents.Count(IsExpired);
+
     private async Task OnMemberDocumentSelectedAsync(MemberDocumentKind kind, MemberDocument? existing, InputFileChangeEventArgs e)
     {
         if (_effectiveMember is null) return;

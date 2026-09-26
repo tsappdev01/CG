@@ -40,6 +40,10 @@
                     <span class="cg-card-title">My Documents</span>
                     <span class="cg-subtitle">Your Emirates ID, passport, trade licence and anything else on file. The details are read off each one where document capture is configured — check them.</span>
                 </span>
+                @if (ExpiredDocumentCount > 0)
+                {
+                    <span class="cg-accordion-count cg-count-critical">@ExpiredDocumentCount expired</span>
+                }
                 <span class="cg-accordion-count">@_documents.Count(d => !string.IsNullOrEmpty(d.FilePath))</span>
             </button>
 
@@ -50,10 +54,10 @@
                 {
                     var kind = named.Kind;
                     var doc = DocumentOf(kind);
-                    <div class="cg-doc-panel">
+                    <div class="cg-doc-panel @(IsExpired(doc) ? "is-expired" : "")">
                         <div class="cg-doc-panel-head">
                             <div>
-                                <h3>@named.Title</h3>
+                                <h3>@named.Title @if (IsExpired(doc)) { <span class="cg-pill-critical">Expired</span> }</h3>
                                 <p class="cg-subtitle">@named.Blurb</p>
                             </div>
                             <div class="cg-doc-panel-file">
@@ -102,9 +106,13 @@
                                 }
                                 <label class="cg-field">
                                     <span>Expiry Date</span>
-                                    <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                                    <input class="cg-input@(IsExpired(doc) ? " cg-input-invalid" : "")" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
                                            @bind:get="UaeDate.Show(doc.ExpiryDate)"
                                            @bind:set="v => SetDate(v, d => doc.ExpiryDate = d)" />
+                                    @if (IsExpired(doc))
+                                    {
+                                        <span class="cg-field-error">Expired — upload a current one. A declaration cannot be submitted on it.</span>
+                                    }
                                 </label>
                                 @if (kind == MemberDocumentKind.EmiratesId)
                                 {
@@ -164,9 +172,13 @@
                             </label>
                             <label class="cg-field">
                                 <span>Expiry Date</span>
-                                <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                                <input class="cg-input@(IsExpired(other) ? " cg-input-invalid" : "")" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
                                        @bind:get="UaeDate.Show(other.ExpiryDate)"
                                        @bind:set="v => SetDate(v, d => other.ExpiryDate = d)" />
+                                @if (IsExpired(other))
+                                {
+                                    <span class="cg-field-error">Expired — upload a current one.</span>
+                                }
                             </label>
                             <label class="cg-field">
                                 <span>File</span>

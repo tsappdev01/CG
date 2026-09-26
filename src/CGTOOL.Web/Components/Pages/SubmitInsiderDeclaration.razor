@@ -218,7 +218,11 @@
                         }
                         <input class="cg-input" @bind="_emiratesIdNumber" maxlength="40" placeholder="Emirates ID number" />
                         <input class="cg-input" @bind="_emiratesIdNameOnCard" maxlength="120" placeholder="Name on card" />
-                        <input type="date" class="cg-input" @bind="_emiratesIdExpiryDate" placeholder="Expiry date" />
+                        <input type="date" class="cg-input@(IsExpiredOn(_emiratesIdExpiryDate) ? " cg-input-invalid" : "")" @bind="_emiratesIdExpiryDate" placeholder="Expiry date" />
+                        @if (IsExpiredOn(_emiratesIdExpiryDate))
+                        {
+                            <span class="cg-field-error">Expired on @UaeDate.Show(_emiratesIdExpiryDate) — upload a current Emirates ID here, and update it in My Workspace.</span>
+                        }
                     </label>
                     <label class="cg-field">
                         <span>Passport <em class="cg-subtitle" style="margin:0;">(mandatory)</em></span>
@@ -237,7 +241,11 @@
                             <p class="cg-error">Your Passport on file has expired — please upload a current copy.</p>
                         }
                         <input class="cg-input" @bind="_passportNumber" maxlength="40" placeholder="Passport number" />
-                        <input type="date" class="cg-input" @bind="_passportExpiryDate" placeholder="Expiry date" />
+                        <input type="date" class="cg-input@(IsExpiredOn(_passportExpiryDate) ? " cg-input-invalid" : "")" @bind="_passportExpiryDate" placeholder="Expiry date" />
+                        @if (IsExpiredOn(_passportExpiryDate))
+                        {
+                            <span class="cg-field-error">Expired on @UaeDate.Show(_passportExpiryDate) — upload a current passport here, and update it in My Workspace.</span>
+                        }
                         <input class="cg-input" @bind="_passportIssuingCountry" maxlength="80" placeholder="Issuing country" />
                     </label>
                 </div>
@@ -261,7 +269,11 @@
                         }
                         <input class="cg-input" @bind="_tradeLicenceNumber" maxlength="40" placeholder="Licence number" />
                         <input class="cg-input" @bind="_tradeLicenceLegalName" maxlength="160" placeholder="Business name" />
-                        <input type="date" class="cg-input" @bind="_tradeLicenceExpiryDate" placeholder="Expiry date" />
+                        <input type="date" class="cg-input@(IsExpiredOn(_tradeLicenceExpiryDate) ? " cg-input-invalid" : "")" @bind="_tradeLicenceExpiryDate" placeholder="Expiry date" />
+                        @if (IsExpiredOn(_tradeLicenceExpiryDate))
+                        {
+                            <span class="cg-field-error">Expired on @UaeDate.Show(_tradeLicenceExpiryDate) — upload a current trade licence here, and update it in My Workspace.</span>
+                        }
                         <input class="cg-input" @bind="_tradeLicenceIssuingAuthority" maxlength="160" placeholder="Issuing authority (optional)" />
                     </label>
                     <label class="cg-field">
@@ -355,8 +367,15 @@
                 <div class="cg-actions">
                     <button type="button" class="cg-action-btn" @onclick="() => _step = Step.Capture1">← Back</button>
                     <button type="button" class="cg-action-btn" disabled="@_savingDraft" @onclick="SaveDraftAsync">@(_savingDraft ? "Saving…" : "Save as Draft")</button>
-                    <button type="button" class="cg-action-btn cg-good" @onclick="GoToReviewAsync">Proceed to Submission</button>
+                    <button type="button" class="cg-action-btn cg-good" disabled="@(ExpiredDocuments().Count > 0)" @onclick="GoToReviewAsync">Proceed to Submission</button>
                 </div>
+                @if (ExpiredDocuments() is { Count: > 0 } expiredNow)
+                {
+                    <p class="cg-error">
+                        Your @Join(expiredNow) @(expiredNow.Count == 1 ? "has" : "have") expired. A declaration cannot be submitted on an expired document —
+                        upload a current copy above, and update it in My Workspace so it is right for next time.
+                    </p>
+                }
             </div>
         }
         else if (_step == Step.Review)

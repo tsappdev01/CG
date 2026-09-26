@@ -703,6 +703,32 @@ public partial class SubmitInsiderDeclaration
     }
 
 
+
+    /// <summary>Documents on this screen whose expiry date has passed. The trade licence counts only
+    /// when one is attached -- it is optional, and a member with no licence has nothing to expire.</summary>
+    private List<string> ExpiredDocuments()
+    {
+        var today = DateTime.UtcNow.Date;
+        var expired = new List<string>();
+
+        if (IsExpired(_emiratesIdExpiryDate)) expired.Add("Emirates ID");
+        if (IsExpired(_passportExpiryDate)) expired.Add("passport");
+        if (!string.IsNullOrWhiteSpace(_tradeLicencePath) && IsExpired(_tradeLicenceExpiryDate)) expired.Add("trade licence");
+
+        return expired;
+
+        bool IsExpired(DateTime? expiry) => expiry is { } date && date.Date < today;
+    }
+
+    private static bool IsExpiredOn(DateTime? expiry) => expiry is { } date && date.Date < DateTime.UtcNow.Date;
+
+    private static string Join(List<string> parts) => parts.Count switch
+    {
+        1 => parts[0],
+        2 => $"{parts[0]} and {parts[1]}",
+        _ => $"{string.Join(", ", parts.Take(parts.Count - 1))} and {parts[^1]}",
+    };
+
     // ---------- pulling the member's own documents in ----------
 
     private bool _offerDocumentPull;
@@ -726,7 +752,12 @@ public partial class SubmitInsiderDeclaration
                         && d.FilePath != null && d.FilePath != "")
             .ToListAsync();
 
-        return documents.Where(d => d.Kind switch
+        // An expired document is not offered: bringing it across only to be stopped at Proceed to
+        // Submission wastes the member's time and hides the actual problem, which is in My
+        // Workspace. OfferDocumentPullAsync says so by name instead.
+        _expiredInWorkspace = documents.Where(d => IsExpiredOn(d.ExpiryDate)).ToList();
+
+        return documents.Where(d => !IsExpiredOn(d.ExpiryDate)).Where(d => d.Kind switch
         {
             MemberDocumentKind.EmiratesId => string.IsNullOrWhiteSpace(_emiratesIdPath),
             MemberDocumentKind.Passport => string.IsNullOrWhiteSpace(_passportPath),
@@ -735,14 +766,25 @@ public partial class SubmitInsiderDeclaration
         }).ToList();
     }
 
+    private List<MemberDocument> _expiredInWorkspace = [];
+
     private async Task OfferDocumentPullAsync()
     {
         _pullableDocuments = await PullableDocumentsAsync();
 
         if (_pullableDocuments.Count == 0)
         {
-            Toasts.ShowError("Nothing to bring across: My Documents has no Emirates ID, passport or trade licence that this declaration still needs.");
+            Toasts.ShowError(_expiredInWorkspace.Count > 0
+                ? $"Nothing to bring across: your {Join(_expiredInWorkspace.Select(DocumentPullLabel).ToList())} in My Workspace "
+                  + $"{(_expiredInWorkspace.Count == 1 ? "has" : "have")} expired. Upload a current copy there, then pull it in."
+                : "Nothing to bring across: My Documents has no Emirates ID, passport or trade licence that this declaration still needs.");
             return;
+        }
+
+        if (_expiredInWorkspace.Count > 0)
+        {
+            Toasts.ShowError($"Your {Join(_expiredInWorkspace.Select(DocumentPullLabel).ToList())} in My Workspace "
+                + $"{(_expiredInWorkspace.Count == 1 ? "has" : "have")} expired and will not be brought across. Upload a current copy there.");
         }
 
         _offerDocumentPull = true;
@@ -1001,6 +1043,26 @@ public partial class SubmitInsiderDeclaration
         if (string.IsNullOrWhiteSpace(_passportNumber) || _passportExpiryDate is null || string.IsNullOrWhiteSpace(_passportIssuingCountry))
         {
             Toasts.ShowError("Enter the passport number, expiry date, and issuing country.");
+            return;
+        }
+
+        // An attached licence with no expiry date cannot be checked against today, which is the
+        // same as not checking it: the rule below would pass every expired licence whose date was
+        // simply left blank.
+        if (!string.IsNullOrWhiteSpace(_tradeLicencePath) && _tradeLicenceExpiryDate is null)
+        {
+            Toasts.ShowError("Enter the trade licence expiry date.");
+            return;
+        }
+
+        // A declaration is a statement about today, so it cannot be made on an expired document --
+        // the trade licence above all, which lapses yearly while a passport runs for ten. Blocked
+        // rather than warned: an expired licence attached to a submitted declaration is a finding
+        // at the next audit, and the member is the only one who can fix it.
+        if (ExpiredDocuments() is { Count: > 0 } expired)
+        {
+            Toasts.ShowError($"Your {Join(expired)} {(expired.Count == 1 ? "has" : "have")} expired. "
+                + "Upload a current copy here, and update it in My Workspace so it is right for next time.");
             return;
         }
 

@@ -58,6 +58,33 @@ if (!string.IsNullOrWhiteSpace(azureAdSection["ClientId"]) && !string.IsNullOrWh
     });
 }
 
+// Data protection keys: the authentication cookie, the acting-as cookie and the UAE PASS state
+// token are all signed with this key ring. Left to itself, ASP.NET Core writes it to the user
+// profile -- and under IIS an application pool does not load a profile by default, so the ring is
+// regenerated in memory on every recycle. Everyone is silently signed out, and it looks like the
+// app is dropping sessions rather than like a configuration setting.
+//
+// The keys therefore live in a folder of their own, outside the site so a redeploy cannot take
+// them with it. The application name is fixed so the ring stays the same one across deployments;
+// leaving it to the default means it is derived from the content root path, and moving the site
+// would invalidate every cookie in issue.
+var keyRingPath = builder.Configuration["DataProtection:KeyRingPath"];
+if (string.IsNullOrWhiteSpace(keyRingPath))
+{
+    keyRingPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+        "CGTOOL", "DataProtectionKeys");
+}
+
+// Created here rather than left to the first write, so a deployment whose application pool cannot
+// write to the folder fails at startup with the path in the message, instead of appearing to work
+// until the first recycle signs everyone out.
+Directory.CreateDirectory(keyRingPath);
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keyRingPath))
+    .SetApplicationName("CGTOOL");
+
 builder.Services.AddHttpClient();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");

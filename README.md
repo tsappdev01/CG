@@ -599,6 +599,28 @@ The three rules the tenant sync applies apply here too: it is one-way, a person 
 skipped because there is no entity to file them under, and the governance flags on an existing
 member — declaration access, RP transaction role, impersonation approvals — are never touched.
 
+### Data protection keys
+
+The authentication cookie, the acting-as cookie and the UAE PASS state token are all signed with the
+data protection key ring. Left to itself ASP.NET Core writes that ring to the user profile, and an
+IIS application pool does not load a profile by default -- so the ring is regenerated in memory on
+every recycle and everyone is silently signed out. It presents as the application dropping sessions,
+not as a setting.
+
+The keys are therefore written to a folder of their own, outside the site so a redeploy cannot take
+them with it. The default is `%ProgramData%\CGTOOL\DataProtectionKeys`; override it with
+`DataProtection:KeyRingPath`. **The application pool identity needs write access to that folder** --
+startup creates it and fails with the path in the message if it cannot, rather than appearing to
+work until the first recycle.
+
+The application name is pinned to `CGTOOL` so the ring survives the site being moved; left to the
+default it is derived from the content root path, and moving the site invalidates every cookie in
+issue.
+
+The key files are not encrypted at rest. On a single server `ProtectKeysWithDpapi()` would tie them
+to the machine and is worth adding; it must not be used if the site is ever load balanced, since the
+other machines could not read the ring.
+
 ### Configuring Entra ID
 
 The settings live in `appsettings.json`, alongside the other deployment settings:

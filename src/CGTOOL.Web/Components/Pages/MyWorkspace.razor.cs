@@ -175,6 +175,13 @@ public partial class MyWorkspace : ComponentBase
 
     // Delete asks first, and the record is held here rather than deleted from the grid's own
     // iteration: the button that starts it is inside the loop over that list.
+    /// <summary>A record already on file that the one being saved looks like. Held while the
+    /// warning is on screen; cleared when the dialog is opened, closed, or overridden.</summary>
+    private sealed record DuplicateMatch(FamilyMember Existing, string Field, string Value);
+
+    private List<DuplicateMatch> _duplicateMatches = [];
+    private bool _duplicateAcknowledged;
+
     private FamilyMember? _pendingDeleteRelative;
     private OwnedCompany? _pendingDeleteCompany;
 
@@ -415,6 +422,67 @@ public partial class MyWorkspace : ComponentBase
         var listed => listed,
     };
 
+    /// <summary>Relatives already on file that the one being saved collides with, by name, Emirates
+    /// ID number or NIN. Blank fields never match -- two relatives with no NIN yet are not the same
+    /// person -- and the record being edited never matches itself.</summary>
+    private List<DuplicateMatch> DuplicatesOf(FamilyMember candidate)
+    {
+        var matches = new List<DuplicateMatch>();
+
+        foreach (var existing in _familyMembers)
+        {
+            if (candidate.Id != 0 && existing.Id == candidate.Id) continue;
+
+            if (SameValue(existing.EmiratesIdNumber, candidate.EmiratesIdNumber))
+            {
+                matches.Add(new DuplicateMatch(existing, "Emirates ID No", existing.EmiratesIdNumber!));
+            }
+            else if (SameValue(existing.NinNumber, candidate.NinNumber))
+            {
+                matches.Add(new DuplicateMatch(existing, "NIN Number", existing.NinNumber!));
+            }
+            else if (SameValue(existing.Name, candidate.Name))
+            {
+                matches.Add(new DuplicateMatch(existing, "Name", existing.Name));
+            }
+        }
+
+        return matches;
+    }
+
+    private static bool SameValue(string? a, string? b) =>
+        !string.IsNullOrWhiteSpace(a) && !string.IsNullOrWhiteSpace(b)
+        && string.Equals(a.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Whether the collision is one a person could legitimately explain. Two relatives can
+    /// genuinely share a name -- two cousins called Mohammed Ali are not a data error -- so that
+    /// warning can be overridden. An Emirates ID number or a NIN identifies exactly one person, so
+    /// a second record carrying it is wrong however sure the member is, and there is no way past
+    /// this one except correcting the number.</summary>
+    private bool DuplicateIsBlocking => _duplicateMatches.Any(m => m.Field != "Name");
+
+    private void DismissDuplicateWarning() => _duplicateMatches = [];
+
+    private async Task SaveDespiteDuplicateAsync()
+    {
+        _duplicateMatches = [];
+        _duplicateAcknowledged = true;
+        await SaveRelativeAsync();
+    }
+
+    private static string DescribeRelative(FamilyMember f) => string.Join(" · ",
+        new[]
+        {
+            RelationLabel(f.Relationship),
+            string.IsNullOrWhiteSpace(f.NinNumber) ? null : $"NIN {f.NinNumber}",
+            string.IsNullOrWhiteSpace(f.EmiratesIdNumber) ? null : $"Emirates ID {f.EmiratesIdNumber}",
+            string.IsNullOrWhiteSpace(f.Nationality) ? null : f.Nationality,
+            string.IsNullOrWhiteSpace(f.Occupation) ? null : f.Occupation,
+            string.IsNullOrWhiteSpace(f.Organization) ? null : f.Organization,
+            f.NatureOfHolding == RelatedPartyHoldingNature.None ? null : HoldingLabel(f.NatureOfHolding),
+            f.OwnershipPercentage is { } pct ? $"{pct:0.##}%" : null,
+        }.Where(part => part is not null));
+
     private void OpenAddRelative()
     {
         if (_effectiveMember is null) return;
@@ -427,6 +495,8 @@ public partial class MyWorkspace : ComponentBase
             Nationality = Countries.Default,
         };
         LoadOccupationChoice(null);
+        _duplicateMatches = [];
+        _duplicateAcknowledged = false;
         _relativesOpen = true;
         _relativeDialogOpen = true;
     }
@@ -437,11 +507,15 @@ public partial class MyWorkspace : ComponentBase
         _relativeBefore = CopyOf(familyMember);
         _relativeForm = CopyOf(familyMember);
         LoadOccupationChoice(familyMember.Occupation);
+        _duplicateMatches = [];
+        _duplicateAcknowledged = false;
         _relativeDialogOpen = true;
     }
 
     private void CloseRelativeDialog()
     {
+        _duplicateMatches = [];
+        _duplicateAcknowledged = false;
         _relativeDialogOpen = false;
         _relativeForm = null;
         _relativeTarget = null;
@@ -471,6 +545,18 @@ public partial class MyWorkspace : ComponentBase
         }
 
         _relativeForm.Name = _relativeForm.Name.Trim();
+
+        if (!_duplicateAcknowledged)
+        {
+            var duplicates = DuplicatesOf(_relativeForm);
+            if (duplicates.Count > 0)
+            {
+                _duplicateMatches = duplicates;
+                return;
+            }
+        }
+        _duplicateAcknowledged = false;
+
         var actorName = await CurrentActorNameAsync();
 
         if (_relativeTarget is null)

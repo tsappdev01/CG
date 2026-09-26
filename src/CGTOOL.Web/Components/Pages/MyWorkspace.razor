@@ -475,6 +475,55 @@
     </div>
 }
 
+@* Shown instead of saving when the relative being entered looks like one already on file. The
+   record it matched is spelled out here rather than named, so the member can tell a genuine
+   second person from a second copy of the same one. *@
+@if (_duplicateMatches.Count > 0)
+{
+    <div class="cg-modal-backdrop" @onclick="DismissDuplicateWarning"></div>
+    <div class="cg-modal cg-confirm-modal cg-duplicate-modal" role="alertdialog" aria-modal="true" aria-labelledby="cg-dup-title">
+        <div class="cg-modal-head">
+            <div>
+                <h2 id="cg-dup-title">This record already exists</h2>
+                <p class="cg-subtitle">
+                    @(_duplicateMatches.Count == 1
+                        ? "A related party on file already has the same details:"
+                        : $"{_duplicateMatches.Count} related parties on file already have the same details:")
+                </p>
+            </div>
+            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="DismissDuplicateWarning">×</button>
+        </div>
+
+        <div class="cg-modal-body">
+            @foreach (var match in _duplicateMatches)
+            {
+                <div class="cg-duplicate-card">
+                    <div class="cg-duplicate-name">@match.Existing.Name</div>
+                    <div class="cg-duplicate-detail">@DescribeRelative(match.Existing)</div>
+                    <div class="cg-duplicate-matched">Matches on @match.Field: <b>@match.Value</b></div>
+                </div>
+            }
+
+            @if (DuplicateIsBlocking)
+            {
+                <p class="cg-hint">An Emirates ID number and a NIN each belong to one person, so this cannot be saved as a second record. Correct the number, or edit the existing record instead.</p>
+            }
+            else
+            {
+                <p class="cg-hint">Two relatives can genuinely share a name. If this is a different person, you can save it anyway.</p>
+            }
+        </div>
+
+        <div class="cg-modal-foot">
+            <button type="button" class="cg-action-btn" @onclick="DismissDuplicateWarning">Back to the form</button>
+            @if (!DuplicateIsBlocking)
+            {
+                <button type="button" class="cg-action-btn cg-good" @onclick="SaveDespiteDuplicateAsync">Save anyway</button>
+            }
+        </div>
+    </div>
+}
+
 @code {
     // Razor templates rather than code-behind: an upload cell is markup, and a RenderTreeBuilder
     // version of it would be unreadable for no gain. The InputFile stays on screen (disabled) while

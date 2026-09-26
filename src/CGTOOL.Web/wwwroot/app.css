@@ -2345,6 +2345,17 @@ select.cg-input {
 .cg-col-relname { min-width: 190px; }
 .cg-captured-grid { margin-top: 12px; }
 .cg-confirm-modal { width: min(460px, calc(100vw - 32px)); }
+.cg-duplicate-modal { width: min(560px, calc(100vw - 32px)); }
+.cg-duplicate-card {
+    border: 1px solid var(--cg-line);
+    border-left: 3px solid var(--cg-warning);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+}
+.cg-duplicate-name { font-size: 14.5px; font-weight: 700; }
+.cg-duplicate-detail { font-size: 12.5px; color: var(--cg-ink-muted); margin-top: 3px; }
+.cg-duplicate-matched { font-size: 12.5px; margin-top: 7px; }
 /* The confirming button is the dialog's primary action, so it is solid the way Save is
    elsewhere -- cg-critical stays an outline everywhere else, where it sits in a row of
    equals rather than being the thing the dialog is asking about. */

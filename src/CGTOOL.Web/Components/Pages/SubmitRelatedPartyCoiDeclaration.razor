@@ -417,20 +417,13 @@
                     <span>I, @_attestationName, confirm the above declaration is complete and accurate.</span>
                 </label>
 
-                @if (UaePass.IsConfigured)
+                @* The offer to verify is hidden. A declaration that was verified still says so, and
+                   the UAE PASS round trip behind it is untouched -- StartUaePassVerificationAsync and
+                   the callback still work -- so offering it again is putting the button back. *@
+                @if (_uaePassVerifiedAtUtc is not null)
                 {
                     <div class="cg-info-callout">
-                        @if (_uaePassVerifiedAtUtc is not null)
-                        {
-                            <p>✅ Identity verified via <b>UAE PASS</b> as <b>@_uaePassVerifiedName</b> on <span class="mono">@_uaePassVerifiedAtUtc.Value.ToLocalDisplay("dd MMM yyyy HH:mm")</span>.</p>
-                        }
-                        else
-                        {
-                            <p><b>Optional:</b> verify your identity via UAE PASS before submitting.</p>
-                            <div class="cg-actions" style="margin-top:8px;">
-                                <button type="button" class="cg-action-btn" disabled="@_verifyingUaePass" @onclick="StartUaePassVerificationAsync">@(_verifyingUaePass ? "Redirecting to UAE PASS…" : "Verify with UAE PASS")</button>
-                            </div>
-                        }
+                        <p>✅ Identity verified via <b>UAE PASS</b> as <b>@_uaePassVerifiedName</b> on <span class="mono">@_uaePassVerifiedAtUtc.Value.ToLocalDisplay("dd MMM yyyy HH:mm")</span>.</p>
                     </div>
                 }
 

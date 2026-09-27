@@ -8,6 +8,9 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityRedirectManager RedirectManager
 @inject ILogger<ExternalLogin> Logger
+@inject IMemberSignInGuard SignInGuard
+@inject IAuditLogger AuditLog
+@inject IHttpContextAccessor HttpContextAccessor
 
 <PageTitle>Sign in</PageTitle>
 
@@ -77,7 +80,10 @@
                 "{Name} logged in with {LoginProvider} provider.",
                 externalLoginInfo.Principal.Identity?.Name,
                 externalLoginInfo.LoginProvider);
-            await StampSignInAsync(await UserManager.FindByLoginAsync(externalLoginInfo.LoginProvider, externalLoginInfo.ProviderKey));
+            var linked = await UserManager.FindByLoginAsync(externalLoginInfo.LoginProvider, externalLoginInfo.ProviderKey);
+            if (await DeniedAsync(linked?.UserName, linked?.Email, linked?.Id)) return;
+
+            await StampSignInAsync(linked);
             RedirectManager.RedirectTo(ReturnUrl);
         }
         else if (result.IsLockedOut)
@@ -112,6 +118,9 @@
                 RedirectManager.RedirectTo("Account/Lockout");
             }
 
+            // And the member record itself, which is what an administrator actually switched off.
+            if (await DeniedAsync(existingUser?.UserName, email, existingUser?.Id)) return;
+
             if (existingUser is not null)
             {
                 var addLoginResult = await UserManager.AddLoginAsync(existingUser, externalLoginInfo);
@@ -144,6 +153,30 @@
         }
 
         return null;
+    }
+
+    /// <summary>True when this sign-in is refused, having recorded why. Redirects as it returns, so
+    /// the caller stops rather than carrying on to sign anyone in.</summary>
+    private async Task<bool> DeniedAsync(string? userName, string? email, string? applicationUserId)
+    {
+        if (await SignInGuard.BlockingMemberAsync(userName, email, applicationUserId) is not { } blocked) return false;
+
+        var request = HttpContextAccessor.HttpContext?.Request;
+        await AuditLog.LogAsync(
+            email ?? userName ?? "unknown",
+            AuditAction.AccessDenied,
+            nameof(Member),
+            blocked.Id.ToString(),
+            SignInDenial.Details(
+                blocked,
+                "Single sign-on",
+                email ?? userName ?? "unknown",
+                HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString(),
+                request?.Headers.UserAgent.ToString()));
+
+        Logger.LogWarning("SSO sign-in denied for deactivated member {Email}.", email);
+        RedirectManager.RedirectTo("Account/Lockout");
+        return true;
     }
 
     private async Task StampSignInAsync(ApplicationUser? user)

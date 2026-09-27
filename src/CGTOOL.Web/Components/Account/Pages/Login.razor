@@ -15,6 +15,9 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 @inject IConfiguration Configuration
+@inject IMemberSignInGuard SignInGuard
+@inject IAuditLogger AuditLog
+@inject IHttpContextAccessor HttpContextAccessor
 
 <PageTitle>DI Corporate Governance Tool — Sign In</PageTitle>
 
@@ -180,6 +183,17 @@
             return;
         }
 
+        // Asked before an account is found or provisioned below: a member deactivated before their
+        // login was ever linked has nothing for the lockout check further down to find, and
+        // provisioning one for them would create the account this is meant to refuse.
+        if (await SignInGuard.BlockingMemberAsync(Input.UserName, result.Email, applicationUserId: null) is { } blocked)
+        {
+            await LogDeniedAsync(blocked, "Username and password");
+            Logger.LogWarning("Sign-in denied for deactivated member {UserName}.", Input.UserName);
+            errorMessage = "Error: this account has been deactivated. Contact an administrator.";
+            return;
+        }
+
         // IActiveDirectoryAuthenticator implementations may match an existing account by username
         // OR email (see LocalIdentityAuthenticator), so this lookup must do the same -- otherwise a
         // user who types their email address here ends up with a brand-new, picture-less duplicate
@@ -215,6 +229,22 @@
         await SignInManager.SignInAsync(user, Input.RememberMe);
         Logger.LogInformation("User {UserName} signed in via the corporate directory.", Input.UserName);
         RedirectManager.RedirectTo(ReturnUrl);
+    }
+
+    private async Task LogDeniedAsync(Member member, string method)
+    {
+        var request = HttpContextAccessor.HttpContext?.Request;
+        await AuditLog.LogAsync(
+            Input.UserName,
+            AuditAction.AccessDenied,
+            nameof(Member),
+            member.Id.ToString(),
+            SignInDenial.Details(
+                member,
+                method,
+                Input.UserName,
+                HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString(),
+                request?.Headers.UserAgent.ToString()));
     }
 
     private sealed class InputModel

@@ -506,6 +506,10 @@ public partial class UserManagement
             {
                 await UserManager.SetLockoutEnabledAsync(linkedUser, true);
                 await UserManager.SetLockoutEndDateAsync(linkedUser, targetActive ? null : DateTimeOffset.MaxValue);
+                // Lockout stops the next sign-in; it does nothing to the cookie someone is already
+                // holding. Rolling the security stamp is what ends a session in progress, at the
+                // next stamp validation.
+                await UserManager.UpdateSecurityStampAsync(linkedUser);
             }
         }
 

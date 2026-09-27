@@ -111,6 +111,8 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 builder.Services.AddScoped<IAuditLogger, AuditLogger>();
+builder.Services.AddScoped<IMemberSignInGuard, MemberSignInGuard>();
+builder.Services.AddHttpContextAccessor();
 
 // All writes (insert/update/deactivate/delete) on the app's own domain tables go through stored
 // procedures (see scripts/stored-procedures.sql), executed against the same connection/transaction

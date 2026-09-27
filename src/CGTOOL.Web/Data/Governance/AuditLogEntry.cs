@@ -14,6 +14,10 @@ public enum AuditAction
     ImpersonationEnd,
     Notify,
     Recall,
+
+    /// <summary>A sign-in that was refused. Appended rather than inserted: the values are stored as
+    /// their numbers, so anything above this would renumber history.</summary>
+    AccessDenied,
 }
 
 /// <summary>Immutable record of a CRUD/permission change, kept for SCA compliance audits.</summary>

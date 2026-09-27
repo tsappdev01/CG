@@ -167,7 +167,7 @@
                                 </table>
                             </div>
 
-                            <h3>I.A — Relatives</h3>
+                            <h3>Relatives</h3>
                             @if (d.NothingToDeclareRelatives)
                             {
                                 <p class="cg-subtitle">Nothing to declare.</p>
@@ -260,7 +260,7 @@
                                 }
                             }
 
-                            <h3>Part II — Conflict of Interest Declaration</h3>
+                            <h3>Conflict of Interest Declaration</h3>
                             @if (d.NothingToDeclareConflicts)
                             {
                                 <p class="cg-subtitle">Nothing to declare.</p>
@@ -367,14 +367,14 @@
                         <h2>Documents — @_viewDocumentsRecord.MemberName (Q@(_viewDocumentsRecord.Quarter) @_viewDocumentsRecord.Year)</h2>
                         <div class="cg-table-wrap">
                             <table>
-                                <thead><tr><th>Table</th><th>Company</th><th>Trade License No.</th><th>Expiry</th><th>Document</th></tr></thead>
+                                <thead><tr><th>Section</th><th>Company</th><th>Trade License No.</th><th>Expiry</th><th>Document</th></tr></thead>
                                 <tbody>
                                     @foreach (var company in viewedDeclaration.Companies)
                                     {
                                         @foreach (var doc in company.Documents)
                                         {
                                             <tr class="cg-data-row">
-                                                <td>@(company.OwnerType switch { CoiCompanyOwnerType.Self => "I.B", CoiCompanyOwnerType.Relative => "I.C", _ => "I.D" })</td>
+                                                <td>@OwnerTypeLabel(company.OwnerType)</td>
                                                 <td>@company.LegalCompanyName</td>
                                                 <td>@(company.TradeLicenseNumber ?? "—")</td>
                                                 <td class="mono">@(company.TradeLicenseExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>

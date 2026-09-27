@@ -72,9 +72,9 @@ public partial class RelatedPartyCoiDeclarationReport
     /// and the form a reviewer is comparing it against say the same thing.</summary>
     private static readonly (CoiCompanyOwnerType Owner, string Heading)[] CompanySections =
     [
-        (CoiCompanyOwnerType.Self, "I.B — My companies (own ≥30% of paid-up share capital)"),
-        (CoiCompanyOwnerType.Relative, "I.C — Relatives' companies (a relative owns ≥30%)"),
-        (CoiCompanyOwnerType.BoardOrExecutiveRole, "I.D — Board roles (board member or senior executive)"),
+        (CoiCompanyOwnerType.Self, "My companies (own ≥30% of paid-up share capital)"),
+        (CoiCompanyOwnerType.Relative, "Relatives' companies (a relative owns ≥30%)"),
+        (CoiCompanyOwnerType.BoardOrExecutiveRole, "Board roles (board member or senior executive)"),
     ];
 
     private static List<CoiCompanyEntry> CompaniesIn(RelatedPartyCoiDeclaration d, CoiCompanyOwnerType owner) =>
@@ -90,11 +90,12 @@ public partial class RelatedPartyCoiDeclarationReport
         _ => d.NothingToDeclareBoardRoles,
     };
 
+    /// <summary>The short name of a company's section, for a list that mixes all three.</summary>
     private static string OwnerTypeLabel(CoiCompanyOwnerType type) => type switch
     {
-        CoiCompanyOwnerType.Self => "I.B — Self-owned",
-        CoiCompanyOwnerType.Relative => "I.C — Relative-owned",
-        _ => "I.D — Board/executive role",
+        CoiCompanyOwnerType.Self => "My companies",
+        CoiCompanyOwnerType.Relative => "Relatives' companies",
+        _ => "Board roles",
     };
 
     private static string RelationshipLabel(RelativeRelationship relationship) => relationship switch

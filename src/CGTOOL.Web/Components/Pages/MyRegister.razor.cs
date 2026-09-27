@@ -8,8 +8,13 @@ using CGTOOL.Web.Data.Governance;
 
 namespace CGTOOL.Web.Components.Pages;
 
-public partial class MyWorkspace : ComponentBase
+public partial class MyRegister : ComponentBase
 {
+    /// <summary>The folder uploads are filed under. Still "my-workspace" after the page was renamed
+    /// to My Register: the path of every document already on file is stored in the database, so
+    /// renaming the folder would leave every one of them pointing at nothing.</summary>
+    private const string UploadFolder = "my-workspace";
+
     [Inject] private IDbContextFactory<ApplicationDbContext> DbFactory { get; set; } = default!;
     [Inject] private IFamilyMemberWriter FamilyMemberWriter { get; set; } = default!;
     [Inject] private IOwnedCompanyWriter CompanyWriter { get; set; } = default!;
@@ -551,7 +556,7 @@ public partial class MyWorkspace : ComponentBase
                 _documents.Add(document);
             }
 
-            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "my-workspace", "documents");
+            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", UploadFolder, "documents");
             Directory.CreateDirectory(uploadsDir);
             foreach (var stale in Directory.GetFiles(uploadsDir, $"{document.Id}-*.*")) File.Delete(stale);
 
@@ -559,7 +564,7 @@ public partial class MyWorkspace : ComponentBase
             var filePath = Path.Combine(uploadsDir, fileName);
             File.Move(temporaryFile, filePath, overwrite: true);
 
-            document.FilePath = $"/uploads/my-workspace/documents/{fileName}";
+            document.FilePath = $"/uploads/{UploadFolder}/documents/{fileName}";
             document.OriginalFileName = e.File.Name;
             document.UploadedAtUtc = DateTime.UtcNow;
 
@@ -815,7 +820,7 @@ public partial class MyWorkspace : ComponentBase
         StateHasChanged();
         try
         {
-            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "my-workspace", "holdings");
+            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", UploadFolder, "holdings");
             Directory.CreateDirectory(uploadsDir);
 
             var fileName = $"{Guid.NewGuid():N}{extension}";
@@ -829,7 +834,7 @@ public partial class MyWorkspace : ComponentBase
                 if (File.Exists(previous)) File.Delete(previous);
             }
 
-            holding.TradeLicencePath = $"/uploads/my-workspace/holdings/{fileName}";
+            holding.TradeLicencePath = $"/uploads/{UploadFolder}/holdings/{fileName}";
             holding.TradeLicenceFileName = e.File.Name;
 
             var captured = await ReadTradeLicenceAsync(filePath);
@@ -1269,7 +1274,7 @@ public partial class MyWorkspace : ComponentBase
         StateHasChanged();
         try
         {
-            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "my-workspace", "family");
+            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", UploadFolder, "family");
             Directory.CreateDirectory(uploadsDir);
             foreach (var existing in Directory.GetFiles(uploadsDir, $"{target.Id}-{kind}.*")) File.Delete(existing);
 
@@ -1281,7 +1286,7 @@ public partial class MyWorkspace : ComponentBase
                 await stream.CopyToAsync(file);
             }
 
-            var path = $"/uploads/my-workspace/family/{fileName}";
+            var path = $"/uploads/{UploadFolder}/family/{fileName}";
             TradeLicenceExtraction? captured = null;
             IdDocumentExtraction? capturedId = null;
             switch (kind)
@@ -1360,7 +1365,7 @@ public partial class MyWorkspace : ComponentBase
         StateHasChanged();
         try
         {
-            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "my-workspace", "companies");
+            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", UploadFolder, "companies");
             Directory.CreateDirectory(uploadsDir);
             foreach (var existing in Directory.GetFiles(uploadsDir, $"{target.Id}-{kind}.*")) File.Delete(existing);
 
@@ -1372,7 +1377,7 @@ public partial class MyWorkspace : ComponentBase
                 await stream.CopyToAsync(file);
             }
 
-            var path = $"/uploads/my-workspace/companies/{fileName}";
+            var path = $"/uploads/{UploadFolder}/companies/{fileName}";
             TradeLicenceExtraction? captured = null;
             switch (kind)
             {

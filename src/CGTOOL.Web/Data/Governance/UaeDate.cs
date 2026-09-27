@@ -19,6 +19,6 @@ public static class UaeDate
 
     /// <summary>Day-first, and tolerant of the separators people type. Returns null for anything it
     /// cannot read, so the caller decides whether that clears the field or is worth complaining
-    /// about -- see SetDate in MyWorkspace.</summary>
+    /// about -- see SetDate in MyRegister.</summary>
     public static DateTime? Parse(string? text) => DocumentTextParser.TryReadDate(text);
 }

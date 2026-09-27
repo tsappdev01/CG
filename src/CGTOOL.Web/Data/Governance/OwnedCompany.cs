@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CGTOOL.Web.Data.Governance;
 
-/// <summary>A member's own persistent "My Workspace &gt; My Companies" list -- reference data the member
+/// <summary>A member's own persistent "My Register &gt; My Companies" list -- reference data the member
 /// maintains once (companies they or their family own/hold shares in), independent of any specific
 /// declaration cycle.</summary>
 public class OwnedCompany

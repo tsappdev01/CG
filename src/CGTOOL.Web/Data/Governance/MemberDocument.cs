@@ -7,7 +7,7 @@ namespace CGTOOL.Web.Data.Governance;
 /// degree certificate, a power of attorney, whatever else is asked for.</summary>
 public enum MemberDocumentKind { EmiratesId, Passport, TradeLicence, Other }
 
-/// <summary>A document the member keeps on their own file in My Workspace, with the details read off
+/// <summary>A document the member keeps on their own file in My Register, with the details read off
 /// it. Separate from the copies attached to a declaration: those are the evidence for one
 /// submission and are frozen with it, while these are the member's standing record, uploaded once
 /// and reused -- which is also why the declaration can pre-fill from them.

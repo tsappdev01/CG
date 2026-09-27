@@ -164,9 +164,9 @@
                     </div>
                     <div class="cg-actions">
                         <button type="button" class="cg-action-btn" @onclick="AddNinHolderAsync">+ Add relative</button>
-                        <button type="button" class="cg-action-btn cg-good" @onclick="() => PullRelativesFromWorkspaceAsync(false)">Load from My Workspace</button>
+                        <button type="button" class="cg-action-btn cg-good" @onclick="() => PullRelativesFromWorkspaceAsync(false)">Load from My Register</button>
                     </div>
-                    <p class="cg-hint">Your relatives with a NIN in My Workspace are loaded here for you. Use the button to load again after adding one there; rows already here are never touched.</p>
+                    <p class="cg-hint">Your relatives with a NIN in My Register are loaded here for you. Use the button to load again after adding one there; rows already here are never touched.</p>
                 }
 
                 <div class="cg-actions">
@@ -176,9 +176,9 @@
                 @if (_offerWorkspaceSave)
                 {
                     <ConfirmPrompt Show="true"
-                                   Message="Add these relatives to My Workspace as well?"
+                                   Message="Add these relatives to My Register as well?"
                                    Detail="@($"{string.Join(", ", _newToWorkspace.Select(r => r.NameOfShareHolder))} — not recorded there yet. Saved once, they can be pulled into every future declaration instead of retyped.")"
-                                   ConfirmLabel="Add to My Workspace"
+                                   ConfirmLabel="Add to My Register"
                                    CancelLabel="Not now"
                                    OnConfirm="AcceptWorkspaceSaveAsync"
                                    OnCancel="DeclineWorkspaceSave" />
@@ -204,7 +204,7 @@
                 {
                     <ConfirmPrompt Show="true"
                                    Message="Load these from My Documents?"
-                                   Detail="@($"{string.Join(", ", _pullableDocuments.Select(DocumentPullLabel))} — the file and the details it holds. This declaration keeps its own copy, so changing the document in My Workspace later will not change what you declared here.")"
+                                   Detail="@($"{string.Join(", ", _pullableDocuments.Select(DocumentPullLabel))} — the file and the details it holds. This declaration keeps its own copy, so changing the document in My Register later will not change what you declared here.")"
                                    ConfirmLabel="Load them"
                                    CancelLabel="Not now"
                                    OnConfirm="AcceptDocumentPullAsync"
@@ -215,12 +215,12 @@
                     <div class="cg-source-banner-text">
                         <span class="cg-source-banner-title">
                             @(WorkspaceLoadedCount > 0
-                                ? $"{WorkspaceLoadedCount} document{(WorkspaceLoadedCount == 1 ? "" : "s")} loaded from My Workspace"
-                                : "Nothing loaded from My Workspace yet")
+                                ? $"{WorkspaceLoadedCount} document{(WorkspaceLoadedCount == 1 ? "" : "s")} loaded from My Register"
+                                : "Nothing loaded from My Register yet")
                         </span>
-                        <span class="cg-subtitle">Check that each detail below matches your document. Added something new to My Workspace? Reload to pull it in.</span>
+                        <span class="cg-subtitle">Check that each detail below matches your document. Added something new to My Register? Reload to pull it in.</span>
                     </div>
-                    <button type="button" class="cg-action-btn cg-good" @onclick="OfferDocumentPullAsync">Reload from My Workspace</button>
+                    <button type="button" class="cg-action-btn cg-good" @onclick="OfferDocumentPullAsync">Reload from My Register</button>
                 </div>
 
                 <h2 class="cg-section-heading">Identity documents</h2>
@@ -236,7 +236,7 @@
                         <div class="cg-doc-card-source">
                             <span>
                                 @(_loadedFromWorkspace.Contains(MemberDocumentKind.EmiratesId)
-                                    ? "Loaded from My Workspace"
+                                    ? "Loaded from My Register"
                                     : HasEmiratesId ? "Uploaded here" : "JPG, PNG or PDF, up to 1 MB")
                             </span>
                             <span class="cg-doc-card-actions">
@@ -274,7 +274,7 @@
                         </div>
                         @if (IsExpiredOn(_emiratesIdExpiryDate))
                         {
-                            <p class="cg-error">Expired on @UaeDate.Show(_emiratesIdExpiryDate) — upload a current Emirates ID here, and update it in My Workspace.</p>
+                            <p class="cg-error">Expired on @UaeDate.Show(_emiratesIdExpiryDate) — upload a current Emirates ID here, and update it in My Register.</p>
                         }
                     </div>
 
@@ -288,7 +288,7 @@
                         <div class="cg-doc-card-source">
                             <span>
                                 @(_loadedFromWorkspace.Contains(MemberDocumentKind.Passport)
-                                    ? "Loaded from My Workspace"
+                                    ? "Loaded from My Register"
                                     : HasPassport ? "Uploaded here" : "JPG, PNG or PDF, up to 1 MB")
                             </span>
                             <span class="cg-doc-card-actions">
@@ -326,7 +326,7 @@
                         </div>
                         @if (IsExpiredOn(_passportExpiryDate))
                         {
-                            <p class="cg-error">Expired on @UaeDate.Show(_passportExpiryDate) — upload a current passport here, and update it in My Workspace.</p>
+                            <p class="cg-error">Expired on @UaeDate.Show(_passportExpiryDate) — upload a current passport here, and update it in My Register.</p>
                         }
                     </div>
 
@@ -340,7 +340,7 @@
                         <div class="cg-doc-card-source">
                             <span>
                                 @(_loadedFromWorkspace.Contains(MemberDocumentKind.TradeLicence)
-                                    ? "Loaded from My Workspace"
+                                    ? "Loaded from My Register"
                                     : HasTradeLicence ? "Uploaded here" : "JPG, PNG or PDF, up to 1 MB")
                             </span>
                             <span class="cg-doc-card-actions">
@@ -382,7 +382,7 @@
                         </div>
                         @if (IsExpiredOn(_tradeLicenceExpiryDate))
                         {
-                            <p class="cg-error">Expired on @UaeDate.Show(_tradeLicenceExpiryDate) — upload a current trade licence here, and update it in My Workspace.</p>
+                            <p class="cg-error">Expired on @UaeDate.Show(_tradeLicenceExpiryDate) — upload a current trade licence here, and update it in My Register.</p>
                         }
                     </div>
 
@@ -489,7 +489,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <p class="cg-hint">The relatives marked as holding DI shares in My Workspace are loaded here for you — enter the shares each one holds.</p>
+                    <p class="cg-hint">The relatives marked as holding DI shares in My Register are loaded here for you — enter the shares each one holds.</p>
                     <div class="cg-actions">
                         <button type="button" class="cg-action-btn" @onclick="AddRelativeAsync">+ Add shareholder</button>
                         @if (!_relatives.Any(r => r.IsSelf))
@@ -514,9 +514,9 @@
                 @if (_offerShareholderSave)
                 {
                     <ConfirmPrompt Show="true"
-                                   Message="Add these shareholders to My Workspace as well?"
+                                   Message="Add these shareholders to My Register as well?"
                                    Detail="@($"{string.Join(", ", _shareholdersNewToWorkspace.Select(r => r.RelativeName))} — not recorded there yet. Saved once, they are loaded into every future declaration instead of retyped.")"
-                                   ConfirmLabel="Add to My Workspace"
+                                   ConfirmLabel="Add to My Register"
                                    CancelLabel="Not now"
                                    OnConfirm="AcceptShareholderSaveAsync"
                                    OnCancel="DeclineShareholderSaveAsync" />
@@ -526,7 +526,7 @@
                 {
                     <p class="cg-error">
                         Your @Join(expiredNow) @(expiredNow.Count == 1 ? "has" : "have") expired. A declaration cannot be submitted on an expired document —
-                        upload a current copy above, and update it in My Workspace so it is right for next time.
+                        upload a current copy above, and update it in My Register so it is right for next time.
                     </p>
                 }
             </div>

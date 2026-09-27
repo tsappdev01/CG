@@ -42,11 +42,11 @@ public partial class SubmitInsiderDeclaration
     private bool _relativesHaveNin;
     private readonly List<NinHolderRow> _ninHolders = [];
 
-    // Set when answering "yes" turns up relatives in My Workspace that are not in the grid yet.
+    // Set when answering "yes" turns up relatives in My Register that are not in the grid yet.
     // Offered once per answer rather than on every click: a member who said no to the offer and
     // started typing should not be asked again each time they touch the button.
 
-    // The other direction: rows typed here that My Workspace has never heard of. Offered once, on
+    // The other direction: rows typed here that My Register has never heard of. Offered once, on
     // Next, when the rows are finished -- asking as each one is typed would interrupt a half-filled
     // row that has no name yet.
     private bool _offerWorkspaceSave;
@@ -143,7 +143,7 @@ public partial class SubmitInsiderDeclaration
     }
 
     // Functional Spec §3.1/§8: alphanumeric, minimum 10 characters. The rule itself lives in Nin,
-    // so My Workspace enforces the same one when it captures a relative's NIN.
+    // so My Register enforces the same one when it captures a relative's NIN.
     private static bool IsValidNin(string nin) => Nin.IsValid(nin);
 
     /// <summary>Marks a box that holds something that is not a NIN. Empty is not marked: the person
@@ -428,7 +428,7 @@ public partial class SubmitInsiderDeclaration
     }
 
     /// <summary>Answering "yes" is the moment the member is about to type in relatives they have
-    /// very likely already recorded in My Workspace, so that is where the offer belongs. It is only
+    /// very likely already recorded in My Register, so that is where the offer belongs. It is only
     /// made when there is something to load that is not in the grid already, and only when the
     /// answer changes -- clicking "yes" again is not a fresh question.</summary>
     private async Task ChooseRelativesHaveNinAsync(bool haveNin)
@@ -446,7 +446,7 @@ public partial class SubmitInsiderDeclaration
         await PullRelativesFromWorkspaceAsync(silentWhenEmpty: true);
     }
 
-    /// <summary>The relatives this grid could take: recorded in My Workspace, carrying a NIN, and
+    /// <summary>The relatives this grid could take: recorded in My Register, carrying a NIN, and
     /// not already listed here.</summary>
     private async Task<List<FamilyMember>> LoadableRelativesAsync()
     {
@@ -469,13 +469,13 @@ public partial class SubmitInsiderDeclaration
         string.Equals(h.NinNumber.Trim(), relative.NinNumber!.Trim(), StringComparison.OrdinalIgnoreCase)
         || string.Equals(h.NameOfShareHolder.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Fills the relatives' NIN grid from the member's own My Workspace register instead of
+    /// <summary>Fills the relatives' NIN grid from the member's own My Register register instead of
     /// retyping it every quarter. Only relatives that actually have a NIN recorded come across: the
     /// question this grid answers is which relatives hold one, and a row without a NIN fails the
     /// minimum-length rule and blocks Next.
     ///
     /// Rows already in the grid are left alone rather than replaced -- anything typed here, including
-    /// the Additional column that My Workspace has no equivalent for, survives a second pull.</summary>
+    /// the Additional column that My Register has no equivalent for, survives a second pull.</summary>
     private async Task PullRelativesFromWorkspaceAsync(bool silentWhenEmpty = false)
     {
         if (_effectiveMember is null) return;
@@ -492,14 +492,14 @@ public partial class SubmitInsiderDeclaration
         {
             // Silent when this ran on its own: arriving at a question to be told nothing happened
             // is noise. Pressing the button is asking, and an answer is owed.
-            if (!silentWhenEmpty) Toasts.ShowError("No relatives with a NIN are recorded in My Workspace. Add them there first, or enter them here.");
+            if (!silentWhenEmpty) Toasts.ShowError("No relatives with a NIN are recorded in My Register. Add them there first, or enter them here.");
             return;
         }
 
         var loadable = await LoadableRelativesAsync();
         if (loadable.Count == 0)
         {
-            if (!silentWhenEmpty) Toasts.ShowSuccess("Every relative with a NIN in My Workspace is already listed here.");
+            if (!silentWhenEmpty) Toasts.ShowSuccess("Every relative with a NIN in My Register is already listed here.");
             return;
         }
 
@@ -515,12 +515,12 @@ public partial class SubmitInsiderDeclaration
 
         var alreadyListed = onFile - loadable.Count;
 
-        await LogGridChangeAsync($"Loaded {loadable.Count} relative(s) into the relatives' NIN grid from My Workspace"
+        await LogGridChangeAsync($"Loaded {loadable.Count} relative(s) into the relatives' NIN grid from My Register"
             + (alreadyListed > 0 ? $"; {alreadyListed} already listed." : "."));
 
         Toasts.ShowSuccess(alreadyListed == 0
-            ? $"Loaded {loadable.Count} relative(s) from My Workspace. Check the NINs before continuing."
-            : $"Loaded {loadable.Count} relative(s) from My Workspace; {alreadyListed} were already listed.");
+            ? $"Loaded {loadable.Count} relative(s) from My Register. Check the NINs before continuing."
+            : $"Loaded {loadable.Count} relative(s) from My Register; {alreadyListed} were already listed.");
     }
 
     private async Task RemoveNinHolderAsync(NinHolderRow row)
@@ -728,7 +728,7 @@ public partial class SubmitInsiderDeclaration
 
     // ---------- the Documents & shareholding step ----------
 
-    /// <summary>Which documents on this step came from My Workspace rather than being uploaded
+    /// <summary>Which documents on this step came from My Register rather than being uploaded
     /// here, so each card can say where it got its file.</summary>
     private readonly HashSet<MemberDocumentKind> _loadedFromWorkspace = [];
 
@@ -769,7 +769,7 @@ public partial class SubmitInsiderDeclaration
     private bool _offerDocumentPull;
     private List<MemberDocument> _pullableDocuments = [];
 
-    /// <summary>The member's My Workspace documents that this screen has a place for and that have
+    /// <summary>The member's My Register documents that this screen has a place for and that have
     /// not been supplied here yet. Other documents are left out: this screen's "Other" slot is one
     /// file, and there is no telling which of a member's several would be the one meant.</summary>
     private async Task<List<MemberDocument>> PullableDocumentsAsync()
@@ -831,7 +831,7 @@ public partial class SubmitInsiderDeclaration
     }
 
     private void WarnAboutExpiredInWorkspace() =>
-        Toasts.ShowError($"Your {Join(_expiredInWorkspace.Select(DocumentPullLabel).ToList())} in My Workspace "
+        Toasts.ShowError($"Your {Join(_expiredInWorkspace.Select(DocumentPullLabel).ToList())} in My Register "
             + $"{(_expiredInWorkspace.Count == 1 ? "has" : "have")} expired and {(_expiredInWorkspace.Count == 1 ? "was" : "were")} not brought across. "
             + "Upload a current copy there.");
 
@@ -842,7 +842,7 @@ public partial class SubmitInsiderDeclaration
         if (_pullableDocuments.Count == 0)
         {
             Toasts.ShowError(_expiredInWorkspace.Count > 0
-                ? $"Nothing to load: your {Join(_expiredInWorkspace.Select(DocumentPullLabel).ToList())} in My Workspace "
+                ? $"Nothing to load: your {Join(_expiredInWorkspace.Select(DocumentPullLabel).ToList())} in My Register "
                   + $"{(_expiredInWorkspace.Count == 1 ? "has" : "have")} expired. Upload a current copy there, then load it in."
                 : "Nothing to load: My Documents has no Emirates ID, passport or trade licence that this declaration still needs.");
             return;
@@ -860,7 +860,7 @@ public partial class SubmitInsiderDeclaration
     }
 
     /// <summary>Copies the file as well as the details. The declaration keeps its own copy of what
-    /// was declared: My Workspace is a live register the member keeps up to date, and a submitted
+    /// was declared: My Register is a live register the member keeps up to date, and a submitted
     /// declaration has to still show the document as it was on the day, not whatever replaced it
     /// since.</summary>
     private async Task AcceptDocumentPullAsync()
@@ -952,11 +952,11 @@ public partial class SubmitInsiderDeclaration
     };
 
 
-    // ---------- the shareholding grid and My Workspace ----------
+    // ---------- the shareholding grid and My Register ----------
 
     /// <summary>Answering yes is the moment the member would start typing relatives they have
     /// already recorded, so the grid fills itself from the register -- relation, name and NIN, the
-    /// three columns My Workspace has an answer for. The share count and the Additional note are
+    /// three columns My Register has an answer for. The share count and the Additional note are
     /// this declaration's own and stay empty.
     ///
     /// Only relatives with a NIN come across: this grid is about who holds shares, and a holding is
@@ -983,7 +983,7 @@ public partial class SubmitInsiderDeclaration
         // it -- which kills the circuit and takes the page with it.
         await using var db = await DbFactory.CreateDbContextAsync();
 
-        // Marked as holding DI shares in My Workspace -- not merely having a NIN. A NIN says a
+        // Marked as holding DI shares in My Register -- not merely having a NIN. A NIN says a
         // person can hold shares; this grid is about who does, and the member answers that once on
         // the register instead of again every quarter.
         var relatives = await db.FamilyMembers.AsNoTracking()
@@ -993,7 +993,7 @@ public partial class SubmitInsiderDeclaration
 
         if (relatives.Count == 0)
         {
-            Toasts.ShowError("No relatives are marked as holding DI shares in My Workspace. Add the rows here, or mark them there so they load next time.");
+            Toasts.ShowError("No relatives are marked as holding DI shares in My Register. Add the rows here, or mark them there so they load next time.");
             return;
         }
 
@@ -1020,8 +1020,8 @@ public partial class SubmitInsiderDeclaration
 
         if (added == 0) return;
 
-        await LogGridChangeAsync($"Loaded {added} relative(s) into the shareholding grid from My Workspace.");
-        Toasts.ShowSuccess($"Loaded {added} relative(s) who hold DI shares from My Workspace. Enter the shares each of them holds.");
+        await LogGridChangeAsync($"Loaded {added} relative(s) into the shareholding grid from My Register.");
+        Toasts.ShowSuccess($"Loaded {added} relative(s) who hold DI shares from My Register. Enter the shares each of them holds.");
     }
 
     /// <summary>Shareholding rows the register has never heard of -- the same question the relatives'
@@ -1088,7 +1088,7 @@ public partial class SubmitInsiderDeclaration
         }
 
         _shareholdersNewToWorkspace.Clear();
-        Toasts.ShowSuccess($"Added {saved} related part{(saved == 1 ? "y" : "ies")} to My Workspace.");
+        Toasts.ShowSuccess($"Added {saved} related part{(saved == 1 ? "y" : "ies")} to My Register.");
         await ContinueToReviewAsync();
     }
 
@@ -1123,7 +1123,7 @@ public partial class SubmitInsiderDeclaration
             }
         }
 
-        // Relatives typed here that My Workspace does not have are worth keeping: the register is
+        // Relatives typed here that My Register does not have are worth keeping: the register is
         // what next quarter's declaration pulls from, so a relative entered once and never saved is
         // one the member types again every quarter. Asked here, on Next, because that is when the
         // rows are finished.
@@ -1143,7 +1143,7 @@ public partial class SubmitInsiderDeclaration
         _pendingCapture1Confirm = true;
     }
 
-    /// <summary>Grid rows that no relative in My Workspace matches, by NIN or by name. Either way of
+    /// <summary>Grid rows that no relative in My Register matches, by NIN or by name. Either way of
     /// matching is enough: a member who typed the name differently but the same NIN has not created
     /// a second person.</summary>
     private async Task<List<NinHolderRow>> RowsNotInWorkspaceAsync()
@@ -1176,7 +1176,7 @@ public partial class SubmitInsiderDeclaration
         _pendingCapture1Confirm = true;
     }
 
-    /// <summary>Writes the new rows into My Workspace as related parties, then carries on to the
+    /// <summary>Writes the new rows into My Register as related parties, then carries on to the
     /// confirmation. Only the three fields this grid holds are set; everything else on a related
     /// party is left for the member to fill in there, so nothing is invented on their behalf.</summary>
     private async Task AcceptWorkspaceSaveAsync()
@@ -1211,7 +1211,7 @@ public partial class SubmitInsiderDeclaration
         }
 
         _newToWorkspace.Clear();
-        Toasts.ShowSuccess($"Added {saved} related part{(saved == 1 ? "y" : "ies")} to My Workspace.");
+        Toasts.ShowSuccess($"Added {saved} related part{(saved == 1 ? "y" : "ies")} to My Register.");
         _pendingCapture1Confirm = true;
     }
 
@@ -1270,7 +1270,7 @@ public partial class SubmitInsiderDeclaration
         if (ExpiredDocuments() is { Count: > 0 } expired)
         {
             Toasts.ShowError($"Your {Join(expired)} {(expired.Count == 1 ? "has" : "have")} expired. "
-                + "Upload a current copy here, and update it in My Workspace so it is right for next time.");
+                + "Upload a current copy here, and update it in My Register so it is right for next time.");
             return;
         }
 

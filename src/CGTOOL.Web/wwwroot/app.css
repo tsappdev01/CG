@@ -2145,7 +2145,7 @@ select.cg-input {
 }
 
 /* =====================================================================================
-   My Workspace -- Insider Trading & Related Party Declaration
+   My Register -- Insider Trading & Related Party Declaration
    ===================================================================================== */
 .cg-breadcrumb {
     display: flex;
@@ -2570,7 +2570,7 @@ select.cg-input {
 .cg-count-critical { background: var(--cg-critical-tint); color: var(--cg-critical); }
 .cg-modal.cg-confirm-modal { width: min(460px, calc(100vw - 32px)); }
 
-/* "Update My Workspace?" -- one card per company, each change as before -> after on its own line.
+/* "Update My Register?" -- one card per company, each change as before -> after on its own line.
    The same changes run together as a sentence were a paragraph to decode rather than a question to
    answer. */
 .cg-modal.cg-ws-modal { width: min(560px, calc(100vw - 32px)); }

@@ -64,8 +64,8 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private readonly List<CompanyRow> _boardRoleCompanies = [];
     private readonly List<ConflictRow> _conflicts = [];
 
-    // My Workspace (Family Members / Owned Companies) -- the declarant's own reusable reference data,
-    // offered here as "pick from My Workspace" quick-adds so the same relative/company name and
+    // My Register (Family Members / Owned Companies) -- the declarant's own reusable reference data,
+    // offered here as "pick from My Register" quick-adds so the same relative/company name and
     // trade license documents don't need retyping/re-uploading every declaration cycle.
     private readonly List<FamilyMember> _myFamilyMembers = [];
     private readonly List<OwnedCompany> _myCompanies = [];
@@ -108,7 +108,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         public string Name { get; set; } = string.Empty;
         public RelativeRelationship Relationship { get; set; } = RelativeRelationship.Father;
 
-        /// <summary>The My Workspace record this row came from, where it came from one. What makes
+        /// <summary>The My Register record this row came from, where it came from one. What makes
         /// an edit here reach the register, and what the delete prompt has to offer to remove.
         /// Null for a row typed straight into the declaration.</summary>
         public int? FamilyMemberId { get; set; }
@@ -314,7 +314,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         foreach (var r in declaration.Relatives)
         {
             // Matched by name: the declaration stores the answer, not a link to the register, and
-            // the link is what lets an edit here reach My Workspace.
+            // the link is what lets an edit here reach My Register.
             var linked = _myFamilyMembers.FirstOrDefault(f =>
                 string.Equals(f.Name.Trim(), r.Name.Trim(), StringComparison.OrdinalIgnoreCase));
 
@@ -390,33 +390,6 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// <summary>Writes a change made here back to the member's register, for a row that came from
     /// it. The two are the same person: correcting a name on the declaration and leaving My
     /// Workspace saying something else would put the mistake back next quarter.</summary>
-    private async Task SyncRelativeToWorkspaceAsync(RelativeRow row)
-    {
-        if (_effectiveMember is null || row.FamilyMemberId is not { } id) return;
-        if (string.IsNullOrWhiteSpace(row.Name)) return;
-
-        var familyMember = _myFamilyMembers.FirstOrDefault(f => f.Id == id);
-        if (familyMember is null) return;
-
-        var name = row.Name.Trim();
-        if (string.Equals(familyMember.Name, name, StringComparison.Ordinal)
-            && familyMember.Relationship == row.Relationship)
-        {
-            return;
-        }
-
-        var before = $"{familyMember.Name} ({RelationshipLabel(familyMember.Relationship)})";
-        familyMember.Name = name;
-        familyMember.Relationship = row.Relationship;
-        await FamilyMemberWriter.UpdateAsync(familyMember);
-
-        var state = await AuthState.GetAuthenticationStateAsync();
-        var actorName = state.User.Identity?.Name ?? "unknown";
-        await AuditLog.LogAsync(actorName, AuditAction.Update, nameof(FamilyMember), familyMember.Id.ToString(),
-            $"Edited related party from the Related Party & COI declaration: {before} \u2192 {name} ({RelationshipLabel(row.Relationship)}).",
-            actingOnBehalfOf: Impersonation.ActingMemberId is not null ? _effectiveMember.FullName : null);
-    }
-
     // Removing a relative asks how far the removal should reach: out of this declaration, or out of
     // the register as well. Held here while the question is on screen.
     private RelativeRow? _pendingRelativeRemoval;
@@ -454,10 +427,10 @@ public partial class SubmitRelatedPartyCoiDeclaration
             var actorName = state.User.Identity?.Name ?? "unknown";
             await AuditLog.LogAsync(actorName, AuditAction.Delete, nameof(FamilyMember), id.ToString(),
                 $"Deleted related party {familyMember?.Name ?? row.Name} ({RelationshipLabel(row.Relationship)}) "
-                + "from My Workspace, via the Related Party & COI declaration.",
+                + "from My Register, via the Related Party & COI declaration.",
                 actingOnBehalfOf: Impersonation.ActingMemberId is not null ? _effectiveMember.FullName : null);
 
-            Toasts.ShowSuccess("Removed from this declaration and from My Workspace.");
+            Toasts.ShowSuccess("Removed from this declaration and from My Register.");
         }
 
         RemoveRelative(row);
@@ -539,7 +512,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         return row;
     }
 
-    // ---------- the three company sections and My Workspace ----------
+    // ---------- the three company sections and My Register ----------
 
     /// <summary>The threshold the two ownership sections are asking about.</summary>
     private const decimal DeclarableOwnershipPercentage = 30m;
@@ -661,7 +634,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private static void AddWorkspaceDocument(CompanyRow row, string? path, string label)
     {
         if (string.IsNullOrEmpty(path)) return;
-        row.Documents.Add(new UploadedFileRow { Path = path, FileName = $"{label} (from My Workspace)" });
+        row.Documents.Add(new UploadedFileRow { Path = path, FileName = $"{label} (from My Register)" });
     }
 
     /// <summary>Answers the rows that were entered before the register held the answer, or saved
@@ -678,35 +651,82 @@ public partial class SubmitRelatedPartyCoiDeclaration
         }
     }
 
-    // ---------- Part II corrections, offered back to My Workspace ----------
+    // ---------- Part II corrections, offered back to My Register ----------
 
-    /// <summary>One company the declaration now describes differently from the register. Carries the
-    /// register's own row so applying it does not have to find it again.</summary>
-    private sealed record WorkspaceCompanyUpdate(
-        string CompanyName,
-        string? BeforeActivity,
-        string? AfterActivity,
-        RelatedPartyHoldingNature BeforeNature,
-        RelatedPartyHoldingNature AfterNature,
-        OwnedCompany? Company,
-        FamilyMemberHolding? Holding);
+    /// <summary>One field the declaration now states differently from the register.</summary>
+    private sealed record RegisterChange(string Field, string? Before, string? After);
 
-    private List<WorkspaceCompanyUpdate>? _pendingWorkspaceUpdates;
+    /// <summary>One record the declaration now describes differently from the register -- a relative
+    /// or a company. Carries the write itself, so the dialog can offer relatives and companies the
+    /// same way without knowing what either is.</summary>
+    private sealed record RegisterUpdate(string Title, List<RegisterChange> Changes, Func<Task> ApplyAsync)
+    {
+        /// <summary>Identifies the answer that was declined, so declining is remembered for the
+        /// values declined and changing them again asks afresh.</summary>
+        public string Fingerprint => $"{Title}|" + string.Join("|", Changes.Select(c => $"{c.Field}={c.After}"));
+    }
+
+    private List<RegisterUpdate>? _pendingWorkspaceUpdates;
     private Step? _stepAfterWorkspacePrompt;
 
     /// <summary>What the member has already said no to, and for which values. Keyed that way so
     /// declining is remembered for the answer given, and changing the figures again asks afresh
     /// rather than being silently taken as the same refusal.</summary>
-    private readonly Dictionary<string, (string? Activity, RelatedPartyHoldingNature Nature)> _declinedWorkspaceUpdates =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _declinedWorkspaceUpdates = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The relatives this declaration now names differently from the register. Only the ones
+    /// that came from it: a relative typed in here is offered to the register separately, on save.</summary>
+    private List<RegisterUpdate> PendingRelativeUpdates()
+    {
+        var updates = new List<RegisterUpdate>();
+        if (_nothingRelatives) return updates;
+
+        foreach (var row in _relatives)
+        {
+            if (row.FamilyMemberId is not { } id) continue;
+
+            var familyMember = _myFamilyMembers.FirstOrDefault(f => f.Id == id);
+            if (familyMember is null) continue;
+
+            var name = row.Name.Trim();
+            if (name.Length == 0) continue;
+
+            var changes = new List<RegisterChange>();
+            if (!string.Equals(familyMember.Name.Trim(), name, StringComparison.Ordinal))
+            {
+                changes.Add(new RegisterChange("Name", familyMember.Name, name));
+            }
+            if (familyMember.Relationship != row.Relationship)
+            {
+                changes.Add(new RegisterChange("Relationship",
+                    RelationshipLabel(familyMember.Relationship), RelationshipLabel(row.Relationship)));
+            }
+
+            if (changes.Count == 0) continue;
+
+            var target = familyMember;
+            var newName = name;
+            var newRelationship = row.Relationship;
+            updates.Add(new RegisterUpdate(familyMember.Name, changes, async () =>
+            {
+                target.Name = newName;
+                target.Relationship = newRelationship;
+                await FamilyMemberWriter.UpdateAsync(target);
+                await LogRegisterUpdateAsync(nameof(FamilyMember), target.Id,
+                    $"related party {newName}", changes);
+            }));
+        }
+
+        return updates;
+    }
 
     /// <summary>Every Part II row whose company the register knows and now describes differently.
     ///
     /// A cleared field is not a change to carry over: blanking an activity here says this
     /// declaration does not state it, not that the register should forget it.</summary>
-    private List<WorkspaceCompanyUpdate> PendingWorkspaceCompanyUpdates()
+    private List<RegisterUpdate> PendingCompanyUpdates()
     {
-        var updates = new List<WorkspaceCompanyUpdate>();
+        var updates = new List<RegisterUpdate>();
         if (_nothingConflicts) return updates;
 
         foreach (var row in _conflicts)
@@ -728,24 +748,38 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 : row.PrincipalBusinessActivity.Trim();
             var afterNature = ParseHoldingNature(row.NatureOfHolding) ?? beforeNature;
 
-            var activityChanged = afterActivity is not null
-                && !string.Equals(beforeActivity?.Trim(), afterActivity, StringComparison.Ordinal);
-            if (!activityChanged && afterNature == beforeNature) continue;
-
-            if (_declinedWorkspaceUpdates.TryGetValue(name, out var declined)
-                && declined == (afterActivity, afterNature))
+            var changes = new List<RegisterChange>();
+            if (afterActivity is not null && !string.Equals(beforeActivity?.Trim(), afterActivity, StringComparison.Ordinal))
             {
-                continue;
+                changes.Add(new RegisterChange("Principal Business Activity", beforeActivity, afterActivity));
+            }
+            if (afterNature != beforeNature)
+            {
+                changes.Add(new RegisterChange("Nature of Holding",
+                    beforeNature == RelatedPartyHoldingNature.None ? null : HoldingNatureLabel(beforeNature),
+                    HoldingNatureLabel(afterNature)));
             }
 
-            updates.Add(new WorkspaceCompanyUpdate(
-                name,
-                beforeActivity,
-                activityChanged ? afterActivity : null,
-                beforeNature,
-                afterNature,
-                company,
-                holding));
+            if (changes.Count == 0) continue;
+
+            var activity = changes.Any(c => c.Field == "Principal Business Activity") ? afterActivity : null;
+            updates.Add(new RegisterUpdate(name, changes, async () =>
+            {
+                if (company is not null)
+                {
+                    if (activity is not null) company.PrincipalBusinessActivity = activity;
+                    company.NatureOfHolding = afterNature;
+                    await CompanyWriter.UpdateAsync(company);
+                    await LogRegisterUpdateAsync(nameof(OwnedCompany), company.Id, name, changes);
+                }
+                else
+                {
+                    if (activity is not null) holding!.PrincipalBusinessActivity = activity;
+                    holding!.NatureOfHolding = afterNature;
+                    await HoldingWriter.UpdateAsync(holding);
+                    await LogRegisterUpdateAsync(nameof(FamilyMemberHolding), holding.Id, name, changes);
+                }
+            }));
         }
 
         return updates;
@@ -765,67 +799,57 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// through it reads as though something had been deleted.</summary>
     private static string BeforeClass(bool nothingThere) => nothingThere ? "cg-ws-none" : "cg-ws-before";
 
-    private static string Quote(string? value) => string.IsNullOrWhiteSpace(value) ? "(blank)" : $"\u201c{value.Trim()}\u201d";
+    private static string Quote(string? value) => string.IsNullOrWhiteSpace(value) ? "(blank)" : $"“{value.Trim()}”";
 
     private static string HoldingNatureLabel(RelatedPartyHoldingNature nature) =>
         nature == RelatedPartyHoldingNature.None ? "(not set)" : nature.ToString();
+
+    /// <summary>Offers what has changed to the register, if anything has, and holds the move to
+    /// <paramref name="target"/> until the member answers. Returns false when nothing was asked, so
+    /// the caller carries on.</summary>
+    private bool OfferRegisterUpdates(List<RegisterUpdate> updates, Step target)
+    {
+        var unanswered = updates.Where(u => !_declinedWorkspaceUpdates.Contains(u.Fingerprint)).ToList();
+        if (unanswered.Count == 0) return false;
+
+        _pendingWorkspaceUpdates = unanswered;
+        _stepAfterWorkspacePrompt = target;
+        return true;
+    }
+
+    private async Task LogRegisterUpdateAsync(string entity, int id, string what, List<RegisterChange> changes)
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var actorName = state.User.Identity?.Name ?? "unknown";
+
+        var described = string.Join("; ", changes.Select(c => $"{c.Field} {Quote(c.Before)} → {Quote(c.After)}"));
+        await AuditLog.LogAsync(actorName, AuditAction.Update, entity, id.ToString(),
+            $"Updated {what} in My Register from the Related Party & COI declaration: {described}.",
+            actingOnBehalfOf: Impersonation.ActingMemberId is not null ? _effectiveMember?.FullName : null);
+    }
 
     private async Task ConfirmWorkspaceUpdatesAsync()
     {
         var updates = _pendingWorkspaceUpdates ?? [];
         _pendingWorkspaceUpdates = null;
 
-        var state = await AuthState.GetAuthenticationStateAsync();
-        var actorName = state.User.Identity?.Name ?? "unknown";
-        var onBehalfOf = Impersonation.ActingMemberId is not null ? _effectiveMember?.FullName : null;
-
         foreach (var update in updates)
         {
-            string entity;
-            string id;
-
-            if (update.Company is { } company)
-            {
-                if (update.AfterActivity is not null) company.PrincipalBusinessActivity = update.AfterActivity;
-                company.NatureOfHolding = update.AfterNature;
-                await CompanyWriter.UpdateAsync(company);
-                (entity, id) = (nameof(OwnedCompany), company.Id.ToString());
-            }
-            else
-            {
-                var holding = update.Holding!;
-                if (update.AfterActivity is not null) holding.PrincipalBusinessActivity = update.AfterActivity;
-                holding.NatureOfHolding = update.AfterNature;
-                await HoldingWriter.UpdateAsync(holding);
-                (entity, id) = (nameof(FamilyMemberHolding), holding.Id.ToString());
-            }
-
-            await AuditLog.LogAsync(actorName, AuditAction.Update, entity, id,
-                $"Updated {update.CompanyName} in My Workspace from the Related Party & COI declaration: "
-                + $"{DescribeWorkspaceUpdate(update)}",
-                actingOnBehalfOf: onBehalfOf);
+            await update.ApplyAsync();
         }
 
         Toasts.ShowSuccess(updates.Count == 1
-            ? $"{updates[0].CompanyName} updated in My Workspace."
-            : $"{updates.Count} companies updated in My Workspace.");
+            ? $"{updates[0].Title} updated in My Register."
+            : $"{updates.Count} records updated in My Register.");
 
         ResumeAfterWorkspacePrompt();
-    }
-
-    private static string DescribeWorkspaceUpdate(WorkspaceCompanyUpdate u)
-    {
-        var parts = new List<string>();
-        if (u.AfterActivity is not null) parts.Add($"activity {Quote(u.BeforeActivity)} \u2192 {Quote(u.AfterActivity)}");
-        if (u.AfterNature != u.BeforeNature) parts.Add($"nature of holding {HoldingNatureLabel(u.BeforeNature)} \u2192 {HoldingNatureLabel(u.AfterNature)}");
-        return string.Join("; ", parts) + ".";
     }
 
     private void DeclineWorkspaceUpdates()
     {
         foreach (var update in _pendingWorkspaceUpdates ?? [])
         {
-            _declinedWorkspaceUpdates[update.CompanyName] = (update.AfterActivity, update.AfterNature);
+            _declinedWorkspaceUpdates.Add(update.Fingerprint);
         }
 
         _pendingWorkspaceUpdates = null;
@@ -865,7 +889,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     }
 
     /// <summary>What the register says the member's interest in this company is. It is recorded once
-    /// in My Workspace -- on the company for their own, on the holding for a relative's -- so Part II
+    /// in My Register -- on the company for their own, on the holding for a relative's -- so Part II
     /// reads it from there rather than asking for the same answer a second time. It stays editable:
     /// the register says how the interest is held, and Part II is where the member says so for this
     /// declaration.</summary>
@@ -1053,18 +1077,19 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 if (!ValidateStep(WizardSteps[i].Step)) return;
             }
 
-            // Leaving Part II behind: what was corrected there may be a correction to the register,
-            // and this is the last moment the member is looking at it.
-            var conflictsIndex = IndexOfStep(Step.Conflicts);
-            if (from <= conflictsIndex && to > conflictsIndex)
+            // Leaving a step behind: what was corrected on it may be a correction to the register,
+            // and this is the last moment the member is looking at it. Asked here rather than as
+            // they type, so a dialog does not interrupt every field they tab out of.
+            var relativesIndex = IndexOfStep(Step.Relatives);
+            if (from <= relativesIndex && to > relativesIndex && OfferRegisterUpdates(PendingRelativeUpdates(), target))
             {
-                var updates = PendingWorkspaceCompanyUpdates();
-                if (updates.Count > 0)
-                {
-                    _pendingWorkspaceUpdates = updates;
-                    _stepAfterWorkspacePrompt = target;
-                    return;
-                }
+                return;
+            }
+
+            var conflictsIndex = IndexOfStep(Step.Conflicts);
+            if (from <= conflictsIndex && to > conflictsIndex && OfferRegisterUpdates(PendingCompanyUpdates(), target))
+            {
+                return;
             }
 
             if (target == Step.Review)

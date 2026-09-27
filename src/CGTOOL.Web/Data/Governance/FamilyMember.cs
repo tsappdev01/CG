@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CGTOOL.Web.Data.Governance;
 
-/// <summary>A member's own persistent "My Workspace &gt; My Family" list -- reference data the member
+/// <summary>A member's own persistent "My Register &gt; My Family" list -- reference data the member
 /// maintains once, independent of any specific declaration cycle (unlike InsiderDeclarationRelative/
 /// CoiRelative, which are answers captured against one particular submission).</summary>
 /// <summary>How the organization is held. Replaced Direct/Indirect, which described the route to an

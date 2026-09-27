@@ -4,7 +4,7 @@ namespace CGTOOL.Web.Data.Governance;
 /// characters (Insider Trading Declaration Functional Spec §3.1/§8).
 ///
 /// One definition, used by every screen that takes one. It used to live as a private method on the
-/// declaration page, so My Workspace -- which captures a relative's NIN months before the
+/// declaration page, so My Register -- which captures a relative's NIN months before the
 /// declaration asks for it -- accepted anything. A NIN that was fine where it was typed and
 /// rejected where it was used is the worst of both.</summary>
 public static class Nin

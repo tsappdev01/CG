@@ -48,10 +48,15 @@
 
     The check looks for the newest columns this file depends on. If they are missing it says so
     once and switches execution off for the rest of the script, so nothing is half-applied.
+
+    Check only what these procedures still READ OR WRITE. A column that a migration has since
+    dropped must come out of this list at the same time: left in, it makes the guard demand
+    something a correct schema no longer has, and the refusal gets more certain the more up to
+    date the database is. FamilyMembers.NatureOfHolding did exactly that between
+    AddFamilyMemberHoldings and this line being removed.
 */
 IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'IdentificationNumber') IS NULL
-    OR COL_LENGTH('dbo.FamilyMembers', 'NatureOfHolding') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'TradeLicencePath') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'NinNumber') IS NULL
     OR COL_LENGTH('dbo.FamilyMembers', 'HoldsDiShares') IS NULL

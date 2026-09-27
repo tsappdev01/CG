@@ -249,6 +249,8 @@ public partial class SubmitRelatedPartyCoiDeclaration
             AutoLoadCompanySections();
         }
 
+        FillConflictNaturesFromWorkspace();
+
         _step = _run is null ? Step.NotDue : Step.Relatives;
     }
 
@@ -349,6 +351,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
             PrincipalBusinessActivity = c.PrincipalBusinessActivity ?? string.Empty,
             NatureOfHolding = c.NatureOfHolding ?? string.Empty,
         }));
+        FillConflictNaturesFromWorkspace();
 
         _step = Step.Relatives;
         ApplyUaePassReturnFlag();
@@ -657,6 +660,20 @@ public partial class SubmitRelatedPartyCoiDeclaration
         row.Documents.Add(new UploadedFileRow { Path = path, FileName = $"{label} (from My Workspace)" });
     }
 
+    /// <summary>Answers the rows that were entered before the register held the answer, or saved
+    /// while Part II still asked for it separately. Only the blank ones: what the member typed is
+    /// their answer, and the register does not overrule it.</summary>
+    private void FillConflictNaturesFromWorkspace()
+    {
+        foreach (var row in _conflicts.Where(c => string.IsNullOrWhiteSpace(c.NatureOfHolding)))
+        {
+            if (HoldingNatureFromWorkspace(row.CompanyOrCounterpartyName) is { } nature)
+            {
+                row.NatureOfHolding = nature;
+            }
+        }
+    }
+
     private void AddConflict() => _conflicts.Add(new ConflictRow());
     private void RemoveConflict(ConflictRow row) => _conflicts.Remove(row);
 
@@ -673,6 +690,34 @@ public partial class SubmitRelatedPartyCoiDeclaration
         {
             row.PrincipalBusinessActivity = match.PrincipalBusinessActivity;
         }
+
+        if (HoldingNatureFromWorkspace(value) is { } nature)
+        {
+            row.NatureOfHolding = nature;
+        }
+    }
+
+    /// <summary>What the register says the member's interest in this company is. It is recorded once
+    /// in My Workspace -- on the company for their own, on the holding for a relative's -- so Part II
+    /// reads it from there rather than asking for the same answer a second time. It stays editable:
+    /// the register says how the interest is held, and Part II is where the member says so for this
+    /// declaration.</summary>
+    private string? HoldingNatureFromWorkspace(string companyName)
+    {
+        var name = companyName.Trim();
+        if (name.Length == 0) return null;
+
+        var nature = _myCompanies
+            .FirstOrDefault(c => string.Equals(c.CompanyName.Trim(), name, StringComparison.OrdinalIgnoreCase))
+            ?.NatureOfHolding;
+
+        nature ??= _myFamilyMembers
+            .SelectMany(f => f.Holdings)
+            .FirstOrDefault(h => string.Equals(h.CompanyName.Trim(), name, StringComparison.OrdinalIgnoreCase))
+            ?.NatureOfHolding;
+
+        // "None" is the register saying it was never answered, not an answer to copy over.
+        return nature is null or RelatedPartyHoldingNature.None ? null : nature.ToString();
     }
 
     // Functional Spec §5.6: expiry visibility. "Expired"/"Expiring soon" thresholds mirror the

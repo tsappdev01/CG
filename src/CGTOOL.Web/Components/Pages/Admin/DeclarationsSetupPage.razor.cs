@@ -211,17 +211,28 @@ public partial class DeclarationsSetupPage
         };
     }
 
-    /// <summary>Whether recall exists for this declaration type at all, apart from any one run. Only
-    /// the two types with submissions have it -- and recall is the only way a closed period is ever
-    /// re-opened, so this also decides whether telling the admin to recall is honest advice or a
-    /// pointer to a button that is not there.</summary>
-    private bool TypeSupportsRecall =>
+    /// <summary>Whether recall exists for this type at all, apart from any one run. It is also the
+    /// only way a period closed by an earlier send is re-opened, so without it a notification sent
+    /// by mistake could never be corrected -- which is why the notification-only types have it too,
+    /// and why this decides whether telling the admin to recall is honest advice or a pointer to a
+    /// button that is not there.</summary>
+    private bool TypeSupportsRecall => Type is DeclarationCycleType.InsiderTrading
+        or DeclarationCycleType.ConflictOfInterest
+        or DeclarationCycleType.RelatedPartyRegister
+        or DeclarationCycleType.BlackoutPeriod;
+
+    /// <summary>Whether members submit anything against this type. The others are notices: nothing
+    /// is collected, so a recall has nothing to destroy and the submission check below is vacuously
+    /// satisfied rather than skipped.</summary>
+    private bool TypeHasSubmissions =>
         Type is DeclarationCycleType.InsiderTrading or DeclarationCycleType.ConflictOfInterest;
 
     private bool CanRecall(DeclarationCycleRun run)
     {
         if (!TypeSupportsRecall) return false;
         if (!run.Sent || run.Recalled) return false;
+
+        // Empty for the types with no submissions, so those recall freely.
         return !_submittedCounts.TryGetValue(run.Id, out var count) || count == 0;
     }
 

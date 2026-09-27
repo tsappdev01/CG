@@ -160,16 +160,24 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
     public static async Task RecallAsync(IActivityEmailSender emailSender, IDeclarationCycleRunWriter runWriter, IAuditLogger auditLog, DeclarationCycleRun run, DeclarationCycleType type, string actorName, CancellationToken ct = default)
     {
         var periodLabel = $"Q{run.PeriodQuarter} {run.PeriodYear}";
-        var subject = $"Recalled: {TypeLabel(type)} Declaration Notification — {periodLabel}";
+
+        // Blackout Period and Scheduled Maintenance are notices; nothing is declared against them.
+        // Calling one a "declaration notification" in the email that withdraws it contradicts the
+        // notice it is withdrawing, and the page already draws this line in its own heading.
+        var isDeclaration = type is DeclarationCycleType.InsiderTrading
+            or DeclarationCycleType.ConflictOfInterest
+            or DeclarationCycleType.RelatedPartyRegister;
+
+        var subject = $"Recalled: {TypeLabel(type)} {(isDeclaration ? "Declaration Notification" : "Notification")} — {periodLabel}";
 
         foreach (var recipient in run.Recipients)
         {
             var body = $"""
                 <p>Dear {recipient.MemberName},</p>
-                <p>The {TypeLabel(type)} declaration notification for <b>{periodLabel}</b> (previously due
+                <p>The {TypeLabel(type)} {(isDeclaration ? "declaration notification" : "notification")} for <b>{periodLabel}</b> (previously due
                 {run.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")}) that was sent to you on
                 {run.SentAtUtc.ToLocalDisplay("dd/MM/yyyy")} has been <b>recalled</b> by the Corporate Governance team.</p>
-                <p>No submission is required for this notice. You will be notified separately if this declaration is re-issued.</p>
+                <p>No {(isDeclaration ? "submission" : "action")} is required for this notice. You will be notified separately if it is re-issued.</p>
                 <p>Should you have any queries, please contact the Corporate Affairs Office.</p>
                 """;
 

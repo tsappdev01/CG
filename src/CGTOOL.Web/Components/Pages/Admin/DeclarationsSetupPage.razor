@@ -320,7 +320,8 @@
             @if (_pendingRecallRun is not null)
             {
                 <ConfirmPrompt Show="true"
-                               Message="@($"Recall this Q{_pendingRecallRun.PeriodQuarter} {_pendingRecallRun.PeriodYear} notification ({EntityLabel(_pendingRecallRun.CompanyId)})? No submissions have been made yet. All {_pendingRecallRun.Recipients.Count} recipient(s) will be emailed that it's been withdrawn.")"
+                               Message="@($"Recall this Q{_pendingRecallRun.PeriodQuarter} {_pendingRecallRun.PeriodYear} notification ({EntityLabel(_pendingRecallRun.CompanyId)})?{(TypeHasSubmissions ? " No submissions have been made yet." : "")} All {_pendingRecallRun.Recipients.Count} recipient(s) will be emailed that it's been withdrawn.")"
+                               Detail="@($"Q{_pendingRecallRun.PeriodQuarter} {_pendingRecallRun.PeriodYear} can be sent again once it is recalled.")"
                                ConfirmLabel="Recall and notify"
                                OnConfirm="ConfirmRecallAsync"
                                OnCancel="CancelRecallConfirm" />

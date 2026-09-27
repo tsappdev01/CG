@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
 using CGTOOL.Web.Data;
 using CGTOOL.Web.Data.Governance;
+using CGTOOL.Web.Components.Shared;
 
 namespace CGTOOL.Web.Components.Pages;
 
@@ -329,6 +330,10 @@ public partial class SubmitRelatedPartyCoiDeclaration
         _loadedAsSubmittedEdit = !declaration.IsDraft;
         _editingDeclarationId = declaration.Id;
         _run = declaration.DeclarationCycleRun;
+
+        _signaturePath = declaration.SignaturePath;
+        _signedAtUtc = declaration.SignedAtUtc;
+        _hasSignature = !string.IsNullOrEmpty(declaration.SignaturePath);
 
         _nothingRelatives = declaration.NothingToDeclareRelatives;
         _nothingSelfOwned = declaration.NothingToDeclareSelfOwned;
@@ -1197,6 +1202,37 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// step it lives on.</summary>
     private string? _focusFieldId;
 
+    // ---------- the drawn signature ----------
+
+    private SignaturePad? _signaturePad;
+    private string? _signaturePath;
+    private DateTime? _signedAtUtc;
+    private bool _hasSignature;
+
+    private void OnSignatureChanged(bool hasSignature) => _hasSignature = hasSignature;
+
+    /// <summary>Writes newly drawn ink to a file and returns its path; returns the signature already
+    /// on file when nothing new was drawn, so re-submitting an edit keeps what was signed.</summary>
+    private async Task<string?> SaveSignatureAsync()
+    {
+        if (_signaturePad is null) return _signaturePath;
+
+        var png = await _signaturePad.ReadPngAsync();
+        if (string.IsNullOrEmpty(png)) return _signaturePath;
+
+        var directory = Path.Combine(Env.WebRootPath, "uploads", "declarations", "coi");
+        Directory.CreateDirectory(directory);
+
+        var fileName = $"{Guid.NewGuid():N}.png";
+        await File.WriteAllBytesAsync(Path.Combine(directory, fileName), Convert.FromBase64String(png));
+
+        // The old one is left alone. A signature is evidence of what was signed and when, and an
+        // edited declaration's previous version may still be referred to.
+        _signaturePath = $"/uploads/declarations/coi/{fileName}";
+        _signedAtUtc = DateTime.UtcNow;
+        return _signaturePath;
+    }
+
     /// <summary>Refuses a step, saying why and remembering which box to put the cursor in. Every
     /// refusal goes through here so no message is left pointing at a field the member has to hunt
     /// for -- on a step they may not even be looking at.</summary>
@@ -1378,6 +1414,10 @@ public partial class SubmitRelatedPartyCoiDeclaration
             var actorName = state.User.Identity?.Name ?? "unknown";
             var isImpersonating = Impersonation.ActingMemberId is not null;
 
+            // Before the row is written, so the signature goes in with it rather than in a second
+            // write that could leave a submitted declaration unsigned if it failed.
+            await SaveSignatureAsync();
+
             try
             {
                 await PersistAsync(isDraft: true, actorName, isImpersonating);
@@ -1416,6 +1456,10 @@ public partial class SubmitRelatedPartyCoiDeclaration
             var state = await AuthState.GetAuthenticationStateAsync();
             var actorName = state.User.Identity?.Name ?? "unknown";
             var isImpersonating = Impersonation.ActingMemberId is not null;
+
+            // Before the row is written, so the signature goes in with it rather than in a second
+            // write that could leave a submitted declaration unsigned if it failed.
+            await SaveSignatureAsync();
 
             try
             {
@@ -1459,6 +1503,8 @@ public partial class SubmitRelatedPartyCoiDeclaration
             IsDraft = isDraft,
             AttestationName = _attestationName.Trim(),
             AttestationConfirmed = _attestationConfirmed,
+            SignaturePath = _signaturePath,
+            SignedAtUtc = _signedAtUtc,
             SubmittedByName = actorName,
             SubmittedOnBehalfOf = isImpersonating ? _effectiveMember.FullName : null,
         };
@@ -1549,6 +1595,11 @@ public partial class SubmitRelatedPartyCoiDeclaration
             Toasts.ShowError("Please confirm that the information given in this declaration is true, complete and accurate.");
             return;
         }
+        if (!(_signaturePad?.HasSignature ?? !string.IsNullOrEmpty(_signaturePath)))
+        {
+            Toasts.ShowError("Sign the declaration before submitting it.");
+            return;
+        }
         _submitting = true;
 
         try
@@ -1556,6 +1607,10 @@ public partial class SubmitRelatedPartyCoiDeclaration
             var state = await AuthState.GetAuthenticationStateAsync();
             var actorName = state.User.Identity?.Name ?? "unknown";
             var isImpersonating = Impersonation.ActingMemberId is not null;
+
+            // Before the row is written, so the signature goes in with it rather than in a second
+            // write that could leave a submitted declaration unsigned if it failed.
+            await SaveSignatureAsync();
 
             // Captured before PersistAsync flips _hadExistingRow/_loadedAsSubmittedEdit semantics --
             // the SEM escalation notification (Functional Spec §7.4) only fires when this is an edit

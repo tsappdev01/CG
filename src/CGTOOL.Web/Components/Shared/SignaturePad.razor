@@ -1,0 +1,115 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@* Drawn with a mouse, a finger or a stylus. The typed name beside it says who signed; this is the
+   signing, and it is what the PDF carries. *@
+<div class="cg-signature">
+    <div class="cg-signature-frame">
+        @if (ExistingSignaturePath is { Length: > 0 } existing && !_redrawing)
+        {
+            <img class="cg-signature-existing" src="@existing" alt="Signature on file" />
+        }
+        else
+        {
+            <canvas id="@_canvasId" class="cg-signature-canvas" data-readonly="@(ReadOnly ? "true" : null)"></canvas>
+            <span class="cg-signature-baseline" aria-hidden="true"></span>
+            @if (!_hasInk)
+            {
+                <span class="cg-signature-hint">Sign here</span>
+            }
+        }
+    </div>
+
+    <div class="cg-signature-actions">
+        @if (ExistingSignaturePath is { Length: > 0 } && !_redrawing)
+        {
+            <span class="cg-subtitle">Signed@(SignedAtUtc is { } at ? $" {at.ToLocalDisplay("dd MMM yyyy HH:mm")}" : "").</span>
+            <button type="button" class="cg-action-btn" @onclick="StartRedrawAsync">Sign again</button>
+        }
+        else
+        {
+            <span class="cg-subtitle">Draw your signature in the box.</span>
+            <button type="button" class="cg-action-btn" disabled="@(!_hasInk)" @onclick="UndoAsync">Undo</button>
+            <button type="button" class="cg-action-btn" disabled="@(!_hasInk)" @onclick="ClearAsync">Clear</button>
+        }
+    </div>
+</div>
+
+@code {
+    private readonly string _canvasId = $"cg-signature-{Guid.NewGuid():N}";
+    private DotNetObjectReference<SignaturePad>? _self;
+    private bool _hasInk;
+    private bool _redrawing;
+    private bool _started;
+
+    /// <summary>A signature already on file, shown instead of an empty pad until the member chooses
+    /// to sign again -- reopening a declaration should not look like it lost the signature.</summary>
+    [Parameter] public string? ExistingSignaturePath { get; set; }
+    [Parameter] public DateTime? SignedAtUtc { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+
+    /// <summary>Raised as soon as there is ink, so the page can clear a "signature required" message
+    /// while the member is looking at it rather than on the next submit.</summary>
+    [Parameter] public EventCallback<bool> OnChanged { get; set; }
+
+    /// <summary>True when this pad holds something to save -- newly drawn ink, or a signature
+    /// already on file that the member has not replaced.</summary>
+    public bool HasSignature => _hasInk || (!_redrawing && !string.IsNullOrEmpty(ExistingSignaturePath));
+
+    /// <summary>The drawn ink as base64 PNG, or null when nothing new was drawn -- in which case the
+    /// signature already on file stands.</summary>
+    public async Task<string?> ReadPngAsync()
+    {
+        if (!_started || !_hasInk) return null;
+        return await JS.InvokeAsync<string?>("cgSignaturePad.toPng", _canvasId);
+    }
+
+    [JSInvokable]
+    public async Task OnSignatureChanged(bool hasInk)
+    {
+        _hasInk = hasInk;
+        await OnChanged.InvokeAsync(HasSignature);
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Started on whichever render first puts the canvas in the DOM -- not necessarily the first,
+        // since a signature on file is shown in its place until "Sign again".
+        var wantsPad = string.IsNullOrEmpty(ExistingSignaturePath) || _redrawing;
+        if (!wantsPad || _started) return;
+
+        _self ??= DotNetObjectReference.Create(this);
+        _started = await JS.InvokeAsync<bool>("cgSignaturePad.init", _canvasId, _self);
+    }
+
+    private async Task StartRedrawAsync()
+    {
+        _redrawing = true;
+        _hasInk = false;
+        _started = false;
+        await OnChanged.InvokeAsync(HasSignature);
+    }
+
+    private async Task UndoAsync() => await JS.InvokeVoidAsync("cgSignaturePad.undo", _canvasId);
+
+    private async Task ClearAsync() => await JS.InvokeVoidAsync("cgSignaturePad.clear", _canvasId);
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_started) await JS.InvokeVoidAsync("cgSignaturePad.destroy", _canvasId);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit went away before the page did; nothing left to tidy up in a browser that
+            // is no longer listening.
+        }
+        catch (JSException)
+        {
+        }
+
+        _self?.Dispose();
+    }
+}

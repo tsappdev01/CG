@@ -412,6 +412,14 @@
                     <input class="cg-input" @bind="_attestationName" maxlength="160" />
                 </label>
 
+                <div class="cg-field">
+                    <span>Signature <span class="cg-required" aria-hidden="true">*</span></span>
+                    <SignaturePad @ref="_signaturePad"
+                                  ExistingSignaturePath="@_signaturePath"
+                                  SignedAtUtc="@_signedAtUtc"
+                                  OnChanged="OnSignatureChanged" />
+                </div>
+
                 <label class="cg-field-row" style="align-items:center; gap:8px;">
                     <input type="checkbox" @bind="_attestationConfirmed" />
                     <span>I, @_attestationName, confirm the above declaration is complete and accurate.</span>

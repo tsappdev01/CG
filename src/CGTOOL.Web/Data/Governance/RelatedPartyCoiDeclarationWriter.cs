@@ -44,6 +44,8 @@ public class RelatedPartyCoiDeclarationWriter(IStoredProcedureExecutor sp) : IRe
         new SqlParameter("@IsDraft", declaration.IsDraft),
         new SqlParameter("@AttestationName", declaration.AttestationName),
         new SqlParameter("@AttestationConfirmed", declaration.AttestationConfirmed),
+        new SqlParameter("@SignaturePath", (object?)declaration.SignaturePath ?? DBNull.Value),
+        new SqlParameter("@SignedAtUtc", (object?)declaration.SignedAtUtc ?? DBNull.Value),
         new SqlParameter("@SubmittedByName", declaration.SubmittedByName),
         new SqlParameter("@SubmittedOnBehalfOf", (object?)declaration.SubmittedOnBehalfOf ?? DBNull.Value));
 
@@ -58,6 +60,8 @@ public class RelatedPartyCoiDeclarationWriter(IStoredProcedureExecutor sp) : IRe
         new SqlParameter("@IsDraft", declaration.IsDraft),
         new SqlParameter("@AttestationName", declaration.AttestationName),
         new SqlParameter("@AttestationConfirmed", declaration.AttestationConfirmed),
+        new SqlParameter("@SignaturePath", (object?)declaration.SignaturePath ?? DBNull.Value),
+        new SqlParameter("@SignedAtUtc", (object?)declaration.SignedAtUtc ?? DBNull.Value),
         new SqlParameter("@SubmittedByName", declaration.SubmittedByName),
         new SqlParameter("@SubmittedOnBehalfOf", (object?)declaration.SubmittedOnBehalfOf ?? DBNull.Value));
 

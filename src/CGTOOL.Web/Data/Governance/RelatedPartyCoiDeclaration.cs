@@ -47,6 +47,17 @@ public class RelatedPartyCoiDeclaration
 
     public bool AttestationConfirmed { get; set; }
 
+    /// <summary>Path (under wwwroot/uploads) to the signature the declarant drew, as a PNG. Both are
+    /// kept: the typed name says who signed, this is the signing. Required to submit, so it is null
+    /// only on a draft or a declaration submitted before signatures existed.</summary>
+    [MaxLength(260)]
+    public string? SignaturePath { get; set; }
+
+    /// <summary>When the signature on file was drawn. Its own time rather than SubmittedAtUtc's,
+    /// because re-submitting an edited declaration does not re-sign it unless the member signs
+    /// again.</summary>
+    public DateTime? SignedAtUtc { get; set; }
+
     public DateTime SubmittedAtUtc { get; set; } = DateTime.UtcNow;
 
     /// <summary>Set each time the declarant edits their answers after the initial submission.</summary>

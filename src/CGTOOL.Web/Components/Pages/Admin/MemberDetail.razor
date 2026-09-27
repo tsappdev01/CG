@@ -94,6 +94,18 @@
                         </select>
                     </label>
 
+                    <label class="cg-field">
+                        <span>Declaration type</span>
+                        <select class="cg-input" @bind="_editing.DeclarationType">
+                            <option value="">Not set</option>
+                            @foreach (var (value, label) in MemberDeclarationTypes.All)
+                            {
+                                <option value="@value">@label</option>
+                            }
+                        </select>
+                        <p class="cg-hint">The capacity they declare in.</p>
+                    </label>
+
                     <label class="cg-field cg-field-wide">
                         <span>Email address</span>
                         <InputText class="cg-input" @bind-Value="_editing.Email" maxlength="160" placeholder="name@dubaiinvestments.com" />
@@ -479,6 +491,7 @@
                                 <tr><th>Entity</th><td>@(_companies?.FirstOrDefault(c => c.Id == _editing.CompanyId)?.Name ?? "—")</td></tr>
                                 <tr><th>Department</th><td>@(_departments?.FirstOrDefault(d => d.Id == _editing.DepartmentId)?.Name ?? "—")</td></tr>
                                 <tr><th>Job title</th><td>@(_editing.JobTitle ?? "—")</td></tr>
+                                <tr><th>Declaration type</th><td>@MemberDeclarationTypes.Label(_editing.DeclarationType)</td></tr>
                                 <tr><th>Email</th><td>@(_editing.Email ?? "—")</td></tr>
                                 <tr><th>Login account</th><td>@(_users?.FirstOrDefault(u => u.Id == _editing.ApplicationUserId)?.Email ?? "Not linked")</td></tr>
                                 <tr><th>Reporting manager</th><td>@(_members?.FirstOrDefault(m => m.Id == _editing.ReportingManagerId)?.FullName ?? "None")</td></tr>

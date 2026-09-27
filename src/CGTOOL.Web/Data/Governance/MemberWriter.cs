@@ -30,6 +30,7 @@ public class MemberWriter(IStoredProcedureExecutor sp) : IMemberWriter
         new SqlParameter("@Signature", (object?)m.Signature ?? DBNull.Value),
         new SqlParameter("@ReportingManagerId", (object?)m.ReportingManagerId ?? DBNull.Value),
         new SqlParameter("@ApplicationUserId", (object?)m.ApplicationUserId ?? DBNull.Value),
+        new SqlParameter("@DeclarationType", (object?)(int?)m.DeclarationType ?? DBNull.Value),
         new SqlParameter("@IsBoardMember", m.IsBoardMember),
         new SqlParameter("@IsManualEntry", m.IsManualEntry),
         new SqlParameter("@IsExternalMember", m.IsExternalMember),

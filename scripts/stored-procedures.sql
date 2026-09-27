@@ -73,6 +73,7 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.CoiConflictEntries', 'NatureOfInterest') IS NULL
     OR COL_LENGTH('dbo.OwnedCompanies', 'NatureOfInterest') IS NULL
     OR COL_LENGTH('dbo.RelatedPartyCoiDeclarations', 'SignaturePath') IS NULL
+    OR COL_LENGTH('dbo.Members', 'DeclarationType') IS NULL
     OR COL_LENGTH('dbo.AuditLogEntries', 'RecordHash') IS NULL
     OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
     OR COL_LENGTH('dbo.DeclarationCycleSetups', 'ReminderDayOfWeek') IS NULL
@@ -81,7 +82,7 @@ BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
     RAISERROR(
-        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, CoiCompanyEntries.NatureOfHolding, the NatureOfInterest columns, RelatedPartyCoiDeclarations.SignaturePath, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, CoiCompanyEntries.NatureOfHolding, the NatureOfInterest columns, RelatedPartyCoiDeclarations.SignaturePath, Members.DeclarationType, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
         16, 1, @db) WITH NOWAIT;
     SET NOEXEC ON;
 END
@@ -286,6 +287,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_Member_Insert
     @Signature nvarchar(160) = NULL,
     @ReportingManagerId int = NULL,
     @ApplicationUserId nvarchar(450) = NULL,
+    @DeclarationType int = NULL,
     @IsBoardMember bit = 0,
     @IsManualEntry bit = 0,
     @IsExternalMember bit = 0,
@@ -307,12 +309,12 @@ BEGIN
 
     INSERT INTO dbo.Members
         (CompanyId, FullName, JobTitle, DepartmentId, Email, AzureAdObjectId, Signature, ReportingManagerId,
-         ApplicationUserId, IsBoardMember, IsManualEntry, IsExternalMember, IsExecutiveManagement, Active,
+         ApplicationUserId, DeclarationType, IsBoardMember, IsManualEntry, IsExternalMember, IsExecutiveManagement, Active,
          InsiderTradingAccess, ConflictOfInterestAccess, RelatedPartyRegisterAccess, RelatedPartyTransactionAccess, RpTransactionRole, CanBeImpersonated,
          CreatedAtUtc, ModifiedAtUtc)
     VALUES
         (@CompanyId, @FullName, @JobTitle, @DepartmentId, @Email, @AzureAdObjectId, @Signature, @ReportingManagerId,
-         @ApplicationUserId, @IsBoardMember, @IsManualEntry, @IsExternalMember, @IsExecutiveManagement, @Active,
+         @ApplicationUserId, @DeclarationType, @IsBoardMember, @IsManualEntry, @IsExternalMember, @IsExecutiveManagement, @Active,
          @InsiderTradingAccess, @ConflictOfInterestAccess, @RelatedPartyRegisterAccess, @RelatedPartyTransactionAccess, @RpTransactionRole, @CanBeImpersonated,
          SYSUTCDATETIME(), SYSUTCDATETIME());
 
@@ -331,6 +333,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_Member_Update
     @Signature nvarchar(160) = NULL,
     @ReportingManagerId int = NULL,
     @ApplicationUserId nvarchar(450) = NULL,
+    @DeclarationType int = NULL,
     @IsBoardMember bit = 0,
     @IsManualEntry bit = 0,
     @IsExternalMember bit = 0,
@@ -381,6 +384,7 @@ BEGIN
         Signature = @Signature,
         ReportingManagerId = @ReportingManagerId,
         ApplicationUserId = @ApplicationUserId,
+        DeclarationType = @DeclarationType,
         IsBoardMember = @IsBoardMember,
         IsManualEntry = @IsManualEntry,
         IsExternalMember = @IsExternalMember,

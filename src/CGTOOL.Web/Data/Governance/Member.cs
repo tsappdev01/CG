@@ -15,6 +15,17 @@ public enum RpTransactionRole
     MdCeo,
 }
 
+/// <summary>Which declaration a person files, and in what capacity. Recorded on the member rather
+/// than inferred, because the same person can be an employee of one entity and a board member of
+/// another, and the form they get is a decision someone makes rather than a fact to derive.</summary>
+public enum MemberDeclarationType
+{
+    BoardMember,
+    EmployeeDiPjsc,
+    EmployeeOther,
+    Corporate,
+}
+
 public class Member
 {
     public int Id { get; set; }
@@ -44,6 +55,11 @@ public class Member
 
     public int? ReportingManagerId { get; set; }
     public Member? ReportingManager { get; set; }
+
+    /// <summary>Null until someone sets it: a member imported or created before this field existed
+    /// has no declaration type, and guessing one for them would put a capacity on the record that
+    /// nobody chose.</summary>
+    public MemberDeclarationType? DeclarationType { get; set; }
 
     public bool IsBoardMember { get; set; }
 

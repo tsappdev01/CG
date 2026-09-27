@@ -211,9 +211,16 @@ public partial class DeclarationsSetupPage
         };
     }
 
+    /// <summary>Whether recall exists for this declaration type at all, apart from any one run. Only
+    /// the two types with submissions have it -- and recall is the only way a closed period is ever
+    /// re-opened, so this also decides whether telling the admin to recall is honest advice or a
+    /// pointer to a button that is not there.</summary>
+    private bool TypeSupportsRecall =>
+        Type is DeclarationCycleType.InsiderTrading or DeclarationCycleType.ConflictOfInterest;
+
     private bool CanRecall(DeclarationCycleRun run)
     {
-        if (Type != DeclarationCycleType.InsiderTrading && Type != DeclarationCycleType.ConflictOfInterest) return false;
+        if (!TypeSupportsRecall) return false;
         if (!run.Sent || run.Recalled) return false;
         return !_submittedCounts.TryGetValue(run.Id, out var count) || count == 0;
     }
@@ -347,8 +354,10 @@ public partial class DeclarationsSetupPage
         if (RunClosing(year, quarter) is { } closing)
         {
             var what = closing.Sent ? "was already sent" : "is already scheduled";
-            return $"Q{quarter} {year} {what} for {EntityLabel(closing.CompanyId)}"
-                + " — recall it from the History tab first if it needs to go out again.";
+            var advice = TypeSupportsRecall
+                ? " — recall it from the History tab first if it needs to go out again."
+                : ".";
+            return $"Q{quarter} {year} {what} for {EntityLabel(closing.CompanyId)}{advice}";
         }
 
         if (LatestSentPeriod() is { } latest && PeriodIndex(year, quarter) < PeriodIndex(latest.Year, latest.Quarter))

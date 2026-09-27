@@ -163,7 +163,10 @@
                     <p class="cg-subtitle">
                         @string.Join(", ", closedQuarters)
                         @(closedQuarters.Count == 1 ? "is" : "are") already sent or scheduled for @_periodYear and cannot go out again.
-                        Recall from the History tab to re-issue one.
+                        @if (TypeSupportsRecall)
+                        {
+                            <text>Recall from the History tab to re-issue one.</text>
+                        }
                     </p>
                 }
                 @if (LatestSentPeriod() is { } latestSent)

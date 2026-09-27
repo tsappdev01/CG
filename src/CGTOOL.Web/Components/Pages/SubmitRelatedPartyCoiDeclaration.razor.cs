@@ -53,11 +53,15 @@ public partial class SubmitRelatedPartyCoiDeclaration
     // through to the Executive Management variant, same as Member.IsExecutiveManagement itself.
     private bool IsBod => _effectiveMember?.IsBoardMember ?? false;
 
-    private bool _nothingRelatives;
-    private bool _nothingSelfOwned;
-    private bool _nothingRelativeOwned;
-    private bool _nothingBoardRoles;
-    private bool _nothingConflicts;
+    // Every section starts at "nothing to declare". Most members have nothing in most of them, and a
+    // section that starts open is a section already claiming something is there -- the answer should
+    // be one the member gave. A section the register fills turns itself on below, because rows on
+    // screen and "nothing to declare" cannot both be true.
+    private bool _nothingRelatives = true;
+    private bool _nothingSelfOwned = true;
+    private bool _nothingRelativeOwned = true;
+    private bool _nothingBoardRoles = true;
+    private bool _nothingConflicts = true;
 
     private readonly List<RelativeRow> _relatives = [];
     private readonly List<CompanyRow> _selfOwnedCompanies = [];
@@ -261,6 +265,8 @@ public partial class SubmitRelatedPartyCoiDeclaration
                     FamilyMemberId = familyMember.Id,
                 });
             }
+
+            if (_relatives.Count > 0) _nothingRelatives = false;
         }
 
         if (_run is not null && !_isEditing)
@@ -1182,7 +1188,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     {
         if (!_nothingConflicts && _conflicts.Count == 0)
         {
-            Toasts.ShowError("Add at least one entry in Part II, or check \"I have nothing to declare\".");
+            Toasts.ShowError("Add at least one entry in Conflict of Interest, or answer \"nothing to declare\".");
             return false;
         }
         if (_conflicts.FirstOrDefault(c => string.IsNullOrWhiteSpace(c.CompanyOrCounterpartyName)) is { } unnamed)
@@ -1542,7 +1548,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
             $"Self-owned companies (I.B): {(_nothingSelfOwned ? "Nothing to declare" : $"{_selfOwnedCompanies.Count} declared")}",
             $"Relative-owned companies (I.C): {(_nothingRelativeOwned ? "Nothing to declare" : $"{_relativeOwnedCompanies.Count} declared")}",
             $"Board/executive role companies (I.D): {(_nothingBoardRoles ? "Nothing to declare" : $"{_boardRoleCompanies.Count} declared")}",
-            $"Conflicts of interest (Part II): {(_nothingConflicts ? "Nothing to declare" : $"{_conflicts.Count} declared")}",
+            $"Conflicts of interest: {(_nothingConflicts ? "Nothing to declare" : $"{_conflicts.Count} declared")}",
         };
         return string.Join("; ", parts);
     }
@@ -1568,7 +1574,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         var subject = $"RP/COI escalation — new conflict of interest disclosed by {_effectiveMember!.FullName}";
         var body = $"""
             <p>{_effectiveMember.FullName} has updated their Related Party &amp; Conflict of Interest declaration
-            (Q{_run!.PeriodQuarter} {_run.PeriodYear}) with a new Part II (Conflict of Interest) entry, as required
+            (Q{_run!.PeriodQuarter} {_run.PeriodYear}) with a new Conflict of Interest entry, as required
             by the SEM ongoing-disclosure commitment.</p>
             <p>Please review their declaration in the Corporate Governance Tool.</p>
             """;

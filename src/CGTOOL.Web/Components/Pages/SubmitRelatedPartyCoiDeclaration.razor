@@ -290,7 +290,7 @@
         else if (_step == Step.Conflicts)
         {
             <div class="cg-member-form cg-declaration-form">
-                <h2 class="cg-section-heading">Part II — Conflict of Interest Declaration</h2>
+                <h2 class="cg-section-heading">Conflict of Interest Declaration</h2>
                 @if (IsBod)
                 {
                     <div class="cg-info-callout">
@@ -398,7 +398,7 @@
                             <tr><th>Companies you own ≥30%</th><td>@(_nothingSelfOwned ? "Nothing to declare" : $"{_selfOwnedCompanies.Count} declared")</td></tr>
                             <tr><th>Companies a relative owns ≥30%</th><td>@(_nothingRelativeOwned ? "Nothing to declare" : $"{_relativeOwnedCompanies.Count} declared")</td></tr>
                             <tr><th>Companies you serve as board member/executive</th><td>@(_nothingBoardRoles ? "Nothing to declare" : $"{_boardRoleCompanies.Count} declared")</td></tr>
-                            <tr><th>Conflicts of Interest (Part II)</th><td>@(_nothingConflicts ? "Nothing to declare" : $"{_conflicts.Count} declared")</td></tr>
+                            <tr><th>Conflicts of Interest</th><td>@(_nothingConflicts ? "Nothing to declare" : $"{_conflicts.Count} declared")</td></tr>
                         </tbody>
                     </table>
                 </div>

@@ -530,21 +530,49 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// was filled in so the answer and the rows never disagree.</summary>
     private void AutoLoadCompanySections()
     {
-        LoadSection(
-            _selfOwnedCompanies,
-            _myCompanies.Where(c => c.OwnershipPercentage >= DeclarableOwnershipPercentage).ToList(),
-            ref _nothingSelfOwned);
+        if (FillSelfOwned()) _nothingSelfOwned = false;
+        if (FillBoardRoles()) _nothingBoardRoles = false;
+        if (FillRelativeOwned()) _nothingRelativeOwned = false;
+    }
 
-        LoadSection(
-            _boardRoleCompanies,
-            _myCompanies.Where(c => c.ServesAsBoardMemberOrExecutive).ToList(),
-            ref _nothingBoardRoles);
+    /// <summary>The section's own toggle. Switching it off clears the section; switching it back on
+    /// fills it from the register again, because the member has just said the section applies after
+    /// all -- and the register is where its rows come from. Without this the answer is destructive:
+    /// one accidental tap empties the section and nothing brings it back but reloading the page.
+    ///
+    /// Rows typed in by hand are gone either way. They were cleared by the answer that said this
+    /// section has nothing in it, and there is nowhere to read them back from.</summary>
+    private void SetNothingSelfOwned()
+    {
+        if (_nothingSelfOwned) ClearSection(_selfOwnedCompanies); else FillSelfOwned();
+    }
 
-        // A relative's company is recorded on the relative -- the organization they hold, and how
-        // much of it -- so this section is built from the relatives, not from My Companies. The row
-        // is linked to that relative where the declaration already lists them.
-        // Every qualifying holding, not one per relative: a relative with two companies over the
-        // threshold has two to declare, and the register now records both.
+    private void SetNothingRelativeOwned()
+    {
+        if (_nothingRelativeOwned) ClearSection(_relativeOwnedCompanies); else FillRelativeOwned();
+    }
+
+    private void SetNothingBoardRoles()
+    {
+        if (_nothingBoardRoles) ClearSection(_boardRoleCompanies); else FillBoardRoles();
+    }
+
+    private bool FillSelfOwned() => FillSection(
+        _selfOwnedCompanies,
+        _myCompanies.Where(c => c.OwnershipPercentage >= DeclarableOwnershipPercentage).ToList());
+
+    private bool FillBoardRoles() => FillSection(
+        _boardRoleCompanies,
+        _myCompanies.Where(c => c.ServesAsBoardMemberOrExecutive).ToList());
+
+    /// <summary>A relative's company is recorded on the relative -- the organization they hold, and
+    /// how much of it -- so this section is built from the relatives, not from My Companies. The row
+    /// is linked to that relative where the declaration already lists them.
+    ///
+    /// Every qualifying holding, not one per relative: a relative with two companies over the
+    /// threshold has two to declare, and the register records both.</summary>
+    private bool FillRelativeOwned()
+    {
         var relativeOwned = _myFamilyMembers
             .SelectMany(f => f.Holdings
                 .Where(h => h.OwnershipPercentage >= DeclarableOwnershipPercentage
@@ -552,41 +580,38 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 .Select(h => (Relative: f, Holding: h)))
             .ToList();
 
-        if (relativeOwned.Count > 0)
+        foreach (var (relative, holding) in relativeOwned)
         {
-            foreach (var (relative, holding) in relativeOwned)
+            if (_relativeOwnedCompanies.Any(r =>
+                    string.Equals(r.LegalCompanyName.Trim(), holding.CompanyName.Trim(), StringComparison.OrdinalIgnoreCase)))
             {
-                if (_relativeOwnedCompanies.Any(r =>
-                        string.Equals(r.LegalCompanyName.Trim(), holding.CompanyName.Trim(), StringComparison.OrdinalIgnoreCase)))
-                {
-                    continue;
-                }
-
-                // Everything the register holds about the holding, so the declarant confirms it
-                // rather than retyping it: the activity, the licence's number, expiry and permitted
-                // activities, and the licence document itself.
-                var row = new CompanyRow
-                {
-                    LegalCompanyName = holding.CompanyName.Trim(),
-                    PrincipalBusinessActivity = holding.PrincipalBusinessActivity ?? string.Empty,
-                    TradeLicenseNumber = holding.TradeLicenceNumber ?? string.Empty,
-                    TradeLicenseExpiryDate = holding.TradeLicenceExpiryDate,
-                    LicenseActivities = holding.LicenceActivities ?? string.Empty,
-                    LinkedRelativeKey = _relatives
-                        .FirstOrDefault(r => string.Equals(r.Name.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase))?.Key,
-                };
-                AddWorkspaceDocument(row, holding.TradeLicencePath, "Trade License");
-                _relativeOwnedCompanies.Add(row);
+                continue;
             }
 
-            _nothingRelativeOwned = false;
+            // Everything the register holds about the holding, so the declarant confirms it rather
+            // than retyping it: the activity, the licence's number, expiry and permitted activities,
+            // and the licence document itself.
+            var row = new CompanyRow
+            {
+                LegalCompanyName = holding.CompanyName.Trim(),
+                PrincipalBusinessActivity = holding.PrincipalBusinessActivity ?? string.Empty,
+                TradeLicenseNumber = holding.TradeLicenceNumber ?? string.Empty,
+                TradeLicenseExpiryDate = holding.TradeLicenceExpiryDate,
+                LicenseActivities = holding.LicenceActivities ?? string.Empty,
+                LinkedRelativeKey = _relatives
+                    .FirstOrDefault(r => string.Equals(r.Name.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase))?.Key,
+            };
+            AddWorkspaceDocument(row, holding.TradeLicencePath, "Trade License");
+            _relativeOwnedCompanies.Add(row);
         }
+
+        return relativeOwned.Count > 0;
     }
 
-    private void LoadSection(List<CompanyRow> list, List<OwnedCompany> matches, ref bool nothingToDeclare)
+    /// <summary>Adds the register's matches that the section does not already list, and says whether
+    /// the register had any -- which is what decides the section's answer on first load.</summary>
+    private bool FillSection(List<CompanyRow> list, List<OwnedCompany> matches)
     {
-        if (matches.Count == 0) return;
-
         foreach (var company in matches)
         {
             if (list.Any(r => string.Equals(r.LegalCompanyName.Trim(), company.CompanyName.Trim(), StringComparison.OrdinalIgnoreCase)))
@@ -597,16 +622,14 @@ public partial class SubmitRelatedPartyCoiDeclaration
             list.Add(RowFor(company));
         }
 
-        nothingToDeclare = false;
+        return matches.Count > 0;
     }
 
     /// <summary>Answering "nothing to declare" empties the section. Leaving the rows behind would
     /// submit a section that says nothing is declared and lists three companies; and the member who
     /// turns it off has just said the loaded rows do not belong there.</summary>
-    private void SetNothingToDeclare(List<CompanyRow> list, bool nothingToDeclare)
+    private static void ClearSection(List<CompanyRow> list)
     {
-        if (!nothingToDeclare) return;
-
         foreach (var row in list.Where(r => r.LinkedRelativeKey is not null).ToList())
         {
             row.LinkedRelativeKey = null;

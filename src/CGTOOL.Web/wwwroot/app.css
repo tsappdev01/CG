@@ -2443,6 +2443,19 @@ select.cg-input {
 .cg-stepper-wrap .cg-step-rule { flex: 1 1 24px; }
 .cg-step-actions { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--cg-line); }
 
+/* The line under a declaration's title that the declarant is signing. Reads at full strength, with
+   the rule carrying the eye from the title down into the form. */
+.cg-declaration-lead {
+    margin: 10px 0 18px;
+    padding-left: 14px;
+    border-left: 3px solid var(--cg-accent);
+    max-width: 78ch;
+    font-size: 16px;
+    line-height: 1.55;
+    font-weight: 600;
+    color: var(--cg-ink);
+}
+
 .cg-source-banner {
     display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
     background: var(--cg-accent-tint); border: 1px solid var(--cg-accent-line, var(--cg-line));

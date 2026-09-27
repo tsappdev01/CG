@@ -24,8 +24,10 @@
 
 <div class="cg-shell cg-declaration-wizard">
     <p><a href="/my-declarations">← Back to Declarations</a></p>
-    <h1 data-icon="doc">@(IsBod ? "BOD Member Declaration" : "Executive Management Declaration")</h1>
-    <p class="cg-subtitle">I, @_effectiveMember?.FullName, the undersigned, declare the following in respect of Related Party and Conflict of Interest matters.</p>
+    <h1 data-icon="doc">Related Party &amp; Conflict of Interest Declaration</h1>
+    @* The declarant's own statement, not a caption: it is what they are signing, and it named them
+       in the same grey as a hint. *@
+    <p class="cg-declaration-lead">I, @_effectiveMember?.FullName, the undersigned, declare the following in respect of Related Party and Conflict of Interest matters.</p>
     @if (Impersonation.ActingMemberId is not null)
     {
         <p class="cg-subtitle">Submitting on behalf of <b>@Impersonation.ActingMemberName</b>.</p>

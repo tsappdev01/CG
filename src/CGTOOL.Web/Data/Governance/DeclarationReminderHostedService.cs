@@ -23,7 +23,17 @@ public class DeclarationReminderHostedService(IServiceScopeFactory scopeFactory,
                 logger.LogError(ex, "Declaration reminder check failed.");
             }
 
-            await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
+            try
+            {
+                await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // Shutting down. Task.Delay throws when its token is cancelled, which is the normal
+                // way this loop ends -- letting it escape reports a stopping application as a
+                // crashed background service, and breaks the debugger on every F5 stop.
+                break;
+            }
         }
     }
 

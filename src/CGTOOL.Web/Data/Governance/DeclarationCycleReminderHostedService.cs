@@ -29,7 +29,17 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
 
             // Both a scheduled send and a weekly reminder name a time of day, so the tick has to be
             // short enough that "08:00" means 08:00 and not "some time before 09:00".
-            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // Shutting down. Task.Delay throws when its token is cancelled, which is the normal
+                // way this loop ends -- letting it escape reports a stopping application as a
+                // crashed background service, and breaks the debugger on every F5 stop.
+                break;
+            }
         }
     }
 

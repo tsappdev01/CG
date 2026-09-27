@@ -678,6 +678,166 @@ public partial class SubmitRelatedPartyCoiDeclaration
         }
     }
 
+    // ---------- Part II corrections, offered back to My Workspace ----------
+
+    /// <summary>One company the declaration now describes differently from the register. Carries the
+    /// register's own row so applying it does not have to find it again.</summary>
+    private sealed record WorkspaceCompanyUpdate(
+        string CompanyName,
+        string? BeforeActivity,
+        string? AfterActivity,
+        RelatedPartyHoldingNature BeforeNature,
+        RelatedPartyHoldingNature AfterNature,
+        OwnedCompany? Company,
+        FamilyMemberHolding? Holding);
+
+    private List<WorkspaceCompanyUpdate>? _pendingWorkspaceUpdates;
+    private Step? _stepAfterWorkspacePrompt;
+
+    /// <summary>What the member has already said no to, and for which values. Keyed that way so
+    /// declining is remembered for the answer given, and changing the figures again asks afresh
+    /// rather than being silently taken as the same refusal.</summary>
+    private readonly Dictionary<string, (string? Activity, RelatedPartyHoldingNature Nature)> _declinedWorkspaceUpdates =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Every Part II row whose company the register knows and now describes differently.
+    ///
+    /// A cleared field is not a change to carry over: blanking an activity here says this
+    /// declaration does not state it, not that the register should forget it.</summary>
+    private List<WorkspaceCompanyUpdate> PendingWorkspaceCompanyUpdates()
+    {
+        var updates = new List<WorkspaceCompanyUpdate>();
+        if (_nothingConflicts) return updates;
+
+        foreach (var row in _conflicts)
+        {
+            var name = row.CompanyOrCounterpartyName.Trim();
+            if (name.Length == 0) continue;
+
+            var company = _myCompanies.FirstOrDefault(c => string.Equals(c.CompanyName.Trim(), name, StringComparison.OrdinalIgnoreCase));
+            var holding = company is not null ? null : _myFamilyMembers
+                .SelectMany(f => f.Holdings)
+                .FirstOrDefault(h => string.Equals(h.CompanyName.Trim(), name, StringComparison.OrdinalIgnoreCase));
+            if (company is null && holding is null) continue;
+
+            var beforeActivity = company?.PrincipalBusinessActivity ?? holding?.PrincipalBusinessActivity;
+            var beforeNature = company?.NatureOfHolding ?? holding!.NatureOfHolding;
+
+            var afterActivity = string.IsNullOrWhiteSpace(row.PrincipalBusinessActivity)
+                ? null
+                : row.PrincipalBusinessActivity.Trim();
+            var afterNature = ParseHoldingNature(row.NatureOfHolding) ?? beforeNature;
+
+            var activityChanged = afterActivity is not null
+                && !string.Equals(beforeActivity?.Trim(), afterActivity, StringComparison.Ordinal);
+            if (!activityChanged && afterNature == beforeNature) continue;
+
+            if (_declinedWorkspaceUpdates.TryGetValue(name, out var declined)
+                && declined == (afterActivity, afterNature))
+            {
+                continue;
+            }
+
+            updates.Add(new WorkspaceCompanyUpdate(
+                name,
+                beforeActivity,
+                activityChanged ? afterActivity : null,
+                beforeNature,
+                afterNature,
+                company,
+                holding));
+        }
+
+        return updates;
+    }
+
+    private static RelatedPartyHoldingNature? ParseHoldingNature(string? value) =>
+        Enum.TryParse<RelatedPartyHoldingNature>(value, ignoreCase: true, out var nature)
+            && nature != RelatedPartyHoldingNature.None
+                ? nature
+                : null;
+
+    /// <summary>The dialog spells out each change, because "update My Workspace" on its own does not
+    /// say what would be overwritten there.</summary>
+    private string WorkspaceUpdateSummary =>
+        string.Join("  ", (_pendingWorkspaceUpdates ?? []).Select(u => $"{u.CompanyName}: {DescribeWorkspaceUpdate(u)}"));
+
+    private static string Quote(string? value) => string.IsNullOrWhiteSpace(value) ? "(blank)" : $"\u201c{value.Trim()}\u201d";
+
+    private static string HoldingNatureLabel(RelatedPartyHoldingNature nature) =>
+        nature == RelatedPartyHoldingNature.None ? "(not set)" : nature.ToString();
+
+    private async Task ConfirmWorkspaceUpdatesAsync()
+    {
+        var updates = _pendingWorkspaceUpdates ?? [];
+        _pendingWorkspaceUpdates = null;
+
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var actorName = state.User.Identity?.Name ?? "unknown";
+        var onBehalfOf = Impersonation.ActingMemberId is not null ? _effectiveMember?.FullName : null;
+
+        foreach (var update in updates)
+        {
+            string entity;
+            string id;
+
+            if (update.Company is { } company)
+            {
+                if (update.AfterActivity is not null) company.PrincipalBusinessActivity = update.AfterActivity;
+                company.NatureOfHolding = update.AfterNature;
+                await CompanyWriter.UpdateAsync(company);
+                (entity, id) = (nameof(OwnedCompany), company.Id.ToString());
+            }
+            else
+            {
+                var holding = update.Holding!;
+                if (update.AfterActivity is not null) holding.PrincipalBusinessActivity = update.AfterActivity;
+                holding.NatureOfHolding = update.AfterNature;
+                await HoldingWriter.UpdateAsync(holding);
+                (entity, id) = (nameof(FamilyMemberHolding), holding.Id.ToString());
+            }
+
+            await AuditLog.LogAsync(actorName, AuditAction.Update, entity, id,
+                $"Updated {update.CompanyName} in My Workspace from the Related Party & COI declaration: "
+                + $"{DescribeWorkspaceUpdate(update)}",
+                actingOnBehalfOf: onBehalfOf);
+        }
+
+        Toasts.ShowSuccess(updates.Count == 1
+            ? $"{updates[0].CompanyName} updated in My Workspace."
+            : $"{updates.Count} companies updated in My Workspace.");
+
+        ResumeAfterWorkspacePrompt();
+    }
+
+    private static string DescribeWorkspaceUpdate(WorkspaceCompanyUpdate u)
+    {
+        var parts = new List<string>();
+        if (u.AfterActivity is not null) parts.Add($"activity {Quote(u.BeforeActivity)} \u2192 {Quote(u.AfterActivity)}");
+        if (u.AfterNature != u.BeforeNature) parts.Add($"nature of holding {HoldingNatureLabel(u.BeforeNature)} \u2192 {HoldingNatureLabel(u.AfterNature)}");
+        return string.Join("; ", parts) + ".";
+    }
+
+    private void DeclineWorkspaceUpdates()
+    {
+        foreach (var update in _pendingWorkspaceUpdates ?? [])
+        {
+            _declinedWorkspaceUpdates[update.CompanyName] = (update.AfterActivity, update.AfterNature);
+        }
+
+        _pendingWorkspaceUpdates = null;
+        ResumeAfterWorkspacePrompt();
+    }
+
+    /// <summary>Carries on to the step the member was heading for. Going back through GoToStep means
+    /// the confirmation before Review still happens, in its usual order.</summary>
+    private void ResumeAfterWorkspacePrompt()
+    {
+        var target = _stepAfterWorkspacePrompt;
+        _stepAfterWorkspacePrompt = null;
+        if (target is { } step) GoToStep(step);
+    }
+
     private void AddConflict() => _conflicts.Add(new ConflictRow());
     private void RemoveConflict(ConflictRow row) => _conflicts.Remove(row);
 
@@ -888,6 +1048,20 @@ public partial class SubmitRelatedPartyCoiDeclaration
             for (var i = from; i < to; i++)
             {
                 if (!ValidateStep(WizardSteps[i].Step)) return;
+            }
+
+            // Leaving Part II behind: what was corrected there may be a correction to the register,
+            // and this is the last moment the member is looking at it.
+            var conflictsIndex = IndexOfStep(Step.Conflicts);
+            if (from <= conflictsIndex && to > conflictsIndex)
+            {
+                var updates = PendingWorkspaceCompanyUpdates();
+                if (updates.Count > 0)
+                {
+                    _pendingWorkspaceUpdates = updates;
+                    _stepAfterWorkspacePrompt = target;
+                    return;
+                }
             }
 
             if (target == Step.Review)

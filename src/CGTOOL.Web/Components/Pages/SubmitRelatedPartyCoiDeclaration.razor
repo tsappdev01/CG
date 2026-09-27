@@ -6,6 +6,8 @@
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IRelatedPartyCoiDeclarationWriter Writer
 @inject IFamilyMemberWriter FamilyMemberWriter
+@inject IOwnedCompanyWriter CompanyWriter
+@inject IFamilyMemberHoldingWriter HoldingWriter
 @inject IActivityEmailSender EmailSender
 @inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState
@@ -79,6 +81,16 @@
             </ol>
 
             @* Reachable from any step, because any chevron can be the one that asks for Review. *@
+            @* Corrections made in Part II are corrections to the register too, if the member wants
+               them there -- asked once on the way out, not per field as they type. *@
+            <ConfirmPrompt Show="_pendingWorkspaceUpdates is not null"
+                           Message="Update these companies in My Workspace as well?"
+                           Detail="@WorkspaceUpdateSummary"
+                           ConfirmLabel="Update My Workspace"
+                           CancelLabel="This declaration only"
+                           OnConfirm="ConfirmWorkspaceUpdatesAsync"
+                           OnCancel="DeclineWorkspaceUpdates" />
+
             <ConfirmPrompt Show="_pendingFormConfirm"
                            Message="Please confirm all information entered above is correct before proceeding — you can still come back and edit it, but double-check now."
                            ConfirmLabel="All information is correct — proceed"

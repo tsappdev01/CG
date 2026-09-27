@@ -68,6 +68,28 @@ public partial class RelatedPartyCoiDeclarationReport
 
     private static bool HasAnyDocument(SubmissionRow r) => r.Declaration is not null && r.Declaration.Companies.Any(c => c.Documents.Count > 0);
 
+    /// <summary>The three company sections as the declaration's own steps name them, so the report
+    /// and the form a reviewer is comparing it against say the same thing.</summary>
+    private static readonly (CoiCompanyOwnerType Owner, string Heading)[] CompanySections =
+    [
+        (CoiCompanyOwnerType.Self, "I.B — My companies (own ≥30% of paid-up share capital)"),
+        (CoiCompanyOwnerType.Relative, "I.C — Relatives' companies (a relative owns ≥30%)"),
+        (CoiCompanyOwnerType.BoardOrExecutiveRole, "I.D — Board roles (board member or senior executive)"),
+    ];
+
+    private static List<CoiCompanyEntry> CompaniesIn(RelatedPartyCoiDeclaration d, CoiCompanyOwnerType owner) =>
+        [.. d.Companies.Where(c => c.OwnerType == owner)];
+
+    /// <summary>Whether the declarant answered "nothing to declare" for that section -- which is not
+    /// the same as the section being empty, and is the distinction the three stored flags exist
+    /// for.</summary>
+    private static bool NothingToDeclareIn(RelatedPartyCoiDeclaration d, CoiCompanyOwnerType owner) => owner switch
+    {
+        CoiCompanyOwnerType.Self => d.NothingToDeclareSelfOwned,
+        CoiCompanyOwnerType.Relative => d.NothingToDeclareRelativeOwned,
+        _ => d.NothingToDeclareBoardRoles,
+    };
+
     private static string OwnerTypeLabel(CoiCompanyOwnerType type) => type switch
     {
         CoiCompanyOwnerType.Self => "I.B — Self-owned",
@@ -107,6 +129,7 @@ public partial class RelatedPartyCoiDeclarationReport
             .AsNoTracking()
             .Include(d => d.Relatives)
             .Include(d => d.Companies).ThenInclude(c => c.Documents)
+            .Include(d => d.Companies).ThenInclude(c => c.CoiRelative)
             .Include(d => d.Conflicts)
             .ToListAsync();
         var declarationLookup = declarations.ToDictionary(d => (d.MemberId, d.DeclarationCycleRunId));

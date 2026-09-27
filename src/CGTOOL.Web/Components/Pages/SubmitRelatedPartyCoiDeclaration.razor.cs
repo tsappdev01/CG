@@ -12,7 +12,19 @@ namespace CGTOOL.Web.Components.Pages;
 
 public partial class SubmitRelatedPartyCoiDeclaration
 {
-    private enum Step { Loading, NoAccess, NotDue, EditWindowClosed, Form, Review, Done }
+    private enum Step { Loading, NoAccess, NotDue, EditWindowClosed, Relatives, SelfOwned, RelativeOwned, BoardRoles, Conflicts, Review, Done }
+
+    /// <summary>The wizard in order, and what the chevron calls each one. Review is the last of
+    /// them: the attestation belongs beside the summary it attests to, not half-way up the form.</summary>
+    private static readonly (Step Step, string Label)[] WizardSteps =
+    [
+        (Step.Relatives, "Relatives"),
+        (Step.SelfOwned, "My companies"),
+        (Step.RelativeOwned, "Relatives' companies"),
+        (Step.BoardRoles, "Board roles"),
+        (Step.Conflicts, "Conflicts"),
+        (Step.Review, "Review & submit"),
+    ];
 
     [Parameter] public int? Id { get; set; }
 
@@ -237,7 +249,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
             AutoLoadCompanySections();
         }
 
-        _step = _run is null ? Step.NotDue : Step.Form;
+        _step = _run is null ? Step.NotDue : Step.Relatives;
     }
 
     private async Task LoadForEditAsync(int declarationId)
@@ -338,7 +350,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
             NatureOfHolding = c.NatureOfHolding ?? string.Empty,
         }));
 
-        _step = Step.Form;
+        _step = Step.Relatives;
         ApplyUaePassReturnFlag();
     }
 
@@ -756,13 +768,63 @@ public partial class SubmitRelatedPartyCoiDeclaration
         }
     }
 
-    private void GoToReview()
+    // ---------- moving between steps ----------
+
+    private static int IndexOfStep(Step step) => Array.FindIndex(WizardSteps, w => w.Step == step);
+
+    private bool IsWizardStep => IndexOfStep(_step) >= 0;
+
+    private Step? PreviousStep => IndexOfStep(_step) is var i && i > 0 ? WizardSteps[i - 1].Step : null;
+
+    private Step? NextStep => IndexOfStep(_step) is var i && i >= 0 && i < WizardSteps.Length - 1
+        ? WizardSteps[i + 1].Step
+        : null;
+
+    private string StepClass(Step step)
     {
-        if (!ValidateForm()) return;
-        _pendingFormConfirm = true;
+        var (here, current) = (IndexOfStep(step), IndexOfStep(_step));
+        return here == current ? "is-current" : here < current ? "is-done" : string.Empty;
     }
 
-    private bool ValidateForm()
+    private string RuleClass(int afterIndex) => IndexOfStep(_step) > afterIndex ? "is-done" : string.Empty;
+
+    /// <summary>Going back is free -- the member is re-reading what they already entered. Going
+    /// forward checks every step being skipped over, so a chevron cannot be used to jump past a
+    /// section that is not filled in. Reaching Review goes through the same confirmation the single
+    /// long form used.</summary>
+    private void GoToStep(Step target)
+    {
+        var (from, to) = (IndexOfStep(_step), IndexOfStep(target));
+        if (to < 0 || from < 0 || to == from) return;
+
+        if (to > from)
+        {
+            for (var i = from; i < to; i++)
+            {
+                if (!ValidateStep(WizardSteps[i].Step)) return;
+            }
+
+            if (target == Step.Review)
+            {
+                _pendingFormConfirm = true;
+                return;
+            }
+        }
+
+        _step = target;
+    }
+
+    private bool ValidateStep(Step step) => step switch
+    {
+        Step.Relatives => ValidateRelatives(),
+        Step.SelfOwned => ValidateCompanySection(_selfOwnedCompanies, _nothingSelfOwned, "Companies you own ≥30%"),
+        Step.RelativeOwned => ValidateCompanySection(_relativeOwnedCompanies, _nothingRelativeOwned, "Companies a relative owns ≥30%", requireLinkedRelative: true),
+        Step.BoardRoles => ValidateCompanySection(_boardRoleCompanies, _nothingBoardRoles, "Companies where you are a board member/senior executive"),
+        Step.Conflicts => ValidateConflicts(),
+        _ => true,
+    };
+
+    private bool ValidateRelatives()
     {
         if (!_nothingRelatives && _relatives.Count == 0)
         {
@@ -774,11 +836,11 @@ public partial class SubmitRelatedPartyCoiDeclaration
             Toasts.ShowError("Enter a name for every relative in List of Relatives.");
             return false;
         }
+        return true;
+    }
 
-        if (!ValidateCompanySection(_selfOwnedCompanies, _nothingSelfOwned, "Companies you own ≥30%")) return false;
-        if (!ValidateCompanySection(_relativeOwnedCompanies, _nothingRelativeOwned, "Companies a relative owns ≥30%", requireLinkedRelative: true)) return false;
-        if (!ValidateCompanySection(_boardRoleCompanies, _nothingBoardRoles, "Companies where you are a board member/senior executive")) return false;
-
+    private bool ValidateConflicts()
+    {
         if (!_nothingConflicts && _conflicts.Count == 0)
         {
             Toasts.ShowError("Add at least one entry in Part II, or check \"I have nothing to declare\".");
@@ -789,6 +851,14 @@ public partial class SubmitRelatedPartyCoiDeclaration
             Toasts.ShowError("Enter the company/counterparty name and nature of holding for every Part II row.");
             return false;
         }
+        return true;
+    }
+
+    /// <summary>Everything the declaration needs before it can be submitted. The attestation is part
+    /// of it, and is entered on the last step -- so this runs there, never on the way forward.</summary>
+    private bool ValidateForm()
+    {
+        if (WizardSteps.Any(w => !ValidateStep(w.Step))) return false;
 
         if (string.IsNullOrWhiteSpace(_attestationName))
         {

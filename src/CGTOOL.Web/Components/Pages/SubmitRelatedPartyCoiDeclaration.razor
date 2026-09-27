@@ -51,14 +51,42 @@
     }
     else
     {
-        @if (_step == Step.Form || _step == Step.Review)
+        @if (IsWizardStep)
         {
             <div class="cg-info-callout">
                 <p>@(_isEditing ? "Editing your submitted declaration. " : "")Due date: <b class="mono">@_run!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</b></p>
             </div>
+
+            @* One section per step. The form asks five separate questions and the answer to each is
+               its own list; on one page they run together, and the member cannot see how much is
+               left. Every step is reachable from here, forwards through its own checks. *@
+            <ol class="cg-stepper cg-stepper-wrap" aria-label="Progress">
+                @for (var i = 0; i < WizardSteps.Length; i++)
+                {
+                    var wizardStep = WizardSteps[i];
+                    var number = i + 1;
+                    if (i > 0)
+                    {
+                        <li class="cg-step-rule @RuleClass(i - 1)" aria-hidden="true"></li>
+                    }
+                    <li class="cg-step @StepClass(wizardStep.Step)">
+                        <button type="button" class="cg-step-jump" @onclick="() => GoToStep(wizardStep.Step)">
+                            <span class="cg-step-num">@number</span>
+                            <span class="cg-step-label">@wizardStep.Label</span>
+                        </button>
+                    </li>
+                }
+            </ol>
+
+            @* Reachable from any step, because any chevron can be the one that asks for Review. *@
+            <ConfirmPrompt Show="_pendingFormConfirm"
+                           Message="Please confirm all information entered above is correct before proceeding — you can still come back and edit it, but double-check now."
+                           ConfirmLabel="All information is correct — proceed"
+                           OnConfirm="ConfirmForm"
+                           OnCancel="CancelFormConfirm" />
         }
 
-        @if (_step == Step.Form)
+        @if (_step == Step.Relatives)
         {
             <div class="cg-member-form cg-declaration-form">
                 <div class="cg-info-callout">
@@ -127,6 +155,13 @@
                     </div>
                 }
 
+                @StepActions()
+            </div>
+        }
+        else if (_step == Step.SelfOwned)
+        {
+            <div class="cg-member-form cg-declaration-form">
+                <h2 class="cg-section-heading">Part I — Related Party Declaration</h2>
                 <h3>Companies in which you own ≥30% of paid-up share capital</h3>
                 <p class="cg-hint">The companies in My Workspace where your ownership is 30% or more are listed here for you. Switching this section to "nothing to declare" clears them.</p>
                 <label class="cg-switch cg-nothing-switch">
@@ -161,6 +196,13 @@
                     </div>
                 }
 
+                @StepActions()
+            </div>
+        }
+        else if (_step == Step.RelativeOwned)
+        {
+            <div class="cg-member-form cg-declaration-form">
+                <h2 class="cg-section-heading">Part I — Related Party Declaration</h2>
                 <h3>Companies in which a relative owns ≥30% of its shares</h3>
                 <p class="cg-hint">Built from your relatives in My Workspace whose own holding is 30% or more. Switching this section to "nothing to declare" clears them.</p>
                 <label class="cg-switch cg-nothing-switch">
@@ -195,6 +237,13 @@
                     </div>
                 }
 
+                @StepActions()
+            </div>
+        }
+        else if (_step == Step.BoardRoles)
+        {
+            <div class="cg-member-form cg-declaration-form">
+                <h2 class="cg-section-heading">Part I — Related Party Declaration</h2>
                 <h3>Companies in which you serve as board member or senior executive</h3>
                 <p class="cg-hint">The companies in My Workspace marked "serve as board member or senior executive". Switching this section to "nothing to declare" clears them.</p>
                 <label class="cg-switch cg-nothing-switch">
@@ -229,6 +278,12 @@
                     </div>
                 }
 
+                @StepActions()
+            </div>
+        }
+        else if (_step == Step.Conflicts)
+        {
+            <div class="cg-member-form cg-declaration-form">
                 <h2 class="cg-section-heading">Part II — Conflict of Interest Declaration</h2>
                 @if (IsBod)
                 {
@@ -316,22 +371,8 @@
                     </p>
                 </div>
 
-                <h2 class="cg-section-heading">Attestation</h2>
-                <label class="cg-field">
-                    <span>Typed signature (full name)</span>
-                    <input class="cg-input" @bind="_attestationName" maxlength="160" />
-                </label>
+                @StepActions()
 
-                <div class="cg-actions">
-                    <button type="button" class="cg-action-btn" disabled="@_savingDraft" @onclick="SaveDraftAsync">@(_savingDraft ? "Saving…" : "Save as Draft")</button>
-                    <button type="button" class="cg-action-btn cg-good" @onclick="GoToReview">Proceed to Submission</button>
-                </div>
-
-                <ConfirmPrompt Show="_pendingFormConfirm"
-                               Message="Please confirm all information entered above is correct before proceeding — you can still come back and edit it, but double-check now."
-                               ConfirmLabel="All information is correct — proceed"
-                               OnConfirm="ConfirmForm"
-                               OnCancel="CancelFormConfirm" />
             </div>
         }
         else if (_step == Step.Review)
@@ -357,6 +398,12 @@
 
                 <p class="cg-subtitle">Please review carefully. You can still edit this declaration from Declarations until the due date (<b class="mono">@_run!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</b>).</p>
 
+                <h2 class="cg-section-heading">Attestation</h2>
+                <label class="cg-field">
+                    <span>Typed signature (full name)</span>
+                    <input class="cg-input" @bind="_attestationName" maxlength="160" />
+                </label>
+
                 <label class="cg-field-row" style="align-items:center; gap:8px;">
                     <input type="checkbox" @bind="_attestationConfirmed" />
                     <span>I, @_attestationName, confirm the above declaration is complete and accurate.</span>
@@ -380,7 +427,7 @@
                 }
 
                 <div class="cg-actions">
-                    <button type="button" class="cg-action-btn" disabled="@_submitting" @onclick="() => _step = Step.Form">← Back to edit</button>
+                    <button type="button" class="cg-action-btn" disabled="@_submitting" @onclick="() => _step = Step.Conflicts">← Back to edit</button>
                     <button type="button" class="cg-action-btn cg-good" disabled="@(_submitting || !_attestationConfirmed)" @onclick="SubmitAsync">@(_submitting ? "Saving…" : (_hadExistingRow ? "Save changes" : "Confirm & Submit"))</button>
                 </div>
             </div>
@@ -420,4 +467,23 @@
             <button type="button" class="cg-action-btn cg-critical" @onclick="RemoveRelativeEverywhereAsync">Remove from both</button>
         </div>
     </div>
+}
+
+@code {
+    /// <summary>Back, Save as Draft and Next, the same on every capture step. Save as Draft stays on
+    /// all of them: a member part-way through step two should not have to reach the end to keep what
+    /// they have entered.</summary>
+    private RenderFragment StepActions() => @<div class="cg-actions cg-step-actions">
+        @if (PreviousStep is { } previous)
+        {
+            <button type="button" class="cg-action-btn" @onclick="() => GoToStep(previous)">← Back</button>
+        }
+        <button type="button" class="cg-action-btn" disabled="@_savingDraft" @onclick="SaveDraftAsync">@(_savingDraft ? "Saving…" : "Save as Draft")</button>
+        @if (NextStep is { } next)
+        {
+            <button type="button" class="cg-action-btn cg-good" @onclick="() => GoToStep(next)">
+                @(next == Step.Review ? "Proceed to Submission" : "Next →")
+            </button>
+        }
+    </div>;
 }

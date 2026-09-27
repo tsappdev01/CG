@@ -2449,6 +2449,20 @@ select.cg-input {
 .cg-step-rule { flex: 1 1 40px; height: 2px; background: var(--cg-line); min-width: 24px; }
 .cg-step-rule.is-done { background: var(--cg-good); }
 
+/* A step you can click back to. Looks exactly like the plain step -- the button is only there so
+   the whole chevron is a target, keyboard included. */
+.cg-step-jump {
+    display: flex; align-items: center; gap: 10px;
+    background: none; border: 0; padding: 0; margin: 0;
+    font: inherit; color: inherit; cursor: pointer; text-align: left;
+}
+.cg-step-jump:hover .cg-step-label { color: var(--cg-ink); }
+.cg-step-jump:focus-visible { outline: 2px solid var(--cg-accent); outline-offset: 3px; border-radius: 6px; }
+/* Six steps do not fit one line on a laptop; they wrap as whole steps rather than being squeezed. */
+.cg-stepper-wrap { row-gap: 12px; }
+.cg-stepper-wrap .cg-step-rule { flex: 1 1 24px; }
+.cg-step-actions { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--cg-line); }
+
 .cg-source-banner {
     display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
     background: var(--cg-accent-tint); border: 1px solid var(--cg-accent-line, var(--cg-line));

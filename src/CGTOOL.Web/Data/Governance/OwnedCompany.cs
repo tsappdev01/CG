@@ -28,6 +28,11 @@ public class OwnedCompany
     [MaxLength(400)]
     public string? PrincipalBusinessActivity { get; set; }
 
+    /// <summary>What the interest actually is -- supplier, customer, directorship, and so on. Free
+    /// text: it describes a relationship, where NatureOfHolding says how the shares are held.</summary>
+    [MaxLength(400)]
+    public string? NatureOfInterest { get; set; }
+
     /// <summary>Ownership percentage (0-100).</summary>
     public decimal? OwnershipPercentage { get; set; }
 

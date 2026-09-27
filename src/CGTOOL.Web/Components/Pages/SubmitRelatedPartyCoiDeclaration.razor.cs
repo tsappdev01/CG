@@ -146,6 +146,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         public string CompanyOrCounterpartyName { get; set; } = string.Empty;
         public string PrincipalBusinessActivity { get; set; } = string.Empty;
         public string NatureOfHolding { get; set; } = string.Empty;
+        public string NatureOfInterest { get; set; } = string.Empty;
     }
 
     public static readonly string[] NatureOfHoldingOptions = ["Owned", "Affiliate", "Subsidiary"];
@@ -381,6 +382,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
             CompanyOrCounterpartyName = c.CompanyOrCounterpartyName,
             PrincipalBusinessActivity = c.PrincipalBusinessActivity ?? string.Empty,
             NatureOfHolding = c.NatureOfHolding ?? string.Empty,
+            NatureOfInterest = c.NatureOfInterest ?? string.Empty,
         }));
         FillConflictNaturesFromWorkspace();
 
@@ -671,11 +673,17 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// their answer, and the register does not overrule it.</summary>
     private void FillConflictNaturesFromWorkspace()
     {
-        foreach (var row in _conflicts.Where(c => string.IsNullOrWhiteSpace(c.NatureOfHolding)))
+        foreach (var row in _conflicts)
         {
-            if (HoldingNatureFromWorkspace(row.CompanyOrCounterpartyName) is { } nature)
+            if (string.IsNullOrWhiteSpace(row.NatureOfHolding)
+                && HoldingNatureFromWorkspace(row.CompanyOrCounterpartyName) is { } nature)
             {
                 row.NatureOfHolding = nature;
+            }
+            if (string.IsNullOrWhiteSpace(row.NatureOfInterest)
+                && InterestFromWorkspace(row.CompanyOrCounterpartyName) is { } interest)
+            {
+                row.NatureOfInterest = interest;
             }
         }
     }
@@ -763,19 +771,16 @@ public partial class SubmitRelatedPartyCoiDeclaration
             var name = row.CompanyOrCounterpartyName.Trim();
             if (name.Length == 0) continue;
 
-            var company = _myCompanies.FirstOrDefault(c => string.Equals(c.CompanyName.Trim(), name, StringComparison.OrdinalIgnoreCase));
-            var holding = company is not null ? null : _myFamilyMembers
-                .SelectMany(f => f.Holdings)
-                .FirstOrDefault(h => string.Equals(h.CompanyName.Trim(), name, StringComparison.OrdinalIgnoreCase));
+            var (company, holding) = CompanyInRegister(name);
             if (company is null && holding is null) continue;
 
             var beforeActivity = company?.PrincipalBusinessActivity ?? holding?.PrincipalBusinessActivity;
             var beforeNature = company?.NatureOfHolding ?? holding!.NatureOfHolding;
+            var beforeInterest = company?.NatureOfInterest ?? holding?.NatureOfInterest;
 
-            var afterActivity = string.IsNullOrWhiteSpace(row.PrincipalBusinessActivity)
-                ? null
-                : row.PrincipalBusinessActivity.Trim();
+            var afterActivity = Entered(row.PrincipalBusinessActivity);
             var afterNature = ParseHoldingNature(row.NatureOfHolding) ?? beforeNature;
+            var afterInterest = Entered(row.NatureOfInterest);
 
             var changes = new List<RegisterChange>();
             if (afterActivity is not null && !string.Equals(beforeActivity?.Trim(), afterActivity, StringComparison.Ordinal))
@@ -788,15 +793,21 @@ public partial class SubmitRelatedPartyCoiDeclaration
                     beforeNature == RelatedPartyHoldingNature.None ? null : HoldingNatureLabel(beforeNature),
                     HoldingNatureLabel(afterNature)));
             }
+            if (afterInterest is not null && !string.Equals(beforeInterest?.Trim(), afterInterest, StringComparison.Ordinal))
+            {
+                changes.Add(new RegisterChange("Nature of Interest", beforeInterest, afterInterest));
+            }
 
             if (changes.Count == 0) continue;
 
             var activity = changes.Any(c => c.Field == "Principal Business Activity") ? afterActivity : null;
+            var interest = changes.Any(c => c.Field == "Nature of Interest") ? afterInterest : null;
             updates.Add(new RegisterUpdate(name, changes, async () =>
             {
                 if (company is not null)
                 {
                     if (activity is not null) company.PrincipalBusinessActivity = activity;
+                    if (interest is not null) company.NatureOfInterest = interest;
                     company.NatureOfHolding = afterNature;
                     await CompanyWriter.UpdateAsync(company);
                     await LogRegisterUpdateAsync(nameof(OwnedCompany), company.Id, name, changes);
@@ -804,6 +815,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 else
                 {
                     if (activity is not null) holding!.PrincipalBusinessActivity = activity;
+                    if (interest is not null) holding!.NatureOfInterest = interest;
                     holding!.NatureOfHolding = afterNature;
                     await HoldingWriter.UpdateAsync(holding);
                     await LogRegisterUpdateAsync(nameof(FamilyMemberHolding), holding.Id, name, changes);
@@ -813,6 +825,10 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
         return updates;
     }
+
+    /// <summary>What the member actually put in a box, or null for a blank -- which says this
+    /// declaration does not state it, never that the register should forget what it holds.</summary>
+    private static string? Entered(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static RelatedPartyHoldingNature? ParseHoldingNature(string? value) =>
         Enum.TryParse<RelatedPartyHoldingNature>(value, ignoreCase: true, out var nature)
@@ -915,6 +931,10 @@ public partial class SubmitRelatedPartyCoiDeclaration
         {
             row.NatureOfHolding = nature;
         }
+        if (InterestFromWorkspace(value) is { } interest)
+        {
+            row.NatureOfInterest = interest;
+        }
     }
 
     /// <summary>What the register says the member's interest in this company is. It is recorded once
@@ -924,20 +944,44 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// declaration.</summary>
     private string? HoldingNatureFromWorkspace(string companyName)
     {
-        var name = companyName.Trim();
-        if (name.Length == 0) return null;
-
-        var nature = _myCompanies
-            .FirstOrDefault(c => string.Equals(c.CompanyName.Trim(), name, StringComparison.OrdinalIgnoreCase))
-            ?.NatureOfHolding;
-
-        nature ??= _myFamilyMembers
-            .SelectMany(f => f.Holdings)
-            .FirstOrDefault(h => string.Equals(h.CompanyName.Trim(), name, StringComparison.OrdinalIgnoreCase))
-            ?.NatureOfHolding;
+        var nature = CompanyInRegister(companyName) switch
+        {
+            (OwnedCompany company, _) => company.NatureOfHolding,
+            (_, FamilyMemberHolding holding) => holding.NatureOfHolding,
+            _ => (RelatedPartyHoldingNature?)null,
+        };
 
         // "None" is the register saying it was never answered, not an answer to copy over.
         return nature is null or RelatedPartyHoldingNature.None ? null : nature.ToString();
+    }
+
+    /// <summary>What the register says the interest in this company is, read on the same match.</summary>
+    private string? InterestFromWorkspace(string companyName)
+    {
+        var interest = CompanyInRegister(companyName) switch
+        {
+            (OwnedCompany company, _) => company.NatureOfInterest,
+            (_, FamilyMemberHolding holding) => holding.NatureOfInterest,
+            _ => null,
+        };
+
+        return string.IsNullOrWhiteSpace(interest) ? null : interest.Trim();
+    }
+
+    /// <summary>The register's record of a company by name -- the member's own first, then a
+    /// relative's holding. One lookup, so everything read off the register agrees about which row it
+    /// came from.</summary>
+    private (OwnedCompany? Company, FamilyMemberHolding? Holding) CompanyInRegister(string companyName)
+    {
+        var name = companyName.Trim();
+        if (name.Length == 0) return (null, null);
+
+        var company = _myCompanies.FirstOrDefault(c => string.Equals(c.CompanyName.Trim(), name, StringComparison.OrdinalIgnoreCase));
+        if (company is not null) return (company, null);
+
+        return (null, _myFamilyMembers
+            .SelectMany(f => f.Holdings)
+            .FirstOrDefault(h => string.Equals(h.CompanyName.Trim(), name, StringComparison.OrdinalIgnoreCase)));
     }
 
     // Functional Spec §5.6: expiry visibility. "Expired"/"Expiring soon" thresholds mirror the
@@ -1451,6 +1495,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
                         CompanyOrCounterpartyName = c.CompanyOrCounterpartyName.Trim(),
                         PrincipalBusinessActivity = string.IsNullOrWhiteSpace(c.PrincipalBusinessActivity) ? null : c.PrincipalBusinessActivity.Trim(),
                         NatureOfHolding = string.IsNullOrWhiteSpace(c.NatureOfHolding) ? null : c.NatureOfHolding.Trim(),
+                        NatureOfInterest = string.IsNullOrWhiteSpace(c.NatureOfInterest) ? null : c.NatureOfInterest.Trim(),
                     });
                 }
             }

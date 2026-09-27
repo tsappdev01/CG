@@ -29,6 +29,11 @@ public class FamilyMemberHolding
     [MaxLength(400)]
     public string? PrincipalBusinessActivity { get; set; }
 
+    /// <summary>What the interest actually is -- supplier, customer, directorship, and so on. Free
+    /// text: it describes a relationship, where NatureOfHolding says how the shares are held.</summary>
+    [MaxLength(400)]
+    public string? NatureOfInterest { get; set; }
+
     /// <summary>The company's trade licence, and what was read off it. Held against the holding
     /// rather than the relative: a relative with three companies has three licences.</summary>
     [MaxLength(260)]

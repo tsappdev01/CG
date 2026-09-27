@@ -166,4 +166,9 @@ public class CoiConflictEntry
     /// <summary>One of the fixed values offered in the form's dropdown: Owned, Affiliate, Subsidiary.</summary>
     [MaxLength(1000)]
     public string? NatureOfHolding { get; set; }
+
+    /// <summary>What the interest actually is -- supplier, customer, directorship, and so on, as
+    /// recorded against the company in My Register.</summary>
+    [MaxLength(400)]
+    public string? NatureOfInterest { get; set; }
 }

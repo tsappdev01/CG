@@ -275,11 +275,11 @@
                             {
                                 <div class="cg-table-wrap">
                                     <table>
-                                        <thead><tr><th>Company / Counterparty</th><th>Principal Business Activity</th><th>Nature of Holding</th></tr></thead>
+                                        <thead><tr><th>Company / Counterparty</th><th>Principal Business Activity</th><th>Nature of Holding</th><th>Nature of Interest</th></tr></thead>
                                         <tbody>
                                             @foreach (var c in d.Conflicts)
                                             {
-                                                <tr class="cg-data-row"><td>@c.CompanyOrCounterpartyName</td><td>@(c.PrincipalBusinessActivity ?? "—")</td><td>@(c.NatureOfHolding ?? "—")</td></tr>
+                                                <tr class="cg-data-row"><td>@c.CompanyOrCounterpartyName</td><td>@(c.PrincipalBusinessActivity ?? "—")</td><td>@(c.NatureOfHolding ?? "—")</td><td>@(c.NatureOfInterest ?? "—")</td></tr>
                                             }
                                         </tbody>
                                     </table>

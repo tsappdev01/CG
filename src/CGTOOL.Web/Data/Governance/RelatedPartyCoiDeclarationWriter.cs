@@ -105,7 +105,8 @@ public class RelatedPartyCoiDeclarationWriter(IStoredProcedureExecutor sp) : IRe
         new SqlParameter("@RelatedPartyCoiDeclarationId", declarationId),
         new SqlParameter("@CompanyOrCounterpartyName", conflict.CompanyOrCounterpartyName),
         new SqlParameter("@PrincipalBusinessActivity", (object?)conflict.PrincipalBusinessActivity ?? DBNull.Value),
-        new SqlParameter("@NatureOfHolding", (object?)conflict.NatureOfHolding ?? DBNull.Value));
+        new SqlParameter("@NatureOfHolding", (object?)conflict.NatureOfHolding ?? DBNull.Value),
+        new SqlParameter("@NatureOfInterest", (object?)conflict.NatureOfInterest ?? DBNull.Value));
 
     public Task DeleteConflictsAsync(int declarationId) => sp.ExecuteAsync(
         "dbo.usp_CoiConflictEntry_DeleteByDeclaration",

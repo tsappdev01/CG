@@ -70,6 +70,8 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR OBJECT_ID('dbo.FamilyMemberHoldings', 'U') IS NULL
     OR COL_LENGTH('dbo.FamilyMemberHoldings', 'TradeLicenceNumber') IS NULL
     OR COL_LENGTH('dbo.CoiCompanyEntries', 'NatureOfHolding') IS NULL
+    OR COL_LENGTH('dbo.CoiConflictEntries', 'NatureOfInterest') IS NULL
+    OR COL_LENGTH('dbo.OwnedCompanies', 'NatureOfInterest') IS NULL
     OR COL_LENGTH('dbo.AuditLogEntries', 'RecordHash') IS NULL
     OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
     OR COL_LENGTH('dbo.DeclarationCycleSetups', 'ReminderDayOfWeek') IS NULL
@@ -78,7 +80,7 @@ BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
     RAISERROR(
-        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, CoiCompanyEntries.NatureOfHolding, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, CoiCompanyEntries.NatureOfHolding, the NatureOfInterest columns, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
         16, 1, @db) WITH NOWAIT;
     SET NOEXEC ON;
 END
@@ -1352,13 +1354,14 @@ CREATE OR ALTER PROCEDURE dbo.usp_CoiConflictEntry_Insert
     @CompanyOrCounterpartyName nvarchar(160),
     @PrincipalBusinessActivity nvarchar(400) = NULL,
     @NatureOfHolding nvarchar(1000) = NULL,
+    @NatureOfInterest nvarchar(400) = NULL,
     @NewId int OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.CoiConflictEntries (RelatedPartyCoiDeclarationId, CompanyOrCounterpartyName, PrincipalBusinessActivity, NatureOfHolding)
-    VALUES (@RelatedPartyCoiDeclarationId, @CompanyOrCounterpartyName, @PrincipalBusinessActivity, @NatureOfHolding);
+    INSERT INTO dbo.CoiConflictEntries (RelatedPartyCoiDeclarationId, CompanyOrCounterpartyName, PrincipalBusinessActivity, NatureOfHolding, NatureOfInterest)
+    VALUES (@RelatedPartyCoiDeclarationId, @CompanyOrCounterpartyName, @PrincipalBusinessActivity, @NatureOfHolding, @NatureOfInterest);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1890,6 +1893,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_OwnedCompany_Insert
     @NatureOfHolding int = 0,
     @ServesAsBoardMemberOrExecutive bit = 0,
     @PrincipalBusinessActivity nvarchar(400) = NULL,
+    @NatureOfInterest nvarchar(400) = NULL,
     @NewId int OUTPUT
 AS
 BEGIN
@@ -1897,10 +1901,10 @@ BEGIN
 
     INSERT INTO dbo.OwnedCompanies
         (MemberId, CompanyName, TradeLicenseDetails, OwnershipPercentage, NatureOfHolding,
-         ServesAsBoardMemberOrExecutive, PrincipalBusinessActivity)
+         ServesAsBoardMemberOrExecutive, PrincipalBusinessActivity, NatureOfInterest)
     VALUES
         (@MemberId, @CompanyName, @TradeLicenseDetails, @OwnershipPercentage, @NatureOfHolding,
-         @ServesAsBoardMemberOrExecutive, @PrincipalBusinessActivity);
+         @ServesAsBoardMemberOrExecutive, @PrincipalBusinessActivity, @NatureOfInterest);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1919,7 +1923,8 @@ CREATE OR ALTER PROCEDURE dbo.usp_OwnedCompany_Update
     @TradeLicenceExpiryDate datetime2 = NULL,
     @NatureOfHolding int = 0,
     @ServesAsBoardMemberOrExecutive bit = 0,
-    @PrincipalBusinessActivity nvarchar(400) = NULL
+    @PrincipalBusinessActivity nvarchar(400) = NULL,
+    @NatureOfInterest nvarchar(400) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1929,7 +1934,8 @@ BEGIN
         TradeLicenceNumber = @TradeLicenceNumber, TradeLicenceLegalName = @TradeLicenceLegalName,
         TradeLicenceExpiryDate = @TradeLicenceExpiryDate, NatureOfHolding = @NatureOfHolding,
         ServesAsBoardMemberOrExecutive = @ServesAsBoardMemberOrExecutive,
-        PrincipalBusinessActivity = @PrincipalBusinessActivity
+        PrincipalBusinessActivity = @PrincipalBusinessActivity,
+        NatureOfInterest = @NatureOfInterest
     WHERE Id = @Id;
 END
 GO
@@ -2017,6 +2023,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMemberHolding_Insert
     @NatureOfHolding int = 0,
     @OwnershipPercentage decimal(5,2) = NULL,
     @PrincipalBusinessActivity nvarchar(400) = NULL,
+    @NatureOfInterest nvarchar(400) = NULL,
     @TradeLicencePath nvarchar(260) = NULL,
     @TradeLicenceFileName nvarchar(260) = NULL,
     @TradeLicenceNumber nvarchar(100) = NULL,
@@ -2028,10 +2035,10 @@ BEGIN
     SET NOCOUNT ON;
 
     INSERT INTO dbo.FamilyMemberHoldings
-        (FamilyMemberId, CompanyName, NatureOfHolding, OwnershipPercentage, PrincipalBusinessActivity,
+        (FamilyMemberId, CompanyName, NatureOfHolding, OwnershipPercentage, PrincipalBusinessActivity, NatureOfInterest,
          TradeLicencePath, TradeLicenceFileName, TradeLicenceNumber, TradeLicenceExpiryDate, LicenceActivities)
     VALUES
-        (@FamilyMemberId, @CompanyName, @NatureOfHolding, @OwnershipPercentage, @PrincipalBusinessActivity,
+        (@FamilyMemberId, @CompanyName, @NatureOfHolding, @OwnershipPercentage, @PrincipalBusinessActivity, @NatureOfInterest,
          @TradeLicencePath, @TradeLicenceFileName, @TradeLicenceNumber, @TradeLicenceExpiryDate, @LicenceActivities);
 
     SET @NewId = SCOPE_IDENTITY();
@@ -2044,6 +2051,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMemberHolding_Update
     @NatureOfHolding int = 0,
     @OwnershipPercentage decimal(5,2) = NULL,
     @PrincipalBusinessActivity nvarchar(400) = NULL,
+    @NatureOfInterest nvarchar(400) = NULL,
     @TradeLicencePath nvarchar(260) = NULL,
     @TradeLicenceFileName nvarchar(260) = NULL,
     @TradeLicenceNumber nvarchar(100) = NULL,
@@ -2057,6 +2065,7 @@ BEGIN
         NatureOfHolding = @NatureOfHolding,
         OwnershipPercentage = @OwnershipPercentage,
         PrincipalBusinessActivity = @PrincipalBusinessActivity,
+        NatureOfInterest = @NatureOfInterest,
         TradeLicencePath = @TradeLicencePath,
         TradeLicenceFileName = @TradeLicenceFileName,
         TradeLicenceNumber = @TradeLicenceNumber,

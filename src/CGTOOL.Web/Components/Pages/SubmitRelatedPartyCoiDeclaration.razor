@@ -331,7 +331,7 @@
                 {
                     <div class="cg-table-wrap">
                         <table>
-                            <thead><tr><th>Legal Name of Company/Counterparty</th><th>Principal Business Activity</th><th>Nature of Holding</th><th></th></tr></thead>
+                            <thead><tr><th>Legal Name of Company/Counterparty</th><th>Principal Business Activity</th><th>Nature of Holding</th><th>Nature of Interest</th><th></th></tr></thead>
                             <tbody>
                                 @foreach (var c in _conflicts)
                                 {
@@ -360,6 +360,7 @@
                                                 }
                                             </select>
                                         </td>
+                                        <td><input class="cg-input" @bind="c.NatureOfInterest" maxlength="400" placeholder="Supplier, customer&hellip;" /></td>
                                         <td><button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveConflict(c)">Remove</button></td>
                                     </tr>
                                 }

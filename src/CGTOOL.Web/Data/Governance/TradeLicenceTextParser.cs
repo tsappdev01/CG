@@ -148,11 +148,91 @@ public static class TradeLicenceTextParser
 
     private static readonly string[] ActivityLabels =
         ["license activities", "licence activities", "business activities", "activities", "activity",
-         "الأنشطة", "النشاط"];
+         "الأنشطة", "النشاط", "نشاط"];
 
-    /// <summary>What the licence says the company is permitted to do. Read from the same text as
-    /// the rest, so it costs no second call.</summary>
-    public static string? FindActivities(string text) => DocumentTextParser.FindValue(text, ActivityLabels);
+    /// <summary>The headings that follow the activities on these licences. Reaching one means the
+    /// activities are over -- and, when it is what sits after the label, that the label's own line
+    /// held no value at all.</summary>
+    private static readonly string[] SectionLabels =
+    [
+        "address", "remarks", "license members", "licence members", "license details",
+        "licence details", "phone no", "fax no", "mobile no", "p.o. box", "po box", "email",
+        "parcel id", "issue date", "expiry date", "register no", "dcci",
+    ];
+
+    private static readonly Regex ArabicRun = new(@"[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]+", RegexOptions.Compiled);
+
+    /// <summary>What the licence says the company is permitted to do.
+    ///
+    /// Read on its own rather than through FindValue, because this is the one field whose cell OCR
+    /// does not reliably put after its label. On the Dubai Economy and Tourism licence the banded
+    /// row flattens to "Manufacturing of ... نشاط الرخصة التجارية / License Activities": the value
+    /// is BEFORE the heading, what follows it is the Arabic heading, and taking the next line that
+    /// carries Latin characters returns the next section's heading -- "العنوان / Address", which is
+    /// what a member saw in this field. So: look after the label, then before it, then below it,
+    /// and stop at the next section rather than accepting whatever comes first.
+    ///
+    /// The value also wraps -- "Manufacturing of Plating Products for Machinery and / Vehicles" is
+    /// two OCR lines -- so continuation lines are joined until the section ends.</summary>
+    public static string? FindActivities(string text)
+    {
+        var lines = DocumentTextParser.Lines(text);
+
+        foreach (var label in ActivityLabels)
+        {
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var idx = lines[i].IndexOf(label, StringComparison.OrdinalIgnoreCase);
+                if (idx < 0) continue;
+
+                var parts = new List<string>();
+                var onOwnLine = Latin(lines[i][(idx + label.Length)..]) ?? Latin(lines[i][..idx]);
+                if (onOwnLine is not null && !IsSectionHeading(onOwnLine) && !IsLabelRemnant(onOwnLine))
+                {
+                    parts.Add(onOwnLine);
+                }
+
+                // Below the label: the wrapped remainder, or the whole value where the cell did not
+                // flatten onto the heading's line. An Arabic-only line is the translation -- skipped
+                // while still looking for the English, and the end of it once the English is found.
+                for (var j = i + 1; j < Math.Min(i + 6, lines.Length) && parts.Count < 3; j++)
+                {
+                    var candidate = Latin(lines[j]);
+                    if (candidate is null)
+                    {
+                        if (parts.Count > 0) break;
+                        continue;
+                    }
+                    if (IsSectionHeading(candidate) || DocumentTextParser.TryReadDate(candidate) is not null) break;
+                    if (IsLabelRemnant(candidate)) continue;
+
+                    parts.Add(candidate);
+                }
+
+                if (parts.Count > 0) return string.Join(" ", parts);
+            }
+        }
+        return null;
+    }
+
+    /// <summary>The Latin half of a bilingual fragment, or null when there is none. These licences
+    /// print the Arabic beside the English in the same cell, and OCR hands both over together.</summary>
+    private static string? Latin(string fragment)
+    {
+        var latin = ArabicRun.Replace(fragment, " ").Trim();
+        latin = string.Join(' ', latin.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        latin = latin.Trim(':', '-', '.', '/', '|', ' ').Trim();
+        return latin.Any(char.IsAsciiLetterOrDigit) ? latin : null;
+    }
+
+    private static bool IsSectionHeading(string candidate) =>
+        SectionLabels.Any(l => candidate.StartsWith(l, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Whether what was found is the rest of the heading rather than the value. The short
+    /// labels are matched too -- "activities" matches inside "License Activities" -- and what sits
+    /// before them on that line is then the word "License", not the activity.</summary>
+    private static bool IsLabelRemnant(string candidate) =>
+        ActivityLabels.Any(l => l.Contains(candidate, StringComparison.OrdinalIgnoreCase));
 
     public static TradeLicenceExtraction Parse(string text) => new(
         LicenceNumber: DocumentTextParser.FindValue(text, LicenceNumberLabels),

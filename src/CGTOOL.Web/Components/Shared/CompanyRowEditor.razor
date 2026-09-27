@@ -4,8 +4,8 @@
 <div class="cg-coi-company-row">
     <div class="cg-field-row">
         <label class="cg-field">
-            <span>Legal Name of Company <em class="cg-subtitle" style="margin:0;">(as per Trade License)</em></span>
-            <input id="@FieldId("name")" class="cg-input" list="@ListId" value="@Row.LegalCompanyName" @oninput="OnLegalNameInput" maxlength="160" />
+            <span>Legal Name of Company <span class="cg-required" aria-hidden="true">*</span> <em class="cg-subtitle" style="margin:0;">(as per Trade License)</em></span>
+            <input id="@FieldId("name")" required aria-required="true" class="cg-input" list="@ListId" value="@Row.LegalCompanyName" @oninput="OnLegalNameInput" maxlength="160" />
             @if (EarlierCompanies.Count > 0)
             {
                 <datalist id="@ListId">
@@ -18,11 +18,11 @@
             }
         </label>
         <label class="cg-field">
-            <span>Principal Business Activity</span>
-            <input id="@FieldId("activity")" class="cg-input" @bind="Row.PrincipalBusinessActivity" @bind:after="FillActivitiesIfBlank" maxlength="400" />
+            <span>Principal Business Activity <span class="cg-required" aria-hidden="true">*</span></span>
+            <input id="@FieldId("activity")" required aria-required="true" class="cg-input" @bind="Row.PrincipalBusinessActivity" @bind:after="FillActivitiesIfBlank" maxlength="400" />
         </label>
         <label class="cg-field">
-            <span>Nature of Holding</span>
+            <span>Nature of Holding <span class="cg-required" aria-hidden="true">*</span></span>
             <select class="cg-input" @bind="Row.NatureOfHolding">
                 <option value="">Select…</option>
                 @foreach (var option in SubmitRelatedPartyCoiDeclaration.NatureOfHoldingOptions)
@@ -34,8 +34,8 @@
         @if (ShowRelativeLink)
         {
             <label class="cg-field">
-                <span>Relative</span>
-                <select id="@FieldId("relative")" class="cg-input" @bind="RelativeKeyString">
+                <span>Relative <span class="cg-required" aria-hidden="true">*</span></span>
+                <select id="@FieldId("relative")" required aria-required="true" class="cg-input" @bind="RelativeKeyString">
                     <option value="">Select relative…</option>
                     @foreach (var r in Relatives)
                     {
@@ -48,8 +48,8 @@
 
     <div class="cg-field-row">
         <label class="cg-field">
-            <span>Trade License Number</span>
-            <input id="@FieldId("licence")" class="cg-input" @bind="Row.TradeLicenseNumber" maxlength="40" />
+            <span>Trade License Number <span class="cg-required" aria-hidden="true">*</span></span>
+            <input id="@FieldId("licence")" required aria-required="true" class="cg-input" @bind="Row.TradeLicenseNumber" maxlength="40" />
         </label>
         <label class="cg-field">
             <span>Trade License Expiry Date</span>

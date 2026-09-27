@@ -1226,10 +1226,15 @@ public partial class SubmitRelatedPartyCoiDeclaration
         return true;
     }
 
-    // Submission validation (Functional Spec §5.4/§7.8): every I.B/I.C/I.D row must have a company
-    // name, trade license number, expiry date, license activities, and at least one uploaded document
-    // before the declaration can move from Draft to Submitted. Draft save (SaveDraftAsync) skips all of
-    // this so declarants aren't blocked mid-entry.
+    // Submission validation: every I.B/I.C/I.D row must name the company, its principal business
+    // activity, how the interest is held, and the trade license number before the declaration can
+    // move from Draft to Submitted. Draft save (SaveDraftAsync) skips all of this so declarants
+    // aren't blocked mid-entry.
+    //
+    // The expiry date, license activities and an uploaded document were required too (Functional
+    // Spec §5.4/§7.8) and are not any more, on the 27-Sep-2026 instruction naming the four above as
+    // the mandatory set. They are still captured, still pre-filled from My Register, and still shown
+    // on the report -- a row can now be submitted without them.
     /// <summary>On most licences the permitted activities are the business activity said again, so a
     /// blank one is filled from it -- on screen, as the row is built, not silently at submission.
     /// Only ever a blank: what the member read off the licence is what the licence says.</summary>
@@ -1273,27 +1278,22 @@ public partial class SubmitRelatedPartyCoiDeclaration
                     CompanyFieldId(row, "relative"));
             }
 
-            // Named one at a time rather than as a list of three: the message says what to do, and
-            // the cursor is already in the box to do it in.
+            // Named one at a time: the message says what to do, and the cursor is already in the
+            // box to do it in.
+            if (string.IsNullOrWhiteSpace(row.PrincipalBusinessActivity))
+            {
+                return Refuse($"Enter the principal business activity for {RowLabel(row, sectionLabel)}.",
+                    CompanyFieldId(row, "activity"));
+            }
+            if (string.IsNullOrWhiteSpace(row.NatureOfHolding))
+            {
+                return Refuse($"Select the nature of holding for {RowLabel(row, sectionLabel)}.",
+                    CompanyFieldId(row, "nature"));
+            }
             if (string.IsNullOrWhiteSpace(row.TradeLicenseNumber))
             {
                 return Refuse($"Enter the trade license number for {RowLabel(row, sectionLabel)}.",
                     CompanyFieldId(row, "licence"));
-            }
-            if (row.TradeLicenseExpiryDate is null)
-            {
-                return Refuse($"Enter the trade license expiry date for {RowLabel(row, sectionLabel)}.",
-                    CompanyFieldId(row, "expiry"));
-            }
-            if (string.IsNullOrWhiteSpace(row.LicenseActivities))
-            {
-                return Refuse($"Enter the license activities for {RowLabel(row, sectionLabel)}.",
-                    CompanyFieldId(row, "activities"));
-            }
-            if (row.Documents.Count == 0)
-            {
-                return Refuse($"Upload at least one trade license document for {RowLabel(row, sectionLabel)}.",
-                    CompanyFieldId(row, "documents"));
             }
         }
 

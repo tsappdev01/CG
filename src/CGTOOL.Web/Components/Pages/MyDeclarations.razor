@@ -71,7 +71,10 @@
                     <tbody>
                         @foreach (var d in _insiderHistory)
                         {
-                            var editable = d.DeclarationCycleRun!.DueDateUtc.ToLocalDisplay().Date >= DateTime.Now.Date;
+                            @* A draft stays open past the due date: it was never submitted, and the
+                               due date is what closes a submitted declaration to further change, not
+                               what abandons an unfinished one. *@
+                            var editable = d.IsDraft || d.DeclarationCycleRun!.DueDateUtc.ToLocalDisplay().Date >= DateTime.Now.Date;
                             <tr class="cg-data-row">
                                 <td class="mono">Q@(d.DeclarationCycleRun!.PeriodQuarter) @d.DeclarationCycleRun!.PeriodYear</td>
                                 <td><span class="cg-status-pill @(d.IsDraft ? "pending" : "cleared")">@(d.IsDraft ? "Draft" : "Submitted")</span></td>
@@ -128,7 +131,10 @@
                     <tbody>
                         @foreach (var d in _coiHistory)
                         {
-                            var editable = d.DeclarationCycleRun!.DueDateUtc.ToLocalDisplay().Date >= DateTime.Now.Date;
+                            @* A draft stays open past the due date: it was never submitted, and the
+                               due date is what closes a submitted declaration to further change, not
+                               what abandons an unfinished one. *@
+                            var editable = d.IsDraft || d.DeclarationCycleRun!.DueDateUtc.ToLocalDisplay().Date >= DateTime.Now.Date;
                             <tr class="cg-data-row">
                                 <td class="mono">Q@(d.DeclarationCycleRun!.PeriodQuarter) @d.DeclarationCycleRun!.PeriodYear</td>
                                 <td><span class="cg-status-pill @(d.IsDraft ? "pending" : "cleared")">@(d.IsDraft ? "Draft" : "Submitted")</span></td>

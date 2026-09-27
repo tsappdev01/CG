@@ -283,7 +283,11 @@ public partial class SubmitRelatedPartyCoiDeclaration
             return;
         }
 
-        if (declaration.DeclarationCycleRun.DueDateUtc.Date < DateTime.UtcNow.Date)
+        // The due date bars changing a declaration that was submitted; it does not bar finishing one
+        // that never was. Applied to a draft it does the opposite of what it is for: the member who
+        // saved their work loses the declaration, while the member who never opened the form can
+        // still submit it. Saving a draft must not forfeit the declaration.
+        if (!declaration.IsDraft && declaration.DeclarationCycleRun.DueDateUtc.Date < DateTime.UtcNow.Date)
         {
             _step = Step.EditWindowClosed;
             return;

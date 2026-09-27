@@ -1,0 +1,35 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.nupkg
+*.snupkg
+.nuget/
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploaded documents: member files, not source. Kept out of the repository because they are
+# personal data -- Emirates IDs, passports, trade licences -- and because a repository is not
+# where a member's documents belong.
+src/CGTOOL.Web/wwwroot/uploads/

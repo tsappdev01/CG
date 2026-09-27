@@ -130,7 +130,7 @@
                 <h2>Send</h2>
                 <label class="cg-field">
                     <span>Entity</span>
-                    <select class="cg-input" @bind="_sendCompanyId">
+                    <select class="cg-input" @bind="_sendCompanyId" @bind:after="EnsureValidSelectedPeriod">
                         <option value="">All entities</option>
                         @foreach (var c in _companies ?? [])
                         {
@@ -158,6 +158,14 @@
                         </select>
                     </label>
                 </div>
+                @if (ClosedQuarterLabels() is { Count: > 0 } closedQuarters)
+                {
+                    <p class="cg-subtitle">
+                        @string.Join(", ", closedQuarters)
+                        @(closedQuarters.Count == 1 ? "is" : "are") already sent or scheduled for @_periodYear and cannot go out again.
+                        Recall from the History tab to re-issue one.
+                    </p>
+                }
                 @if (LatestSentPeriod() is { } latestSent)
                 {
                     <p class="cg-subtitle">Periods before Q@(latestSent.Quarter) @(latestSent.Year) (the most recently sent) are disabled — notifications must go out in order.</p>

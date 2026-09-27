@@ -310,20 +310,67 @@ public partial class DeclarationsSetupPage
         return latest is null ? null : (latest.PeriodYear, latest.PeriodQuarter);
     }
 
-    private bool IsQuarterDisabled(int quarter) =>
-        LatestSentPeriod() is { } latest && PeriodIndex(_periodYear, quarter) < PeriodIndex(latest.Year, latest.Quarter);
+    /// <summary>The live notification already covering a period for the entity now selected, if there
+    /// is one. A period with one is closed: sending again issues the same quarter's declaration a
+    /// second time, to people who may already have submitted it.
+    ///
+    /// "All entities" covers everyone, so a run sent that way closes the period for every entity, and
+    /// selecting "All entities" is closed by a run for any one of them. A recalled run closes
+    /// nothing: recall is how an admin withdraws a notification precisely so it can be issued
+    /// again.</summary>
+    private DeclarationCycleRun? RunClosing(int year, int quarter)
+    {
+        var selected = int.TryParse(_sendCompanyId, out var id) ? id : (int?)null;
 
-    // Called after the Year select changes (and once on load) so the selected Quarter never stays
-    // parked on an option that just became disabled -- advances to the period right after the most
-    // recently sent one instead.
+        return (_runs ?? []).FirstOrDefault(r =>
+            !r.Recalled
+            && r.PeriodYear == year
+            && r.PeriodQuarter == quarter
+            && (r.CompanyId is null || selected is null || r.CompanyId == selected));
+    }
+
+    private bool IsPeriodClosed(int year, int quarter) => RunClosing(year, quarter) is not null;
+
+    /// <summary>The quarters of the selected year already spoken for, so the hint can name them
+    /// rather than leaving the admin to click each one to find out.</summary>
+    private List<string> ClosedQuarterLabels() =>
+        [.. Enumerable.Range(1, 4).Where(q => IsPeriodClosed(_periodYear, q)).Select(q => $"Q{q}")];
+
+    private bool IsQuarterDisabled(int quarter) =>
+        IsPeriodClosed(_periodYear, quarter)
+        || (LatestSentPeriod() is { } latest && PeriodIndex(_periodYear, quarter) < PeriodIndex(latest.Year, latest.Quarter));
+
+    /// <summary>Why this period cannot be sent, for the message when something asks anyway. Null when
+    /// it can.</summary>
+    private string? WhyQuarterDisabled(int year, int quarter)
+    {
+        if (RunClosing(year, quarter) is { } closing)
+        {
+            var what = closing.Sent ? "was already sent" : "is already scheduled";
+            return $"Q{quarter} {year} {what} for {EntityLabel(closing.CompanyId)}"
+                + " — recall it from the History tab first if it needs to go out again.";
+        }
+
+        if (LatestSentPeriod() is { } latest && PeriodIndex(year, quarter) < PeriodIndex(latest.Year, latest.Quarter))
+        {
+            return $"Q{quarter} {year} can't be sent: a later period has already been sent.";
+        }
+
+        return null;
+    }
+
+    // Called after the Entity or Year select changes (and once on load) so the selected Quarter never
+    // stays parked on an option that just became disabled -- walks forward to the first period that
+    // can actually be sent. Bounded: a run ten years out is a data problem, not a period to advance
+    // past forever.
     private void EnsureValidSelectedPeriod()
     {
-        if (LatestSentPeriod() is not { } latest) return;
-        if (PeriodIndex(_periodYear, _periodQuarter) >= PeriodIndex(latest.Year, latest.Quarter)) return;
-
-        var nextIndex = PeriodIndex(latest.Year, latest.Quarter) + 1;
-        _periodYear = nextIndex / 4;
-        _periodQuarter = (nextIndex % 4) + 1;
+        for (var attempt = 0; attempt < 40 && IsQuarterDisabled(_periodQuarter); attempt++)
+        {
+            var nextIndex = PeriodIndex(_periodYear, _periodQuarter) + 1;
+            _periodYear = nextIndex / 4;
+            _periodQuarter = (nextIndex % 4) + 1;
+        }
     }
 
     /// <summary>Converts a locally-picked calendar date (from an &lt;input type="date"&gt;) into the
@@ -363,9 +410,9 @@ public partial class DeclarationsSetupPage
     {
         if (_setup is null) return;
 
-        if (IsQuarterDisabled(_periodQuarter))
+        if (WhyQuarterDisabled(_periodYear, _periodQuarter) is { } reason)
         {
-            Toasts.ShowError($"Q{_periodQuarter} {_periodYear} can't be sent: a later period has already been sent.");
+            Toasts.ShowError(reason);
             return;
         }
 
@@ -449,9 +496,9 @@ public partial class DeclarationsSetupPage
     {
         if (_setup is null) return;
 
-        if (IsQuarterDisabled(_periodQuarter))
+        if (WhyQuarterDisabled(_periodYear, _periodQuarter) is { } reason)
         {
-            Toasts.ShowError($"Q{_periodQuarter} {_periodYear} can't be sent: a later period has already been sent.");
+            Toasts.ShowError(reason);
             return;
         }
 

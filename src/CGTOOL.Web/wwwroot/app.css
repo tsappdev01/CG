@@ -2354,6 +2354,25 @@ select.cg-input {
     margin-top: 10px;
 }
 .cg-holding-row .cg-icon-btn { margin-bottom: 2px; }
+/* Each company is a card: the licence details below belong to the row above them, and without the
+   boundary a second company reads as more fields of the first. */
+.cg-holding-card {
+    border: 1px solid var(--cg-line);
+    border-radius: 10px;
+    padding: 10px 12px 12px;
+    margin-top: 10px;
+}
+.cg-holding-card .cg-holding-row { margin-top: 0; }
+.cg-holding-detail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+}
+.cg-holding-detail .cg-field-wide { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+    .cg-holding-detail { grid-template-columns: minmax(0, 1fr); }
+}
 .cg-holding-line { display: flex; flex-direction: column; gap: 1px; margin-bottom: 6px; }
 .cg-holding-line:last-child { margin-bottom: 0; }
 .cg-holding-name { font-weight: 600; }

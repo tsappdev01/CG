@@ -474,6 +474,7 @@
 
                     @foreach (var holding in _relativeForm.Holdings)
                     {
+                        <div class="cg-holding-card">
                         <div class="cg-holding-row">
                             <label class="cg-field">
                                 <span>Company / Organization</span>
@@ -494,6 +495,46 @@
                             </label>
                             <button type="button" class="cg-icon-btn cg-icon-btn-danger" title="Remove this company"
                                     @onclick="() => RemoveHolding(holding)"><span class="cg-ico cg-ico-trash" aria-hidden="true"></span></button>
+                        </div>
+                        <div class="cg-holding-detail">
+                            <label class="cg-field cg-field-wide">
+                                <span>Principal Business Activity</span>
+                                <input class="cg-input" @bind="holding.PrincipalBusinessActivity" maxlength="400"
+                                       placeholder="What the company principally does" />
+                            </label>
+                            <div class="cg-doc-upload cg-field-wide">
+                                <span class="cg-doc-upload-label">Trade License</span>
+                                <InputFile OnChange="e => OnHoldingLicenceSelectedAsync(holding, e)" accept=".png,.jpg,.jpeg,.pdf"
+                                           disabled="@IsUploadingHolding(holding)" />
+                                @if (IsUploadingHolding(holding))
+                                {
+                                    <span class="cg-doc-upload-state">Uploading…</span>
+                                    <progress class="cg-doc-progress"></progress>
+                                }
+                                else if (!string.IsNullOrEmpty(holding.TradeLicencePath))
+                                {
+                                    <a class="cg-doc-chip" href="@holding.TradeLicencePath" target="_blank" rel="noopener">View</a>
+                                }
+                                else
+                                {
+                                    <span class="cg-subtitle">Not attached</span>
+                                }
+                            </div>
+                            <label class="cg-field">
+                                <span>Trade License Number</span>
+                                <input class="cg-input" @bind="holding.TradeLicenceNumber" maxlength="100" />
+                            </label>
+                            <label class="cg-field">
+                                <span>Trade License Expiry Date</span>
+                                <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+                                       @bind:get="UaeDate.Show(holding.TradeLicenceExpiryDate)"
+                                       @bind:set="v => SetDate(v, d => holding.TradeLicenceExpiryDate = d)" />
+                            </label>
+                            <label class="cg-field cg-field-wide">
+                                <span>License Activities</span>
+                                <input class="cg-input" @bind="holding.LicenceActivities" maxlength="400" />
+                            </label>
+                        </div>
                         </div>
                     }
 

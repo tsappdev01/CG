@@ -68,6 +68,7 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.OwnedCompanies', 'PrincipalBusinessActivity') IS NULL
     OR OBJECT_ID('dbo.MemberDocuments', 'U') IS NULL
     OR OBJECT_ID('dbo.FamilyMemberHoldings', 'U') IS NULL
+    OR COL_LENGTH('dbo.FamilyMemberHoldings', 'TradeLicenceNumber') IS NULL
     OR COL_LENGTH('dbo.AuditLogEntries', 'RecordHash') IS NULL
     OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
     OR COL_LENGTH('dbo.DeclarationCycleSetups', 'ReminderDayOfWeek') IS NULL
@@ -76,7 +77,7 @@ BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
     RAISERROR(
-        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
         16, 1, @db) WITH NOWAIT;
     SET NOEXEC ON;
 END
@@ -2013,13 +2014,23 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMemberHolding_Insert
     @CompanyName nvarchar(160),
     @NatureOfHolding int = 0,
     @OwnershipPercentage decimal(5,2) = NULL,
+    @PrincipalBusinessActivity nvarchar(400) = NULL,
+    @TradeLicencePath nvarchar(260) = NULL,
+    @TradeLicenceFileName nvarchar(260) = NULL,
+    @TradeLicenceNumber nvarchar(100) = NULL,
+    @TradeLicenceExpiryDate datetime2 = NULL,
+    @LicenceActivities nvarchar(400) = NULL,
     @NewId int OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.FamilyMemberHoldings (FamilyMemberId, CompanyName, NatureOfHolding, OwnershipPercentage)
-    VALUES (@FamilyMemberId, @CompanyName, @NatureOfHolding, @OwnershipPercentage);
+    INSERT INTO dbo.FamilyMemberHoldings
+        (FamilyMemberId, CompanyName, NatureOfHolding, OwnershipPercentage, PrincipalBusinessActivity,
+         TradeLicencePath, TradeLicenceFileName, TradeLicenceNumber, TradeLicenceExpiryDate, LicenceActivities)
+    VALUES
+        (@FamilyMemberId, @CompanyName, @NatureOfHolding, @OwnershipPercentage, @PrincipalBusinessActivity,
+         @TradeLicencePath, @TradeLicenceFileName, @TradeLicenceNumber, @TradeLicenceExpiryDate, @LicenceActivities);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -2029,14 +2040,26 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMemberHolding_Update
     @Id int,
     @CompanyName nvarchar(160),
     @NatureOfHolding int = 0,
-    @OwnershipPercentage decimal(5,2) = NULL
+    @OwnershipPercentage decimal(5,2) = NULL,
+    @PrincipalBusinessActivity nvarchar(400) = NULL,
+    @TradeLicencePath nvarchar(260) = NULL,
+    @TradeLicenceFileName nvarchar(260) = NULL,
+    @TradeLicenceNumber nvarchar(100) = NULL,
+    @TradeLicenceExpiryDate datetime2 = NULL,
+    @LicenceActivities nvarchar(400) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     UPDATE dbo.FamilyMemberHoldings
     SET CompanyName = @CompanyName,
         NatureOfHolding = @NatureOfHolding,
-        OwnershipPercentage = @OwnershipPercentage
+        OwnershipPercentage = @OwnershipPercentage,
+        PrincipalBusinessActivity = @PrincipalBusinessActivity,
+        TradeLicencePath = @TradeLicencePath,
+        TradeLicenceFileName = @TradeLicenceFileName,
+        TradeLicenceNumber = @TradeLicenceNumber,
+        TradeLicenceExpiryDate = @TradeLicenceExpiryDate,
+        LicenceActivities = @LicenceActivities
     WHERE Id = @Id;
 END
 GO

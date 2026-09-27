@@ -550,12 +550,21 @@ public partial class SubmitRelatedPartyCoiDeclaration
                     continue;
                 }
 
-                _relativeOwnedCompanies.Add(new CompanyRow
+                // Everything the register holds about the holding, so the declarant confirms it
+                // rather than retyping it: the activity, the licence's number, expiry and permitted
+                // activities, and the licence document itself.
+                var row = new CompanyRow
                 {
                     LegalCompanyName = holding.CompanyName.Trim(),
+                    PrincipalBusinessActivity = holding.PrincipalBusinessActivity ?? string.Empty,
+                    TradeLicenseNumber = holding.TradeLicenceNumber ?? string.Empty,
+                    TradeLicenseExpiryDate = holding.TradeLicenceExpiryDate,
+                    LicenseActivities = holding.LicenceActivities ?? string.Empty,
                     LinkedRelativeKey = _relatives
                         .FirstOrDefault(r => string.Equals(r.Name.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase))?.Key,
-                });
+                };
+                AddWorkspaceDocument(row, holding.TradeLicencePath, "Trade License");
+                _relativeOwnedCompanies.Add(row);
             }
 
             _nothingRelativeOwned = false;

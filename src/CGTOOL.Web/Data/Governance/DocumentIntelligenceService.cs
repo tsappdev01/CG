@@ -25,7 +25,8 @@ public record IdDocumentExtraction(
 public record TradeLicenceExtraction(
     string? LicenceNumber,
     string? BusinessName,
-    DateTime? ExpiryDate);
+    DateTime? ExpiryDate,
+    string? Activities = null);
 
 public interface IDocumentIntelligenceService
 {

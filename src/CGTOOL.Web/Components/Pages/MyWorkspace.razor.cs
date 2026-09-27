@@ -228,6 +228,12 @@ public partial class MyWorkspace : ComponentBase
             CompanyName = h.CompanyName,
             NatureOfHolding = h.NatureOfHolding,
             OwnershipPercentage = h.OwnershipPercentage,
+            PrincipalBusinessActivity = h.PrincipalBusinessActivity,
+            TradeLicencePath = h.TradeLicencePath,
+            TradeLicenceFileName = h.TradeLicenceFileName,
+            TradeLicenceNumber = h.TradeLicenceNumber,
+            TradeLicenceExpiryDate = h.TradeLicenceExpiryDate,
+            LicenceActivities = h.LicenceActivities,
         }).ToList(),
         HoldsDiShares = f.HoldsDiShares,
         EmiratesIdPath = f.EmiratesIdPath,
@@ -258,6 +264,12 @@ public partial class MyWorkspace : ComponentBase
             CompanyName = h.CompanyName,
             NatureOfHolding = h.NatureOfHolding,
             OwnershipPercentage = h.OwnershipPercentage,
+            PrincipalBusinessActivity = h.PrincipalBusinessActivity,
+            TradeLicencePath = h.TradeLicencePath,
+            TradeLicenceFileName = h.TradeLicenceFileName,
+            TradeLicenceNumber = h.TradeLicenceNumber,
+            TradeLicenceExpiryDate = h.TradeLicenceExpiryDate,
+            LicenceActivities = h.LicenceActivities,
         }).ToList();
         to.HoldsDiShares = from.HoldsDiShares;
         to.EmiratesIdPath = from.EmiratesIdPath;
@@ -317,9 +329,19 @@ public partial class MyWorkspace : ComponentBase
     /// <summary>The whole list on one line, for the audit trail: a relative's holdings change as a
     /// set -- one added, one sold -- and a per-row diff would read as a shuffle rather than a
     /// change.</summary>
-    private static string DescribeHoldings(FamilyMember f) => string.Join(", ",
-        f.Holdings.Select(h => $"{h.CompanyName} ({HoldingLabel(h.NatureOfHolding)}"
-            + (h.OwnershipPercentage is { } pct ? $", {pct:0.##}%)" : ")")));
+    private static string DescribeHoldings(FamilyMember f) => string.Join(", ", f.Holdings.Select(DescribeHolding));
+
+    private static string DescribeHolding(FamilyMemberHolding h)
+    {
+        var parts = new List<string> { HoldingLabel(h.NatureOfHolding) };
+        if (h.OwnershipPercentage is { } pct) parts.Add($"{pct:0.##}%");
+        if (!string.IsNullOrWhiteSpace(h.PrincipalBusinessActivity)) parts.Add($"activity {h.PrincipalBusinessActivity}");
+        if (!string.IsNullOrWhiteSpace(h.TradeLicenceNumber)) parts.Add($"licence {h.TradeLicenceNumber}");
+        if (h.TradeLicenceExpiryDate is { } expiry) parts.Add($"expires {Day(expiry)}");
+        if (!string.IsNullOrWhiteSpace(h.LicenceActivities)) parts.Add($"licensed for {h.LicenceActivities}");
+        if (!string.IsNullOrWhiteSpace(h.TradeLicenceFileName)) parts.Add($"licence file {h.TradeLicenceFileName}");
+        return $"{h.CompanyName} ({string.Join(", ", parts)})";
+    }
 
     private static string HoldingsCell(FamilyMember f) => f.Holdings.Count == 0
         ? "—"
@@ -754,6 +776,90 @@ public partial class MyWorkspace : ComponentBase
 
     // ---------- a relative's holdings ----------
 
+
+    /// <summary>The licence for one holding. The file is named after a fresh id rather than the
+    /// holding's, because a holding row typed into the dialog has no id until the dialog is saved --
+    /// and the member should be able to attach the licence while entering the company, not after.
+    ///
+    /// Read to a temporary file first, as everywhere else on this page: the browser streams through
+    /// the InputFile component that raised the event, so nothing may re-render until it is done.</summary>
+    private readonly HashSet<FamilyMemberHolding> _uploadingHoldings = [];
+
+    private bool IsUploadingHolding(FamilyMemberHolding holding) => _uploadingHoldings.Contains(holding);
+
+    private async Task OnHoldingLicenceSelectedAsync(FamilyMemberHolding holding, InputFileChangeEventArgs e)
+    {
+        if (_effectiveMember is null) return;
+
+        var extension = ExtensionFor(e.File.ContentType);
+        if (extension is null) { Toasts.ShowError("Only JPEG, PNG, or PDF files are supported."); return; }
+        if (e.File.Size > MaxCompanyDocUploadBytes) { Toasts.ShowError("File must be 10 MB or smaller."); return; }
+
+        var temporaryFile = Path.GetTempFileName();
+        try
+        {
+            await using (var stream = e.File.OpenReadStream(MaxCompanyDocUploadBytes))
+            await using (var buffer = File.Create(temporaryFile))
+            {
+                await stream.CopyToAsync(buffer);
+            }
+        }
+        catch (Exception ex)
+        {
+            File.Delete(temporaryFile);
+            Toasts.ShowError($"The file could not be read ({ex.Message}). Try again.");
+            return;
+        }
+
+        _uploadingHoldings.Add(holding);
+        StateHasChanged();
+        try
+        {
+            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "my-workspace", "holdings");
+            Directory.CreateDirectory(uploadsDir);
+
+            var fileName = $"{Guid.NewGuid():N}{extension}";
+            var filePath = Path.Combine(uploadsDir, fileName);
+            File.Move(temporaryFile, filePath, overwrite: true);
+
+            // Replacing a licence leaves no orphan behind.
+            if (!string.IsNullOrWhiteSpace(holding.TradeLicencePath))
+            {
+                var previous = Path.Combine(Env.WebRootPath, holding.TradeLicencePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(previous)) File.Delete(previous);
+            }
+
+            holding.TradeLicencePath = $"/uploads/my-workspace/holdings/{fileName}";
+            holding.TradeLicenceFileName = e.File.Name;
+
+            var captured = await ReadTradeLicenceAsync(filePath);
+
+            if (!string.IsNullOrWhiteSpace(captured?.LicenceNumber)) holding.TradeLicenceNumber = captured.LicenceNumber;
+            if (captured?.ExpiryDate is not null) holding.TradeLicenceExpiryDate = captured.ExpiryDate;
+            if (!string.IsNullOrWhiteSpace(captured?.BusinessName) && string.IsNullOrWhiteSpace(holding.CompanyName))
+            {
+                holding.CompanyName = captured.BusinessName;
+            }
+            // A licence can list its activities at length; the column holds 400, and a value over
+            // that would be rejected by the insert rather than trimmed.
+            if (!string.IsNullOrWhiteSpace(captured?.Activities))
+            {
+                holding.LicenceActivities = captured.Activities.Length > 400
+                    ? captured.Activities[..400]
+                    : captured.Activities;
+            }
+
+            Toasts.ShowSuccess(captured is null
+                ? "Trade licence attached. Enter its details below."
+                : "Trade licence attached. The details below were read off it — check them, then Save.");
+        }
+        finally
+        {
+            _uploadingHoldings.Remove(holding);
+            if (File.Exists(temporaryFile)) File.Delete(temporaryFile);
+        }
+    }
+
     private void AddHolding()
     {
         if (_relativeForm is null) return;
@@ -791,7 +897,13 @@ public partial class MyWorkspace : ComponentBase
             if (existing is null
                 || existing.CompanyName != holding.CompanyName
                 || existing.NatureOfHolding != holding.NatureOfHolding
-                || existing.OwnershipPercentage != holding.OwnershipPercentage)
+                || existing.OwnershipPercentage != holding.OwnershipPercentage
+                || existing.PrincipalBusinessActivity != holding.PrincipalBusinessActivity
+                || existing.TradeLicencePath != holding.TradeLicencePath
+                || existing.TradeLicenceFileName != holding.TradeLicenceFileName
+                || existing.TradeLicenceNumber != holding.TradeLicenceNumber
+                || existing.TradeLicenceExpiryDate != holding.TradeLicenceExpiryDate
+                || existing.LicenceActivities != holding.LicenceActivities)
             {
                 await HoldingWriter.UpdateAsync(holding);
             }

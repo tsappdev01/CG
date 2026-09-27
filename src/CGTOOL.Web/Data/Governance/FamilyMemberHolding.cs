@@ -23,4 +23,25 @@ public class FamilyMemberHolding
 
     /// <summary>Percentage of that company the relative holds (0-100).</summary>
     public decimal? OwnershipPercentage { get; set; }
+
+    /// <summary>What the company does. Same field and length as the one the Related Party & COI
+    /// declaration asks against each company, so what is recorded here answers it.</summary>
+    [MaxLength(400)]
+    public string? PrincipalBusinessActivity { get; set; }
+
+    /// <summary>The company's trade licence, and what was read off it. Held against the holding
+    /// rather than the relative: a relative with three companies has three licences.</summary>
+    [MaxLength(260)]
+    public string? TradeLicencePath { get; set; }
+
+    [MaxLength(260)]
+    public string? TradeLicenceFileName { get; set; }
+
+    [MaxLength(100)]
+    public string? TradeLicenceNumber { get; set; }
+
+    public DateTime? TradeLicenceExpiryDate { get; set; }
+
+    [MaxLength(400)]
+    public string? LicenceActivities { get; set; }
 }

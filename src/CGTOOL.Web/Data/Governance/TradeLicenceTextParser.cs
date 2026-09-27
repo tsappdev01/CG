@@ -146,10 +146,19 @@ public static class TradeLicenceTextParser
         "تاريخ الانتهاء", "تاريخ الإنتهاء",
     ];
 
+    private static readonly string[] ActivityLabels =
+        ["license activities", "licence activities", "business activities", "activities", "activity",
+         "الأنشطة", "النشاط"];
+
+    /// <summary>What the licence says the company is permitted to do. Read from the same text as
+    /// the rest, so it costs no second call.</summary>
+    public static string? FindActivities(string text) => DocumentTextParser.FindValue(text, ActivityLabels);
+
     public static TradeLicenceExtraction Parse(string text) => new(
         LicenceNumber: DocumentTextParser.FindValue(text, LicenceNumberLabels),
         BusinessName: DocumentTextParser.FindValue(text, BusinessNameLabels),
-        ExpiryDate: DocumentTextParser.FindDate(text, ExpiryLabels));
+        ExpiryDate: DocumentTextParser.FindDate(text, ExpiryLabels),
+        Activities: FindActivities(text));
 }
 
 /// <summary>Fallbacks for an Emirates ID or passport, used only where prebuilt-idDocument leaves a

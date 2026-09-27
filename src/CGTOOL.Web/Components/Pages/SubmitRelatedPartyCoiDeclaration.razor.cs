@@ -757,10 +757,13 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 ? nature
                 : null;
 
-    /// <summary>The dialog spells out each change, because "update My Workspace" on its own does not
-    /// say what would be overwritten there.</summary>
-    private string WorkspaceUpdateSummary =>
-        string.Join("  ", (_pendingWorkspaceUpdates ?? []).Select(u => $"{u.CompanyName}: {DescribeWorkspaceUpdate(u)}"));
+    /// <summary>A value the register does not hold yet, said out loud -- an empty cell beside an
+    /// arrow reads as a rendering fault rather than as "there was nothing here".</summary>
+    private static string BlankAware(string? value) => string.IsNullOrWhiteSpace(value) ? "Not recorded" : value.Trim();
+
+    /// <summary>A value being replaced is struck through; "Not recorded" is not a value, and struck
+    /// through it reads as though something had been deleted.</summary>
+    private static string BeforeClass(bool nothingThere) => nothingThere ? "cg-ws-none" : "cg-ws-before";
 
     private static string Quote(string? value) => string.IsNullOrWhiteSpace(value) ? "(blank)" : $"\u201c{value.Trim()}\u201d";
 

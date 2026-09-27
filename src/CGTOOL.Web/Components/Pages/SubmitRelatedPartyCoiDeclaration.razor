@@ -83,16 +83,6 @@
             </ol>
 
             @* Reachable from any step, because any chevron can be the one that asks for Review. *@
-            @* Corrections made in Part II are corrections to the register too, if the member wants
-               them there -- asked once on the way out, not per field as they type. *@
-            <ConfirmPrompt Show="_pendingWorkspaceUpdates is not null"
-                           Message="Update these companies in My Workspace as well?"
-                           Detail="@WorkspaceUpdateSummary"
-                           ConfirmLabel="Update My Workspace"
-                           CancelLabel="This declaration only"
-                           OnConfirm="ConfirmWorkspaceUpdatesAsync"
-                           OnCancel="DeclineWorkspaceUpdates" />
-
             <ConfirmPrompt Show="_pendingFormConfirm"
                            Message="Please confirm all information entered above is correct before proceeding — you can still come back and edit it, but double-check now."
                            ConfirmLabel="All information is correct — proceed"
@@ -456,6 +446,61 @@
         }
     }
 </div>
+
+@* Corrections made in Part II are corrections to the register too, if the member wants them there.
+   Asked once on the way out rather than per field, and shown as a list: three companies' changes
+   written out as a sentence is a paragraph to decode, not a question to answer. *@
+@if (_pendingWorkspaceUpdates is { Count: > 0 } workspaceUpdates)
+{
+    <div class="cg-modal-backdrop" @onclick="DeclineWorkspaceUpdates"></div>
+    <div class="cg-modal cg-ws-modal" role="dialog" aria-modal="true" aria-labelledby="cg-ws-title">
+        <div class="cg-modal-head">
+            <div>
+                <h2 id="cg-ws-title">Update My Workspace?</h2>
+                <p class="cg-subtitle">
+                    @(workspaceUpdates.Count == 1
+                        ? "One company's details differ from your register."
+                        : $"{workspaceUpdates.Count} companies' details differ from your register.")
+                </p>
+            </div>
+            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="DeclineWorkspaceUpdates">&times;</button>
+        </div>
+
+        <div class="cg-modal-body">
+            @foreach (var update in workspaceUpdates)
+            {
+                <div class="cg-ws-card">
+                    <div class="cg-ws-company">@update.CompanyName</div>
+
+                    @if (update.AfterActivity is not null)
+                    {
+                        <div class="cg-ws-field">Principal Business Activity</div>
+                        <div class="cg-ws-change">
+                            <span class="@BeforeClass(string.IsNullOrWhiteSpace(update.BeforeActivity))">@BlankAware(update.BeforeActivity)</span>
+                            <span class="cg-ws-arrow" aria-hidden="true">&rarr;</span>
+                            <span class="cg-ws-after">@update.AfterActivity</span>
+                        </div>
+                    }
+
+                    @if (update.AfterNature != update.BeforeNature)
+                    {
+                        <div class="cg-ws-field">Nature of Holding</div>
+                        <div class="cg-ws-change">
+                            <span class="@BeforeClass(update.BeforeNature == RelatedPartyHoldingNature.None)">@HoldingNatureLabel(update.BeforeNature)</span>
+                            <span class="cg-ws-arrow" aria-hidden="true">&rarr;</span>
+                            <span class="cg-ws-after">@HoldingNatureLabel(update.AfterNature)</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="cg-modal-foot">
+            <button type="button" class="cg-action-btn" @onclick="DeclineWorkspaceUpdates">Keep to this declaration</button>
+            <button type="button" class="cg-action-btn cg-good" @onclick="ConfirmWorkspaceUpdatesAsync">Update My Workspace</button>
+        </div>
+    </div>
+}
 
 @* Removing a relative that came from the register is two different acts wearing one button, so it
    asks which one is meant rather than guessing. *@

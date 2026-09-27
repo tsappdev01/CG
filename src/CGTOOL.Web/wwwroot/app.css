@@ -929,26 +929,6 @@ h1:focus {
     font-family: inherit;
 }
 
-.cg-confirm-prompt {
-    margin-top: 10px;
-    padding: 12px;
-    border: 1px dashed var(--cg-line-strong);
-    border-radius: 8px;
-    background: var(--cg-surface-muted, var(--cg-surface));
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.cg-confirm-prompt.cg-confirm-prompt-critical {
-    border-color: var(--cg-critical);
-    background: var(--cg-critical-tint);
-}
-
-.cg-confirm-prompt p {
-    margin: 0;
-}
-
 .cg-status-icon-good, .cg-status-icon-bad {
     font-weight: 700;
 }
@@ -2575,7 +2555,7 @@ select.cg-input {
     vertical-align: middle;
 }
 .cg-count-critical { background: var(--cg-critical-tint); color: var(--cg-critical); }
-.cg-confirm-modal { width: min(460px, calc(100vw - 32px)); }
+.cg-modal.cg-confirm-modal { width: min(460px, calc(100vw - 32px)); }
 .cg-duplicate-modal { width: min(560px, calc(100vw - 32px)); }
 .cg-confirm-detail { margin: 6px 0 0; font-size: 13px; font-weight: 650; }
 /* A box holding something that is not valid, and the line saying why. Only shown once there is
@@ -2858,17 +2838,6 @@ select.cg-input {
     font-size: 12px;
     color: var(--cg-ink-muted);
 }
-
-.cg-confirm-modal {
-    background: var(--cg-surface);
-    border-radius: var(--cg-radius);
-    box-shadow: var(--cg-shadow);
-    padding: 24px 26px;
-    max-width: 480px;
-    margin: auto;
-}
-.cg-confirm-modal h3 { margin: 0 0 8px; font-size: 16px; }
-.cg-confirm-modal p { margin: 0 0 4px; font-size: 13px; color: var(--cg-ink-muted); }
 
 /* --- top-bar account menu (was two unlabelled icons under the sidebar logo) --------------- */
 

@@ -1,19 +1,30 @@
+@* A confirmation the person has to answer before anything else. It was a panel in the flow of the
+   page, which put the question wherever the caller happened to sit -- above a form on one screen,
+   under a table row on another -- and left the page behind it looking as editable as before. A
+   dialog puts the question in one place and makes it clear that the answer comes first. *@
 @if (Show)
 {
-    <div class="cg-confirm-prompt @(Critical ? "cg-confirm-prompt-critical" : "")">
-        <p>@Message</p>
-        @if (!string.IsNullOrWhiteSpace(Detail))
-        {
-            <p class="cg-confirm-detail">@Detail</p>
-        }
-        <div class="cg-actions">
-            <button type="button" class="cg-action-btn @(Critical ? "cg-critical" : "cg-good")" @onclick="() => OnConfirm.InvokeAsync()">@ConfirmLabel</button>
+    <div class="cg-modal-backdrop" @onclick="() => OnCancel.InvokeAsync()"></div>
+    <div class="cg-modal cg-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="@($"cg-confirm-{_id:N}")">
+        <div class="cg-modal-body">
+            <p id="@($"cg-confirm-{_id:N}")">@Message</p>
+            @if (!string.IsNullOrWhiteSpace(Detail))
+            {
+                <p class="cg-confirm-detail">@Detail</p>
+            }
+        </div>
+        <div class="cg-modal-foot">
             <button type="button" class="cg-action-btn" @onclick="() => OnCancel.InvokeAsync()">@CancelLabel</button>
+            <button type="button" class="cg-action-btn @(Critical ? "cg-critical" : "cg-good")" @onclick="() => OnConfirm.InvokeAsync()">@ConfirmLabel</button>
         </div>
     </div>
 }
 
 @code {
+    // Labels the message so a screen reader announces the question with the dialog, and stays
+    // unique where a page holds more than one of these.
+    private readonly Guid _id = Guid.NewGuid();
+
     [Parameter] public bool Show { get; set; }
     [Parameter] public string Message { get; set; } = "Are you sure?";
 

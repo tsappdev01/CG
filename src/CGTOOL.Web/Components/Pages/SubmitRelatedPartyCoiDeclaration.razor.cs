@@ -132,6 +132,11 @@ public partial class SubmitRelatedPartyCoiDeclaration
         public Guid? LinkedRelativeKey { get; set; }
         public bool Uploading { get; set; }
         public int UploadProgress { get; set; }
+
+        /// <summary>Whether the row is open in the form. Collapsed by default -- a section of
+        /// companies is a list to read before it is a form to fill -- and never saved: it is how the
+        /// member is looking at the declaration, not part of it.</summary>
+        public bool Expanded { get; set; }
     }
 
     public class UploadedFileRow
@@ -476,7 +481,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         }
     }
 
-    private static void AddCompany(List<CompanyRow> list) => list.Add(new CompanyRow());
+    private static void AddCompany(List<CompanyRow> list) => list.Add(new CompanyRow { Expanded = true });
     private static void RemoveCompany(List<CompanyRow> list, CompanyRow row) => list.Remove(row);
 
     // Family members/companies not yet added to this section -- offered in the "pick from My
@@ -1195,6 +1200,14 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// <summary>Refuses a step, saying why and remembering which box to put the cursor in. Every
     /// refusal goes through here so no message is left pointing at a field the member has to hunt
     /// for -- on a step they may not even be looking at.</summary>
+    /// <summary>Refuses on a company row, opening it first: the field the message names is inside,
+    /// and a cursor in a collapsed row points at nothing.</summary>
+    private bool RefuseRow(CompanyRow row, string message, string field)
+    {
+        row.Expanded = true;
+        return Refuse(message, CompanyFieldId(row, field));
+    }
+
     private bool Refuse(string message, string fieldId)
     {
         Toasts.ShowError(message);
@@ -1319,31 +1332,26 @@ public partial class SubmitRelatedPartyCoiDeclaration
         {
             if (string.IsNullOrWhiteSpace(row.LegalCompanyName))
             {
-                return Refuse($"Enter the legal company name for every row in {sectionLabel}.",
-                    CompanyFieldId(row, "name"));
+                return RefuseRow(row, $"Enter the legal company name for every row in {sectionLabel}.", "name");
             }
             if (requireLinkedRelative && row.LinkedRelativeKey is null)
             {
-                return Refuse($"Select which relative owns each company in {sectionLabel}.",
-                    CompanyFieldId(row, "relative"));
+                return RefuseRow(row, $"Select which relative owns each company in {sectionLabel}.", "relative");
             }
 
             // Named one at a time: the message says what to do, and the cursor is already in the
             // box to do it in.
             if (string.IsNullOrWhiteSpace(row.PrincipalBusinessActivity))
             {
-                return Refuse($"Enter the principal business activity for {RowLabel(row, sectionLabel)}.",
-                    CompanyFieldId(row, "activity"));
+                return RefuseRow(row, $"Enter the principal business activity for {RowLabel(row, sectionLabel)}.", "activity");
             }
             if (string.IsNullOrWhiteSpace(row.NatureOfHolding))
             {
-                return Refuse($"Select the nature of holding for {RowLabel(row, sectionLabel)}.",
-                    CompanyFieldId(row, "nature"));
+                return RefuseRow(row, $"Select the nature of holding for {RowLabel(row, sectionLabel)}.", "nature");
             }
             if (string.IsNullOrWhiteSpace(row.TradeLicenseNumber))
             {
-                return Refuse($"Enter the trade license number for {RowLabel(row, sectionLabel)}.",
-                    CompanyFieldId(row, "licence"));
+                return RefuseRow(row, $"Enter the trade license number for {RowLabel(row, sectionLabel)}.", "licence");
             }
         }
 

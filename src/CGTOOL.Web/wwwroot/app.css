@@ -2287,6 +2287,16 @@ select.cg-input {
 }
 .cg-accordion.is-open .cg-accordion-chevron { transform: rotate(90deg); }
 .cg-accordion-body { padding: 18px 24px 20px; }
+
+/* A company row as an accordion. It keeps the row's own border and spacing but drops its padding
+   and column layout, which the header and body now provide -- otherwise the header sits inset
+   inside a box it is supposed to be the top of. */
+.cg-company-accordion { padding: 0; display: block; }
+.cg-company-accordion .cg-accordion-head { padding: 14px 16px; align-items: center; }
+.cg-company-accordion .cg-accordion-titles .cg-card-title { font-size: 15px; }
+.cg-company-accordion .cg-accordion-body { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+.cg-company-accordion .cg-accordion-chevron { margin-top: 0; }
+.cg-company-accordion .cg-status-pill { flex: none; }
 .cg-companies-controls { justify-content: flex-end; }
 
 /* ---------- attached documents ---------- */

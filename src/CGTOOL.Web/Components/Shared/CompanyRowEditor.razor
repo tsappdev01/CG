@@ -1,7 +1,25 @@
 @using CGTOOL.Web.Components.Pages
 @using Microsoft.AspNetCore.Components.Forms
 
-<div class="cg-coi-company-row">
+@* One company, collapsed to its name. A section can hold several, each a screenful of licence
+   detail, and a page of them is hard to count let alone read. The header carries what tells them
+   apart -- the name, and the state a member would want to see without opening it. *@
+<div class="cg-coi-company-row cg-accordion cg-company-accordion @(Row.Expanded ? "is-open" : "")">
+    <button type="button" class="cg-accordion-head" aria-expanded="@Row.Expanded" @onclick="() => Row.Expanded = !Row.Expanded">
+        <span class="cg-accordion-chevron" aria-hidden="true"></span>
+        <span class="cg-accordion-titles">
+            <span class="cg-card-title">@(string.IsNullOrWhiteSpace(Row.LegalCompanyName) ? "New company" : Row.LegalCompanyName)</span>
+            <span class="cg-subtitle">@HeaderSummary()</span>
+        </span>
+        @if (Row.TradeLicenseExpiryDate is not null)
+        {
+            <span class="cg-status-pill @ExpiryPillClass(Row.TradeLicenseExpiryDate)">@SubmitRelatedPartyCoiDeclaration.ExpiryLabel(Row.TradeLicenseExpiryDate)</span>
+        }
+    </button>
+
+    @if (Row.Expanded)
+    {
+    <div class="cg-accordion-body">
     <div class="cg-field-row">
         <label class="cg-field">
             <span>Legal Name of Company <span class="cg-required" aria-hidden="true">*</span> <em class="cg-subtitle" style="margin:0;">(as per Trade License)</em></span>
@@ -94,6 +112,8 @@
     <div class="cg-actions">
         <button type="button" class="cg-action-btn cg-critical" @onclick="() => OnRemove.InvokeAsync()">Remove company</button>
     </div>
+    </div>
+    }
 </div>
 
 @code {
@@ -154,6 +174,19 @@
     /// about. Keyed on the row rather than its position: rows are added and removed, and an id that
     /// moved would focus a different company's box.</summary>
     private string FieldId(string field) => SubmitRelatedPartyCoiDeclaration.CompanyFieldId(Row, field);
+
+    /// <summary>What the header says under the name: enough to tell whether the row still needs
+    /// opening, without opening it.</summary>
+    private string HeaderSummary()
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(Row.NatureOfHolding)) parts.Add(Row.NatureOfHolding);
+        if (!string.IsNullOrWhiteSpace(Row.PrincipalBusinessActivity)) parts.Add(Row.PrincipalBusinessActivity.Trim());
+        if (!string.IsNullOrWhiteSpace(Row.TradeLicenseNumber)) parts.Add($"Licence {Row.TradeLicenseNumber.Trim()}");
+        if (Row.Documents.Count > 0) parts.Add($"{Row.Documents.Count} document{(Row.Documents.Count == 1 ? "" : "s")}");
+
+        return parts.Count == 0 ? "Nothing entered yet" : string.Join(" · ", parts);
+    }
 
     private static string ExpiryPillClass(DateTime? expiry) => SubmitRelatedPartyCoiDeclaration.ExpiryStatus(expiry) switch
     {

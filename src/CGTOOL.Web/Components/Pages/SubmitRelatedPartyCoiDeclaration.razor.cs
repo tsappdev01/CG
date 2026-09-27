@@ -476,6 +476,20 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private List<FamilyMember> AvailableFamilyMembers =>
         [.. _myFamilyMembers.Where(f => !_relatives.Any(r => string.Equals(r.Name, f.Name, StringComparison.OrdinalIgnoreCase)))];
 
+    /// <summary>The declared companies still worth offering for this Part II row. One another row
+    /// already names is not a second conflict, so it is dropped -- the list would otherwise keep
+    /// offering a company that has just been picked, and a duplicate is easier to make than to
+    /// spot. The row's own company stays, since it is what the input already holds.</summary>
+    private List<string> ConflictSuggestionsFor(ConflictRow row) =>
+    [
+        .. AllDeclaredCompanies
+            .Select(c => c.LegalCompanyName.Trim())
+            .Where(name => name.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(name => !_conflicts.Any(other => !ReferenceEquals(other, row)
+                && string.Equals(other.CompanyOrCounterpartyName.Trim(), name, StringComparison.OrdinalIgnoreCase)))
+    ];
+
     private List<OwnedCompany> AvailableCompaniesFor(List<CompanyRow> list) =>
         [.. _myCompanies.Where(c => !list.Any(r => string.Equals(r.LegalCompanyName, c.CompanyName, StringComparison.OrdinalIgnoreCase)))];
 

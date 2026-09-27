@@ -331,12 +331,13 @@
                                 {
                                     <tr class="cg-data-row">
                                         <td>
+                                            @{ var suggestions = ConflictSuggestionsFor(c); }
                                             <input class="cg-input" list="@($"conflict-company-names-{c.Key:N}")" value="@c.CompanyOrCounterpartyName"
                                                    @oninput="e => OnConflictCompanyNameInput(c, e)" maxlength="160" />
-                                            @if (AllDeclaredCompanies.Count > 0)
+                                            @if (suggestions.Count > 0)
                                             {
                                                 <datalist id="@($"conflict-company-names-{c.Key:N}")">
-                                                    @foreach (var name in AllDeclaredCompanies.Select(x => x.LegalCompanyName).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct())
+                                                    @foreach (var name in suggestions)
                                                     {
                                                         <option value="@name"></option>
                                                     }

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.JSInterop;
 using CGTOOL.Web.Data;
 using CGTOOL.Web.Data.Governance;
 
@@ -146,6 +147,23 @@ public partial class SubmitRelatedPartyCoiDeclaration
     public static readonly string[] NatureOfHoldingOptions = ["Owned", "Affiliate", "Subsidiary"];
 
     protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    /// <summary>Focus after the render, not during validation: the field may be on a step that was
+    /// not on screen when the message was raised, and cannot be focused until it exists.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusFieldId is not { } id) return;
+        _focusFieldId = null;
+
+        try
+        {
+            await JS.InvokeVoidAsync("cgFocusField", id);
+        }
+        catch (JSException)
+        {
+            // The field went away between the message and the render -- the message still stands.
+        }
+    }
 
     private async Task LoadAsync()
     {
@@ -1079,7 +1097,12 @@ public partial class SubmitRelatedPartyCoiDeclaration
         {
             for (var i = from; i < to; i++)
             {
-                if (!ValidateStep(WizardSteps[i].Step)) return;
+                if (ValidateStep(WizardSteps[i].Step)) continue;
+
+                // Land on the step that refused, not the one they were on: the message names a field,
+                // and a field they cannot see is a field they cannot fix.
+                _step = WizardSteps[i].Step;
+                return;
             }
 
             // Leaving a step behind: what was corrected on it may be a correction to the register,
@@ -1107,6 +1130,28 @@ public partial class SubmitRelatedPartyCoiDeclaration
         _step = target;
     }
 
+    // ---------- putting the cursor where the message points ----------
+
+    public static string CompanyFieldId(CompanyRow row, string field) => $"coi-company-{row.Key:N}-{field}";
+
+    private static string RelativeFieldId(RelativeRow row, string field) => $"coi-relative-{row.Key:N}-{field}";
+
+    private static string ConflictFieldId(ConflictRow row, string field) => $"coi-conflict-{row.Key:N}-{field}";
+
+    /// <summary>The field the last refused step was about, focused once the browser has rendered the
+    /// step it lives on.</summary>
+    private string? _focusFieldId;
+
+    /// <summary>Refuses a step, saying why and remembering which box to put the cursor in. Every
+    /// refusal goes through here so no message is left pointing at a field the member has to hunt
+    /// for -- on a step they may not even be looking at.</summary>
+    private bool Refuse(string message, string fieldId)
+    {
+        Toasts.ShowError(message);
+        _focusFieldId = fieldId;
+        return false;
+    }
+
     private bool ValidateStep(Step step) => step switch
     {
         Step.Relatives => ValidateRelatives(),
@@ -1119,15 +1164,16 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
     private bool ValidateRelatives()
     {
-        if (!_nothingRelatives && _relatives.Count == 0)
+        if (_nothingRelatives) return true;
+
+        if (_relatives.Count == 0)
         {
-            Toasts.ShowError("Add at least one relative in List of Relatives, or check \"I have nothing to declare\".");
+            Toasts.ShowError("Add at least one relative in List of Relatives, or answer \"nothing to declare\".");
             return false;
         }
-        if (!_nothingRelatives && _relatives.Any(r => string.IsNullOrWhiteSpace(r.Name)))
+        if (_relatives.FirstOrDefault(r => string.IsNullOrWhiteSpace(r.Name)) is { } unnamed)
         {
-            Toasts.ShowError("Enter a name for every relative in List of Relatives.");
-            return false;
+            return Refuse("Enter a name for every relative in List of Relatives.", RelativeFieldId(unnamed, "name"));
         }
         return true;
     }
@@ -1139,19 +1185,37 @@ public partial class SubmitRelatedPartyCoiDeclaration
             Toasts.ShowError("Add at least one entry in Part II, or check \"I have nothing to declare\".");
             return false;
         }
-        if (!_nothingConflicts && _conflicts.Any(c => string.IsNullOrWhiteSpace(c.CompanyOrCounterpartyName) || string.IsNullOrWhiteSpace(c.NatureOfHolding)))
+        if (_conflicts.FirstOrDefault(c => string.IsNullOrWhiteSpace(c.CompanyOrCounterpartyName)) is { } unnamed)
         {
-            Toasts.ShowError("Enter the company/counterparty name and nature of holding for every Part II row.");
-            return false;
+            return Refuse("Enter the company or counterparty name for every Conflict of Interest row.",
+                ConflictFieldId(unnamed, "name"));
+        }
+        if (_conflicts.FirstOrDefault(c => string.IsNullOrWhiteSpace(c.NatureOfHolding)) is { } noNature)
+        {
+            return Refuse("Select the nature of holding for every Conflict of Interest row.",
+                ConflictFieldId(noNature, "nature"));
         }
         return true;
     }
+
+    /// <summary>Names the row a message is about, so it reads as being about one company rather than
+    /// about the section as a whole.</summary>
+    private static string RowLabel(CompanyRow row, string sectionLabel) =>
+        string.IsNullOrWhiteSpace(row.LegalCompanyName) ? $"every row in {sectionLabel}" : row.LegalCompanyName.Trim();
 
     /// <summary>Everything the declaration needs before it can be submitted. The attestation is part
     /// of it, and is entered on the last step -- so this runs there, never on the way forward.</summary>
     private bool ValidateForm()
     {
-        if (WizardSteps.Any(w => !ValidateStep(w.Step))) return false;
+        foreach (var wizardStep in WizardSteps)
+        {
+            if (ValidateStep(wizardStep.Step)) continue;
+
+            // Called from Review, where the offending field is a step or four back. Go to it, the
+            // same as refusing a Next would.
+            _step = wizardStep.Step;
+            return false;
+        }
 
         if (string.IsNullOrWhiteSpace(_attestationName))
         {
@@ -1200,23 +1264,36 @@ public partial class SubmitRelatedPartyCoiDeclaration
         {
             if (string.IsNullOrWhiteSpace(row.LegalCompanyName))
             {
-                Toasts.ShowError($"Enter the legal company name for every row in {sectionLabel}.");
-                return false;
+                return Refuse($"Enter the legal company name for every row in {sectionLabel}.",
+                    CompanyFieldId(row, "name"));
             }
             if (requireLinkedRelative && row.LinkedRelativeKey is null)
             {
-                Toasts.ShowError($"Select which relative owns each company in {sectionLabel}.");
-                return false;
+                return Refuse($"Select which relative owns each company in {sectionLabel}.",
+                    CompanyFieldId(row, "relative"));
             }
-            if (string.IsNullOrWhiteSpace(row.TradeLicenseNumber) || row.TradeLicenseExpiryDate is null || string.IsNullOrWhiteSpace(row.LicenseActivities))
+
+            // Named one at a time rather than as a list of three: the message says what to do, and
+            // the cursor is already in the box to do it in.
+            if (string.IsNullOrWhiteSpace(row.TradeLicenseNumber))
             {
-                Toasts.ShowError($"Enter the trade license number, expiry date, and license activities for every row in {sectionLabel}.");
-                return false;
+                return Refuse($"Enter the trade license number for {RowLabel(row, sectionLabel)}.",
+                    CompanyFieldId(row, "licence"));
+            }
+            if (row.TradeLicenseExpiryDate is null)
+            {
+                return Refuse($"Enter the trade license expiry date for {RowLabel(row, sectionLabel)}.",
+                    CompanyFieldId(row, "expiry"));
+            }
+            if (string.IsNullOrWhiteSpace(row.LicenseActivities))
+            {
+                return Refuse($"Enter the license activities for {RowLabel(row, sectionLabel)}.",
+                    CompanyFieldId(row, "activities"));
             }
             if (row.Documents.Count == 0)
             {
-                Toasts.ShowError($"Upload at least one trade license document for every row in {sectionLabel}.");
-                return false;
+                return Refuse($"Upload at least one trade license document for {RowLabel(row, sectionLabel)}.",
+                    CompanyFieldId(row, "documents"));
             }
         }
 

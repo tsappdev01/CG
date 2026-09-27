@@ -19,6 +19,7 @@
 @inject IUaePassAuthService UaePass
 @inject Microsoft.AspNetCore.DataProtection.IDataProtector UaePassStateProtector
 @inject IDocumentIntelligenceService DocIntel
+@inject IJSRuntime JS
 
 <PageTitle>Related Party & COI Declaration</PageTitle>
 
@@ -123,7 +124,7 @@
                                 {
                                     <tr class="cg-data-row">
                                         <td>
-                                            <input class="cg-input" @bind="r.Name" maxlength="120" />
+                                            <input id="@RelativeFieldId(r, "name")" class="cg-input" @bind="r.Name" maxlength="120" />
                                         </td>
                                         <td>
                                             <select class="cg-input" @bind="r.Relationship">
@@ -337,7 +338,7 @@
                                     <tr class="cg-data-row">
                                         <td>
                                             @{ var suggestions = ConflictSuggestionsFor(c); }
-                                            <input class="cg-input" list="@($"conflict-company-names-{c.Key:N}")" value="@c.CompanyOrCounterpartyName"
+                                            <input id="@ConflictFieldId(c, "name")" class="cg-input" list="@($"conflict-company-names-{c.Key:N}")" value="@c.CompanyOrCounterpartyName"
                                                    @oninput="e => OnConflictCompanyNameInput(c, e)" maxlength="160" />
                                             @if (suggestions.Count > 0)
                                             {
@@ -351,7 +352,7 @@
                                         </td>
                                         <td><input class="cg-input" @bind="c.PrincipalBusinessActivity" maxlength="400" /></td>
                                         <td>
-                                            <select class="cg-input" @bind="c.NatureOfHolding">
+                                            <select id="@ConflictFieldId(c, "nature")" class="cg-input" @bind="c.NatureOfHolding">
                                                 <option value="">Select…</option>
                                                 @foreach (var opt in NatureOfHoldingOptions)
                                                 {

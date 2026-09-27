@@ -5,7 +5,7 @@
     <div class="cg-field-row">
         <label class="cg-field">
             <span>Legal Name of Company <em class="cg-subtitle" style="margin:0;">(as per Trade License)</em></span>
-            <input class="cg-input" list="@ListId" value="@Row.LegalCompanyName" @oninput="OnLegalNameInput" maxlength="160" />
+            <input id="@FieldId("name")" class="cg-input" list="@ListId" value="@Row.LegalCompanyName" @oninput="OnLegalNameInput" maxlength="160" />
             @if (EarlierCompanies.Count > 0)
             {
                 <datalist id="@ListId">
@@ -19,7 +19,7 @@
         </label>
         <label class="cg-field">
             <span>Principal Business Activity</span>
-            <input class="cg-input" @bind="Row.PrincipalBusinessActivity" @bind:after="FillActivitiesIfBlank" maxlength="400" />
+            <input id="@FieldId("activity")" class="cg-input" @bind="Row.PrincipalBusinessActivity" @bind:after="FillActivitiesIfBlank" maxlength="400" />
         </label>
         <label class="cg-field">
             <span>Nature of Holding</span>
@@ -35,7 +35,7 @@
         {
             <label class="cg-field">
                 <span>Relative</span>
-                <select class="cg-input" @bind="RelativeKeyString">
+                <select id="@FieldId("relative")" class="cg-input" @bind="RelativeKeyString">
                     <option value="">Select relative…</option>
                     @foreach (var r in Relatives)
                     {
@@ -49,11 +49,11 @@
     <div class="cg-field-row">
         <label class="cg-field">
             <span>Trade License Number</span>
-            <input class="cg-input" @bind="Row.TradeLicenseNumber" maxlength="40" />
+            <input id="@FieldId("licence")" class="cg-input" @bind="Row.TradeLicenseNumber" maxlength="40" />
         </label>
         <label class="cg-field">
             <span>Trade License Expiry Date</span>
-            <input type="date" class="cg-input" @bind="Row.TradeLicenseExpiryDate" />
+            <input id="@FieldId("expiry")" type="date" class="cg-input" @bind="Row.TradeLicenseExpiryDate" />
             @if (Row.TradeLicenseExpiryDate is not null)
             {
                 <span class="cg-status-pill @ExpiryPillClass(Row.TradeLicenseExpiryDate)">@SubmitRelatedPartyCoiDeclaration.ExpiryLabel(Row.TradeLicenseExpiryDate)</span>
@@ -61,13 +61,13 @@
         </label>
         <label class="cg-field">
             <span>License Activities</span>
-            <input class="cg-input" @bind="Row.LicenseActivities" maxlength="400" placeholder="As printed on the trade license" />
+            <input id="@FieldId("activities")" class="cg-input" @bind="Row.LicenseActivities" maxlength="400" placeholder="As printed on the trade license" />
         </label>
     </div>
 
     <label class="cg-field">
         <span>Trade License Document(s) <em class="cg-subtitle" style="margin:0;">(PDF, JPG, or PNG — up to 10 MB each)</em></span>
-        <InputFile OnChange="e => OnFileSelected.InvokeAsync(e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@Row.Uploading" />
+        <InputFile id="@FieldId("documents")" OnChange="e => OnFileSelected.InvokeAsync(e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@Row.Uploading" />
         @if (Row.Uploading)
         {
             <progress class="cg-upload-progress" max="100" value="@Row.UploadProgress"></progress>
@@ -149,6 +149,11 @@
 
         Row.LicenseActivities = Row.PrincipalBusinessActivity.Trim();
     }
+
+    /// <summary>A stable id per field, so a validation message can put the cursor in the one it is
+    /// about. Keyed on the row rather than its position: rows are added and removed, and an id that
+    /// moved would focus a different company's box.</summary>
+    private string FieldId(string field) => SubmitRelatedPartyCoiDeclaration.CompanyFieldId(Row, field);
 
     private static string ExpiryPillClass(DateTime? expiry) => SubmitRelatedPartyCoiDeclaration.ExpiryStatus(expiry) switch
     {

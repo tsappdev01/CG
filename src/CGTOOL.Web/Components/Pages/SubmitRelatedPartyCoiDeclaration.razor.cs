@@ -340,6 +340,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 LinkedRelativeKey = c.CoiRelativeId is { } rid && relativeRowsByDbId.TryGetValue(rid, out var relRow) ? relRow.Key : null,
             };
             row.Documents.AddRange(c.Documents.Select(doc => new UploadedFileRow { Path = doc.FilePath, FileName = doc.FileName }));
+            WithActivitiesFilled(row);
 
             var target = c.OwnerType switch
             {
@@ -512,7 +513,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         AddWorkspaceDocument(row, company.TradeLicensePath, "Trade License");
         AddWorkspaceDocument(row, company.MoaPath, "MOA");
         AddWorkspaceDocument(row, company.PoaPath, "POA");
-        return row;
+        return WithActivitiesFilled(row);
     }
 
     // ---------- the three company sections and My Register ----------
@@ -600,7 +601,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
                     .FirstOrDefault(r => string.Equals(r.Name.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase))?.Key,
             };
             AddWorkspaceDocument(row, holding.TradeLicencePath, "Trade License");
-            _relativeOwnedCompanies.Add(row);
+            _relativeOwnedCompanies.Add(WithActivitiesFilled(row));
         }
 
         return relativeOwned.Count > 0;
@@ -1165,16 +1166,22 @@ public partial class SubmitRelatedPartyCoiDeclaration
     // name, trade license number, expiry date, license activities, and at least one uploaded document
     // before the declaration can move from Draft to Submitted. Draft save (SaveDraftAsync) skips all of
     // this so declarants aren't blocked mid-entry.
-    /// <summary>On most licences the permitted activities are the business activity said again. The
-    /// row editor fills a blank as the member types; this catches the rows they never touched --
-    /// loaded from My Register and left as they came.</summary>
-    private static void FillBlankActivities(List<CompanyRow> rows)
+    /// <summary>On most licences the permitted activities are the business activity said again, so a
+    /// blank one is filled from it -- on screen, as the row is built, not silently at submission.
+    /// Only ever a blank: what the member read off the licence is what the licence says.</summary>
+    private static CompanyRow WithActivitiesFilled(CompanyRow row)
     {
-        foreach (var row in rows.Where(r => string.IsNullOrWhiteSpace(r.LicenseActivities)
-                                            && !string.IsNullOrWhiteSpace(r.PrincipalBusinessActivity)))
+        if (string.IsNullOrWhiteSpace(row.LicenseActivities) && !string.IsNullOrWhiteSpace(row.PrincipalBusinessActivity))
         {
             row.LicenseActivities = row.PrincipalBusinessActivity.Trim();
         }
+        return row;
+    }
+
+    /// <summary>The same rule over a whole section, for rows that were built before it applied.</summary>
+    private static void FillBlankActivities(List<CompanyRow> rows)
+    {
+        foreach (var row in rows) WithActivitiesFilled(row);
     }
 
     private bool ValidateCompanySection(List<CompanyRow> rows, bool nothingToDeclare, string sectionLabel, bool requireLinkedRelative = false)

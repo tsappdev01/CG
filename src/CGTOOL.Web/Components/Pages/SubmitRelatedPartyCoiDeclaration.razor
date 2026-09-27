@@ -165,11 +165,17 @@
             <div class="cg-member-form cg-declaration-form">
                 <h3>Companies in which you own ≥30% of paid-up share capital</h3>
                 <p class="cg-hint">The companies in My Register where your ownership is 30% or more are listed here for you. Switching this section to "nothing to declare" clears them.</p>
-                <label class="cg-switch cg-nothing-switch">
+                @* The declaration's own wording, not a generic "nothing to declare": what the member
+                   is answering here is a specific statement about their shareholdings, and it is the
+                   statement they are signing. *@
+                <label class="cg-switch cg-nothing-switch cg-switch-statement">
                     <input type="checkbox" @bind:get="!_nothingSelfOwned" @bind:set="v => { _nothingSelfOwned = !v; SetNothingSelfOwned(); }" />
                     <span class="cg-switch-track" aria-hidden="true"></span>
                     <span class="cg-switch-label">
-                        @(_nothingSelfOwned ? "I have nothing to declare in this section." : "I have something to declare in this section.")
+                        <b>@(_nothingSelfOwned ? "No," : "Yes,")</b>
+                        @(_nothingSelfOwned
+                            ? "there are no companies in which I hold more than 30% of paid up capital, wherein, my shareholding represents both beneficial interest and ability to influence strategic, operating, investing and financial decision-making."
+                            : "there are companies in which I hold more than 30% of paid up capital, wherein, my shareholding represents both beneficial interest and ability to influence strategic, operating, investing and financial decision-making (Listed Below).")
                     </span>
                 </label>
                 @if (!_nothingSelfOwned)

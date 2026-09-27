@@ -2392,6 +2392,18 @@ select.cg-input {
 .cg-nothing-switch { margin: 4px 0 14px; }
 .cg-nothing-switch .cg-switch-label { font-weight: 600; }
 
+/* A switch whose label is the declaration's own sentence rather than a few words: the track holds
+   its size and stays level with the first line, and the sentence wraps at a readable width instead
+   of running the width of the page. */
+.cg-switch-statement { display: flex; align-items: flex-start; }
+.cg-switch-statement .cg-switch-track { flex: none; margin-top: 1px; }
+.cg-switch-statement .cg-switch-label {
+    max-width: 82ch;
+    font-weight: 400;
+    line-height: 1.5;
+}
+.cg-switch-statement .cg-switch-label b { font-weight: 700; }
+
 /* ---------- declaration step: stepper, document cards, choice cards ---------- */
 .cg-step-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
 .cg-draft-pill {

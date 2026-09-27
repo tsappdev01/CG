@@ -220,6 +220,7 @@
                                                         <th>Relative</th>
                                                     }
                                                     <th>Principal Business Activity</th>
+                                                    <th>Nature of Holding</th>
                                                     <th>Trade License No.</th>
                                                     <th>Expiry</th>
                                                     <th>License Activities</th>
@@ -236,6 +237,7 @@
                                                             <td>@(c.CoiRelative is null ? "—" : $"{c.CoiRelative.Name} ({RelationshipLabel(c.CoiRelative.Relationship)})")</td>
                                                         }
                                                         <td>@(c.PrincipalBusinessActivity ?? "—")</td>
+                                                        <td>@(c.NatureOfHolding ?? "—")</td>
                                                         <td class="mono">@(c.TradeLicenseNumber ?? "—")</td>
                                                         <td class="mono">@(c.TradeLicenseExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
                                                         <td>@(c.LicenseActivities ?? "—")</td>

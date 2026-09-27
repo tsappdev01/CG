@@ -113,6 +113,12 @@ public class CoiCompanyEntry
     [MaxLength(400)]
     public string? PrincipalBusinessActivity { get; set; }
 
+    /// <summary>How the interest is held: one of the fixed values the form offers -- Owned,
+    /// Affiliate, Subsidiary. A string rather than RelatedPartyHoldingNature to match CoiConflictEntry
+    /// on the same declaration, which stores the same three answers from the same dropdown.</summary>
+    [MaxLength(40)]
+    public string? NatureOfHolding { get; set; }
+
     [MaxLength(40)]
     public string? TradeLicenseNumber { get; set; }
 

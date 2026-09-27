@@ -119,6 +119,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         public Guid Key { get; } = Guid.NewGuid();
         public string LegalCompanyName { get; set; } = string.Empty;
         public string PrincipalBusinessActivity { get; set; } = string.Empty;
+        public string NatureOfHolding { get; set; } = string.Empty;
         public string TradeLicenseNumber { get; set; } = string.Empty;
         public DateTime? TradeLicenseExpiryDate { get; set; }
         public string LicenseActivities { get; set; } = string.Empty;
@@ -142,7 +143,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         public string NatureOfHolding { get; set; } = string.Empty;
     }
 
-    private static readonly string[] NatureOfHoldingOptions = ["Owned", "Affiliate", "Subsidiary"];
+    public static readonly string[] NatureOfHoldingOptions = ["Owned", "Affiliate", "Subsidiary"];
 
     protected override async Task OnParametersSetAsync() => await LoadAsync();
 
@@ -332,6 +333,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
             {
                 LegalCompanyName = c.LegalCompanyName,
                 PrincipalBusinessActivity = c.PrincipalBusinessActivity ?? string.Empty,
+                NatureOfHolding = c.NatureOfHolding ?? string.Empty,
                 TradeLicenseNumber = c.TradeLicenseNumber ?? string.Empty,
                 TradeLicenseExpiryDate = c.TradeLicenseExpiryDate,
                 LicenseActivities = c.LicenseActivities ?? string.Empty,
@@ -503,6 +505,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         {
             LegalCompanyName = company.CompanyName,
             PrincipalBusinessActivity = company.PrincipalBusinessActivity ?? string.Empty,
+            NatureOfHolding = company.NatureOfHolding == RelatedPartyHoldingNature.None ? string.Empty : company.NatureOfHolding.ToString(),
             TradeLicenseNumber = company.TradeLicenceNumber ?? string.Empty,
             TradeLicenseExpiryDate = company.TradeLicenceExpiryDate,
         };
@@ -589,6 +592,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
             {
                 LegalCompanyName = holding.CompanyName.Trim(),
                 PrincipalBusinessActivity = holding.PrincipalBusinessActivity ?? string.Empty,
+                NatureOfHolding = holding.NatureOfHolding == RelatedPartyHoldingNature.None ? string.Empty : holding.NatureOfHolding.ToString(),
                 TradeLicenseNumber = holding.TradeLicenceNumber ?? string.Empty,
                 TradeLicenseExpiryDate = holding.TradeLicenceExpiryDate,
                 LicenseActivities = holding.LicenceActivities ?? string.Empty,
@@ -1161,9 +1165,23 @@ public partial class SubmitRelatedPartyCoiDeclaration
     // name, trade license number, expiry date, license activities, and at least one uploaded document
     // before the declaration can move from Draft to Submitted. Draft save (SaveDraftAsync) skips all of
     // this so declarants aren't blocked mid-entry.
+    /// <summary>On most licences the permitted activities are the business activity said again. The
+    /// row editor fills a blank as the member types; this catches the rows they never touched --
+    /// loaded from My Register and left as they came.</summary>
+    private static void FillBlankActivities(List<CompanyRow> rows)
+    {
+        foreach (var row in rows.Where(r => string.IsNullOrWhiteSpace(r.LicenseActivities)
+                                            && !string.IsNullOrWhiteSpace(r.PrincipalBusinessActivity)))
+        {
+            row.LicenseActivities = row.PrincipalBusinessActivity.Trim();
+        }
+    }
+
     private bool ValidateCompanySection(List<CompanyRow> rows, bool nothingToDeclare, string sectionLabel, bool requireLinkedRelative = false)
     {
         if (nothingToDeclare) return true;
+
+        FillBlankActivities(rows);
 
         if (rows.Count == 0)
         {
@@ -1367,6 +1385,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 CoiRelativeId = row.LinkedRelativeKey is { } key && relativeIdMap.TryGetValue(key, out var rid) ? rid : null,
                 LegalCompanyName = row.LegalCompanyName.Trim(),
                 PrincipalBusinessActivity = string.IsNullOrWhiteSpace(row.PrincipalBusinessActivity) ? null : row.PrincipalBusinessActivity.Trim(),
+                NatureOfHolding = string.IsNullOrWhiteSpace(row.NatureOfHolding) ? null : row.NatureOfHolding.Trim(),
                 TradeLicenseNumber = string.IsNullOrWhiteSpace(row.TradeLicenseNumber) ? null : row.TradeLicenseNumber.Trim(),
                 TradeLicenseExpiryDate = row.TradeLicenseExpiryDate,
                 LicenseActivities = string.IsNullOrWhiteSpace(row.LicenseActivities) ? null : row.LicenseActivities.Trim(),

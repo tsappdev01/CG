@@ -85,6 +85,7 @@ public class RelatedPartyCoiDeclarationWriter(IStoredProcedureExecutor sp) : IRe
         new SqlParameter("@CoiRelativeId", (object?)company.CoiRelativeId ?? DBNull.Value),
         new SqlParameter("@LegalCompanyName", company.LegalCompanyName),
         new SqlParameter("@PrincipalBusinessActivity", (object?)company.PrincipalBusinessActivity ?? DBNull.Value),
+        new SqlParameter("@NatureOfHolding", (object?)company.NatureOfHolding ?? DBNull.Value),
         new SqlParameter("@TradeLicenseNumber", (object?)company.TradeLicenseNumber ?? DBNull.Value),
         new SqlParameter("@TradeLicenseExpiryDate", (object?)company.TradeLicenseExpiryDate ?? DBNull.Value),
         new SqlParameter("@LicenseActivities", (object?)company.LicenseActivities ?? DBNull.Value));

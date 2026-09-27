@@ -19,7 +19,17 @@
         </label>
         <label class="cg-field">
             <span>Principal Business Activity</span>
-            <input class="cg-input" @bind="Row.PrincipalBusinessActivity" maxlength="400" />
+            <input class="cg-input" @bind="Row.PrincipalBusinessActivity" @bind:after="FillActivitiesIfBlank" maxlength="400" />
+        </label>
+        <label class="cg-field">
+            <span>Nature of Holding</span>
+            <select class="cg-input" @bind="Row.NatureOfHolding">
+                <option value="">Select…</option>
+                @foreach (var option in SubmitRelatedPartyCoiDeclaration.NatureOfHoldingOptions)
+                {
+                    <option value="@option">@option</option>
+                }
+            </select>
         </label>
         @if (ShowRelativeLink)
         {
@@ -122,8 +132,22 @@
             Row.PrincipalBusinessActivity = match.PrincipalBusinessActivity;
             Row.TradeLicenseNumber = match.TradeLicenseNumber;
             Row.TradeLicenseExpiryDate = match.TradeLicenseExpiryDate;
+            Row.NatureOfHolding = match.NatureOfHolding;
             Row.LicenseActivities = match.LicenseActivities;
         }
+
+        FillActivitiesIfBlank();
+    }
+
+    /// <summary>On most licences the permitted activities are the business activity said again, and
+    /// the member has just typed it one box to the left. Only ever fills a blank -- what they wrote
+    /// off the licence is what the licence says, and is never overwritten.</summary>
+    private void FillActivitiesIfBlank()
+    {
+        if (!string.IsNullOrWhiteSpace(Row.LicenseActivities)) return;
+        if (string.IsNullOrWhiteSpace(Row.PrincipalBusinessActivity)) return;
+
+        Row.LicenseActivities = Row.PrincipalBusinessActivity.Trim();
     }
 
     private static string ExpiryPillClass(DateTime? expiry) => SubmitRelatedPartyCoiDeclaration.ExpiryStatus(expiry) switch

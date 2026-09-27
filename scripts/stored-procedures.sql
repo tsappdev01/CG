@@ -69,6 +69,7 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR OBJECT_ID('dbo.MemberDocuments', 'U') IS NULL
     OR OBJECT_ID('dbo.FamilyMemberHoldings', 'U') IS NULL
     OR COL_LENGTH('dbo.FamilyMemberHoldings', 'TradeLicenceNumber') IS NULL
+    OR COL_LENGTH('dbo.CoiCompanyEntries', 'NatureOfHolding') IS NULL
     OR COL_LENGTH('dbo.AuditLogEntries', 'RecordHash') IS NULL
     OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
     OR COL_LENGTH('dbo.DeclarationCycleSetups', 'ReminderDayOfWeek') IS NULL
@@ -77,7 +78,7 @@ BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
     RAISERROR(
-        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, CoiCompanyEntries.NatureOfHolding, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
         16, 1, @db) WITH NOWAIT;
     SET NOEXEC ON;
 END
@@ -1294,6 +1295,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_CoiCompanyEntry_Insert
     @CoiRelativeId int = NULL,
     @LegalCompanyName nvarchar(160),
     @PrincipalBusinessActivity nvarchar(400) = NULL,
+    @NatureOfHolding nvarchar(40) = NULL,
     @TradeLicenseNumber nvarchar(40) = NULL,
     @TradeLicenseExpiryDate date = NULL,
     @LicenseActivities nvarchar(400) = NULL,
@@ -1304,10 +1306,10 @@ BEGIN
 
     INSERT INTO dbo.CoiCompanyEntries
         (RelatedPartyCoiDeclarationId, OwnerType, CoiRelativeId, LegalCompanyName,
-         PrincipalBusinessActivity, TradeLicenseNumber, TradeLicenseExpiryDate, LicenseActivities)
+         PrincipalBusinessActivity, NatureOfHolding, TradeLicenseNumber, TradeLicenseExpiryDate, LicenseActivities)
     VALUES
         (@RelatedPartyCoiDeclarationId, @OwnerType, @CoiRelativeId, @LegalCompanyName,
-         @PrincipalBusinessActivity, @TradeLicenseNumber, @TradeLicenseExpiryDate, @LicenseActivities);
+         @PrincipalBusinessActivity, @NatureOfHolding, @TradeLicenseNumber, @TradeLicenseExpiryDate, @LicenseActivities);
 
     SET @NewId = SCOPE_IDENTITY();
 END

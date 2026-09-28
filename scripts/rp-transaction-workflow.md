@@ -31,3 +31,6 @@ or an outcome.
 The field-by-field rules behind these screens are in
 [rp-transaction-field-rules.md](rp-transaction-field-rules.md), and what the system emails
 at each stage is in [rp-transaction-notifications.md](rp-transaction-notifications.md).
+The reports built on top are in [rp-transaction-reports.md](rp-transaction-reports.md), and a
+proposal for what the screens should be is in
+[rp-transaction-design.md](rp-transaction-design.md).

@@ -20,6 +20,39 @@ public partial class CompanyDetail
 
     // LOVs configured under CompanyLookups in appsettings.json rather than hard-coded, so the sector
     // and group name options can be edited/extended without a code change.
+    /// <summary>The select's value for "nobody holds this". A string rather than a member id
+    /// because the choice is not a member, and a sentinel id would be a member id that must never
+    /// exist.</summary>
+    public const string NotApplicable = "not-applicable";
+
+    /// <summary>Maps the one select onto the two things it answers: who holds the authority, or
+    /// that nobody does. Set together, so the pair can never say both or neither.</summary>
+    private string ApprovingAuthorityChoice
+    {
+        get => _editing is null ? string.Empty
+            : _editing.ApprovingAuthorityNotApplicable ? NotApplicable
+            : _editing.ApprovingAuthorityMemberId?.ToString() ?? string.Empty;
+        set
+        {
+            if (_editing is null) return;
+            _editing.ApprovingAuthorityNotApplicable = value == NotApplicable;
+            _editing.ApprovingAuthorityMemberId = int.TryParse(value, out var id) ? id : null;
+        }
+    }
+
+    private string DelegateAuthorityChoice
+    {
+        get => _editing is null ? string.Empty
+            : _editing.DelegateAuthorityNotApplicable ? NotApplicable
+            : _editing.DelegateAuthorityMemberId?.ToString() ?? string.Empty;
+        set
+        {
+            if (_editing is null) return;
+            _editing.DelegateAuthorityNotApplicable = value == NotApplicable;
+            _editing.DelegateAuthorityMemberId = int.TryParse(value, out var id) ? id : null;
+        }
+    }
+
     private List<string> Sectors => Configuration.GetSection("CompanyLookups:Sectors").Get<string[]>()?.ToList() ?? [];
     private List<string> GroupNames => Configuration.GetSection("CompanyLookups:GroupNames").Get<string[]>()?.ToList() ?? [];
 

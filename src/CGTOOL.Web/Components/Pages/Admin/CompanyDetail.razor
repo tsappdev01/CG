@@ -86,12 +86,15 @@
                 </select>
             </label>
 
-            @* Both authorities are required: an entity with neither cannot take an RP Transaction
-               through approval, and the failure would only show up at submission time. *@
+            @* Both authorities need an answer: an entity with neither cannot take an RP Transaction
+               through approval, and the failure would only show up at submission time. "Not
+               applicable" is an answer -- for an entity that genuinely has no such person -- and is
+               recorded as one, so it reads differently from a field nobody has filled in. *@
             <label class="cg-field">
                 <span>Authorized / approving authority <em class="cg-req-mark">*</em></span>
-                <select class="cg-input" @bind="_editing.ApprovingAuthorityMemberId">
+                <select class="cg-input" @bind="ApprovingAuthorityChoice">
                     <option value="">Choose a user…</option>
+                    <option value="@NotApplicable">Not applicable</option>
                     @foreach (var m in _members)
                     {
                         <option value="@m.Id">@m.FullName</option>
@@ -101,8 +104,9 @@
             </label>
             <label class="cg-field">
                 <span>Delegate authority <em class="cg-req-mark">*</em></span>
-                <select class="cg-input" @bind="_editing.DelegateAuthorityMemberId">
+                <select class="cg-input" @bind="DelegateAuthorityChoice">
                     <option value="">Choose a user…</option>
+                    <option value="@NotApplicable">Not applicable</option>
                     @foreach (var m in _members)
                     {
                         <option value="@m.Id">@m.FullName</option>

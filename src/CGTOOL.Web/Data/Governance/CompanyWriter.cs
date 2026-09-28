@@ -35,6 +35,8 @@ public class CompanyWriter(IStoredProcedureExecutor sp) : ICompanyWriter
         new SqlParameter("@GroupName", (object?)c.GroupName ?? DBNull.Value),
         new SqlParameter("@ApprovingAuthorityMemberId", (object?)c.ApprovingAuthorityMemberId ?? DBNull.Value),
         new SqlParameter("@DelegateAuthorityMemberId", (object?)c.DelegateAuthorityMemberId ?? DBNull.Value),
+        new SqlParameter("@ApprovingAuthorityNotApplicable", c.ApprovingAuthorityNotApplicable),
+        new SqlParameter("@DelegateAuthorityNotApplicable", c.DelegateAuthorityNotApplicable),
         new SqlParameter("@Active", c.Active),
     ];
 }

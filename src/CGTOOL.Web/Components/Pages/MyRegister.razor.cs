@@ -355,14 +355,6 @@ public partial class MyRegister : ComponentBase
     /// <summary>Applies a typed date, complaining rather than silently clearing what is stored when
     /// it cannot be read -- the input re-renders from the stored value, so a typo does not take the
     /// captured date with it.</summary>
-    private void SetDate(string? text, Action<DateTime?> assign)
-    {
-        if (string.IsNullOrWhiteSpace(text)) { assign(null); return; }
-
-        if (UaeDate.Parse(text) is { } date) { assign(date); return; }
-
-        Toasts.ShowError($"Enter the date as {UaeDate.Pattern.ToLowerInvariant()}.");
-    }
 
     /// <summary>The audit trail records what actually changed, field by field, rather than "updated
     /// X": a reviewer reading the trail needs to see the old value as well as the new one.</summary>

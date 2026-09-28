@@ -756,14 +756,6 @@ public partial class SubmitInsiderDeclaration
     /// there when it cannot be read. Dates are dd/MM/yyyy everywhere: a native date input renders
     /// in the browser's locale, which on an en-US machine reads a UAE document's 14/03/2026 as a
     /// date that does not exist.</summary>
-    private void SetDeclarationDate(string? text, Action<DateTime?> assign)
-    {
-        if (string.IsNullOrWhiteSpace(text)) { assign(null); return; }
-
-        if (UaeDate.Parse(text) is { } date) { assign(date); return; }
-
-        Toasts.ShowError($"Enter the date as {UaeDate.Pattern.ToLowerInvariant()}.");
-    }
     // ---------- pulling the member's own documents in ----------
 
     private bool _offerDocumentPull;

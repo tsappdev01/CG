@@ -243,6 +243,12 @@
                                 @if (HasEmiratesId)
                                 {
                                     <a class="cg-doc-chip" href="@_emiratesIdPath" target="_blank" rel="noopener">View</a>
+                                    @if (DocIntel.IsConfigured)
+                                    {
+                                        <button type="button" class="cg-doc-chip" disabled="@_rereadingEmiratesId" @onclick="ReadEmiratesIdAgainAsync">
+                                            @(_rereadingEmiratesId ? "Reading\u2026" : "Read details")
+                                        </button>
+                                    }
                                 }
                                 <InputFile OnChange="OnEmiratesIdSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingEmiratesId" />
                             </span>
@@ -294,6 +300,12 @@
                                 @if (HasPassport)
                                 {
                                     <a class="cg-doc-chip" href="@_passportPath" target="_blank" rel="noopener">View</a>
+                                    @if (DocIntel.IsConfigured)
+                                    {
+                                        <button type="button" class="cg-doc-chip" disabled="@_rereadingPassport" @onclick="ReadPassportAgainAsync">
+                                            @(_rereadingPassport ? "Reading\u2026" : "Read details")
+                                        </button>
+                                    }
                                 }
                                 <InputFile OnChange="OnPassportSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingPassport" />
                             </span>
@@ -345,6 +357,12 @@
                                 @if (HasTradeLicence)
                                 {
                                     <a class="cg-doc-chip" href="@_tradeLicencePath" target="_blank" rel="noopener">View</a>
+                                    @if (DocIntel.IsConfigured)
+                                    {
+                                        <button type="button" class="cg-doc-chip" disabled="@_rereadingTradeLicence" @onclick="ReadTradeLicenceAgainAsync">
+                                            @(_rereadingTradeLicence ? "Reading\u2026" : "Read details")
+                                        </button>
+                                    }
                                 }
                                 <InputFile OnChange="OnTradeLicenceSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingTradeLicence" />
                             </span>

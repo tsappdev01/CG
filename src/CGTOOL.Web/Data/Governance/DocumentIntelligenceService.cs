@@ -76,35 +76,51 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         var text = operation.Value.Content ?? string.Empty;
         if (document is null && text.Length == 0) return null;
 
-        // The structured fields first, then the page text the same call already returned. The
-        // prebuilt model is strong on passports but leaves fields empty often enough on Emirates ID
-        // cards (bilingual layout, an ID number format it was not trained on) that falling back to
-        // the text is the difference between a filled field and a blank one -- and it costs nothing:
-        // the text came back with the response.
+        // The structured fields first, then two fallbacks over the page text the same call already
+        // returned -- the prebuilt model leaves fields empty often enough on Emirates ID cards
+        // (bilingual layout, an ID number format it was not trained on) that falling back is the
+        // difference between a filled field and a blank one, and it costs nothing: the text came
+        // back with the response.
+        //
+        // The machine-readable zone is tried before the labels because every value in it sits at a
+        // fixed offset: no label to find, and no guessing which of the dates printed on the card is
+        // the expiry. The label search stays for documents whose zone the scan didn't capture.
+        var mrz = text.Length > 0 ? IdDocumentTextParser.FindMrz(text) : null;
+
         var number = GetString(document, "DocumentNumber");
         if (string.IsNullOrWhiteSpace(number) && text.Length > 0)
         {
             number = IdDocumentTextParser.FindEmiratesIdNumber(text)
+                     ?? mrz?.DocumentNumber
                      ?? IdDocumentTextParser.FindPassportNumber(text);
         }
 
-        var expiry = GetDate(document, "DateOfExpiration");
-        expiry ??= text.Length > 0 ? IdDocumentTextParser.FindExpiry(text) : null;
+        var expiry = GetDate(document, "DateOfExpiration")
+                     ?? mrz?.DateOfExpiry
+                     ?? (text.Length > 0 ? IdDocumentTextParser.FindExpiry(text) : null);
 
         // Date of birth and date of issue are on the card and in the model's field set, but are
         // among the first it drops on a bilingual Emirates ID, so they fall back to the text too.
-        var dateOfBirth = GetDate(document, "DateOfBirth");
-        dateOfBirth ??= text.Length > 0 ? IdDocumentTextParser.FindDateOfBirth(text) : null;
+        // The zone carries no issue date, which is why that one has only the label search.
+        var dateOfBirth = GetDate(document, "DateOfBirth")
+                          ?? mrz?.DateOfBirth
+                          ?? (text.Length > 0 ? IdDocumentTextParser.FindDateOfBirth(text) : null);
 
         var issued = GetDate(document, "DateOfIssue");
         issued ??= text.Length > 0 ? IdDocumentTextParser.FindIssueDate(text) : null;
 
+        // Names and nationality fall back to the zone as well. It spells a name in capitals with the
+        // surname first, which is how the document itself prints it, so it is a fair answer for a
+        // field labelled "as on ID" -- and it is still only a pre-fill the declarant can correct.
+        var firstName = GetString(document, "FirstName") ?? mrz?.GivenNames;
+        var lastName = GetString(document, "LastName") ?? mrz?.Surname;
+
         return new IdDocumentExtraction(
             DocumentNumber: number,
-            FirstName: GetString(document, "FirstName"),
-            LastName: GetString(document, "LastName"),
+            FirstName: firstName,
+            LastName: lastName,
             DateOfExpiration: expiry,
-            CountryRegion: GetString(document, "CountryRegion"),
+            CountryRegion: GetString(document, "CountryRegion") ?? Countries.FromMrzCode(mrz?.Nationality),
             DateOfBirth: dateOfBirth,
             DateOfIssue: issued);
     }

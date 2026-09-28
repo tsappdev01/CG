@@ -649,6 +649,51 @@ public partial class SubmitInsiderDeclaration
         if (!string.IsNullOrWhiteSpace(extraction.CountryRegion)) _passportIssuingCountry = extraction.CountryRegion;
     });
 
+    // ---------- reading a document already on file ----------
+
+    // Extraction otherwise only ever runs on an upload, so a document that came from My Register, or
+    // one uploaded on an earlier visit, leaves its fields blank with no way to ask again. These read
+    // the file where it already sits, which is also the way back from a read that came up empty.
+    private bool _rereadingEmiratesId;
+    private bool _rereadingPassport;
+    private bool _rereadingTradeLicence;
+
+    private Task ReadEmiratesIdAgainAsync() => ReadAgainAsync(_emiratesIdPath,
+        v => _rereadingEmiratesId = v, AnalyzeAndFillEmiratesIdAsync);
+
+    private Task ReadPassportAgainAsync() => ReadAgainAsync(_passportPath,
+        v => _rereadingPassport = v, AnalyzeAndFillPassportAsync);
+
+    private Task ReadTradeLicenceAgainAsync() => ReadAgainAsync(_tradeLicencePath,
+        v => _rereadingTradeLicence = v, AnalyzeAndFillTradeLicenceAsync);
+
+    /// <summary>The stored path is the URL the page serves the file from; the reader needs the file
+    /// on disk. Anything outside the uploads folder is refused rather than opened -- these paths are
+    /// written by this page, but a reader that will open any path it is handed is the wrong shape.</summary>
+    private async Task ReadAgainAsync(string? webPath, Action<bool> setBusy, Func<string, Task> analyze)
+    {
+        if (string.IsNullOrWhiteSpace(webPath)) return;
+
+        var uploadsRoot = Path.GetFullPath(Path.Combine(Env.WebRootPath, "uploads"));
+        var filePath = Path.GetFullPath(Path.Combine(Env.WebRootPath, webPath.TrimStart('/')));
+        if (!filePath.StartsWith(uploadsRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !File.Exists(filePath))
+        {
+            Toasts.ShowError("That file is no longer where it was saved — upload it again.");
+            return;
+        }
+
+        setBusy(true);
+        StateHasChanged();
+        try
+        {
+            await analyze(filePath);
+        }
+        finally
+        {
+            setBusy(false);
+        }
+    }
+
     private async Task AnalyzeAndFillAsync(string filePath, Action<IdDocumentExtraction> apply)
     {
         if (!DocIntel.IsConfigured) return;
@@ -657,7 +702,14 @@ public partial class SubmitInsiderDeclaration
         {
             await using var stream = File.OpenRead(filePath);
             var extraction = await DocIntel.AnalyzeIdDocumentAsync(stream);
-            if (extraction is null) return;
+            if (extraction is null || !AnythingRead(extraction))
+            {
+                // Silence here read as "the feature is broken": the file uploaded, nothing filled,
+                // nothing said. A photographed ID that the model can't read is a normal outcome, and
+                // the way past it is to type the details -- so say that.
+                Toasts.ShowError("Nothing could be read from that document — enter the details below by hand.");
+                return;
+            }
 
             apply(extraction);
             Toasts.ShowSuccess("Details auto-filled from the document — please verify before continuing.");
@@ -669,6 +721,11 @@ public partial class SubmitInsiderDeclaration
             Toasts.ShowError($"Could not auto-read the document ({ex.Message}). Enter the details manually.");
         }
     }
+
+    private static bool AnythingRead(IdDocumentExtraction e) =>
+        !string.IsNullOrWhiteSpace(e.DocumentNumber) || !string.IsNullOrWhiteSpace(e.FirstName)
+        || !string.IsNullOrWhiteSpace(e.LastName) || !string.IsNullOrWhiteSpace(e.CountryRegion)
+        || e.DateOfExpiration is not null || e.DateOfBirth is not null || e.DateOfIssue is not null;
 
     // Trade licences run through the general-purpose document model rather than a purpose-built one
     // (see the comment on TradeLicenceExtraction) -- extraction is a rougher best-effort here, so the
@@ -690,6 +747,10 @@ public partial class SubmitInsiderDeclaration
             if (extraction.LicenceNumber is not null || extraction.BusinessName is not null || extraction.ExpiryDate is not null)
             {
                 Toasts.ShowSuccess("Best-effort details auto-filled from the trade licence — please check these carefully before continuing.");
+            }
+            else
+            {
+                Toasts.ShowError("Nothing could be read from that trade licence — enter the details below by hand.");
             }
         }
         catch (Exception ex)

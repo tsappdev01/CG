@@ -2352,6 +2352,10 @@ select.cg-input {
     white-space: nowrap;
 }
 .cg-doc-chip:hover { text-decoration: underline; }
+/* The chip is a link in most places and a button where it does something to the file. A button
+   inherits neither the page's font nor a pointer, so both are asked for here. */
+button.cg-doc-chip { font-family: inherit; cursor: pointer; }
+button.cg-doc-chip:disabled { cursor: default; opacity: 0.6; text-decoration: none; }
 .cg-doc-heading { font-size: 14px; font-weight: 700; margin: 22px 0 10px; color: var(--cg-ink); }
 .cg-doc-uploads { display: flex; flex-direction: column; gap: 10px; }
 .cg-doc-upload {

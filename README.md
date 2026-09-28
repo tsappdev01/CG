@@ -247,6 +247,25 @@ and typical national IDs, but has been observed to be less consistent
 specifically on UAE Emirates ID cards (bilingual layout, `784-YYYY-NNNNNNN-C`
 ID format); verify a few real cards after configuring it.
 
+Where the model leaves a field empty, two fallbacks read the plain page text
+the same call already returned (`IdDocumentTextParser`), at no extra cost:
+
+1. **The machine-readable zone** — the rows of capitals and chevrons at the
+   foot of a passport and on the back of an Emirates ID. Every value sits at a
+   fixed offset, so this needs no labels and never has to guess which of the
+   dates printed on a card is the expiry. It carries the document number,
+   nationality, date of birth, expiry and name. This is what fills the expiry
+   date the prebuilt model routinely drops on an Emirates ID — so scan or
+   photograph **both sides** of the card, not just the front.
+2. **A label search** over the page text, for documents whose zone the scan
+   didn't capture.
+
+Each document card also has a **Read details** button once a file is attached.
+Extraction otherwise only runs at the moment of upload, which left no way to
+ask again for a document pulled in from My Register or uploaded on an earlier
+visit. When a read comes back with nothing the screen now says so rather than
+leaving the fields silently blank.
+
 The trade licence capture is rougher, and deliberately so. Document
 Intelligence has no prebuilt trade-licence model -- there is no such document
 type in its catalogue, and training a custom one needs a labelled sample set

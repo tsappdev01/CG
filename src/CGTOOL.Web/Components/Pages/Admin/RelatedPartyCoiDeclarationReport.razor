@@ -65,6 +65,7 @@
                     <tr>
                         <SortableHeader Label="Member" Column="Member" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                         <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                        <th>Entity type</th>
                         <th>Department</th>
                         <SortableHeader Label="Quarter" Column="Quarter" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                         <th>Submission</th>
@@ -82,6 +83,7 @@
                         <tr class="cg-data-row">
                             <td>@r.MemberName</td>
                             <td>@r.EntityShortCode</td>
+                            <td>@CompanyEntityTypes.Label(r.EntityType)</td>
                             <td>@(r.DepartmentName ?? "—")</td>
                             <td class="mono">Q@(r.Quarter) @r.Year</td>
                             <td>
@@ -155,6 +157,7 @@
                                     <tbody>
                                         <tr><th>Member</th><td>@_printSingleRecord.MemberName</td></tr>
                                         <tr><th>Entity</th><td>@(_printSingleRecord.EntityShortCode ?? "—")</td></tr>
+                                        <tr><th>Entity type</th><td>@CompanyEntityTypes.Label(_printSingleRecord.EntityType)</td></tr>
                                         <tr><th>Department</th><td>@(_printSingleRecord.DepartmentName ?? "—")</td></tr>
                                         <tr><th>Quarter</th><td class="mono">Q@(_printSingleRecord.Quarter) @_printSingleRecord.Year</td></tr>
                                         <tr><th>Status</th><td>@(d.IsDraft ? "Draft" : "Submitted")</td></tr>
@@ -311,6 +314,7 @@
                                         <tr>
                                             @if (IsColumnSelected("Member")) { <th>Member</th> }
                                             @if (IsColumnSelected("Entity")) { <th>Entity</th> }
+                                            @if (IsColumnSelected("EntityType")) { <th>Entity type</th> }
                                             @if (IsColumnSelected("Department")) { <th>Department</th> }
                                             @if (IsColumnSelected("Quarter")) { <th>Quarter</th> }
                                             @if (IsColumnSelected("Submission")) { <th>Submission</th> }
@@ -327,6 +331,7 @@
                                             <tr class="cg-data-row">
                                                 @if (IsColumnSelected("Member")) { <td>@r.MemberName</td> }
                                                 @if (IsColumnSelected("Entity")) { <td>@r.EntityShortCode</td> }
+                                                @if (IsColumnSelected("EntityType")) { <td>@CompanyEntityTypes.Label(r.EntityType)</td> }
                                                 @if (IsColumnSelected("Department")) { <td>@(r.DepartmentName ?? "—")</td> }
                                                 @if (IsColumnSelected("Quarter")) { <td class="mono">Q@(r.Quarter) @r.Year</td> }
                                                 @if (IsColumnSelected("Submission"))

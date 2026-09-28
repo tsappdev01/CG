@@ -16,6 +16,10 @@ public partial class InsiderDeclarationReport
         public required string MemberName { get; init; }
         public int? EntityCompanyId { get; init; }
         public string? EntityShortCode { get; init; }
+
+        /// <summary>The entity's legal type, carried on the row so a reviewer reading the report
+        /// does not have to open the company to know what kind of entity it is.</summary>
+        public CompanyEntityType? EntityType { get; init; }
         public string? DepartmentName { get; init; }
         public required int Year { get; init; }
         public required int Quarter { get; init; }
@@ -47,6 +51,7 @@ public partial class InsiderDeclarationReport
     [
         ("Member", "Member"),
         ("Entity", "Entity"),
+        ("EntityType", "Entity type"),
         ("Department", "Department"),
         ("Quarter", "Quarter"),
         ("Submission", "Submission"),
@@ -108,6 +113,7 @@ public partial class InsiderDeclarationReport
                 MemberName = r.MemberName,
                 EntityCompanyId = member?.CompanyId,
                 EntityShortCode = member?.Company?.ShortCode ?? r.CompanyName,
+                EntityType = member?.Company?.EntityType,
                 DepartmentName = member?.Department?.Name,
                 // The period an Insider Trading notification covers is chosen explicitly by the
                 // admin when sending/scheduling it (Declarations Setup), not derived from when it

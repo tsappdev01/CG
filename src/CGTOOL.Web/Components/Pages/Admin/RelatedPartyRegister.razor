@@ -91,6 +91,7 @@
                         <tr>
                             <SortableHeader Label="Member" Column="Member" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Entity type</th>
                             <th>Designation</th>
                             <th>Table</th>
                             <SortableHeader Label="Company" Column="Company" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
@@ -108,6 +109,7 @@
                             <tr class="cg-data-row">
                                 <td>@r.MemberName</td>
                                 <td>@(r.EntityShortCode ?? "—")</td>
+                                <td>@CompanyEntityTypes.Label(r.EntityType)</td>
                                 <td>@(r.Designation ?? "—")</td>
                                 <td>@OwnerTypeLabel(r.OwnerType)</td>
                                 <td>@r.LegalCompanyName</td>
@@ -167,6 +169,7 @@
                             <th>Emirates Id</th>
                             <th>Emirates Expiry</th>
                             <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Entity type</th>
                             <SortableHeader Label="Quarter" Column="Quarter" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <th>Documents</th>
                         </tr>
@@ -187,6 +190,7 @@
                                 <td class="mono">@(r.EmiratesIdNumber ?? "—")</td>
                                 <td class="mono">@(r.EmiratesIdExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
                                 <td>@(r.EntityShortCode ?? "—")</td>
+                                <td>@CompanyEntityTypes.Label(r.EntityType)</td>
                                 <td class="mono">Q@(r.Quarter) @r.Year</td>
                                 <td>
                                     <button type="button" class="cg-icon-btn" title="View all documents uploaded with this declaration" disabled="@(!HasAnyDocument(r))" @onclick="() => _viewDocumentsRecord = r"><span class="cg-icon-document-glyph"></span></button>
@@ -226,6 +230,7 @@
                                         <tr>
                                             <th>Member</th>
                                             <th>Entity</th>
+                                            <th>Entity type</th>
                                             <th>Designation</th>
                                             <th>Table</th>
                                             <th>Company</th>
@@ -241,6 +246,7 @@
                                             <tr class="cg-data-row">
                                                 <td>@r.MemberName</td>
                                                 <td>@(r.EntityShortCode ?? "—")</td>
+                                <td>@CompanyEntityTypes.Label(r.EntityType)</td>
                                                 <td>@(r.Designation ?? "—")</td>
                                                 <td>@OwnerTypeLabel(r.OwnerType)</td>
                                                 <td>@r.LegalCompanyName</td>

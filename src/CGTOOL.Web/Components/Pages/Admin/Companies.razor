@@ -68,11 +68,11 @@
                     <thead>
                         <tr>
                             <th class="cg-select-col"><input type="checkbox" checked="@AllSelected" @onchange="e => ToggleSelectAll((bool)e.Value!)" aria-label="Select all" /></th>
-                            <th>Logo</th>
+                            <SortableHeader Label="Code" Column="ShortCode" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <SortableHeader Label="Name" Column="Name" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                            <SortableHeader Label="Short code" Column="ShortCode" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <SortableHeader Label="Sector" Column="Sector" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <SortableHeader Label="Group Name" Column="GroupName" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
+                            <th>Entity type</th>
                             <SortableHeader Label="Users" Column="Users" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <SortableHeader Label="Status" Column="Status" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <th></th>
@@ -83,11 +83,11 @@
                         {
                             <tr class="cg-data-row">
                                 <td class="cg-select-col"><input type="checkbox" checked="@_selectedIds.Contains(c.Id)" @onchange="e => ToggleSelect(c.Id, (bool)e.Value!)" aria-label="Select @c.Name" /></td>
-                                <td><EntityLogo Company="c" /></td>
-                                <td>@c.Name</td>
                                 <td class="mono">@c.ShortCode</td>
+                                <td>@c.Name</td>
                                 <td>@c.Sector</td>
                                 <td>@c.GroupName</td>
+                                <td>@CompanyEntityTypes.Label(c.EntityType)</td>
                                 <td class="mono">@MemberCount(c.Id)</td>
                                 <td><ToggleSwitch Value="c.Active" ValueChanged="() => _pendingJustify = c" /></td>
                                 <td>
@@ -152,10 +152,11 @@
                             <table>
                                 <thead>
                                     <tr>
+                                        <th>Code</th>
                                         <th>Name</th>
-                                        <th>Short code</th>
                                         <th>Sector</th>
                                         <th>Group Name</th>
+                                        <th>Entity type</th>
                                         <th>Users</th>
                                         <th>Status</th>
                                     </tr>
@@ -164,10 +165,11 @@
                                     @foreach (var c in PrintRows())
                                     {
                                         <tr class="cg-data-row">
-                                            <td>@c.Name</td>
                                             <td class="mono">@c.ShortCode</td>
+                                            <td>@c.Name</td>
                                             <td>@c.Sector</td>
                                             <td>@c.GroupName</td>
+                                            <td>@CompanyEntityTypes.Label(c.EntityType)</td>
                                             <td class="mono">@MemberCount(c.Id)</td>
                                             <td>@(c.Active ? "Active" : "Inactive")</td>
                                         </tr>

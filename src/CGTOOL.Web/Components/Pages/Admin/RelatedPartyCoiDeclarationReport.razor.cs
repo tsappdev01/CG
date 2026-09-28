@@ -17,6 +17,10 @@ public partial class RelatedPartyCoiDeclarationReport
         public required string MemberName { get; init; }
         public int? EntityCompanyId { get; init; }
         public string? EntityShortCode { get; init; }
+
+        /// <summary>The entity's legal type, carried on the row so a reviewer reading the report
+        /// does not have to open the company to know what kind of entity it is.</summary>
+        public CompanyEntityType? EntityType { get; init; }
         public string? DepartmentName { get; init; }
         public required int Year { get; init; }
         public required int Quarter { get; init; }
@@ -42,6 +46,7 @@ public partial class RelatedPartyCoiDeclarationReport
     [
         ("Member", "Member"),
         ("Entity", "Entity"),
+        ("EntityType", "Entity type"),
         ("Department", "Department"),
         ("Quarter", "Quarter"),
         ("Submission", "Submission"),
@@ -147,6 +152,7 @@ public partial class RelatedPartyCoiDeclarationReport
                 MemberName = r.MemberName,
                 EntityCompanyId = member?.CompanyId,
                 EntityShortCode = member?.Company?.ShortCode ?? r.CompanyName,
+                EntityType = member?.Company?.EntityType,
                 DepartmentName = member?.Department?.Name,
                 Year = run.PeriodYear,
                 Quarter = run.PeriodQuarter,

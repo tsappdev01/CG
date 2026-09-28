@@ -13,6 +13,10 @@ public partial class RelatedPartyRegister
     {
         public required string MemberName { get; init; }
         public string? EntityShortCode { get; init; }
+
+        /// <summary>The entity's legal type, carried on the row so a reviewer reading the report
+        /// does not have to open the company to know what kind of entity it is.</summary>
+        public CompanyEntityType? EntityType { get; init; }
         public int? EntityCompanyId { get; init; }
         public string? Designation { get; init; }
         public required int Year { get; init; }
@@ -37,6 +41,10 @@ public partial class RelatedPartyRegister
     {
         public required string MemberName { get; init; }
         public string? EntityShortCode { get; init; }
+
+        /// <summary>The entity's legal type, carried on the row so a reviewer reading the report
+        /// does not have to open the company to know what kind of entity it is.</summary>
+        public CompanyEntityType? EntityType { get; init; }
         public int? EntityCompanyId { get; init; }
         public string? CompanyName { get; init; }
         public string? Designation { get; init; }
@@ -100,6 +108,7 @@ public partial class RelatedPartyRegister
             {
                 MemberName = d.Member?.FullName ?? "—",
                 EntityShortCode = d.Member?.Company?.ShortCode,
+                    EntityType = d.Member?.Company?.EntityType,
                 EntityCompanyId = d.Member?.CompanyId,
                 Designation = d.Member?.JobTitle,
                 Year = d.DeclarationCycleRun!.PeriodYear,
@@ -124,6 +133,7 @@ public partial class RelatedPartyRegister
                 {
                     MemberName = d.Member?.FullName ?? "—",
                     EntityShortCode = d.Member?.Company?.ShortCode,
+                    EntityType = d.Member?.Company?.EntityType,
                     EntityCompanyId = d.Member?.CompanyId,
                     CompanyName = d.Member?.Company?.Name,
                     Designation = d.Member?.JobTitle,

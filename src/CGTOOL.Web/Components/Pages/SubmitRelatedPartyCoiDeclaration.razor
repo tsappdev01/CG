@@ -164,7 +164,7 @@
         else if (_step == Step.SelfOwned)
         {
             <div class="cg-member-form cg-declaration-form">
-                <h3>Companies in which you own ≥30% of paid-up share capital</h3>
+                <h3>Companies in which I own ≥30% of paid-up share capital</h3>
                 <p class="cg-hint">The companies in My Register where your ownership is 30% or more are listed here for you. Switching this section to "nothing to declare" clears them.</p>
                 @* The declaration's own wording, not a generic "nothing to declare": what the member
                    is answering here is a specific statement about their shareholdings, and it is the
@@ -250,7 +250,7 @@
         else if (_step == Step.BoardRoles)
         {
             <div class="cg-member-form cg-declaration-form">
-                <h3>Companies in which you serve as board member or senior executive</h3>
+                <h3>Companies in which I serve as board member or senior executive</h3>
                 <p class="cg-hint">The companies in My Register marked "serve as board member or senior executive". Switching this section to "nothing to declare" clears them.</p>
                 <label class="cg-switch cg-nothing-switch">
                     <input type="checkbox" @bind:get="!_nothingBoardRoles" @bind:set="v => { _nothingBoardRoles = !v; SetNothingBoardRoles(); }" />
@@ -396,9 +396,9 @@
                     <table>
                         <tbody>
                             <tr><th>List of Relatives</th><td>@(_nothingRelatives ? "Nothing to declare" : $"{_relatives.Count} declared")</td></tr>
-                            <tr><th>Companies you own ≥30%</th><td>@(_nothingSelfOwned ? "Nothing to declare" : $"{_selfOwnedCompanies.Count} declared")</td></tr>
+                            <tr><th>Companies I own ≥30%</th><td>@(_nothingSelfOwned ? "Nothing to declare" : $"{_selfOwnedCompanies.Count} declared")</td></tr>
                             <tr><th>Companies a relative owns ≥30%</th><td>@(_nothingRelativeOwned ? "Nothing to declare" : $"{_relativeOwnedCompanies.Count} declared")</td></tr>
-                            <tr><th>Companies you serve as board member/executive</th><td>@(_nothingBoardRoles ? "Nothing to declare" : $"{_boardRoleCompanies.Count} declared")</td></tr>
+                            <tr><th>Companies I serve as board member/executive</th><td>@(_nothingBoardRoles ? "Nothing to declare" : $"{_boardRoleCompanies.Count} declared")</td></tr>
                             <tr><th>Conflicts of Interest</th><td>@(_nothingConflicts ? "Nothing to declare" : $"{_conflicts.Count} declared")</td></tr>
                         </tbody>
                     </table>

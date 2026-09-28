@@ -1254,9 +1254,9 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private bool ValidateStep(Step step) => step switch
     {
         Step.Relatives => ValidateRelatives(),
-        Step.SelfOwned => ValidateCompanySection(_selfOwnedCompanies, _nothingSelfOwned, "Companies you own ≥30%"),
+        Step.SelfOwned => ValidateCompanySection(_selfOwnedCompanies, _nothingSelfOwned, "Companies I own ≥30%"),
         Step.RelativeOwned => ValidateCompanySection(_relativeOwnedCompanies, _nothingRelativeOwned, "Companies a relative owns ≥30%", requireLinkedRelative: true),
-        Step.BoardRoles => ValidateCompanySection(_boardRoleCompanies, _nothingBoardRoles, "Companies where you are a board member/senior executive"),
+        Step.BoardRoles => ValidateCompanySection(_boardRoleCompanies, _nothingBoardRoles, "Companies in which I serve as board member or senior executive"),
         Step.Conflicts => ValidateConflicts(),
         _ => true,
     };

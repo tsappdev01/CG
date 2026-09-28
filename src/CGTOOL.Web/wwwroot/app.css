@@ -1220,6 +1220,43 @@ h1:focus {
     }
 }
 
+/* ---------- Date field (text box + calendar button) ---------- */
+/* The text box stays the control -- dd/mm/yyyy on every machine, whatever the browser's locale --
+   and the button beside it raises the browser's own picker. See UaeDateInput. */
+.cg-date-field { position: relative; display: block; }
+.cg-date-field .cg-input { padding-right: 36px; }
+.cg-date-field-button {
+    position: absolute;
+    top: 50%;
+    right: 1px;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: calc(100% - 4px);
+    border: none;
+    border-radius: 0 7px 7px 0;
+    background: none;
+    color: var(--cg-ink-muted);
+    cursor: pointer;
+}
+.cg-date-field-button:hover:not(:disabled) { color: var(--cg-accent); }
+.cg-date-field-button:disabled { cursor: default; opacity: 0.5; }
+/* Holds the calendar and nothing else. A pixel and transparent, not display:none or
+   visibility:hidden -- showPicker() needs an element that is still being rendered. */
+.cg-date-field-picker {
+    position: absolute;
+    right: 14px;
+    bottom: 0;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
 /* ---------- Sortable table columns ---------- */
 .cg-table-wrap thead th.cg-sortable {
     cursor: pointer;

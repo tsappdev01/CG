@@ -102,16 +102,15 @@
                                     </label>
                                     <label class="cg-field">
                                         <span>Issue Date</span>
-                                        <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
-                                               @bind:get="UaeDate.Show(doc.IssueDate)"
-                                               @bind:set="v => SetDate(v, d => doc.IssueDate = d)" />
+                                        <UaeDateInput Value="doc.IssueDate"
+                                                      ValueChanged="d => doc.IssueDate = d" />
                                     </label>
                                 }
                                 <label class="cg-field">
                                     <span>Expiry Date</span>
-                                    <input class="cg-input@(IsExpired(doc) ? " cg-input-invalid" : "")" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
-                                           @bind:get="UaeDate.Show(doc.ExpiryDate)"
-                                           @bind:set="v => SetDate(v, d => doc.ExpiryDate = d)" />
+                                    <UaeDateInput Value="doc.ExpiryDate"
+                                                  CssClass="@(IsExpired(doc) ? "cg-input-invalid" : null)"
+                                                  ValueChanged="d => doc.ExpiryDate = d" />
                                     @if (IsExpired(doc))
                                     {
                                         <span class="cg-field-error">Expired — upload a current one. A declaration cannot be submitted on it.</span>
@@ -121,9 +120,8 @@
                                 {
                                     <label class="cg-field">
                                         <span>Date of Birth</span>
-                                        <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
-                                               @bind:get="UaeDate.Show(doc.DateOfBirth)"
-                                               @bind:set="v => SetDate(v, d => doc.DateOfBirth = d)" />
+                                        <UaeDateInput Value="doc.DateOfBirth"
+                                                      ValueChanged="d => doc.DateOfBirth = d" />
                                     </label>
                                 }
                             </div>
@@ -175,9 +173,9 @@
                             </label>
                             <label class="cg-field">
                                 <span>Expiry Date</span>
-                                <input class="cg-input@(IsExpired(other) ? " cg-input-invalid" : "")" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
-                                       @bind:get="UaeDate.Show(other.ExpiryDate)"
-                                       @bind:set="v => SetDate(v, d => other.ExpiryDate = d)" />
+                                <UaeDateInput Value="other.ExpiryDate"
+                                              CssClass="@(IsExpired(other) ? "cg-input-invalid" : null)"
+                                              ValueChanged="d => other.ExpiryDate = d" />
                                 @if (IsExpired(other))
                                 {
                                     <span class="cg-field-error">Expired — upload a current one.</span>
@@ -534,9 +532,8 @@
                             </label>
                             <label class="cg-field">
                                 <span>Trade License Expiry Date</span>
-                                <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
-                                       @bind:get="UaeDate.Show(holding.TradeLicenceExpiryDate)"
-                                       @bind:set="v => SetDate(v, d => holding.TradeLicenceExpiryDate = d)" />
+                                <UaeDateInput Value="holding.TradeLicenceExpiryDate"
+                                              ValueChanged="d => holding.TradeLicenceExpiryDate = d" />
                             </label>
                             <label class="cg-field cg-field-wide">
                                 <span>License Activities</span>
@@ -589,9 +586,8 @@
                     </label>
                     <label class="cg-field">
                         <span>Emirates ID Expiry</span>
-                        <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
-                               @bind:get="UaeDate.Show(_relativeForm.EmiratesIdExpiryDate)"
-                               @bind:set="v => SetDate(v, d => _relativeForm.EmiratesIdExpiryDate = d)" />
+                        <UaeDateInput Value="_relativeForm.EmiratesIdExpiryDate"
+                                      ValueChanged="d => _relativeForm.EmiratesIdExpiryDate = d" />
                     </label>
                     <label class="cg-field">
                         <span>Passport No</span>
@@ -599,9 +595,8 @@
                     </label>
                     <label class="cg-field">
                         <span>Passport Expiry</span>
-                        <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
-                               @bind:get="UaeDate.Show(_relativeForm.PassportExpiryDate)"
-                               @bind:set="v => SetDate(v, d => _relativeForm.PassportExpiryDate = d)" />
+                        <UaeDateInput Value="_relativeForm.PassportExpiryDate"
+                                      ValueChanged="d => _relativeForm.PassportExpiryDate = d" />
                     </label>
                     <label class="cg-field">
                         <span>Trade License No</span>
@@ -609,9 +604,8 @@
                     </label>
                     <label class="cg-field">
                         <span>Expiry</span>
-                        <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
-                               @bind:get="UaeDate.Show(_relativeForm.TradeLicenceExpiryDate)"
-                               @bind:set="v => SetDate(v, d => _relativeForm.TradeLicenceExpiryDate = d)" />
+                        <UaeDateInput Value="_relativeForm.TradeLicenceExpiryDate"
+                                      ValueChanged="d => _relativeForm.TradeLicenceExpiryDate = d" />
                     </label>
                     <label class="cg-field cg-field-wide">
                         <span>Legal Name</span>
@@ -702,9 +696,8 @@
                     </label>
                     <label class="cg-field">
                         <span>Expiry</span>
-                        <input class="cg-input" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
-                               @bind:get="UaeDate.Show(_companyForm.TradeLicenceExpiryDate)"
-                               @bind:set="v => SetDate(v, d => _companyForm.TradeLicenceExpiryDate = d)" />
+                        <UaeDateInput Value="_companyForm.TradeLicenceExpiryDate"
+                                      ValueChanged="d => _companyForm.TradeLicenceExpiryDate = d" />
                     </label>
                     <label class="cg-field cg-field-wide">
                         <span>Legal Name</span>

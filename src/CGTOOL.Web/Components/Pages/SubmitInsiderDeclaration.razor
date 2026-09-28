@@ -266,10 +266,9 @@
                             </label>
                             <label class="cg-field">
                                 <span>Expiry date</span>
-                                <input class="cg-input@(IsExpiredOn(_emiratesIdExpiryDate) ? " cg-input-invalid" : "")"
-                                       placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
-                                       @bind:get="UaeDate.Show(_emiratesIdExpiryDate)"
-                                       @bind:set="v => SetDeclarationDate(v, d => _emiratesIdExpiryDate = d)" />
+                                <UaeDateInput CssClass="@(IsExpiredOn(_emiratesIdExpiryDate) ? "cg-input-invalid" : null)"
+                                              Value="_emiratesIdExpiryDate"
+                                              ValueChanged="d => _emiratesIdExpiryDate = d" />
                             </label>
                         </div>
                         @if (IsExpiredOn(_emiratesIdExpiryDate))
@@ -318,10 +317,9 @@
                             </label>
                             <label class="cg-field cg-field-wide">
                                 <span>Expiry date</span>
-                                <input class="cg-input@(IsExpiredOn(_passportExpiryDate) ? " cg-input-invalid" : "")"
-                                       placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
-                                       @bind:get="UaeDate.Show(_passportExpiryDate)"
-                                       @bind:set="v => SetDeclarationDate(v, d => _passportExpiryDate = d)" />
+                                <UaeDateInput CssClass="@(IsExpiredOn(_passportExpiryDate) ? "cg-input-invalid" : null)"
+                                              Value="_passportExpiryDate"
+                                              ValueChanged="d => _passportExpiryDate = d" />
                             </label>
                         </div>
                         @if (IsExpiredOn(_passportExpiryDate))
@@ -366,10 +364,9 @@
                             </label>
                             <label class="cg-field">
                                 <span>Expiry date</span>
-                                <input class="cg-input@(IsExpiredOn(_tradeLicenceExpiryDate) ? " cg-input-invalid" : "")"
-                                       placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
-                                       @bind:get="UaeDate.Show(_tradeLicenceExpiryDate)"
-                                       @bind:set="v => SetDeclarationDate(v, d => _tradeLicenceExpiryDate = d)" />
+                                <UaeDateInput CssClass="@(IsExpiredOn(_tradeLicenceExpiryDate) ? "cg-input-invalid" : null)"
+                                              Value="_tradeLicenceExpiryDate"
+                                              ValueChanged="d => _tradeLicenceExpiryDate = d" />
                             </label>
                             <label class="cg-field">
                                 <span>Business name</span>

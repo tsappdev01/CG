@@ -1,0 +1,71 @@
+@using System.Globalization
+@inject ToastService Toasts
+
+@* A date the way these documents print it, with a calendar to pick it from.
+
+   Typed as dd/mm/yyyy into a plain text box, because a native date input is drawn in the *browser's*
+   locale and on an en-US machine labels itself mm/dd/yyyy -- see UaeDate. The calendar button opens
+   a real picker over a native input kept beside it, so nobody needs to know the format to set a
+   date; what the picker returns is written back into the text box as dd/mm/yyyy. *@
+<div class="cg-date-field">
+    <input id="@Id" class="cg-input @CssClass" placeholder="@UaeDate.Pattern.ToLowerInvariant()" maxlength="10"
+           disabled="@Disabled"
+           @bind:get="UaeDate.Show(Value)"
+           @bind:set="OnTyped" />
+
+    @* Carries the calendar and nothing else. A pixel and transparent rather than hidden: showPicker()
+       needs an element that is still being rendered, which display:none and visibility:hidden are not. *@
+    <input type="date" class="cg-date-field-picker" tabindex="-1" aria-hidden="true"
+           value="@Value?.ToString("yyyy-MM-dd")" @onchange="OnPicked" />
+
+    @* A plain DOM onclick, not @@onclick: showPicker() is only allowed while the click still counts
+       as user activation, and a Blazor Server handler round-trips to the server first. *@
+    <button type="button" class="cg-date-field-button" disabled="@Disabled"
+            title="Open calendar" aria-label="Open calendar"
+            onclick="cgShowDatePicker(this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+            <line x1="8" y1="3" x2="8" y2="7" />
+            <line x1="16" y1="3" x2="16" y2="7" />
+        </svg>
+    </button>
+</div>
+
+@code {
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+
+    /// <summary>Extra classes for the text box -- cg-input-invalid where the page marks the field.</summary>
+    [Parameter] public string? CssClass { get; set; }
+
+    /// <summary>Set where the page focuses a field by id after a validation message names it.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Typing something the day-first parse can't read leaves the date as it was and says so,
+    /// rather than silently clearing the field -- a date that quietly vanished is worse than one that
+    /// was rejected out loud.</summary>
+    private Task OnTyped(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return ValueChanged.InvokeAsync(null);
+
+        if (UaeDate.Parse(text) is { } date) return ValueChanged.InvokeAsync(date);
+
+        Toasts.ShowError($"Enter the date as {UaeDate.Pattern.ToLowerInvariant()}, or pick it from the calendar.");
+        return Task.CompletedTask;
+    }
+
+    /// <summary>A date input hands back yyyy-MM-dd whatever the browser draws, so this parse is exact
+    /// and culture-free. Empty is the picker being cleared.</summary>
+    private Task OnPicked(ChangeEventArgs e)
+    {
+        var raw = e.Value as string;
+        if (string.IsNullOrWhiteSpace(raw)) return ValueChanged.InvokeAsync(null);
+
+        return DateTime.TryParseExact(raw, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var picked)
+            ? ValueChanged.InvokeAsync(picked.Date)
+            : Task.CompletedTask;
+    }
+}

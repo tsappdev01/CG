@@ -14,6 +14,7 @@ public partial class RelatedPartyMaster
     {
         Entity,
         User,
+        Relative,
         RelativeCompany,
         MemberCompany,
     }
@@ -22,6 +23,7 @@ public partial class RelatedPartyMaster
     {
         MasterSource.Entity => "Entity",
         MasterSource.User => "User",
+        MasterSource.Relative => "Relative",
         MasterSource.RelativeCompany => "Relative's company",
         _ => "Member's company",
     };
@@ -55,6 +57,13 @@ public partial class RelatedPartyMaster
         /// <summary>How RelatedTo is related to the member -- the relationship for a relative,
         /// "Self" for the member's own company.</summary>
         public string? Relationship { get; init; }
+
+        /// <summary>The relative's Emirates ID, or the passport number where that is what they
+        /// carry -- a relative may be non-resident. The identifier is most of what makes a person on
+        /// this list findable, so it is on the row rather than a click away.</summary>
+        public string? IdentificationNumber { get; init; }
+
+        public string? Nationality { get; init; }
 
         public RelatedPartyHoldingNature? NatureOfHolding { get; init; }
         public string? NatureOfInterest { get; init; }
@@ -106,6 +115,15 @@ public partial class RelatedPartyMaster
             .Include(o => o.Member).ThenInclude(m => m!.Company)
             .ToListAsync();
 
+        // The relatives themselves and their holdings are loaded separately rather than one from the
+        // other: a relative with no company recorded is still a related party, and reading them off
+        // the holdings would leave exactly those people out of the master.
+        var relatives = await db.FamilyMembers
+            .AsNoTracking()
+            .Include(f => f.Member).ThenInclude(m => m!.Company)
+            .OrderBy(f => f.Name)
+            .ToListAsync();
+
         var holdings = await db.FamilyMemberHoldings
             .AsNoTracking()
             .Include(h => h.FamilyMember).ThenInclude(f => f!.Member).ThenInclude(m => m!.Company)
@@ -134,6 +152,19 @@ public partial class RelatedPartyMaster
                 EntityCompanyId = m.CompanyId,
                 Department = m.Department?.Name,
                 Active = m.Active,
+            }),
+
+            .. relatives.Select(f => new MasterRow
+            {
+                Source = MasterSource.Relative,
+                Name = f.Name,
+                EntityName = f.Member?.Company?.Name,
+                EntityCompanyId = f.Member?.CompanyId,
+                MemberName = f.Member?.FullName,
+                RelatedTo = f.Member?.FullName,
+                Relationship = RelationshipLabel(f.Relationship),
+                IdentificationNumber = f.EmiratesIdNumber ?? f.IdentificationNumber ?? f.PassportNumber,
+                Nationality = f.Nationality,
             }),
 
             .. holdings.Select(h => new MasterRow
@@ -201,6 +232,7 @@ public partial class RelatedPartyMaster
     [
         (MasterSource.Entity, "Entities"),
         (MasterSource.User, "Users"),
+        (MasterSource.Relative, "Relatives"),
         (MasterSource.MemberCompany, "Members' companies"),
         (MasterSource.RelativeCompany, "Relatives' companies"),
     ];
@@ -221,7 +253,8 @@ public partial class RelatedPartyMaster
                 Contains(r.Name, term) || Contains(r.MemberName, term) || Contains(r.RelatedTo, term)
                 || Contains(r.EntityName, term) || Contains(r.Type, term) || Contains(r.Department, term)
                 || Contains(r.PrincipalBusinessActivity, term) || Contains(r.NatureOfInterest, term)
-                || Contains(r.TradeLicenceNumber, term));
+                || Contains(r.TradeLicenceNumber, term) || Contains(r.IdentificationNumber, term)
+                || Contains(r.Nationality, term));
         }
 
         if (!string.IsNullOrWhiteSpace(_sourceFilter) && Enum.TryParse<MasterSource>(_sourceFilter, out var source))

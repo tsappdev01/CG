@@ -45,6 +45,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<OwnedCompany> OwnedCompanies => Set<OwnedCompany>();
     public DbSet<MemberDocument> MemberDocuments => Set<MemberDocument>();
     public DbSet<FamilyMemberHolding> FamilyMemberHoldings => Set<FamilyMemberHolding>();
+    public DbSet<DelegationOfAuthority> DelegationsOfAuthority => Set<DelegationOfAuthority>();
+    public DbSet<DelegationOfAuthorityBand> DelegationOfAuthorityBands => Set<DelegationOfAuthorityBand>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -65,6 +67,30 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<NavMenuItemVisibility>()
             .HasIndex(n => n.ItemKey)
             .IsUnique();
+
+        // One matrix per entity: two would leave nothing to say which routes a transaction.
+        builder.Entity<DelegationOfAuthority>()
+            .HasIndex(d => d.CompanyId)
+            .IsUnique();
+
+        // Deleting an entity's matrix takes its bands; a band alone means nothing.
+        builder.Entity<DelegationOfAuthority>()
+            .HasMany(d => d.Bands)
+            .WithOne(b => b.DelegationOfAuthority!)
+            .HasForeignKey(b => b.DelegationOfAuthorityId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<DelegationOfAuthority>()
+            .Property(d => d.ApproverLimit)
+            .HasPrecision(18, 2);
+
+        builder.Entity<DelegationOfAuthorityBand>()
+            .Property(b => b.FromValue)
+            .HasPrecision(18, 2);
+
+        builder.Entity<DelegationOfAuthorityBand>()
+            .Property(b => b.ToValue)
+            .HasPrecision(18, 2);
 
         // The chain is only a chain if positions are unique. Filtered, because rows the backfill
         // has not reached yet have none.

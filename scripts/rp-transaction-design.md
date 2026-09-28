@@ -205,13 +205,13 @@ stored procedures per the repo's write convention, and routing in
 
 ## What the schema needs
 
-| Screen | Change |
-| --- | --- |
-| 3 | none |
-| 4 | `RpTransactionStatus.Returned`; `RpEscalationReason.OverApproverLimit` |
-| 5 | `GoverningBody`, `GoverningBodyDecisionDate`, `AbstainedMemberIds`, minutes document kind |
-| 7 | `DelegationOfAuthorityBand` table + `usp_DoaBand_*` procedures |
-| 1, 4 | none beyond the above — pre-checks are computed, not stored |
+| Screen | Change | As built |
+| --- | --- | --- |
+| 3 | none | none |
+| 4 | `RpTransactionStatus.Returned`; `RpEscalationReason.OverApproverLimit` | both, plus `RpApproverAction.Return` — all appended enum members, stored as ints |
+| 5 | `GoverningBody`, `GoverningBodyDecisionDate`, `AbstainedMemberIds`, minutes document kind | `GoverningBody`, `GoverningBodyDecisionDate`, `AbstainedMembers` (names, not ids — a board member need not be a user of this system), `RelatedPartyTransactionDocuments.Kind` |
+| 7 | `DelegationOfAuthorityBand` table + `usp_DoaBand_*` procedures | `DelegationsOfAuthority` (one per entity, carrying the approver limit and the escalation settings) and `DelegationOfAuthorityBands`, saved whole by `usp_DelegationOfAuthority_Save` |
+| 1, 4 | none beyond the above — pre-checks are computed, not stored | as proposed |
 
 Everything else is UI over data the model already holds.
 
@@ -243,16 +243,29 @@ The stage rail reuses `cg-stepper` / `cg-step` from the COI declaration unchange
 | 2 | Queue + detail on both review screens (4, 5) | no | Biggest usability win | **done** |
 | 3 | `Returned` status and the Return action | small | Closes a flow gap | **done** |
 | 4 | Register column picker (6) | no | An hour's work | **done** |
-| 5 | Pre-checks (1, 4) | no | Needs the Related Party Master settled | |
-| 6 | DoA matrix (7) + value routing | yes | Largest; unblocks routing and limits | |
-| 7 | Governance decision block (5) | yes | Audit completeness | |
+| 5 | Pre-checks (1, 4) | no | Needs the Related Party Master settled | **done** |
+| 6 | DoA matrix (7) + value routing | yes | Largest; unblocks routing and limits | **done** |
+| 7 | Governance decision block (5) | yes | Audit completeness | **done** |
 
-1–4 are built. They needed no migration: `Returned` and `Return` are appended enum members stored
-as ints, and the only new database object is `usp_RelatedPartyTransaction_Resubmit` in
-`scripts/stored-procedures.sql`, which has to be run before the branch is deployed.
+All seven are built.
 
-What 1–4 did **not** bring, because it belongs to 5 and 6: the pre-check chips and the routing
-preview pictured on screens 1 and 4. The approver screen shows the SLA countdown only.
+**To deploy:** apply the EF migration `AddDelegationOfAuthorityAndGovernanceDecision` (the app does
+it at startup, or `dotnet ef database update`), then run `scripts/stored-procedures.sql` — in that
+order, as its own schema guard insists. The guard was extended to check the new tables and columns.
+
+Two things changed from the proposal as it was built:
+
+**The approver's limit is its own setting, not a band.** The mockup showed "above your AED 1m limit"
+and the bands in the same breath, but they answer different questions: the bands say which body must
+ultimately approve a transaction of this size, and the limit says whether the approver is in the
+path at all. A transaction above the limit is routed to the CCAO at submission and never reaches the
+approver — that is `RpEscalationReason.OverApproverLimit`, the workflow's "escalate: over limit",
+which previously had no way of happening.
+
+**"Escalate when a pre-check failed" was dropped from the matrix.** It could never fire: a failing
+pre-check is one of the two the form already refuses to submit on. A switch that does nothing is
+worse than an absent one, so the two triggers that do work — approver conflicted, and a per-entity
+deadline the escalation job now reads — are what the screen offers.
 
 ## Decisions needed before building
 
@@ -260,8 +273,11 @@ preview pictured on screens 1 and 4. The approver screen shows the SLA countdown
    them, and screens 1 and 4 depend on it.
 2. **Where does the counter-party list come from** — the standing Related Party Master
    (`/reports/related-party-master`), which is what §3.2 says, or submitted declarations,
-   which is what `RelatedPartyMasterSource` does today? The pre-checks and the
-   relationship line both depend on the answer.
+   which is what `RelatedPartyMasterSource` does today? **Still open.** The pre-checks read the
+   standing master, because that is what §3.2 names; the dropdown still offers what declarations
+   held, because changing what is selectable is a behaviour change nobody asked for. A name can
+   therefore be selectable and unknown to the check, which reads as "not on the Related Party
+   Master" — a warning, not a refusal. That warning is the mismatch, showing itself.
 3. **May an approver bulk-approve?** Left out above on purpose.
 4. **Is "latest version" in §3.3 intended?** Read literally, a notification is a live
    view rather than a record of what was sent, so a stage 1 email opened after stage 3

@@ -47,13 +47,30 @@ public partial class RpTransactionApprovalsPage
 
     /// <summary>Clicking the tile already filtered on clears it, so the tiles toggle rather than
     /// being a one-way trip into a filter with no visible way out.</summary>
-    private void ToggleFilter(string key)
+    private async Task ToggleFilter(string key)
     {
         _filter = _filter == key ? string.Empty : key;
         KeepSelectionInQueue();
+        await RunChecksForSelectionAsync();
     }
 
-    private void Select(int id) => _selectedId = id;
+    private PreCheckResult? _selectedChecks;
+
+    private async Task Select(int id)
+    {
+        _selectedId = id;
+        await RunChecksForSelectionAsync();
+    }
+
+    /// <summary>The approver sees what the requestor saw -- run now rather than stored, so a
+    /// counter-party that has since been registered, or a licence that has since expired, reads as
+    /// it stands today rather than as it stood when the transaction was raised.</summary>
+    private async Task RunChecksForSelectionAsync()
+    {
+        _selectedChecks = Selected is { } t
+            ? await PreChecks.RunAsync(t.MemberId, t.CounterPartyName, t.TransactionValue)
+            : null;
+    }
 
     private RelatedPartyTransaction? Selected =>
         Queue().FirstOrDefault(t => t.Id == _selectedId) ?? Queue().FirstOrDefault();
@@ -124,6 +141,7 @@ public partial class RpTransactionApprovalsPage
 
         _remarks = _pending.ToDictionary(t => t.Id, _ => string.Empty);
         KeepSelectionInQueue();
+        await RunChecksForSelectionAsync();
     }
 
     private string RemarksFor(int id) => _remarks.TryGetValue(id, out var v) ? v : string.Empty;

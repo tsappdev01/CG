@@ -13,7 +13,7 @@ public partial class RpTransactionRegisterPage
     /// <summary>The three columns §3.4.1 names that the table leaves out by default. All three are
     /// long free text; on by default they pushed the eleven short columns off the screen, and the
     /// export has always carried them either way.</summary>
-    public static readonly string[] OptionalColumns = ["Description", "Approver remarks", "CCAO remarks"];
+    public static readonly string[] OptionalColumns = ["Description", "Approver remarks", "CCAO remarks", "Governance decision"];
 
     private readonly HashSet<string> _columnsOn = [];
 
@@ -86,7 +86,7 @@ public partial class RpTransactionRegisterPage
     private async Task ExportRegisterAsync()
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Reference,Entity,Requestor,Counter-party,Transaction Value,Description,Date of request,Approver Action,Approver Remarks,Approver Date,CCAO Action,CCAO Remarks,CCAO Date,Released Date");
+        sb.AppendLine("Reference,Entity,Requestor,Counter-party,Transaction Value,Description,Date of request,Approver Action,Approver Remarks,Approver Date,CCAO Action,CCAO Remarks,CCAO Date,Decided By,Decision Date,Abstained,Released Date");
 
         foreach (var t in _released)
         {
@@ -104,6 +104,9 @@ public partial class RpTransactionRegisterPage
                 Csv(t.CcaoAction?.ToString()),
                 Csv(t.CcaoRemarks),
                 t.CcaoActionAtUtc?.ToString("dd/MM/yyyy") ?? string.Empty,
+                Csv(t.GoverningBody is null ? null : RpGoverningBodies.Label(t.GoverningBody)),
+                t.GoverningBodyDecisionDate?.ToString("dd/MM/yyyy") ?? string.Empty,
+                Csv(t.AbstainedMembers),
                 t.ReleasedAtUtc?.ToString("dd/MM/yyyy") ?? string.Empty));
         }
 

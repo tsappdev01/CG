@@ -38,6 +38,8 @@ public static class RpTransactionDisplay
         RpEscalationReason.ManualByApprover => "Escalated by the approver",
         RpEscalationReason.AutoTimeout30Days => "Escalated automatically — 30 days without a decision",
         RpEscalationReason.ApproverConflictOfInterest => "Escalated — the approver is conflicted",
+        RpEscalationReason.OverApproverLimit => "Escalated — above the approver's limit",
+        RpEscalationReason.FailedPreCheck => "Escalated — a pre-check failed",
         _ => string.Empty,
     };
 

@@ -8,6 +8,7 @@
 @inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState
 @inject ToastService Toasts
+@inject IRpTransactionPreCheckService PreChecks
 
 <PageTitle>RP Transactions — Pending My Approval</PageTitle>
 
@@ -103,6 +104,8 @@
                     </div>
 
                     <RpStageRail Transaction="s" />
+
+                    <RpPreChecks Result="_selectedChecks" />
 
                     @if (RpTransactionDisplay.ApproverAge(s, DateTime.UtcNow) is { } selectedAge)
                     {

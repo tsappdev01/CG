@@ -144,6 +144,8 @@ builder.Services.AddScoped<NavMenuStateNotifier>();
 builder.Services.AddScoped<IShareholderRegisterWriter, ShareholderRegisterWriter>();
 builder.Services.AddScoped<IShareTradingWriter, ShareTradingWriter>();
 builder.Services.AddScoped<IRelatedPartyTransactionWriter, RelatedPartyTransactionWriter>();
+builder.Services.AddScoped<IDelegationOfAuthorityWriter, DelegationOfAuthorityWriter>();
+builder.Services.AddScoped<IRpTransactionPreCheckService, RpTransactionPreCheckService>();
 builder.Services.AddScoped<IDeclarationReminderLogWriter, DeclarationReminderLogWriter>();
 builder.Services.AddScoped<IFamilyMemberWriter, FamilyMemberWriter>();
 builder.Services.AddScoped<IOwnedCompanyWriter, OwnedCompanyWriter>();

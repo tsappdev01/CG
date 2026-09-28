@@ -8,6 +8,7 @@
 @inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState
 @inject ToastService Toasts
+@inject IWebHostEnvironment Env
 
 <PageTitle>RP Transactions — CCAO Review</PageTitle>
 
@@ -116,7 +117,52 @@
 
                         @if (_activeTab == "review")
                         {
-                            <label class="cg-field" style="margin-top:16px;">
+                            @* §3.2 section 3 is the CCAO writing down a decision taken elsewhere.
+                               Recording only that a decision happened left out what an auditor asks
+                               for first: which body took it, when, and who stood out of it. *@
+                            <h2 style="margin-top:20px;">Record the governance decision</h2>
+                            <div class="cg-field-row">
+                                <label class="cg-field">
+                                    <span>Decided by <b style="color:var(--cg-critical);">*</b></span>
+                                    <select class="cg-input" @bind:get="BodyFor(s.Id)" @bind:set="v => _bodies[s.Id] = v">
+                                        <option value="">Choose…</option>
+                                        @foreach (var (value, label) in RpGoverningBodies.All)
+                                        {
+                                            <option value="@value">@label</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label class="cg-field">
+                                    <span>Meeting date <b style="color:var(--cg-critical);">*</b></span>
+                                    <UaeDateInput Value="DecisionDateFor(s.Id)" ValueChanged="d => _decisionDates[s.Id] = d" />
+                                </label>
+                            </div>
+                            <label class="cg-field">
+                                <span>Members who abstained as conflicted
+                                    <em class="cg-subtitle" style="margin:0;">— names as the minutes record them, separated by commas</em></span>
+                                <input class="cg-input" maxlength="1000" value="@AbstainedFor(s.Id)"
+                                       @oninput="e => _abstained[s.Id] = e.Value?.ToString() ?? string.Empty" />
+                            </label>
+                            <label class="cg-field">
+                                <span>Minutes or approval evidence
+                                    <em class="cg-subtitle" style="margin:0;">— PDF, JPG or PNG, up to 10 MB</em></span>
+                                <InputFile OnChange="e => UploadMinutesAsync(e, s)" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingMinutes" />
+                                @if (_uploadingMinutes)
+                                {
+                                    <span class="cg-subtitle">Uploading…</span>
+                                }
+                                @if (s.Documents.Any(d => d.Kind == RpTransactionDocumentKind.GovernanceMinutes))
+                                {
+                                    <div class="cg-doc-chips" style="margin-top:6px;">
+                                        @foreach (var doc in s.Documents.Where(d => d.Kind == RpTransactionDocumentKind.GovernanceMinutes))
+                                        {
+                                            <a class="cg-doc-chip" href="@doc.FilePath" target="_blank" rel="noopener">@doc.FileName</a>
+                                        }
+                                    </div>
+                                }
+                            </label>
+
+                            <label class="cg-field" style="margin-top:8px;">
                                 <span>CCAO remarks <b style="color:var(--cg-critical);">*</b>
                                     <em class="cg-subtitle" style="margin:0;">— your compliance conclusion, and the basis of the offline decision</em></span>
                                 <textarea class="cg-input" rows="3" value="@RemarksFor(s.Id)" @oninput="e => _remarks[s.Id] = e.Value?.ToString() ?? string.Empty"></textarea>
@@ -125,6 +171,7 @@
                             <div class="cg-action-bar">
                                 <button type="button" class="cg-action-btn cg-good" disabled="@_acting" @onclick="() => CcaoApproveAsync(s)">Approve</button>
                                 <button type="button" class="cg-action-btn cg-critical" disabled="@_acting" @onclick="() => CcaoRejectAsync(s)">Reject</button>
+                                <span class="cg-subtitle" style="margin:0 0 0 auto;">A rejection needs remarks only — the rest describes an approval.</span>
                             </div>
                         }
                         else

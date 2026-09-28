@@ -82,6 +82,10 @@ public static class RpTransactionNotificationService
                 ("Auto-escalation: Stated RP transaction has been auto-escalated for review and further action by the CCAO and CFO as a result of a conflict of interest at your level.",
                  "Auto-escalation: Stated RP transaction has been auto-escalated for review and further action at your level as a result of a conflict of interest at Approver's level.",
                  "Auto-escalation: Stated RP transaction has been auto-escalated for review and further action by the CCAO's office as a result of a conflict of interest at Approver's level."),
+            RpEscalationReason.OverApproverLimit =>
+                ("Stated RP transaction has been routed directly to the CCAO and CFO: its value is above your approval limit under the entity's Delegation of Authority.",
+                 "Stated RP transaction has been routed directly to your office: its value is above the Approver's limit under the entity's Delegation of Authority.",
+                 "Stated RP transaction has been routed directly to the CCAO's office: its value is above the Approver's limit under the entity's Delegation of Authority."),
             _ =>
                 ("Stated RP Transaction has been Escalated by you for review and approval by the CCAO's office.",
                  "Stated RP Transaction has been Escalated by Approver for review and approval by your office.",

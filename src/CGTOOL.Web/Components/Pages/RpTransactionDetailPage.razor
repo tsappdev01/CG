@@ -72,10 +72,21 @@
                 else
                 {
                     <div class="cg-doc-chips" style="margin-top:6px;">
-                        @foreach (var doc in t.Documents)
+                        @foreach (var doc in t.Documents.OrderBy(d => d.Kind))
                         {
-                            <a class="cg-doc-chip" href="@doc.FilePath" target="_blank" rel="noopener">@doc.FileName</a>
+                            <a class="cg-doc-chip" href="@doc.FilePath" target="_blank" rel="noopener"
+                               title="@(doc.Kind == RpTransactionDocumentKind.GovernanceMinutes ? "Minutes or approval evidence" : "Supporting document")">@doc.FileName</a>
                         }
+                    </div>
+                }
+
+                @if (t.GoverningBody is not null)
+                {
+                    <h2 style="margin-top:22px;">Governance decision</h2>
+                    <div class="cg-facts">
+                        <div><div class="cg-fact-label">Decided by</div><div class="cg-fact-value">@RpGoverningBodies.Label(t.GoverningBody)</div></div>
+                        <div><div class="cg-fact-label">Meeting date</div><div class="cg-fact-value">@(t.GoverningBodyDecisionDate?.ToString("dd/MM/yyyy") ?? "—")</div></div>
+                        <div><div class="cg-fact-label">Abstained as conflicted</div><div class="cg-fact-value">@(t.AbstainedMembers ?? "None recorded")</div></div>
                     </div>
                 }
 

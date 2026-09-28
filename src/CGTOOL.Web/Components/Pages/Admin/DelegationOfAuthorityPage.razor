@@ -1,0 +1,127 @@
+@page "/admin/doa-matrix"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject IDelegationOfAuthorityWriter Writer
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toasts
+
+<PageTitle>Delegation of Authority</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1 data-icon="user">Delegation of Authority</h1>
+    <p class="cg-subtitle">
+        Who approves a Related Party Transaction, by value, for each entity. An entity with no matrix
+        keeps the behaviour it had: every transaction to its single approving authority, whatever it
+        is worth.
+    </p>
+
+    @if (_companies is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <div class="cg-controls">
+            <label class="cg-field" style="margin:0;">
+                <span>Entity</span>
+                <select class="cg-input" style="width:auto;" @bind:get="_companyId" @bind:set="LoadForCompanyAsync">
+                    @foreach (var c in _companies)
+                    {
+                        <option value="@c.Id">@c.Name@(_configuredCompanyIds.Contains(c.Id) ? "" : " — no matrix")</option>
+                    }
+                </select>
+            </label>
+            <label class="cg-field" style="margin:0;">
+                <span>Effective from</span>
+                <UaeDateInput Value="_matrix.EffectiveFrom" ValueChanged="d => _matrix.EffectiveFrom = d ?? DateTime.Today" />
+            </label>
+            <span class="cg-subtitle" style="margin:0;">Changing a matrix never re-routes a transaction already in flight.</span>
+        </div>
+
+        <div class="cg-workbench" style="grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);">
+            <div class="cg-member-form" style="margin:0; max-width:none;">
+                <h2>Value bands — @CurrentCompanyName</h2>
+                <p class="cg-subtitle" style="margin-top:-6px;">Which body must ultimately approve a transaction of this size.</p>
+
+                <div class="cg-band cg-fact-label">
+                    <div>From (AED)</div><div>To (AED) — blank for no limit</div><div>Approved by</div><div></div>
+                </div>
+
+                @foreach (var band in _matrix.Bands)
+                {
+                    <div class="cg-band">
+                        <input type="number" class="cg-input" step="0.01" min="0"
+                               value="@band.FromValue" @onchange="e => SetFrom(band, e.Value?.ToString())" />
+                        <input type="number" class="cg-input" step="0.01" min="0" placeholder="No upper limit"
+                               value="@band.ToValue" @onchange="e => SetTo(band, e.Value?.ToString())" />
+                        <select class="cg-input" @bind="band.Authority">
+                            @foreach (var (value, label) in RpApprovalAuthorities.All)
+                            {
+                                <option value="@value">@label</option>
+                            }
+                        </select>
+                        <button type="button" class="cg-icon-btn" title="Remove this band" @onclick="() => _matrix.Bands.Remove(band)">×</button>
+                    </div>
+                }
+
+                <div class="cg-actions">
+                    <button type="button" class="cg-action-btn" @onclick="AddBand">+ Add band</button>
+                </div>
+
+                <h2 style="margin-top:14px;">The approver's own limit</h2>
+                <label class="cg-field">
+                    <span>Bypass the approver above (AED)
+                        <em class="cg-subtitle" style="margin:0;">— blank for no limit</em></span>
+                    <input type="number" class="cg-input" step="0.01" min="0" placeholder="No limit"
+                           value="@_matrix.ApproverLimit" @onchange="e => SetApproverLimit(e.Value?.ToString())" />
+                    <span class="cg-subtitle">A transaction above this goes straight to the CCAO and never reaches the approver. Separate from the bands: they say which body must approve, this says whether the approver is in the path at all.</span>
+                </label>
+
+                <h2 style="margin-top:14px;">Always escalate to the CCAO when</h2>
+                <label class="cg-field" style="flex-direction:row; align-items:center; gap:8px;">
+                    <input type="checkbox" checked="@_matrix.EscalateOnApproverConflict" @onchange="e => _matrix.EscalateOnApproverConflict = (bool)e.Value!" />
+                    <span>The approver is themselves the related party</span>
+                </label>
+                <label class="cg-field">
+                    <span>The approver has not decided within (days)
+                        <em class="cg-subtitle" style="margin:0;">— blank uses the app-wide @RelatedPartyTransactionReminderHostedService.AutoEscalateAfterDays days</em></span>
+                    <input type="number" class="cg-input" style="width:120px;" min="1" placeholder="@RelatedPartyTransactionReminderHostedService.AutoEscalateAfterDays"
+                           value="@_matrix.EscalateAfterDays" @onchange="e => SetEscalateAfterDays(e.Value?.ToString())" />
+                </label>
+
+                <div class="cg-action-bar">
+                    <button type="button" class="cg-action-btn cg-good" disabled="@(_saving || Problems.Count > 0)" @onclick="SaveAsync">Save matrix</button>
+                    @if (_configuredCompanyIds.Contains(_companyId))
+                    {
+                        <button type="button" class="cg-action-btn cg-critical" disabled="@_saving" @onclick="DeleteAsync">Remove this matrix</button>
+                    }
+                </div>
+            </div>
+
+            <div class="cg-sidepanel">
+                <h3>Coverage</h3>
+                <div class="cg-checks" style="flex-direction:column; align-items:flex-start; margin:0 0 14px;">
+                    @foreach (var (label, ok) in Coverage)
+                    {
+                        <span class="cg-check" data-state="@(ok ? "pass" : "fail")">@label</span>
+                    }
+                </div>
+
+                @if (_unconfigured.Count > 0)
+                {
+                    <h3>Entities with no matrix</h3>
+                    <p class="cg-subtitle" style="margin:0 0 12px;">@string.Join(", ", _unconfigured)</p>
+                }
+
+                <h3>What this changes</h3>
+                <p class="cg-subtitle" style="margin:0;">
+                    With a matrix saved, the form that raises a transaction tells the requestor where it
+                    will go before they submit, and anything above the approver's limit is routed straight
+                    to the CCAO instead of sitting with someone who cannot clear it.
+                </p>
+            </div>
+        </div>
+    }
+</div>

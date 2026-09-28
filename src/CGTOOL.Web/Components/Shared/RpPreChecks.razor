@@ -1,0 +1,36 @@
+@* The stage-1 pre-checks, said out loud. A rule that silently routes or silently blocks is a rule
+   nobody trusts, so the ones that passed are shown too. *@
+@if (Result is { } result)
+{
+    <div class="cg-checks">
+        @foreach (var check in result.Checks)
+        {
+            <span class="cg-check" data-state="@StateOf(check.State)">@check.Label</span>
+        }
+    </div>
+
+    @if (ShowRouting)
+    {
+        <div class="cg-facts" style="margin-top:10px;">
+            <div>
+                <div class="cg-fact-label">Routes to</div>
+                <div class="cg-fact-value">@result.Routing.Summary</div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public PreCheckResult? Result { get; set; }
+
+    /// <summary>Where the transaction will go. Worth saying on the form that raises it, noise on a
+    /// screen where it has already gone there.</summary>
+    [Parameter] public bool ShowRouting { get; set; }
+
+    private static string StateOf(PreCheckState state) => state switch
+    {
+        PreCheckState.Pass => "pass",
+        PreCheckState.Warn => "warn",
+        _ => "fail",
+    };
+}

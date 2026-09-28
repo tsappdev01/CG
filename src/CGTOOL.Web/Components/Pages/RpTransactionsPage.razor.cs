@@ -86,6 +86,35 @@ public partial class RpTransactionsPage
 
     private void SwitchTab(string tab) => _activeTab = tab;
 
+    // ---------- stage-1 pre-checks ----------
+
+    private PreCheckResult? _preChecks;
+
+    /// <summary>A stand-in for the rail above an unsaved form: a transaction at stage 1. The rail
+    /// reads a transaction, and there isn't one yet.</summary>
+    private RelatedPartyTransaction DraftForRail { get; } = new() { Status = RpTransactionStatus.AwaitingApproval };
+
+    private async Task OnCounterPartyChangedAsync(string? value)
+    {
+        _counterPartyName = value ?? string.Empty;
+        await RunPreChecksAsync();
+    }
+
+    private async Task OnValueChangedAsync(decimal? value)
+    {
+        _transactionValue = value;
+        await RunPreChecksAsync();
+    }
+
+    /// <summary>Runs as the form is filled, so the requestor sees where this goes and what will be
+    /// flagged before submitting rather than after. Nothing here blocks Submit except the two the
+    /// form already refused: no counter-party, and a value of zero.</summary>
+    private async Task RunPreChecksAsync()
+    {
+        if (_effectiveMember is null) return;
+        _preChecks = await PreChecks.RunAsync(_effectiveMember.Id, _counterPartyName, _transactionValue);
+    }
+
     /// <summary>Returned is the state amending exists for, so it is amendable by definition -- and
     /// unlike the other two, resubmitting it puts it back in front of the approver.</summary>
     private static bool CanAmend(RelatedPartyTransaction t) =>
@@ -204,6 +233,14 @@ public partial class RpTransactionsPage
 
             var isConflicted = await ApproverIsConflictedAsync(company.ApprovingAuthorityMember.Id, _counterPartyName);
 
+            // The other half of "route by authority": over the approver's limit the transaction does
+            // not go to them at all. An entity with no matrix, or no limit on it, keeps the
+            // behaviour it had -- every transaction to the approver, whatever it is worth.
+            var matrix = await db.DelegationsOfAuthority
+                .AsNoTracking()
+                .FirstOrDefaultAsync(d => d.CompanyId == company.Id);
+            var overLimit = matrix?.ApproverLimit is { } limit && _transactionValue!.Value > limit;
+
             var transaction = new RelatedPartyTransaction
             {
                 CompanyId = company.Id,
@@ -217,10 +254,14 @@ public partial class RpTransactionsPage
                 SubmittedOnBehalfOf = isImpersonating ? _effectiveMember.FullName : null,
             };
 
-            if (isConflicted)
+            // A conflicted approver is the stronger reason of the two: it says the approver must not
+            // see it, where the limit only says they cannot clear it.
+            if (isConflicted || overLimit)
             {
                 transaction.Status = RpTransactionStatus.Escalated;
-                transaction.EscalationReason = RpEscalationReason.ApproverConflictOfInterest;
+                transaction.EscalationReason = isConflicted
+                    ? RpEscalationReason.ApproverConflictOfInterest
+                    : RpEscalationReason.OverApproverLimit;
                 transaction.EscalatedAtUtc = DateTime.UtcNow;
             }
             else
@@ -240,11 +281,11 @@ public partial class RpTransactionsPage
             }
             transaction.Documents = [.. _pendingDocuments];
 
-            if (isConflicted)
+            if (isConflicted || overLimit)
             {
                 var ccaoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Ccao);
                 var cfoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Cfo);
-                await RpTransactionNotificationService.EscalatedAsync(EmailSender, transaction, company.ApprovingAuthorityMember.Email, ccaoEmails, cfoEmails, RpEscalationReason.ApproverConflictOfInterest);
+                await RpTransactionNotificationService.EscalatedAsync(EmailSender, transaction, company.ApprovingAuthorityMember.Email, ccaoEmails, cfoEmails, transaction.EscalationReason);
             }
             else
             {

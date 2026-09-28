@@ -12,6 +12,7 @@
 @inject ToastService Toasts
 @inject NavigationManager Nav
 @inject IWebHostEnvironment Env
+@inject IRpTransactionPreCheckService PreChecks
 
 <PageTitle>Related Party Transactions</PageTitle>
 
@@ -44,7 +45,9 @@
 
         @if (_activeTab == "new")
         {
-            <div class="cg-member-form" style="max-width:720px;">
+            <RpStageRail Transaction="DraftForRail" />
+            <div class="cg-form-split" style="margin-top:14px;">
+            <div class="cg-member-form" style="max-width:none;">
                 <h2>Details of Requestor</h2>
                 <div class="cg-field-row">
                     <label class="cg-field"><span>Entity</span><input class="cg-input" value="@_effectiveMember?.Company?.Name" disabled /></label>
@@ -54,7 +57,7 @@
                 <h2>Details of Transaction</h2>
                 <label class="cg-field">
                     <span>Name of the counter-party</span>
-                    <select class="cg-input" @bind="_counterPartyName">
+                    <select class="cg-input" @bind:get="_counterPartyName" @bind:set="OnCounterPartyChangedAsync">
                         <option value="">Select a related party…</option>
                         @foreach (var name in _counterPartyNames)
                         {
@@ -65,7 +68,7 @@
                 </label>
                 <label class="cg-field">
                     <span>Transaction Value</span>
-                    <input type="number" class="cg-input" @bind="_transactionValue" min="0.01" step="0.01" />
+                    <input type="number" class="cg-input" @bind:get="_transactionValue" @bind:set="OnValueChangedAsync" min="0.01" step="0.01" />
                 </label>
                 <label class="cg-field">
                     <span>Description of the transaction, including material terms and conditions</span>
@@ -98,6 +101,22 @@
                 <div class="cg-actions">
                     <button type="button" class="cg-action-btn cg-good" disabled="@_submitting" @onclick="SubmitAsync">Submit</button>
                 </div>
+            </div>
+
+            <div class="cg-sidepanel">
+                <h3>Checks</h3>
+                @if (_preChecks is null)
+                {
+                    <p class="cg-subtitle" style="margin:0;">Pick a counter-party and a value and these fill in.</p>
+                }
+                else
+                {
+                    <RpPreChecks Result="_preChecks" ShowRouting="true" />
+                    <p class="cg-subtitle" style="margin:10px 0 0;">
+                        A warning doesn't stop you submitting — it travels with the transaction, and your approver sees it too.
+                    </p>
+                }
+            </div>
             </div>
         }
         else

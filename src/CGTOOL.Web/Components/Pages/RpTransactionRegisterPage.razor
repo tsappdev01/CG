@@ -65,7 +65,9 @@
                             @if (IsColumnOn("Approver remarks")) { <th>Approver Remarks</th> }
                             <th>Approver Date</th><th>CCAO Action</th>
                             @if (IsColumnOn("CCAO remarks")) { <th>CCAO Remarks</th> }
-                            <th>CCAO Date</th><th>Released</th>
+                            <th>CCAO Date</th>
+                            @if (IsColumnOn("Governance decision")) { <th>Decided By</th><th>Decision Date</th><th>Abstained</th> }
+                            <th>Released</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -85,6 +87,12 @@
                                 <td>@(t.CcaoAction?.ToString() ?? "—")</td>
                                 @if (IsColumnOn("CCAO remarks")) { <td>@(t.CcaoRemarks ?? "—")</td> }
                                 <td class="mono">@(t.CcaoActionAtUtc?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                @if (IsColumnOn("Governance decision"))
+                                {
+                                    <td>@(t.GoverningBody is null ? "—" : RpGoverningBodies.Label(t.GoverningBody))</td>
+                                    <td class="mono">@(t.GoverningBodyDecisionDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                    <td>@(t.AbstainedMembers ?? "—")</td>
+                                }
                                 <td class="mono">@(t.ReleasedAtUtc?.ToString("dd/MM/yyyy") ?? "—")</td>
                             </tr>
                         }

@@ -23,6 +23,9 @@ public interface IRelatedPartyTransactionWriter
     Task SetLastReminderSentAsync(int id, DateTime sentAtUtc);
 
     Task<int> InsertDocumentAsync(int transactionId, RelatedPartyTransactionDocument document);
+
+    /// <summary>The CCAO writing down the offline decision -- which body, when, who abstained.</summary>
+    Task RecordGovernanceDecisionAsync(RelatedPartyTransaction t);
 }
 
 public class RelatedPartyTransactionWriter(IStoredProcedureExecutor sp) : IRelatedPartyTransactionWriter
@@ -92,5 +95,13 @@ public class RelatedPartyTransactionWriter(IStoredProcedureExecutor sp) : IRelat
         "dbo.usp_RelatedPartyTransactionDocument_Insert",
         new SqlParameter("@RelatedPartyTransactionId", transactionId),
         new SqlParameter("@FilePath", document.FilePath),
-        new SqlParameter("@FileName", document.FileName));
+        new SqlParameter("@FileName", document.FileName),
+        new SqlParameter("@Kind", (int)document.Kind));
+
+    public Task RecordGovernanceDecisionAsync(RelatedPartyTransaction t) => sp.ExecuteAsync(
+        "dbo.usp_RelatedPartyTransaction_RecordGovernanceDecision",
+        new SqlParameter("@Id", t.Id),
+        new SqlParameter("@GoverningBody", (int)t.GoverningBody!.Value),
+        new SqlParameter("@GoverningBodyDecisionDate", t.GoverningBodyDecisionDate!.Value),
+        new SqlParameter("@AbstainedMembers", (object?)t.AbstainedMembers ?? DBNull.Value));
 }

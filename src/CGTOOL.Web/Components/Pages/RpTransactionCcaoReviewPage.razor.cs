@@ -22,6 +22,72 @@ public partial class RpTransactionCcaoReviewPage
     private string _sort = "value";
     private int? _selectedId;
     private bool _acting;
+    private bool _uploadingMinutes;
+
+    // The offline decision, held per transaction the way remarks already are, so switching between
+    // queue items does not lose what has been typed into another one.
+    private readonly Dictionary<int, RpGoverningBody?> _bodies = [];
+    private readonly Dictionary<int, DateTime?> _decisionDates = [];
+    private readonly Dictionary<int, string> _abstained = [];
+
+    private RpGoverningBody? BodyFor(int id) => _bodies.TryGetValue(id, out var v) ? v : null;
+    private DateTime? DecisionDateFor(int id) => _decisionDates.TryGetValue(id, out var v) ? v : null;
+    private string AbstainedFor(int id) => _abstained.TryGetValue(id, out var v) ? v : string.Empty;
+
+    private const long MaxMinutesBytes = 10 * 1024 * 1024;
+
+    /// <summary>The minutes behind the decision, filed against the transaction as evidence rather
+    /// than as one of the requestor's supporting papers -- which is what Kind distinguishes.</summary>
+    private async Task UploadMinutesAsync(Microsoft.AspNetCore.Components.Forms.InputFileChangeEventArgs e, RelatedPartyTransaction t)
+    {
+        var file = e.File;
+        var extension = file.ContentType switch
+        {
+            "image/png" => ".png",
+            "image/jpeg" => ".jpg",
+            "application/pdf" => ".pdf",
+            _ => null,
+        };
+        if (extension is null)
+        {
+            Toasts.ShowError("Only JPEG, PNG or PDF files are supported.");
+            return;
+        }
+        if (file.Size > MaxMinutesBytes)
+        {
+            Toasts.ShowError("File must be 10 MB or smaller.");
+            return;
+        }
+
+        _uploadingMinutes = true;
+        try
+        {
+            var directory = Path.Combine(Env.WebRootPath, "uploads", "rp-transactions");
+            Directory.CreateDirectory(directory);
+
+            var fileName = $"{Guid.NewGuid():N}{extension}";
+            await using (var source = file.OpenReadStream(MaxMinutesBytes))
+            await using (var target = File.Create(Path.Combine(directory, fileName)))
+            {
+                await source.CopyToAsync(target);
+            }
+
+            var document = new RelatedPartyTransactionDocument
+            {
+                FilePath = $"/uploads/rp-transactions/{fileName}",
+                FileName = file.Name,
+                Kind = RpTransactionDocumentKind.GovernanceMinutes,
+            };
+            document.Id = await Writer.InsertDocumentAsync(t.Id, document);
+            t.Documents.Add(document);
+
+            Toasts.ShowSuccess("Minutes attached.");
+        }
+        finally
+        {
+            _uploadingMinutes = false;
+        }
+    }
 
     private List<RelatedPartyTransaction> Current => _activeTab == "review" ? _awaitingDecision : _readyToRelease;
 
@@ -120,6 +186,14 @@ public partial class RpTransactionCcaoReviewPage
 
         _remarks = _awaitingDecision.ToDictionary(t => t.Id, _ => string.Empty);
         _documentationConfirmed = _readyToRelease.ToDictionary(t => t.Id, _ => false);
+
+        // Anything already recorded is shown back rather than asked for again.
+        foreach (var t in _awaitingDecision)
+        {
+            _bodies[t.Id] = t.GoverningBody;
+            _decisionDates[t.Id] = t.GoverningBodyDecisionDate;
+            _abstained[t.Id] = t.AbstainedMembers ?? string.Empty;
+        }
         KeepSelectionInQueue();
     }
 
@@ -141,13 +215,28 @@ public partial class RpTransactionCcaoReviewPage
             return;
         }
 
+        if (BodyFor(t.Id) is not { } body)
+        {
+            Toasts.ShowError("Say which body took the decision — an approval with no decision behind it is what this screen exists to stop.");
+            return;
+        }
+        if (DecisionDateFor(t.Id) is not { } decidedOn)
+        {
+            Toasts.ShowError("Give the date of the meeting that decided it.");
+            return;
+        }
+
         _acting = true;
         t.CcaoAction = RpCcaoAction.Approve;
         t.CcaoRemarks = remarks;
         t.CcaoActionAtUtc = DateTime.UtcNow;
         t.Status = RpTransactionStatus.Approved;
+        t.GoverningBody = body;
+        t.GoverningBodyDecisionDate = decidedOn;
+        t.AbstainedMembers = AbstainedFor(t.Id).Trim() is { Length: > 0 } abstained ? abstained : null;
 
         await Writer.RecordCcaoActionAsync(t);
+        await Writer.RecordGovernanceDecisionAsync(t);
         await RpTransactionNotificationService.CcaoApprovedAsync(EmailSender, t, _cfoEmails, t.ApproverMember?.Email);
 
         await LogAndReloadAsync(t, "approved (Form 3)");

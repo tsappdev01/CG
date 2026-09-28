@@ -51,6 +51,36 @@ public enum RpEscalationReason
     ManualByApprover,
     AutoTimeout30Days,
     ApproverConflictOfInterest,
+
+    /// <summary>The value put it in a band the approver cannot clear alone -- the workflow's
+    /// "escalate: over limit", which had no way of happening before the DoA matrix existed.</summary>
+    OverApproverLimit,
+
+    /// <summary>A pre-check failed and the entity's matrix says that alone escalates.</summary>
+    FailedPreCheck,
+}
+
+/// <summary>Which body took the offline decision the CCAO is recording.</summary>
+public enum RpGoverningBody
+{
+    MdAndCeo,
+    AuditCommittee,
+    BoardOfDirectors,
+    GeneralAssembly,
+}
+
+public static class RpGoverningBodies
+{
+    public static readonly (RpGoverningBody Value, string Label)[] All =
+    [
+        (RpGoverningBody.MdAndCeo, "MD & CEO"),
+        (RpGoverningBody.AuditCommittee, "Audit Committee"),
+        (RpGoverningBody.BoardOfDirectors, "Board of Directors"),
+        (RpGoverningBody.GeneralAssembly, "General Assembly"),
+    ];
+
+    public static string Label(RpGoverningBody? value) =>
+        value is null ? "—" : All.First(b => b.Value == value).Label;
 }
 
 /// <summary>One Related Party Transaction (FRD §3) -- User submits, Approver (Company.
@@ -107,6 +137,21 @@ public class RelatedPartyTransaction
 
     /// <summary>Form 4 (FRD §3.2.4) -- ticked only once documentation for AC/Board/GM approvals is
     /// confirmed in place; gates the "Release to RP Register" button.</summary>
+    // ---------- the offline governance decision the CCAO records ----------
+    // §3.2 section 3 is the CCAO writing down a decision taken elsewhere. Recording only that a
+    // decision happened left out what an auditor asks for first: which body took it, when, and who
+    // stood out of it.
+
+    public RpGoverningBody? GoverningBody { get; set; }
+
+    public DateTime? GoverningBodyDecisionDate { get; set; }
+
+    /// <summary>Names of the members who abstained as conflicted, as the CCAO recorded them.
+    /// Names rather than member ids because a board member need not be a user of this system, and a
+    /// minute naming someone who was later deleted still named them.</summary>
+    [MaxLength(1000)]
+    public string? AbstainedMembers { get; set; }
+
     public bool DocumentationConfirmed { get; set; }
     public DateTime? ReleasedAtUtc { get; set; }
 
@@ -136,9 +181,20 @@ public class RelatedPartyTransaction
 /// <summary>Supporting document uploaded against an RP Transaction (e.g. draft agreement, board paper) --
 /// same upload-then-link pattern as CoiTradeLicenseDocument: the file is written to disk immediately
 /// when picked, and this row is only inserted once the parent transaction itself has been saved.</summary>
+/// <summary>What an attached file is. The minutes behind a Board decision are evidence of the
+/// decision, not one of the requestor's supporting papers, and the register has to be able to say
+/// which is which.</summary>
+public enum RpTransactionDocumentKind
+{
+    Supporting,
+    GovernanceMinutes,
+}
+
 public class RelatedPartyTransactionDocument
 {
     public int Id { get; set; }
+
+    public RpTransactionDocumentKind Kind { get; set; } = RpTransactionDocumentKind.Supporting;
 
     public int RelatedPartyTransactionId { get; set; }
     public RelatedPartyTransaction? RelatedPartyTransaction { get; set; }

@@ -58,11 +58,22 @@ public class RelatedPartyTransactionReminderHostedService(IServiceScopeFactory s
             .Where(t => t.Status == RpTransactionStatus.AwaitingApproval)
             .ToListAsync(ct);
 
+        // Each entity may set its own deadline on its Delegation of Authority; those that don't keep
+        // the app-wide one. Read once for the whole sweep rather than per transaction.
+        var deadlineByCompany = await db.DelegationsOfAuthority
+            .AsNoTracking()
+            .Where(d => d.EscalateAfterDays != null)
+            .ToDictionaryAsync(d => d.CompanyId, d => d.EscalateAfterDays!.Value, ct);
+
         foreach (var t in awaiting)
         {
             var daysSinceRequest = (nowUtc - t.DateOfRequest).TotalDays;
 
-            if (daysSinceRequest >= AutoEscalateAfterDays)
+            var deadline = deadlineByCompany.TryGetValue(t.CompanyId, out var configured)
+                ? configured
+                : AutoEscalateAfterDays;
+
+            if (daysSinceRequest >= deadline)
             {
                 await writer.AutoEscalateAsync(t.Id, RpEscalationReason.AutoTimeout30Days, nowUtc);
                 t.Status = RpTransactionStatus.Escalated;

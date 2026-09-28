@@ -80,11 +80,15 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
     OR COL_LENGTH('dbo.DeclarationCycleSetups', 'ReminderDayOfWeek') IS NULL
     OR COL_LENGTH('dbo.DeclarationCycleSetups', 'ReminderTimeOfDay') IS NULL
+    OR OBJECT_ID('dbo.DelegationsOfAuthority', 'U') IS NULL
+    OR OBJECT_ID('dbo.DelegationOfAuthorityBands', 'U') IS NULL
+    OR COL_LENGTH('dbo.RelatedPartyTransactions', 'GoverningBody') IS NULL
+    OR COL_LENGTH('dbo.RelatedPartyTransactionDocuments', 'Kind') IS NULL
 BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
     RAISERROR(
-        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, CoiCompanyEntries.NatureOfHolding, the NatureOfInterest columns, RelatedPartyCoiDeclarations.SignaturePath, Members.DeclarationType, Companies.EntityType and its authority not-applicable flags, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, CoiCompanyEntries.NatureOfHolding, the NatureOfInterest columns, RelatedPartyCoiDeclarations.SignaturePath, Members.DeclarationType, Companies.EntityType and its authority not-applicable flags, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time, the Delegation of Authority tables, RelatedPartyTransactions.GoverningBody, RelatedPartyTransactionDocuments.Kind). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
         16, 1, @db) WITH NOWAIT;
     SET NOEXEC ON;
 END
@@ -1694,6 +1698,98 @@ BEGIN
 END
 GO
 
+-- =========================== Delegation of Authority ===========================
+
+-- One entity's matrix, saved whole: the header and every band in one transaction. Bands are
+-- replaced rather than merged because the editor hands over the complete set -- a merge would have
+-- to work out which of the rows on screen used to be which row in the table, and get it wrong the
+-- moment someone reorders them.
+--
+-- The bands arrive as JSON rather than through a table-valued parameter so that deploying this file
+-- stays a single script with no user-defined type to create first.
+CREATE OR ALTER PROCEDURE dbo.usp_DelegationOfAuthority_Save
+    @CompanyId int,
+    @EffectiveFrom datetime2,
+    @ApproverLimit decimal(18,2) = NULL,
+    @EscalateOnApproverConflict bit,
+    @EscalateAfterDays int = NULL,
+    @BandsJson nvarchar(max)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRANSACTION;
+
+    DECLARE @Id int = (SELECT Id FROM dbo.DelegationsOfAuthority WHERE CompanyId = @CompanyId);
+
+    IF @Id IS NULL
+    BEGIN
+        INSERT INTO dbo.DelegationsOfAuthority
+            (CompanyId, EffectiveFrom, ApproverLimit, EscalateOnApproverConflict, EscalateAfterDays, ModifiedAtUtc)
+        VALUES
+            (@CompanyId, @EffectiveFrom, @ApproverLimit, @EscalateOnApproverConflict, @EscalateAfterDays, SYSUTCDATETIME());
+
+        SET @Id = SCOPE_IDENTITY();
+    END
+    ELSE
+    BEGIN
+        UPDATE dbo.DelegationsOfAuthority
+        SET EffectiveFrom = @EffectiveFrom,
+            ApproverLimit = @ApproverLimit,
+            EscalateOnApproverConflict = @EscalateOnApproverConflict,
+            EscalateAfterDays = @EscalateAfterDays,
+            ModifiedAtUtc = SYSUTCDATETIME()
+        WHERE Id = @Id;
+
+        DELETE FROM dbo.DelegationOfAuthorityBands WHERE DelegationOfAuthorityId = @Id;
+    END
+
+    INSERT INTO dbo.DelegationOfAuthorityBands (DelegationOfAuthorityId, FromValue, ToValue, Authority)
+    SELECT @Id, b.FromValue, b.ToValue, b.Authority
+    FROM OPENJSON(@BandsJson)
+         WITH (FromValue decimal(18,2) '$.FromValue',
+               ToValue   decimal(18,2) '$.ToValue',
+               Authority int           '$.Authority') AS b
+    ORDER BY b.FromValue;
+
+    COMMIT TRANSACTION;
+
+    SELECT @Id;
+END
+GO
+
+-- Removing an entity's matrix puts it back on the behaviour that existed before one: a single
+-- approver, whatever the value. The bands go with it through the cascade.
+CREATE OR ALTER PROCEDURE dbo.usp_DelegationOfAuthority_Delete
+    @CompanyId int
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DELETE FROM dbo.DelegationsOfAuthority WHERE CompanyId = @CompanyId;
+END
+GO
+
+-- The CCAO recording which body took the offline decision, when, and who abstained (§3.2 section 3).
+CREATE OR ALTER PROCEDURE dbo.usp_RelatedPartyTransaction_RecordGovernanceDecision
+    @Id int,
+    @GoverningBody int,
+    @GoverningBodyDecisionDate datetime2,
+    @AbstainedMembers nvarchar(1000) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.RelatedPartyTransactions
+    SET GoverningBody = @GoverningBody,
+        GoverningBodyDecisionDate = @GoverningBodyDecisionDate,
+        AbstainedMembers = @AbstainedMembers,
+        ModifiedAtUtc = SYSUTCDATETIME()
+    WHERE Id = @Id;
+END
+GO
+
 -- A returned transaction going back to its approver after the requestor amended it. Its own
 -- procedure rather than a flag on _Amend because the two are separate acts: the amendment is the
 -- requestor changing the transaction, this is them handing it back.
@@ -1814,13 +1910,14 @@ CREATE OR ALTER PROCEDURE dbo.usp_RelatedPartyTransactionDocument_Insert
     @RelatedPartyTransactionId int,
     @FilePath nvarchar(260),
     @FileName nvarchar(160),
+    @Kind int = 0,   -- Supporting; 1 is the minutes behind a governance decision
     @NewId int OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.RelatedPartyTransactionDocuments (RelatedPartyTransactionId, FilePath, FileName, UploadedAtUtc)
-    VALUES (@RelatedPartyTransactionId, @FilePath, @FileName, SYSUTCDATETIME());
+    INSERT INTO dbo.RelatedPartyTransactionDocuments (RelatedPartyTransactionId, FilePath, FileName, Kind, UploadedAtUtc)
+    VALUES (@RelatedPartyTransactionId, @FilePath, @FileName, @Kind, SYSUTCDATETIME());
 
     SET @NewId = SCOPE_IDENTITY();
 END

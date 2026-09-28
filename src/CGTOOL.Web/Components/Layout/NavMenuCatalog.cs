@@ -44,6 +44,7 @@ public static class NavMenuCatalog
         new("Reports.InsiderSubmission", "Insider Submission", "Reports"),
         new("Reports.RpCoiSubmission", "RP & COI Submission", "Reports"),
         new("Reports.RelatedPartyRegister", "Related Party Register", "Reports"),
+        new("Reports.RelatedPartyMaster", "Related Party Master", "Reports"),
 
         new("InvestorRelations", "Investor Relations", null),
         new("InvestorRelations.ShareRegister", "Share Register", "InvestorRelations"),

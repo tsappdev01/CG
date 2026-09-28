@@ -459,6 +459,20 @@ h1:focus {
     margin-top: 3px;
 }
 
+/* A KPI that is also the filter for what it counts. A button inherits neither the page's font nor
+   its alignment, so both are asked for here. */
+.cg-kpi-button {
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.cg-kpi-button:hover { border-color: var(--cg-accent); }
+.cg-kpi-button.is-selected {
+    border-color: var(--cg-accent);
+    border-left-color: var(--cg-accent);
+    background: var(--cg-accent-tint);
+}
+
 @media (max-width: 720px) {
     .cg-kpis { grid-template-columns: repeat(2, 1fr); }
 }

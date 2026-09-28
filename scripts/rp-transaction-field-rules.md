@@ -65,7 +65,8 @@ The scanned page for this section was not supplied — the table above is the re
 The CCAO recording the outcome of the offline decision — stage 2 of
 [the workflow](rp-transaction-workflow.md). The source prints this heading without a
 number; it is numbered 3 here for ordering. Section 4 refers back to this form as
-*&lt;CCAO — RP Transaction Approval/Rejection&gt;*, which is its name.
+*&lt;CCAO — RP Transaction Approval/Rejection&gt;*, which is its name — though §3.3 calls
+the same form *&lt;Chief Corporate Affairs Officer — RP Transaction Approval/Rejection&gt;*.
 
 ![Field rules, section 3](rp-transaction-field-rules-3-ccao-recording-feedback.png)
 

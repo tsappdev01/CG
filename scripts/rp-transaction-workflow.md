@@ -29,4 +29,5 @@ Green is a step the system performs, amber a step that happens offline, grey a d
 or an outcome.
 
 The field-by-field rules behind these screens are in
-[rp-transaction-field-rules.md](rp-transaction-field-rules.md).
+[rp-transaction-field-rules.md](rp-transaction-field-rules.md), and what the system emails
+at each stage is in [rp-transaction-notifications.md](rp-transaction-notifications.md).

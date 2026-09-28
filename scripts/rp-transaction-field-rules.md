@@ -64,7 +64,8 @@ The scanned page for this section was not supplied — the table above is the re
 
 The CCAO recording the outcome of the offline decision — stage 2 of
 [the workflow](rp-transaction-workflow.md). The source prints this heading without a
-number; it is numbered 3 here for ordering.
+number; it is numbered 3 here for ordering. Section 4 refers back to this form as
+*&lt;CCAO — RP Transaction Approval/Rejection&gt;*, which is its name.
 
 ![Field rules, section 3](rp-transaction-field-rules-3-ccao-recording-feedback.png)
 
@@ -94,3 +95,35 @@ only Approve and Reject are visible), whatever footnote the asterisk on **Approv
 points at, and the end of the remark, which breaks off at "Either one…" — presumably the
 same "either one of the two buttons may be clicked" as section 2, but that is a guess
 rather than a transcription. Worth re-supplying the full page.
+
+## 4. RP Transaction Release to RP Register
+
+The last stage: everything decided upstream is shown read-only, the CCAO confirms the
+paperwork exists, and the transaction goes onto the register.
+
+![Field rules, section 4](rp-transaction-field-rules-4-release-to-register.png)
+
+| | Field | Field rules | Field type | Dependency | Remarks |
+| --- | --- | --- | --- | --- | --- |
+| | *Details of Requestor:* | | | | |
+| ✓ | Entity | Auto-filled; non-editable | | | To be auto-filled based on *latest version* of information entered in form *&lt;Recording RP Transaction&gt;* (this remark spans every row from Entity to Date of request) |
+| ✓ | User | Auto-filled; non-editable | | | |
+| | *Details of Transaction:* | | | | |
+| ✓ | Name of the counter-party | Auto-filled; non-editable | | | |
+| ✓ | Transaction Value | Auto-filled; non-editable | | | |
+| ✓ | Description of the transaction, including material terms and conditions | Auto-filled; non-editable | | | |
+| ✓ | Date of request | Auto-filled; non-editable | | | |
+| | *Approver Action:* | | | | |
+| ✓ | Action *(Approval/Escalation)* | Auto-filled; non-editable | | | To be auto-filled based on information entered in form *&lt;Approver — RP Transaction Approval / Escalation / Rejection&gt;* (this remark spans Action, Remarks and Date) |
+| ✓ | Remarks | Auto-filled; non-editable | | | |
+| ✓ | Date | Auto-filled; non-editable | | | |
+| | *CCAO Action:* | | | | |
+| ✓ | Action *(Approval)* | Auto-filled; non-editable | | | To be auto-filled based on information entered in form *&lt;CCAO — RP Transaction Approval/Rejection&gt;* (this remark spans Action, Remarks and Date) |
+| ✓ | Remarks | Auto-filled; non-editable | | | |
+| ✓ | Date | Auto-filled; non-editable | | | |
+| ✓ | All documentation in respect of approvals obtained from AC/Board/GM is in place for proposed RP transaction | Checkbox; editable | Checkbox | | |
+| | **Release to RP Register** | | Clickable button | Clickable only after checkbox has been checked | System to show up error notification if checkbox has not been checked |
+
+The documentation checkbox is the only thing on this screen anyone can change, and the
+release button is gated on it alone -- not on the mandatory fields, as the earlier
+screens are. That single tick is what the whole stage turns on.

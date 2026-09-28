@@ -117,6 +117,25 @@ target SQL Server instance (`sp_configure 'Database Mail XPs'`, then a mail
 account + profile via Database Mail Configuration Wizard / `sysmail_*` procs)
 — that's a SQL Server-side setup step, not something this app configures.
 
+### The SSO login request
+
+Creating a sign-in account on the Edit User screen writes the *local* account
+only; the Microsoft identity behind it lives in the directory, which this app
+cannot write to. That click therefore also mails the service desk asking for
+the SSO login to be created, with the user's email, name, company and who
+asked for it.
+
+It goes to `Techdesk@techsource.ae` unless `SsoAccountRequests:Recipient` says
+otherwise:
+
+```
+SsoAccountRequests:Recipient    servicedesk@example.com
+```
+
+With no Database Mail profile configured the request is logged rather than
+sent, like every other mail in the app — the account is still created either
+way, and the screen says which happened.
+
 When configured, two things send real email:
 
 - **New member welcome/declaration email**: sent automatically from

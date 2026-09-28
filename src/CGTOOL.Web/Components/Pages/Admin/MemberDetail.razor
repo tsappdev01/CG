@@ -12,6 +12,8 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject RoleManager<IdentityRole> RoleManager
 @inject IMemberWelcomeEmailSender WelcomeEmailSender
+@inject IActivityEmailSender ActivityMail
+@inject IConfiguration Configuration
 @inject NavigationManager Nav
 @inject ILogger<MemberDetail> Logger
 @inject ToastService Toasts
@@ -295,7 +297,8 @@
                                 </button>
                                 <p class="cg-hint">
                                     Signs them in through Microsoft with that address, and starts them on Normal User —
-                                    change the role below once the account exists.
+                                    change the role below once the account exists. This also emails
+                                    @SsoAccountRequestEmail.Recipient(Configuration) to have the SSO login created.
                                 </p>
                             }
                         </div>

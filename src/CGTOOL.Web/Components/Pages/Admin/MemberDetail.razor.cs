@@ -480,11 +480,46 @@ public partial class MemberDetail
             // the role list from -- so a brand new account has to be put into it, or the role field
             // appears and then reads as having no role.
             if (!reused) _users!.Add(user);
+            await RequestSsoLoginAsync(address);
             await LoadAuditAsync();
         }
         finally
         {
             _creatingAccount = false;
+        }
+    }
+
+    /// <summary>Asks the service desk for the Microsoft identity behind the account just created.
+    /// The local account is only half of signing in -- the directory side is not this app's to write
+    /// -- so the same click raises the request for the other half.
+    ///
+    /// A mail that doesn't go out must not read as an account that wasn't created: the account is
+    /// already saved and audited by the time this runs, so a failure here is reported as the mail
+    /// failing and nothing is rolled back.</summary>
+    private async Task RequestSsoLoginAsync(string address)
+    {
+        if (_editing is null) return;
+
+        var company = _companies?.FirstOrDefault(c => c.Id == _editing.CompanyId)?.Name;
+        var requestedBy = await CurrentActorAsync();
+        var recipient = SsoAccountRequestEmail.Recipient(Configuration);
+
+        try
+        {
+            await ActivityMail.SendAsync(
+                recipient,
+                SsoAccountRequestEmail.Subject,
+                SsoAccountRequestEmail.BuildHtml(address, _editing.FullName, company, requestedBy));
+
+            await AuditLog.LogAsync(requestedBy, AuditAction.Create, nameof(Member), _editing.Id.ToString(),
+                $"SSO login requested from {recipient} for {_editing.FullName} ({address})");
+
+            Toasts.ShowSuccess($"Asked {recipient} to create the SSO login.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Could not email the SSO login request for {Address} to {Recipient}", address, recipient);
+            Toasts.ShowError($"The account was created, but the SSO request to {recipient} could not be sent — ask them directly.");
         }
     }
 

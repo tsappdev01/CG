@@ -20,6 +20,18 @@
         erasing it would defeat the point of having one. The rows deleted here are visible in
         it, which is what makes this recoverable in the sense that matters.
 
+    Does NOT touch the files on disk. A declaration's uploaded trade licences and the signature
+    drawn on it live under wwwroot/uploads, and SQL cannot reach them:
+
+        wwwroot/uploads/coi-trade-licenses
+        wwwroot/uploads/insider-declarations
+        wwwroot/uploads/declarations/coi          (signatures)
+
+    After this runs those files are orphaned -- referenced by nothing. Leaving them is harmless
+    and costs disk; clearing them is safe once this script has committed, since nothing points at
+    them any more. Do not clear wwwroot/uploads/my-workspace: that is the member's own register,
+    which this script keeps.
+
     Reminder counters on the kept runs are reset too (RemindersSent/LastReminderSentUtc), so the
     reminder sequence starts over rather than resuming mid-way through a cycle whose answers
     have just been removed.
@@ -45,10 +57,20 @@ DELETE FROM dbo.InsiderDeclarationRelatives;
 DELETE FROM dbo.InsiderDeclarationNinHolders;
 DELETE FROM dbo.InsiderDeclarations;
 
-DELETE FROM dbo.CoiRelatives;
-DELETE FROM dbo.CoiCompanyEntries;
+/*
+    Order matters here, and it is not the obvious one. A company row in "Companies a relative owns
+    >= 30%" carries CoiRelativeId, pointing at the relative who owns it, and that foreign key has no
+    cascade -- so deleting CoiRelatives first fails the moment any such row exists, and XACT_ABORT
+    takes the whole script down with it. The company rows go first, then the relatives they point at -- the order
+    reset-all-data.sql and reset-declaration-data.sql already use.
+
+    CoiTradeLicenseDocuments cascade from CoiCompanyEntries, so they are already gone by the time
+    that line runs. It stays because a table listed here is one nobody has to remember.
+*/
 DELETE FROM dbo.CoiTradeLicenseDocuments;
+DELETE FROM dbo.CoiCompanyEntries;
 DELETE FROM dbo.CoiConflictEntries;
+DELETE FROM dbo.CoiRelatives;
 DELETE FROM dbo.RelatedPartyCoiDeclarations;
 
 /*

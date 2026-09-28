@@ -2661,6 +2661,19 @@ select.cg-input {
 .cg-signature-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .cg-signature-actions .cg-subtitle { margin: 0; flex: 1 1 auto; }
 .cg-signature-frame.is-missing { border-color: var(--cg-critical); background: var(--cg-critical-tint); }
+/* The captured signature shown back as evidence -- in the report, not on a pad. The PNG is cropped
+   to the ink on a transparent background, so it needs a baseline under it to read as a signature
+   rather than a floating scribble. print-color-adjust keeps the ink from being dropped when the
+   browser prints backgrounds off. Sized, not display-switched: the print rules revert display on
+   everything inside the overlay, so any display here would be overridden anyway. */
+.cg-signature-proof {
+    max-width: 260px;
+    max-height: 80px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--cg-line-strong);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
 .cg-duplicate-card {
     border: 1px solid var(--cg-line);
     border-left: 3px solid var(--cg-warning);

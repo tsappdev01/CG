@@ -296,8 +296,24 @@
                             <div class="cg-table-wrap">
                                 <table>
                                     <tbody>
-                                        <tr><th>Signed</th><td>@(string.IsNullOrWhiteSpace(d.AttestationName) ? "—" : d.AttestationName)</td></tr>
+                                        <tr><th>Signed by</th><td>@(string.IsNullOrWhiteSpace(d.AttestationName) ? "—" : d.AttestationName)</td></tr>
                                         <tr><th>Confirmed complete and accurate</th><td>@(d.AttestationConfirmed ? "Yes" : "No")</td></tr>
+                                        @* The typed name says who signed; this is the signing itself. Null only on a
+                                           declaration submitted before signatures were captured. *@
+                                        <tr>
+                                            <th>Signature</th>
+                                            <td>
+                                                @if (string.IsNullOrWhiteSpace(d.SignaturePath))
+                                                {
+                                                    <span class="cg-ws-none">Not signed</span>
+                                                }
+                                                else
+                                                {
+                                                    <img class="cg-signature-proof" src="@d.SignaturePath" alt="Signature of @d.AttestationName" />
+                                                }
+                                            </td>
+                                        </tr>
+                                        <tr><th>Signed on</th><td class="mono">@(d.SignedAtUtc?.ToLocalDisplay("dd/MM/yyyy HH:mm") ?? "—")</td></tr>
                                     </tbody>
                                 </table>
                             </div>

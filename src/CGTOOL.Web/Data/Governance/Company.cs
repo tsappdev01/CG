@@ -21,6 +21,10 @@ public class Company
     [MaxLength(80)]
     public string? Country { get; set; }
 
+    /// <summary>Null until someone chooses: an entity on the register before this field existed has
+    /// no type, and picking one for it would assert something nobody decided.</summary>
+    public CompanyEntityType? EntityType { get; set; }
+
     /// <summary>One of the values configured under CompanyLookups:Sectors in appsettings.json.</summary>
     [MaxLength(80)]
     public string? Sector { get; set; }

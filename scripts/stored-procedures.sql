@@ -74,6 +74,7 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.OwnedCompanies', 'NatureOfInterest') IS NULL
     OR COL_LENGTH('dbo.RelatedPartyCoiDeclarations', 'SignaturePath') IS NULL
     OR COL_LENGTH('dbo.Members', 'DeclarationType') IS NULL
+    OR COL_LENGTH('dbo.Companies', 'EntityType') IS NULL
     OR COL_LENGTH('dbo.AuditLogEntries', 'RecordHash') IS NULL
     OR OBJECT_ID('dbo.AuditLogReviews', 'U') IS NULL
     OR COL_LENGTH('dbo.DeclarationCycleSetups', 'ReminderDayOfWeek') IS NULL
@@ -82,7 +83,7 @@ BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
     RAISERROR(
-        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, CoiCompanyEntries.NatureOfHolding, the NatureOfInterest columns, RelatedPartyCoiDeclarations.SignaturePath, Members.DeclarationType, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, CoiCompanyEntries.NatureOfHolding, the NatureOfInterest columns, RelatedPartyCoiDeclarations.SignaturePath, Members.DeclarationType, Companies.EntityType, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
         16, 1, @db) WITH NOWAIT;
     SET NOEXEC ON;
 END
@@ -111,6 +112,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_Company_Insert
     @Address nvarchar(240) = NULL,
     @City nvarchar(80) = NULL,
     @Country nvarchar(80) = NULL,
+    @EntityType int = NULL,
     @Sector nvarchar(80) = NULL,
     @GroupName nvarchar(80) = NULL,
     @ApprovingAuthorityMemberId int = NULL,
@@ -125,9 +127,9 @@ BEGIN
         THROW 50001, 'A company with this short code already exists.', 1;
 
     INSERT INTO dbo.Companies
-        (Name, ShortCode, Address, City, Country, Sector, GroupName, ApprovingAuthorityMemberId, DelegateAuthorityMemberId, Active)
+        (Name, ShortCode, Address, City, Country, EntityType, Sector, GroupName, ApprovingAuthorityMemberId, DelegateAuthorityMemberId, Active)
     VALUES
-        (@Name, @ShortCode, @Address, @City, @Country, @Sector, @GroupName, @ApprovingAuthorityMemberId, @DelegateAuthorityMemberId, @Active);
+        (@Name, @ShortCode, @Address, @City, @Country, @EntityType, @Sector, @GroupName, @ApprovingAuthorityMemberId, @DelegateAuthorityMemberId, @Active);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -140,6 +142,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_Company_Update
     @Address nvarchar(240) = NULL,
     @City nvarchar(80) = NULL,
     @Country nvarchar(80) = NULL,
+    @EntityType int = NULL,
     @Sector nvarchar(80) = NULL,
     @GroupName nvarchar(80) = NULL,
     @ApprovingAuthorityMemberId int = NULL,
@@ -158,6 +161,7 @@ BEGIN
         Address = @Address,
         City = @City,
         Country = @Country,
+        EntityType = @EntityType,
         Sector = @Sector,
         GroupName = @GroupName,
         ApprovingAuthorityMemberId = @ApprovingAuthorityMemberId,

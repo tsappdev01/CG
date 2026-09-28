@@ -30,6 +30,7 @@ public class CompanyWriter(IStoredProcedureExecutor sp) : ICompanyWriter
         new SqlParameter("@Address", (object?)c.Address ?? DBNull.Value),
         new SqlParameter("@City", (object?)c.City ?? DBNull.Value),
         new SqlParameter("@Country", (object?)c.Country ?? DBNull.Value),
+        new SqlParameter("@EntityType", (object?)(int?)c.EntityType ?? DBNull.Value),
         new SqlParameter("@Sector", (object?)c.Sector ?? DBNull.Value),
         new SqlParameter("@GroupName", (object?)c.GroupName ?? DBNull.Value),
         new SqlParameter("@ApprovingAuthorityMemberId", (object?)c.ApprovingAuthorityMemberId ?? DBNull.Value),

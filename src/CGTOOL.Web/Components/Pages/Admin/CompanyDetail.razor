@@ -56,6 +56,16 @@
                they already hold -- the save writes the loaded values back unchanged. *@
 
             <label class="cg-field">
+                <span>Entity type</span>
+                <select class="cg-input" @bind="_editing.EntityType">
+                    <option value="">Select…</option>
+                    @foreach (var (value, label) in CompanyEntityTypes.All)
+                    {
+                        <option value="@value">@label</option>
+                    }
+                </select>
+            </label>
+            <label class="cg-field">
                 <span>Sector</span>
                 <select class="cg-input" @bind="_editing.Sector">
                     <option value="">Select…</option>

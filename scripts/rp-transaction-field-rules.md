@@ -59,3 +59,38 @@ The source lists three buttons and its own remark then says "either one of the *
 buttons may be clicked". Left as written; someone should say which is right.
 
 The scanned page for this section was not supplied — the table above is the record.
+
+## 3. RP Transaction Approval / Rejection based on MD&CEO / AC / Board / GA feedback
+
+The CCAO recording the outcome of the offline decision — stage 2 of
+[the workflow](rp-transaction-workflow.md). The source prints this heading without a
+number; it is numbered 3 here for ordering.
+
+![Field rules, section 3](rp-transaction-field-rules-3-ccao-recording-feedback.png)
+
+| | Field | Field rules | Field type | Dependency | Remarks |
+| --- | --- | --- | --- | --- | --- |
+| | *Details of Requestor:* | | | | |
+| ✓ | Entity | Auto-filled; non-editable | | | To be auto-filled based on *latest version* of information entered in form *&lt;Recording RP Transaction&gt;* (this remark spans every row from Entity to Date of request) |
+| ✓ | User | Auto-filled; non-editable | | | |
+| | *Details of Transaction:* | | | | |
+| ✓ | Name of the counter-party | Auto-filled; non-editable | | | |
+| ✓ | Transaction Value | Auto-filled; non-editable | | | |
+| ✓ | Description of the transaction, including material terms and conditions | Auto-filled; non-editable | | | |
+| ✓ | Date of request | Auto-filled; non-editable | | | |
+| | *Approver Action:* | | | | |
+| ✓ | Action *(Approval/Escalation)* | Auto-filled; non-editable | | | To be auto-filled based on information entered in form *&lt;Approver — RP Transaction Approval / Escalation / Rejection&gt;* (this remark spans Action, Date and Remarks) |
+| ✓ | Date | Auto-filled; non-editable | | | |
+| ✓ | Remarks | Auto-filled; non-editable | | | |
+| | *CCAO Action:* | | | | |
+| ✓ | Remarks | Editable | Text | | Free text field |
+| ✓ | Date | Auto-filled; non-editable | Date | | Capture system date |
+| | **Approve\*** | | Clickable buttons | One of the three buttons clickable only after all mandatory fields have been filled up | System to show up error notification if mandatory fields have not been filled up. Either one… |
+| | **Reject** | | | | |
+
+**The supplied page is cut off at the bottom.** Three things are below the fold and are
+not recorded here: the third button (the dependency says "one of the three buttons", and
+only Approve and Reject are visible), whatever footnote the asterisk on **Approve\***
+points at, and the end of the remark, which breaks off at "Either one…" — presumably the
+same "either one of the two buttons may be clicked" as section 2, but that is a guess
+rather than a transcription. Worth re-supplying the full page.

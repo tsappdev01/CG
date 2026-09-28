@@ -27,3 +27,6 @@ and it is disclosed in the accounts and to the Audit Committee.
 
 Green is a step the system performs, amber a step that happens offline, grey a decision
 or an outcome.
+
+The field-by-field rules behind these screens are in
+[rp-transaction-field-rules.md](rp-transaction-field-rules.md).

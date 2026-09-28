@@ -1638,6 +1638,8 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 await SendCorporateAffairsEscalationAsync(actorName);
             }
 
+            await SendConfirmationAsync(actorName, declarationId);
+
             _submittedAtUtc = DateTime.UtcNow;
             _step = Step.Done;
             Toasts.ShowSuccess($"Related Party & COI declaration {(_hadExistingRow ? "updated" : "submitted")}.");
@@ -1648,14 +1650,151 @@ public partial class SubmitRelatedPartyCoiDeclaration
         }
     }
 
+    /// <summary>Confirms the submission to the declarant, with the declaration attached as a signed
+    /// PDF. The attachment is the point: it is the copy that carries their signature, and the only
+    /// one they hold outside the app.
+    ///
+    /// Database Mail attaches a file by path, so a real attachment needs the shared folder to be
+    /// configured (see SqlDbMailSender); without it the mail still goes, saying where to find the
+    /// declaration instead of carrying it. Either way a mail that fails is recorded and swallowed --
+    /// the declaration is already submitted, and a failed confirmation must not undo it or look like
+    /// a failed submission.</summary>
+    private async Task SendConfirmationAsync(string actorName, int declarationId)
+    {
+        if (_effectiveMember is null || _run is null || string.IsNullOrWhiteSpace(_effectiveMember.Email)) return;
+
+        var updated = _hadExistingRow;
+        var subject = $"Related Party & Conflict of Interest Declaration {(updated ? "update" : "confirmation")} — Q{_run.PeriodQuarter} {_run.PeriodYear}";
+        var attach = SqlMail.IsConfigured && SqlMail.AttachmentFolderConfigured;
+        var body = BuildConfirmationEmail(attached: attach);
+
+        try
+        {
+            if (attach)
+            {
+                await using var db = await DbFactory.CreateDbContextAsync();
+                var declaration = await db.RelatedPartyCoiDeclarations
+                    .AsNoTracking()
+                    .Include(x => x.Relatives)
+                    .Include(x => x.Companies).ThenInclude(c => c.CoiRelative)
+                    .Include(x => x.Conflicts)
+                    .FirstAsync(x => x.Id == declarationId);
+
+                var logoPath = Path.Combine(Env.WebRootPath, "images", "di-logo.jpg");
+                var pdf = RelatedPartyCoiDeclarationPdfBuilder.Build(
+                    declaration,
+                    _effectiveMember,
+                    _run,
+                    File.Exists(logoPath) ? logoPath : null,
+                    SignatureFilePath(declaration.SignaturePath));
+
+                await SqlMail.SendWithFileAttachmentAsync(_effectiveMember.Email, subject, body, pdf,
+                    RelatedPartyCoiDeclarationPdfBuilder.FileName(_effectiveMember, _run));
+            }
+            else if (SqlMail.IsConfigured)
+            {
+                await SqlMail.SendAsync(_effectiveMember.Email, subject, body);
+            }
+            else
+            {
+                await EmailSender.SendAsync(_effectiveMember.Email, subject, body);
+            }
+
+            await AuditLog.LogAsync(actorName, AuditAction.Notify, nameof(Member), _effectiveMember.Id.ToString(),
+                $"Related Party & COI declaration {(updated ? "update" : "confirmation")} sent to {_effectiveMember.FullName} <{_effectiveMember.Email}>{(attach ? " with signed PDF attached" : "")}");
+        }
+        catch (Exception ex)
+        {
+            await AuditLog.LogAsync(actorName, AuditAction.Notify, nameof(Member), _effectiveMember.Id.ToString(),
+                $"Related Party & COI declaration {(updated ? "update" : "confirmation")} to {_effectiveMember.FullName} <{_effectiveMember.Email}> FAILED: {ex.Message}");
+        }
+    }
+
+    /// <summary>The signature's path on disk from the web path stored on the row. Anything outside the
+    /// uploads folder is refused rather than opened.</summary>
+    private string? SignatureFilePath(string? webPath)
+    {
+        if (string.IsNullOrWhiteSpace(webPath)) return null;
+
+        var uploadsRoot = Path.GetFullPath(Path.Combine(Env.WebRootPath, "uploads"));
+        var filePath = Path.GetFullPath(Path.Combine(Env.WebRootPath, webPath.TrimStart('/')));
+        return filePath.StartsWith(uploadsRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal) && File.Exists(filePath)
+            ? filePath
+            : null;
+    }
+
+    // Corporate-branded to match WelcomeEmailTemplate, and saying which of the two things actually
+    // happened -- a PDF really attached, or the app to go and read it in.
+    private string BuildConfirmationEmail(bool attached)
+    {
+        const string logoTag = "<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"Dubai Investments\" height=\"44\" style=\"display:block;\" />";
+        var rows = string.Join("", BuildSummary().Split("; ").Select(row =>
+        {
+            var parts = row.Split(':', 2);
+            return $"""
+                <tr>
+                  <td style="padding:8px 0;border-bottom:1px solid #EEF0F3;color:#8993A3;font-size:12px;width:55%;">{parts[0].Trim()}</td>
+                  <td style="padding:8px 0;border-bottom:1px solid #EEF0F3;color:#1B2430;font-size:13px;font-weight:600;">{(parts.Length > 1 ? parts[1].Trim() : "")}</td>
+                </tr>
+                """;
+        }));
+
+        var attachmentNote = attached
+            ? "<p>A signed PDF copy of this declaration is attached to this email for your records.</p>"
+            : "<p>You can view and print this declaration at any time from <b>My Declarations</b> in the Corporate Governance Tool.</p>";
+
+        return $"""
+            <!DOCTYPE html>
+            <html>
+            <body style="margin:0;padding:0;background-color:#EEF0F3;font-family:Segoe UI,Arial,sans-serif;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#EEF0F3;padding:24px 0;">
+                <tr>
+                  <td align="center">
+                    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;border-radius:6px;overflow:hidden;">
+                      <tr>
+                        <td style="background-color:#0E2A47;padding:24px 32px;">
+                          {logoTag}
+                          <div style="color:#D9B65A;font-size:16px;font-weight:600;margin-top:8px;">Corporate Governance Tool</div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:32px;color:#1B2430;font-size:14px;line-height:1.6;">
+                          <p>Dear {_effectiveMember!.FullName},</p>
+                          <p>
+                            Your Related Party &amp; Conflict of Interest declaration for
+                            <b>Q{_run!.PeriodQuarter} {_run.PeriodYear}</b> has been
+                            {(_hadExistingRow ? "updated" : "received")}.
+                          </p>
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">{rows}</table>
+                          {attachmentNote}
+                          <p>Thank you</p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="background-color:#F5F6F8;padding:16px 32px;color:#8993A3;font-size:11px;line-height:1.5;">
+                          <strong>Disclaimer:</strong> Please do not reply to this email. The information contained in
+                          this message may be CONFIDENTIAL and is for the intended addressee only. Any unauthorized use,
+                          dissemination of the information, or copying of this message is prohibited. If you are not the
+                          intended addressee, please notify the sender immediately and delete this message.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </body>
+            </html>
+            """;
+    }
+
     private string BuildSummary()
     {
         var parts = new List<string>
         {
             $"Relatives: {(_nothingRelatives ? "Nothing to declare" : $"{_relatives.Count} declared")}",
-            $"Self-owned companies (I.B): {(_nothingSelfOwned ? "Nothing to declare" : $"{_selfOwnedCompanies.Count} declared")}",
-            $"Relative-owned companies (I.C): {(_nothingRelativeOwned ? "Nothing to declare" : $"{_relativeOwnedCompanies.Count} declared")}",
-            $"Board/executive role companies (I.D): {(_nothingBoardRoles ? "Nothing to declare" : $"{_boardRoleCompanies.Count} declared")}",
+            $"My companies: {(_nothingSelfOwned ? "Nothing to declare" : $"{_selfOwnedCompanies.Count} declared")}",
+            $"Relatives' companies: {(_nothingRelativeOwned ? "Nothing to declare" : $"{_relativeOwnedCompanies.Count} declared")}",
+            $"Board roles: {(_nothingBoardRoles ? "Nothing to declare" : $"{_boardRoleCompanies.Count} declared")}",
             $"Conflicts of interest: {(_nothingConflicts ? "Nothing to declare" : $"{_conflicts.Count} declared")}",
         };
         return string.Join("; ", parts);

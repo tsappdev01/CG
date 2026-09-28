@@ -152,15 +152,31 @@ When configured, two things send real email:
 > test the actual send from within your VS/production environment once
 > Database Mail is configured on the server.
 
-### Insider Trading declaration confirmation email + PDF attachment
+### Declaration confirmation emails + PDF attachments
 
 Submitting (or updating) an Insider Trading declaration sends a corporate-
 branded HTML confirmation email (same DI navy/gold styling as the welcome
 email above), built by `SubmitInsiderDeclaration.razor.cs`'s
 `BuildConfirmationEmail`.
 
-The declaration itself is rendered as a branded PDF (`InsiderDeclarationPdfBuilder`,
-using `PDFsharp`) and attached via `SqlDbMailSender.SendWithFileAttachmentAsync`.
+Submitting a Related Party &amp; COI declaration does the same, from
+`SubmitRelatedPartyCoiDeclaration.razor.cs`.
+
+Each declaration is rendered as a branded PDF and attached via
+`SqlDbMailSender.SendWithFileAttachmentAsync`:
+
+| Declaration | Builder |
+| --- | --- |
+| Insider Trading | `InsiderDeclarationPdfBuilder` |
+| Related Party &amp; COI | `RelatedPartyCoiDeclarationPdfBuilder` |
+
+Both lay out through `DeclarationPdfWriter`, which owns the page furniture
+(the navy/gold header band, the footer with "Page X of N") and pagination, so
+the two documents don't drift apart. The COI PDF carries the **drawn
+signature** from the declaration's `SignaturePath` in its Attestation section
+— that signature is the reason the attachment is worth having, since it is the
+declarant's only copy of what they signed outside the app. A declaration
+submitted before signatures were captured reads "Not signed" there instead.
 This needs `Smtp:DatabaseMailAttachmentFolder` set to a folder path that **both**
 this app *and* the SQL Server instance running Database Mail can read/write —
 `sp_send_dbmail`'s `@file_attachments` parameter is resolved by the SQL Server

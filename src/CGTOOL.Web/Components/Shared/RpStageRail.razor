@@ -1,0 +1,44 @@
+@* The five stages of the RP Transaction workflow (scripts/rp-transaction-workflow.md) as the state
+   of one transaction. On every screen that shows a transaction, so nobody has to hold in their head
+   where a thing has got to. *@
+<div class="cg-stepper cg-stepper-wrap">
+    @for (var i = 0; i < Stages.Length; i++)
+    {
+        var position = i + 1;
+        var state = StateOf(position);
+        <span class="cg-step @state">
+            <span class="cg-step-num">@(state == "is-done" ? "✓" : state == "is-stopped" ? "✕" : position.ToString())</span>
+            <span class="cg-step-label">@Stages[i]</span>
+        </span>
+        @if (i < Stages.Length - 1)
+        {
+            <span class="cg-step-rule @(position < Reached ? "is-done" : "")"></span>
+        }
+    }
+</div>
+
+@code {
+    private static readonly string[] Stages = ["Raised", "Pre-checks", "Approver", "CCAO / Board", "Released"];
+
+    [Parameter, EditorRequired] public RelatedPartyTransaction Transaction { get; set; } = default!;
+
+    /// <summary>The stage the transaction is at. A rejected one stops where it was rejected rather
+    /// than showing the stages after it as merely "not yet": they are never going to happen.</summary>
+    private int Reached => Transaction.Status switch
+    {
+        RpTransactionStatus.ReleasedToRegister => 5,
+        RpTransactionStatus.Approved or RpTransactionStatus.Escalated => 4,
+        RpTransactionStatus.Rejected => Transaction.CcaoAction is null ? 3 : 4,
+        RpTransactionStatus.Returned => 3,
+        _ => 3,
+    };
+
+    private bool Stopped => Transaction.Status is RpTransactionStatus.Rejected or RpTransactionStatus.Returned;
+
+    private string StateOf(int position) =>
+        position < Reached ? "is-done"
+        : position > Reached ? ""
+        : Stopped ? "is-stopped"
+        : Transaction.Status == RpTransactionStatus.ReleasedToRegister ? "is-done"
+        : "is-current";
+}

@@ -1,0 +1,87 @@
+@* One transaction's life: who did what, when, and what they said. The app recorded all of this and
+   showed none of it -- the remarks sat in columns nothing rendered, and the sequence only existed in
+   the audit log, which is not where anyone reviewing a transaction is looking. *@
+<ul class="cg-timeline">
+    <li data-tone="good">
+        <div class="cg-timeline-what">Raised</div>
+        <div class="cg-timeline-who">@(Transaction.SubmittedByName)@(Transaction.SubmittedOnBehalfOf is { Length: > 0 } behalf ? $" on behalf of {behalf}" : "") · @Transaction.DateOfRequest.ToLocalDisplay("dd MMM yyyy HH:mm")</div>
+    </li>
+
+    @if (Transaction.AmendmentCount > 0)
+    {
+        <li>
+            <div class="cg-timeline-what">Amended @(Transaction.AmendmentCount == 1 ? "once" : $"{Transaction.AmendmentCount} times")</div>
+            <div class="cg-timeline-who">@(Transaction.Member?.FullName ?? "Requestor") · last @Transaction.ModifiedAtUtc.ToLocalDisplay("dd MMM yyyy HH:mm")</div>
+        </li>
+    }
+
+    @if (Transaction.ApproverAction is { } approverAction)
+    {
+        <li data-tone="@(approverAction == RpApproverAction.Approve ? "good" : approverAction == RpApproverAction.Reject ? "critical" : "")">
+            <div class="cg-timeline-what">@RpTransactionDisplay.ApproverActionLabel(approverAction)</div>
+            <div class="cg-timeline-who">@(Transaction.ApproverMember?.FullName ?? "Approver") · @(Transaction.ApproverActionAtUtc?.ToLocalDisplay("dd MMM yyyy HH:mm") ?? "—")</div>
+            @if (!string.IsNullOrWhiteSpace(Transaction.ApproverRemarks))
+            {
+                <div class="cg-timeline-note">@Transaction.ApproverRemarks</div>
+            }
+        </li>
+    }
+
+    @* An automatic escalation has no actor, so it is its own entry rather than an unexplained jump. *@
+    @if (Transaction.EscalationReason is not RpEscalationReason.None and not RpEscalationReason.ManualByApprover)
+    {
+        <li>
+            <div class="cg-timeline-what">@RpTransactionDisplay.EscalationReasonLabel(Transaction.EscalationReason)</div>
+            <div class="cg-timeline-who">System · @(Transaction.EscalatedAtUtc?.ToLocalDisplay("dd MMM yyyy HH:mm") ?? "—")</div>
+        </li>
+    }
+
+    @if (Transaction.CcaoAction is { } ccaoAction)
+    {
+        <li data-tone="@(ccaoAction == RpCcaoAction.Approve ? "good" : "critical")">
+            <div class="cg-timeline-what">CCAO @(ccaoAction == RpCcaoAction.Approve ? "approved" : "rejected")</div>
+            <div class="cg-timeline-who">@(Transaction.CcaoActionAtUtc?.ToLocalDisplay("dd MMM yyyy HH:mm") ?? "—")</div>
+            @if (!string.IsNullOrWhiteSpace(Transaction.CcaoRemarks))
+            {
+                <div class="cg-timeline-note">@Transaction.CcaoRemarks</div>
+            }
+        </li>
+    }
+
+    @if (Transaction.ReleasedAtUtc is { } released)
+    {
+        <li data-tone="good">
+            <div class="cg-timeline-what">Released to the RP Register</div>
+            <div class="cg-timeline-who">CCAO · @released.ToLocalDisplay("dd MMM yyyy HH:mm") · record locked</div>
+        </li>
+    }
+    else if (Waiting is { } waiting)
+    {
+        <li data-tone="current">
+            <div class="cg-timeline-what">@RpTransactionDisplay.StatusLabel(Transaction.Status)</div>
+            <div class="cg-timeline-who">@waiting</div>
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired] public RelatedPartyTransaction Transaction { get; set; } = default!;
+
+    /// <summary>The open end of the timeline: who it is with, and — while it is with an approver —
+    /// when it escalates by itself. Null once nobody is left to act.</summary>
+    private string? Waiting
+    {
+        get
+        {
+            if (Transaction.Status is RpTransactionStatus.Rejected or RpTransactionStatus.ReleasedToRegister) return null;
+
+            var with = $"With {RpTransactionDisplay.PendingWith(Transaction)}";
+            if (RpTransactionDisplay.ApproverAge(Transaction, DateTime.UtcNow) is not { } age) return with;
+
+            return $"{with} · {age.Elapsed} day{(age.Elapsed == 1 ? "" : "s")} · " +
+                   (age.Remaining == 0
+                       ? "escalates to the CCAO at the next check"
+                       : $"escalates to the CCAO in {age.Remaining} day{(age.Remaining == 1 ? "" : "s")}");
+        }
+    }
+}

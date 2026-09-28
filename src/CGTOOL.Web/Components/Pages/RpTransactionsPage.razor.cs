@@ -86,18 +86,10 @@ public partial class RpTransactionsPage
 
     private void SwitchTab(string tab) => _activeTab = tab;
 
+    /// <summary>Returned is the state amending exists for, so it is amendable by definition -- and
+    /// unlike the other two, resubmitting it puts it back in front of the approver.</summary>
     private static bool CanAmend(RelatedPartyTransaction t) =>
-        t.Status is RpTransactionStatus.AwaitingApproval or RpTransactionStatus.Escalated;
-
-    // Who currently needs to act -- the named Approver while AwaitingApproval, otherwise CCAO (a
-    // role any number of Members can hold, so named generically rather than resolving specific
-    // people). Terminal statuses (Rejected/ReleasedToRegister) have nobody left to act.
-    private static string PendingWithName(RelatedPartyTransaction t) => t.Status switch
-    {
-        RpTransactionStatus.AwaitingApproval => t.ApproverMember?.FullName ?? "Approver",
-        RpTransactionStatus.Escalated or RpTransactionStatus.Approved => "CCAO",
-        _ => "—",
-    };
+        t.Status is RpTransactionStatus.AwaitingApproval or RpTransactionStatus.Escalated or RpTransactionStatus.Returned;
 
     private async Task UploadDocumentAsync(Microsoft.AspNetCore.Components.Forms.InputFileChangeEventArgs e)
     {
@@ -337,13 +329,23 @@ public partial class RpTransactionsPage
 
         await Writer.AmendAsync(t.Id, _amendCounterPartyName.Trim(), _amendTransactionValue!.Value, _amendDescription.Trim());
 
+        // Amending a returned transaction is how it goes back: the requestor was asked to fix
+        // something, and saving the fix is them handing it back rather than a separate step they
+        // could forget.
+        var resubmitted = t.Status == RpTransactionStatus.Returned;
+        if (resubmitted)
+        {
+            await Writer.ResubmitAsync(t.Id);
+            t.Status = RpTransactionStatus.AwaitingApproval;
+        }
+
         t.CounterPartyName = _amendCounterPartyName.Trim();
         t.TransactionValue = _amendTransactionValue!.Value;
         t.Description = _amendDescription.Trim();
 
         // FRD §3.3 Note 2 -- re-notify whoever currently holds the transaction that it's been amended.
-        var amendedNote = $"(Amended -- please re-review) {t.Description}";
-        var amendedSubject = $"{RelatedPartyTransaction.DisplayReference(t.Id)} — Amended";
+        var amendedNote = $"({(resubmitted ? "Amended and resubmitted" : "Amended")} -- please re-review) {t.Description}";
+        var amendedSubject = $"{RelatedPartyTransaction.DisplayReference(t.Id)} — {(resubmitted ? "Amended and resubmitted" : "Amended")}";
         if (t.Status == RpTransactionStatus.Escalated)
         {
             var ccaoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Ccao);
@@ -360,27 +362,12 @@ public partial class RpTransactionsPage
 
         var state = await AuthState.GetAuthenticationStateAsync();
         await AuditLog.LogAsync(state.User.Identity?.Name ?? "unknown", AuditAction.Update, nameof(RelatedPartyTransaction), t.Id.ToString(),
-            $"Amended RP Transaction {RelatedPartyTransaction.DisplayReference(t.Id)} while pending.");
+            resubmitted
+                ? $"Amended and resubmitted RP Transaction {RelatedPartyTransaction.DisplayReference(t.Id)} after it was returned."
+                : $"Amended RP Transaction {RelatedPartyTransaction.DisplayReference(t.Id)} while pending.");
 
         _amendingRow = null;
-        Toasts.ShowSuccess("Transaction amended.");
+        Toasts.ShowSuccess(resubmitted ? "Amended and sent back to your approver." : "Transaction amended.");
         await LoadMyTransactionsAsync();
     }
-
-    private static string StatusLabel(RpTransactionStatus status) => status switch
-    {
-        RpTransactionStatus.AwaitingApproval => "Awaiting Approval",
-        RpTransactionStatus.Approved => "Approved",
-        RpTransactionStatus.Rejected => "Rejected",
-        RpTransactionStatus.Escalated => "Escalated",
-        RpTransactionStatus.ReleasedToRegister => "Released to Register",
-        _ => status.ToString(),
-    };
-
-    private static string StatusPillClass(RpTransactionStatus status) => status switch
-    {
-        RpTransactionStatus.Approved or RpTransactionStatus.ReleasedToRegister => "cleared",
-        RpTransactionStatus.Rejected => "flagged",
-        _ => "pending",
-    };
 }

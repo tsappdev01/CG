@@ -10,6 +10,21 @@ public partial class RpTransactionRegisterPage
 {
     private string _activeTab = "register";
 
+    /// <summary>The three columns §3.4.1 names that the table leaves out by default. All three are
+    /// long free text; on by default they pushed the eleven short columns off the screen, and the
+    /// export has always carried them either way.</summary>
+    public static readonly string[] OptionalColumns = ["Description", "Approver remarks", "CCAO remarks"];
+
+    private readonly HashSet<string> _columnsOn = [];
+
+    private bool IsColumnOn(string column) => _columnsOn.Contains(column);
+
+    private void ToggleColumn(string column, bool on)
+    {
+        if (on) _columnsOn.Add(column);
+        else _columnsOn.Remove(column);
+    }
+
     // Register tab -- Released to RP Register only (FRD §3.4.1), filterable by request/CCAO-approval/
     // release date.
     private List<RelatedPartyTransaction> _released = [];

@@ -41,6 +41,11 @@ public class RelatedPartyTransactionReminderHostedService(IServiceScopeFactory s
         }
     }
 
+    /// <summary>How long an approver has before the transaction escalates to the CCAO by itself.
+    /// Public because the screens count down to it -- an approver who cannot see the deadline
+    /// coming is surprised by it.</summary>
+    public const int AutoEscalateAfterDays = 30;
+
     public static async Task RunOnceAsync(ApplicationDbContext db, IActivityEmailSender emailSender, IRelatedPartyTransactionWriter writer, UserManager<ApplicationUser> userManager, DateTime nowUtc, CancellationToken ct = default)
     {
         var ccaoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Ccao);
@@ -57,7 +62,7 @@ public class RelatedPartyTransactionReminderHostedService(IServiceScopeFactory s
         {
             var daysSinceRequest = (nowUtc - t.DateOfRequest).TotalDays;
 
-            if (daysSinceRequest >= 30)
+            if (daysSinceRequest >= AutoEscalateAfterDays)
             {
                 await writer.AutoEscalateAsync(t.Id, RpEscalationReason.AutoTimeout30Days, nowUtc);
                 t.Status = RpTransactionStatus.Escalated;

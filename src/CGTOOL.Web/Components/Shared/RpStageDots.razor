@@ -1,0 +1,31 @@
+@* The stage rail shrunk to five dashes, for a table row. Progress becomes legible down a list
+   without opening anything; a red dash is a stop rather than a stage still to come. *@
+<span class="cg-minirail" title="@Title" aria-label="@Title">
+    @for (var position = 1; position <= 5; position++)
+    {
+        <i class="@StateOf(position)"></i>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public RelatedPartyTransaction Transaction { get; set; } = default!;
+
+    private string Title => $"{RpTransactionDisplay.StatusLabel(Transaction.Status)} — with {RpTransactionDisplay.PendingWith(Transaction)}";
+
+    private int Reached => Transaction.Status switch
+    {
+        RpTransactionStatus.ReleasedToRegister => 5,
+        RpTransactionStatus.Approved or RpTransactionStatus.Escalated => 4,
+        RpTransactionStatus.Rejected => Transaction.CcaoAction is null ? 3 : 4,
+        _ => 3,
+    };
+
+    private bool Stopped => Transaction.Status is RpTransactionStatus.Rejected or RpTransactionStatus.Returned;
+
+    private string StateOf(int position) =>
+        position < Reached ? "is-done"
+        : position > Reached ? ""
+        : Stopped ? "is-stopped"
+        : Transaction.Status == RpTransactionStatus.ReleasedToRegister ? "is-done"
+        : "is-current";
+}

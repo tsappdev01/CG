@@ -18,6 +18,55 @@ public partial class RpTransactionCcaoReviewPage
     private Dictionary<int, bool> _documentationConfirmed = [];
 
     private List<string> _cfoEmails = [];
+    private string _search = string.Empty;
+    private string _sort = "value";
+    private int? _selectedId;
+    private bool _acting;
+
+    private List<RelatedPartyTransaction> Current => _activeTab == "review" ? _awaitingDecision : _readyToRelease;
+
+    /// <summary>Why this transaction is in front of the CCAO at all -- approved by its approver, or
+    /// escalated, and if escalated, by what. It changes what the CCAO is being asked to do, and the
+    /// queue said nothing about it.</summary>
+    private static string ArrivedBy(RelatedPartyTransaction t) =>
+        RpTransactionDisplay.EscalationReasonLabel(t.EscalationReason) is { Length: > 0 } escalated
+            ? escalated
+            : t.ApproverMember?.FullName is { Length: > 0 } approver
+                ? $"Approved by {approver}"
+                : "Approved";
+
+    private void Select(int id) => _selectedId = id;
+
+    private RelatedPartyTransaction? Selected =>
+        Queue().FirstOrDefault(t => t.Id == _selectedId) ?? Queue().FirstOrDefault();
+
+    private List<RelatedPartyTransaction> Queue()
+    {
+        IEnumerable<RelatedPartyTransaction> query = Current;
+
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            var term = _search.Trim();
+            query = query.Where(t =>
+                RpTransactionDisplay.Reference(t).Contains(term, StringComparison.OrdinalIgnoreCase)
+                || t.CounterPartyName.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || (t.Member?.FullName ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        query = _sort == "oldest"
+            ? query.OrderBy(t => t.DateOfRequest)
+            : query.OrderByDescending(t => t.TransactionValue);
+
+        return query.ToList();
+    }
+
+    /// <summary>Switching tab must move the selection too: the detail pane would otherwise keep
+    /// showing a transaction from the tab that is no longer open.</summary>
+    private void KeepSelectionInQueue()
+    {
+        if (_selectedId is { } id && Queue().Any(t => t.Id == id)) return;
+        _selectedId = Queue().FirstOrDefault()?.Id;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -56,6 +105,7 @@ public partial class RpTransactionCcaoReviewPage
             .Include(t => t.Member).ThenInclude(m => m!.Company)
             .Include(t => t.Company)
             .Include(t => t.ApproverMember)
+            .Include(t => t.Documents)
             .AsQueryable();
 
         _awaitingDecision = await query
@@ -70,21 +120,28 @@ public partial class RpTransactionCcaoReviewPage
 
         _remarks = _awaitingDecision.ToDictionary(t => t.Id, _ => string.Empty);
         _documentationConfirmed = _readyToRelease.ToDictionary(t => t.Id, _ => false);
+        KeepSelectionInQueue();
     }
 
-    private void SwitchTab(string tab) => _activeTab = tab;
+    private void SwitchTab(string tab)
+    {
+        _activeTab = tab;
+        KeepSelectionInQueue();
+    }
 
     private string RemarksFor(int id) => _remarks.TryGetValue(id, out var v) ? v : string.Empty;
 
     private async Task CcaoApproveAsync(RelatedPartyTransaction t)
     {
+        if (_acting) return;
         var remarks = RemarksFor(t.Id).Trim();
         if (string.IsNullOrWhiteSpace(remarks))
         {
-            Toasts.ShowError("Remarks are required before Approve/Reject.");
+            Toasts.ShowError("Remarks are required before a decision.");
             return;
         }
 
+        _acting = true;
         t.CcaoAction = RpCcaoAction.Approve;
         t.CcaoRemarks = remarks;
         t.CcaoActionAtUtc = DateTime.UtcNow;
@@ -98,13 +155,15 @@ public partial class RpTransactionCcaoReviewPage
 
     private async Task CcaoRejectAsync(RelatedPartyTransaction t)
     {
+        if (_acting) return;
         var remarks = RemarksFor(t.Id).Trim();
         if (string.IsNullOrWhiteSpace(remarks))
         {
-            Toasts.ShowError("Remarks are required before Approve/Reject.");
+            Toasts.ShowError("Remarks are required before a decision.");
             return;
         }
 
+        _acting = true;
         t.CcaoAction = RpCcaoAction.Reject;
         t.CcaoRemarks = remarks;
         t.CcaoActionAtUtc = DateTime.UtcNow;
@@ -118,12 +177,14 @@ public partial class RpTransactionCcaoReviewPage
 
     private async Task ReleaseAsync(RelatedPartyTransaction t)
     {
+        if (_acting) return;
         if (!_documentationConfirmed.TryGetValue(t.Id, out var confirmed) || !confirmed)
         {
             Toasts.ShowError("Confirm that all documentation for AC/Board/GM approvals is in place before releasing.");
             return;
         }
 
+        _acting = true;
         var releasedAt = DateTime.UtcNow;
         await Writer.ReleaseAsync(t.Id, releasedAt);
         t.DocumentationConfirmed = true;
@@ -142,6 +203,7 @@ public partial class RpTransactionCcaoReviewPage
             $"CCAO {verb} RP Transaction {RelatedPartyTransaction.DisplayReference(t.Id)}.");
 
         Toasts.ShowSuccess($"Transaction {RelatedPartyTransaction.DisplayReference(t.Id)} {verb}.");
+        _acting = false;
         await LoadAsync();
     }
 }

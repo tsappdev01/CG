@@ -30,6 +30,23 @@
             <label class="cg-field"><span>To</span><input type="date" class="cg-input" @bind="_toDate" /></label>
             <button type="button" class="cg-action-btn" @onclick="ApplyFilterAsync">Apply</button>
             <button type="button" class="cg-action-btn" @onclick="ExportRegisterAsync">Export to Excel (CSV)</button>
+            <span class="cg-result-count">@_released.Count transaction(s) · AED @_released.Sum(t => t.TransactionValue).ToString("N2")</span>
+        </div>
+
+        @* §3.4.1 names twelve columns. Three of them are long free text and made the table
+           unreadable, so they are off by default rather than absent -- the export has carried all
+           twelve all along. *@
+        <div style="margin:2px 0 12px;">
+            <div class="cg-fact-label" style="margin-bottom:6px;">Columns</div>
+            <div class="cg-colpick">
+                @foreach (var column in OptionalColumns)
+                {
+                    <label class="@(IsColumnOn(column) ? "is-on" : "")">
+                        <input type="checkbox" checked="@IsColumnOn(column)" @onchange="e => ToggleColumn(column, (bool)e.Value!)" />
+                        @column
+                    </label>
+                }
+            </div>
         </div>
 
         @if (_released.Count == 0)
@@ -43,23 +60,30 @@
                     <thead>
                         <tr>
                             <th>Reference</th><th>Entity</th><th>Requestor</th><th>Counter-party</th><th>Value</th>
-                            <th>Date of request</th><th>Approver Action</th><th>Approver Date</th>
-                            <th>CCAO Action</th><th>CCAO Date</th><th>Released</th>
+                            @if (IsColumnOn("Description")) { <th>Description</th> }
+                            <th>Date of request</th><th>Approver Action</th>
+                            @if (IsColumnOn("Approver remarks")) { <th>Approver Remarks</th> }
+                            <th>Approver Date</th><th>CCAO Action</th>
+                            @if (IsColumnOn("CCAO remarks")) { <th>CCAO Remarks</th> }
+                            <th>CCAO Date</th><th>Released</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var t in _released)
                         {
                             <tr class="cg-data-row">
-                                <td class="mono">@RelatedPartyTransaction.DisplayReference(t.Id)</td>
+                                <td class="mono"><a href="/rp-transactions/@RelatedPartyTransaction.DisplayReference(t.Id)">@RelatedPartyTransaction.DisplayReference(t.Id)</a></td>
                                 <td>@t.Company?.Name</td>
                                 <td>@t.Member?.FullName</td>
                                 <td>@t.CounterPartyName</td>
                                 <td class="mono">@t.TransactionValue.ToString("N2")</td>
+                                @if (IsColumnOn("Description")) { <td>@t.Description</td> }
                                 <td class="mono">@t.DateOfRequest.ToString("dd/MM/yyyy")</td>
-                                <td>@t.ApproverAction</td>
+                                <td>@(t.ApproverAction is { } a ? RpTransactionDisplay.ApproverActionLabel(a) : "—")</td>
+                                @if (IsColumnOn("Approver remarks")) { <td>@(t.ApproverRemarks ?? "—")</td> }
                                 <td class="mono">@(t.ApproverActionAtUtc?.ToString("dd/MM/yyyy") ?? "—")</td>
-                                <td>@t.CcaoAction</td>
+                                <td>@(t.CcaoAction?.ToString() ?? "—")</td>
+                                @if (IsColumnOn("CCAO remarks")) { <td>@(t.CcaoRemarks ?? "—")</td> }
                                 <td class="mono">@(t.CcaoActionAtUtc?.ToString("dd/MM/yyyy") ?? "—")</td>
                                 <td class="mono">@(t.ReleasedAtUtc?.ToString("dd/MM/yyyy") ?? "—")</td>
                             </tr>

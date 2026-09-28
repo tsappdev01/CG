@@ -11,7 +11,7 @@
 
 <PageTitle>RP Transactions — CCAO Review</PageTitle>
 
-<div class="cg-shell">
+<div class="cg-shell cg-shell-full">
     <h1 data-icon="swap">CCAO Review</h1>
     <p class="cg-subtitle">Confirm the offline MD&amp;CEO/Board/AC/GA review (FRD §3.5) concluded satisfactorily, then release cleared transactions into the RP Register.</p>
 
@@ -30,77 +30,119 @@
             <button type="button" class="cg-tab @(_activeTab == "release" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "release")" @onclick='() => SwitchTab("release")'>Ready to Release — @_readyToRelease.Count</button>
         </div>
 
-        @if (_activeTab == "review")
+        @if (Current.Count == 0)
         {
-            @if (_awaitingDecision.Count == 0)
-            {
-                <div class="cg-empty-state">No transactions awaiting your Form 3 decision.</div>
-            }
-            else
-            {
-                @foreach (var t in _awaitingDecision)
-                {
-                    <div class="cg-member-form" style="max-width:800px; margin-bottom:16px;">
-                        <h2>@RelatedPartyTransaction.DisplayReference(t.Id)</h2>
-                        <table>
-                            <tbody>
-                                <tr><th>Entity</th><td>@t.Company?.Name</td></tr>
-                                <tr><th>User</th><td>@t.Member?.FullName</td></tr>
-                                <tr><th>Name of the counter-party</th><td>@t.CounterPartyName</td></tr>
-                                <tr><th>Transaction Value</th><td class="mono">@t.TransactionValue.ToString("N2")</td></tr>
-                                <tr><th>Description</th><td>@t.Description</td></tr>
-                                <tr><th>Date of request</th><td class="mono">@t.DateOfRequest.ToString("dd/MM/yyyy")</td></tr>
-                                <tr><th>Approver Action</th><td>@t.ApproverAction (@t.ApproverActionAtUtc?.ToString("dd/MM/yyyy"))</td></tr>
-                                <tr><th>Approver Remarks</th><td>@t.ApproverRemarks</td></tr>
-                            </tbody>
-                        </table>
-
-                        <label class="cg-field">
-                            <span>CCAO Remarks</span>
-                            <textarea class="cg-input" rows="3" value="@RemarksFor(t.Id)" @oninput="e => _remarks[t.Id] = e.Value?.ToString() ?? string.Empty"></textarea>
-                        </label>
-
-                        <div class="cg-actions">
-                            <button type="button" class="cg-action-btn cg-good" @onclick="() => CcaoApproveAsync(t)">Approve</button>
-                            <button type="button" class="cg-action-btn cg-critical" @onclick="() => CcaoRejectAsync(t)">Reject</button>
-                        </div>
-                    </div>
-                }
-            }
+            <div class="cg-empty-state">@(_activeTab == "review" ? "No transactions awaiting your decision." : "No transactions ready to release.")</div>
         }
         else
         {
-            @if (_readyToRelease.Count == 0)
-            {
-                <div class="cg-empty-state">No transactions ready to release.</div>
-            }
-            else
-            {
-                @foreach (var t in _readyToRelease)
-                {
-                    <div class="cg-member-form" style="max-width:800px; margin-bottom:16px;">
-                        <h2>@RelatedPartyTransaction.DisplayReference(t.Id)</h2>
-                        <table>
-                            <tbody>
-                                <tr><th>Entity</th><td>@t.Company?.Name</td></tr>
-                                <tr><th>User</th><td>@t.Member?.FullName</td></tr>
-                                <tr><th>Name of the counter-party</th><td>@t.CounterPartyName</td></tr>
-                                <tr><th>Transaction Value</th><td class="mono">@t.TransactionValue.ToString("N2")</td></tr>
-                                <tr><th>CCAO Remarks</th><td>@t.CcaoRemarks</td></tr>
-                            </tbody>
-                        </table>
-
-                        <label class="cg-field-row" style="align-items:center; gap:8px;">
-                            <input type="checkbox" checked="@(_documentationConfirmed.TryGetValue(t.Id, out var c) && c)" @onchange="e => _documentationConfirmed[t.Id] = (bool)e.Value!" />
-                            <span>All documentation in respect of approvals obtained from AC/Board/GM is in place for this transaction.</span>
-                        </label>
-
-                        <div class="cg-actions">
-                            <button type="button" class="cg-action-btn cg-good" @onclick="() => ReleaseAsync(t)">Release to RP Register</button>
+            <div class="cg-workbench" style="margin-top:14px;">
+                <div class="cg-queue">
+                    <div class="cg-queue-head">
+                        <div class="cg-search-wrap" style="flex:1;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                            <input type="search" placeholder="Search reference or counter-party…" @bind="_search" @bind:event="oninput" aria-label="Search the queue" />
                         </div>
+                        <select class="cg-input" style="width:auto;" @bind="_sort" aria-label="Sort the queue">
+                            <option value="value">Highest value</option>
+                            <option value="oldest">Oldest first</option>
+                        </select>
+                    </div>
+
+                    @foreach (var t in Queue())
+                    {
+                        <button type="button" class="cg-queue-item @(_selectedId == t.Id ? "is-selected" : "")" @onclick="() => Select(t.Id)">
+                            <div class="cg-queue-item-top">
+                                <span class="cg-queue-ref">@RpTransactionDisplay.Reference(t)</span>
+                                <span class="cg-queue-value">AED @t.TransactionValue.ToString("N0")</span>
+                            </div>
+                            <div class="cg-queue-party">@t.CounterPartyName</div>
+                            <div class="cg-queue-meta">
+                                <span>@ArrivedBy(t)</span>
+                                @if (t.EscalationReason == RpEscalationReason.ApproverConflictOfInterest)
+                                {
+                                    <span class="cg-check" data-state="warn" style="padding:2px 8px;">Conflict</span>
+                                }
+                            </div>
+                        </button>
+                    }
+
+                    @if (Queue().Count == 0)
+                    {
+                        <div class="cg-empty-state" style="border:0;">Nothing matches.</div>
+                    }
+                </div>
+
+                @if (Selected is { } s)
+                {
+                    <div class="cg-member-form" style="margin:0; max-width:none;">
+                        <div class="cg-detail-head">
+                            <div>
+                                <div class="cg-detail-title">@RpTransactionDisplay.Reference(s) · @s.CounterPartyName</div>
+                                <div class="cg-detail-sub">@ArrivedBy(s) · raised @s.DateOfRequest.ToString("dd/MM/yyyy") by @(s.Member?.FullName ?? s.SubmittedByName)</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div class="cg-detail-amount">AED @s.TransactionValue.ToString("N2")</div>
+                                <a class="cg-doc-chip" href="/rp-transactions/@RpTransactionDisplay.Reference(s)">Open full record</a>
+                            </div>
+                        </div>
+
+                        <RpStageRail Transaction="s" />
+
+                        <h2 style="margin-top:18px;">Transaction</h2>
+                        <div class="cg-facts">
+                            <div><div class="cg-fact-label">Entity</div><div class="cg-fact-value">@(s.Company?.Name ?? "—")</div></div>
+                            <div><div class="cg-fact-label">Requestor</div><div class="cg-fact-value">@(s.Member?.FullName ?? s.SubmittedByName)</div></div>
+                            <div><div class="cg-fact-label">Counter-party</div><div class="cg-fact-value">@s.CounterPartyName</div></div>
+                            <div><div class="cg-fact-label">Approver</div><div class="cg-fact-value">@(s.ApproverMember?.FullName ?? "—")</div></div>
+                        </div>
+
+                        <div class="cg-fact-label">Description, including material terms and conditions</div>
+                        <p style="font-size:13.5px; margin:4px 0 14px; white-space:pre-wrap;">@s.Description</p>
+
+                        @if (s.Documents.Count > 0)
+                        {
+                            <div class="cg-fact-label">Documents</div>
+                            <div class="cg-doc-chips" style="margin-top:6px;">
+                                @foreach (var doc in s.Documents)
+                                {
+                                    <a class="cg-doc-chip" href="@doc.FilePath" target="_blank" rel="noopener">@doc.FileName</a>
+                                }
+                            </div>
+                        }
+
+                        <h2 style="margin-top:20px;">What has happened so far</h2>
+                        <RpTimeline Transaction="s" />
+
+                        @if (_activeTab == "review")
+                        {
+                            <label class="cg-field" style="margin-top:16px;">
+                                <span>CCAO remarks <b style="color:var(--cg-critical);">*</b>
+                                    <em class="cg-subtitle" style="margin:0;">— your compliance conclusion, and the basis of the offline decision</em></span>
+                                <textarea class="cg-input" rows="3" value="@RemarksFor(s.Id)" @oninput="e => _remarks[s.Id] = e.Value?.ToString() ?? string.Empty"></textarea>
+                            </label>
+
+                            <div class="cg-action-bar">
+                                <button type="button" class="cg-action-btn cg-good" disabled="@_acting" @onclick="() => CcaoApproveAsync(s)">Approve</button>
+                                <button type="button" class="cg-action-btn cg-critical" disabled="@_acting" @onclick="() => CcaoRejectAsync(s)">Reject</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <label class="cg-field" style="flex-direction:row; align-items:center; gap:8px; margin-top:16px;">
+                                <input type="checkbox" checked="@(_documentationConfirmed.TryGetValue(s.Id, out var confirmed) && confirmed)"
+                                       @onchange="e => _documentationConfirmed[s.Id] = (bool)e.Value!" />
+                                <span>All documentation in respect of approvals obtained from AC/Board/GM is in place for this transaction.</span>
+                            </label>
+
+                            <div class="cg-action-bar">
+                                <button type="button" class="cg-action-btn cg-good" disabled="@_acting" @onclick="() => ReleaseAsync(s)">Release to RP Register</button>
+                                <span class="cg-subtitle" style="margin:0 0 0 auto;">Releasing locks the record.</span>
+                            </div>
+                        }
                     </div>
                 }
-            }
+            </div>
         }
     }
 </div>

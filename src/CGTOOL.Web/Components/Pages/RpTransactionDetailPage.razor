@@ -1,0 +1,97 @@
+@page "/rp-transactions/{Reference}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthState
+@inject ImpersonationContext Impersonation
+@inject IJSRuntime JS
+
+<PageTitle>@(_transaction is null ? "Transaction" : RpTransactionDisplay.Reference(_transaction))</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <p><a href="/rp-transactions/mine">← Back to My Transactions</a></p>
+
+    @if (_loading)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else if (_transaction is null)
+    {
+        <div class="cg-empty-state">No transaction with that reference, or you don't have access to it.</div>
+    }
+    else
+    {
+        var t = _transaction;
+        <div class="cg-detail-head">
+            <div>
+                <div class="cg-detail-title">@RpTransactionDisplay.Reference(t) · @t.CounterPartyName</div>
+                <div class="cg-detail-sub">
+                    Raised by @(t.Member?.FullName ?? t.SubmittedByName) (@(t.Company?.Name ?? "—")) ·
+                    @t.DateOfRequest.ToString("dd/MM/yyyy")
+                    @if (t.AmendmentCount > 0)
+                    {
+                        <span> · amended @(t.AmendmentCount == 1 ? "once" : $"{t.AmendmentCount} times")</span>
+                    }
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div class="cg-detail-amount">AED @t.TransactionValue.ToString("N2")</div>
+                <span class="cg-status-pill @RpTransactionDisplay.StatusPillClass(t.Status)">@RpTransactionDisplay.StatusLabel(t.Status)</span>
+            </div>
+        </div>
+
+        <RpStageRail Transaction="t" />
+
+        @if (RpTransactionDisplay.EscalationReasonLabel(t.EscalationReason) is { Length: > 0 } why)
+        {
+            <div class="cg-checks">
+                <span class="cg-check" data-state="warn">@why</span>
+            </div>
+        }
+
+        <div class="cg-workbench" style="margin-top:18px; grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);">
+            <div class="cg-member-form" style="margin:0; max-width:none;">
+                <h2>Transaction</h2>
+                <div class="cg-facts">
+                    <div><div class="cg-fact-label">Entity</div><div class="cg-fact-value">@(t.Company?.Name ?? "—")</div></div>
+                    <div><div class="cg-fact-label">Requestor</div><div class="cg-fact-value">@(t.Member?.FullName ?? t.SubmittedByName)</div></div>
+                    <div><div class="cg-fact-label">Counter-party</div><div class="cg-fact-value">@t.CounterPartyName</div></div>
+                    <div><div class="cg-fact-label">Date of request</div><div class="cg-fact-value">@t.DateOfRequest.ToString("dd/MM/yyyy")</div></div>
+                    <div><div class="cg-fact-label">Approver</div><div class="cg-fact-value">@(t.ApproverMember?.FullName ?? "—")</div></div>
+                    <div><div class="cg-fact-label">Released</div><div class="cg-fact-value">@(t.ReleasedAtUtc?.ToLocalDisplay("dd/MM/yyyy") ?? "—")</div></div>
+                </div>
+
+                <div class="cg-fact-label">Description, including material terms and conditions</div>
+                <p style="font-size:13.5px; margin:4px 0 14px; white-space:pre-wrap;">@t.Description</p>
+
+                <div class="cg-fact-label">Documents</div>
+                @if (t.Documents.Count == 0)
+                {
+                    <p class="cg-subtitle" style="margin-top:4px;">None attached.</p>
+                }
+                else
+                {
+                    <div class="cg-doc-chips" style="margin-top:6px;">
+                        @foreach (var doc in t.Documents)
+                        {
+                            <a class="cg-doc-chip" href="@doc.FilePath" target="_blank" rel="noopener">@doc.FileName</a>
+                        }
+                    </div>
+                }
+
+                <div class="cg-action-bar">
+                    <button type="button" class="cg-action-btn" @onclick="PrintAsync">Print / Save as PDF</button>
+                    @if (_canAct)
+                    {
+                        <a class="cg-action-btn" href="@ActionLink">@ActionLabel</a>
+                    }
+                </div>
+            </div>
+
+            <div class="cg-sidepanel">
+                <h3>History</h3>
+                <RpTimeline Transaction="t" />
+            </div>
+        </div>
+    }
+</div>

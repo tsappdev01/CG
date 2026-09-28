@@ -117,6 +117,7 @@
                                 <th>Value</th>
                                 <th>Date of request</th>
                                 <th>Status</th>
+                                <th>Stage</th>
                                 <th>Pending With</th>
                                 <th></th>
                             </tr>
@@ -125,23 +126,24 @@
                             @foreach (var t in _myTransactions)
                             {
                                 <tr class="cg-data-row">
-                                    <td class="mono">@RelatedPartyTransaction.DisplayReference(t.Id)</td>
+                                    <td class="mono"><a href="/rp-transactions/@RelatedPartyTransaction.DisplayReference(t.Id)">@RelatedPartyTransaction.DisplayReference(t.Id)</a></td>
                                     <td>@t.CounterPartyName</td>
                                     <td class="mono">@t.TransactionValue.ToString("N2")</td>
                                     <td class="mono">@t.DateOfRequest.ToString("dd/MM/yyyy")</td>
-                                    <td><span class="cg-status-pill @StatusPillClass(t.Status)">@StatusLabel(t.Status)</span></td>
-                                    <td>@PendingWithName(t)</td>
+                                    <td><span class="cg-status-pill @RpTransactionDisplay.StatusPillClass(t.Status)">@RpTransactionDisplay.StatusLabel(t.Status)</span></td>
+                                    <td><RpStageDots Transaction="t" /></td>
+                                    <td>@RpTransactionDisplay.PendingWith(t)</td>
                                     <td>
                                         @if (CanAmend(t))
                                         {
-                                            <button type="button" class="cg-action-btn" @onclick="() => StartAmend(t)">Amend</button>
+                                            <button type="button" class="cg-action-btn" @onclick="() => StartAmend(t)">@(t.Status == RpTransactionStatus.Returned ? "Amend and resubmit" : "Amend")</button>
                                         }
                                     </td>
                                 </tr>
                                 @if (_amendingRow?.Id == t.Id)
                                 {
                                     <tr>
-                                        <td colspan="7">
+                                        <td colspan="8">
                                             <div class="cg-member-form" style="max-width:640px;">
                                                 <label class="cg-field">
                                                     <span>Name of the counter-party</span>

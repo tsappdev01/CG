@@ -2508,6 +2508,10 @@ button.cg-doc-chip:disabled { cursor: default; opacity: 0.6; text-decoration: no
 .cg-step.is-done .cg-step-label { color: var(--cg-ink); font-weight: 500; }
 .cg-step-rule { flex: 1 1 40px; height: 2px; background: var(--cg-line); min-width: 24px; }
 .cg-step-rule.is-done { background: var(--cg-good); }
+/* A stage that stopped rather than one still to come: rejected, or returned to the requestor.
+   The steps after it are not "not yet", they are never. */
+.cg-step.is-stopped .cg-step-num { background: var(--cg-critical); border-color: var(--cg-critical); color: #FFFFFF; }
+.cg-step.is-stopped .cg-step-label { color: var(--cg-ink); font-weight: 700; }
 
 /* A step you can click back to. Looks exactly like the plain step -- the button is only there so
    the whole chevron is a target, keyboard included. */
@@ -3547,3 +3551,87 @@ button.cg-appbar-user {
     .cg-signin-card { padding: 28px 22px; }
     .cg-signin-foot { flex-direction: column; gap: 4px; align-items: flex-start; padding-bottom: 16px; }
 }
+
+/* ---------- RP Transaction workspace: queue + detail ---------- */
+/* Replaces a page that rendered every pending transaction as a full stacked form. See
+   scripts/rp-transaction-design.md. */
+.cg-workbench { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.cg-queue { border: 1px solid var(--cg-line); border-radius: 10px; background: var(--cg-surface); overflow: hidden; }
+.cg-queue-head { padding: 10px 12px; border-bottom: 1px solid var(--cg-line); display: flex; gap: 8px; align-items: center; }
+.cg-queue-item { display: block; width: 100%; text-align: left; font-family: inherit; cursor: pointer;
+    padding: 11px 13px; border: 0; border-bottom: 1px solid var(--cg-line); background: none; border-left: 3px solid transparent; }
+.cg-queue-item:hover { background: var(--cg-surface-alt, #F7F8FA); }
+.cg-queue-item.is-selected { background: var(--cg-accent-tint); border-left-color: var(--cg-accent); }
+.cg-queue-item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.cg-queue-ref { font-size: 11.5px; font-weight: 700; color: var(--cg-ink-muted); font-family: ui-monospace, monospace; }
+.cg-queue-value { font-size: 13px; font-weight: 700; font-family: ui-monospace, monospace; }
+.cg-queue-party { font-size: 13.5px; font-weight: 600; margin-top: 2px; }
+.cg-queue-meta { font-size: 11.5px; color: var(--cg-ink-faint); margin-top: 3px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* Age against the 30-day auto-escalation the model already runs. */
+.cg-sla { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 650; }
+.cg-sla-track { width: 44px; height: 4px; border-radius: 99px; background: var(--cg-line); overflow: hidden; }
+.cg-sla-fill { display: block; height: 100%; border-radius: 99px; background: var(--cg-good); }
+.cg-sla[data-tone="warning"] .cg-sla-fill { background: var(--cg-warning); }
+.cg-sla[data-tone="critical"] .cg-sla-fill { background: var(--cg-critical); }
+.cg-sla[data-tone="warning"] { color: var(--cg-warning); }
+.cg-sla[data-tone="critical"] { color: var(--cg-critical); }
+
+/* The stage-1 pre-checks, shown rather than silently skipped. */
+.cg-checks { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0 4px; }
+.cg-check { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px;
+    font-size: 11.5px; font-weight: 650; border: 1px solid transparent; }
+.cg-check::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.cg-check[data-state="pass"] { background: var(--cg-good-tint); color: var(--cg-good); }
+.cg-check[data-state="warn"] { background: var(--cg-warning-tint); color: var(--cg-warning); }
+.cg-check[data-state="fail"] { background: var(--cg-critical-tint); color: var(--cg-critical); }
+
+/* One transaction's history, which nothing in the app shows today. */
+.cg-timeline { list-style: none; margin: 0; padding: 0 0 0 20px; border-left: 2px solid var(--cg-line); }
+.cg-timeline li { position: relative; padding: 0 0 18px 16px; }
+.cg-timeline li::before { content: ""; position: absolute; left: -27px; top: 3px; width: 11px; height: 11px;
+    border-radius: 50%; background: var(--cg-surface); border: 2px solid var(--cg-line-strong); }
+.cg-timeline li[data-tone="good"]::before { border-color: var(--cg-good); background: var(--cg-good); }
+.cg-timeline li[data-tone="critical"]::before { border-color: var(--cg-critical); background: var(--cg-critical); }
+.cg-timeline li[data-tone="current"]::before { border-color: var(--cg-accent); background: var(--cg-accent); box-shadow: 0 0 0 4px var(--cg-accent-tint); }
+.cg-timeline-what { font-size: 13.5px; font-weight: 650; }
+.cg-timeline-who { font-size: 12px; color: var(--cg-ink-muted); margin-top: 1px; }
+.cg-timeline-note { font-size: 12.5px; margin-top: 5px; padding: 7px 10px; border-radius: 7px; background: var(--cg-surface-alt, #F7F8FA); }
+
+.cg-detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.cg-detail-title { font-size: 19px; font-weight: 700; }
+.cg-detail-sub { font-size: 12.5px; color: var(--cg-ink-muted); margin-top: 3px; }
+.cg-detail-amount { font-size: 25px; font-weight: 700; font-family: ui-monospace, monospace; }
+
+/* The decision stays reachable however far the reader has scrolled. */
+.cg-action-bar { position: sticky; bottom: 0; margin-top: 18px; padding: 12px 0 2px;
+    border-top: 1px solid var(--cg-line); background: linear-gradient(to top, var(--cg-surface) 70%, transparent);
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cg-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 2px 20px; margin: 4px 0 2px; }
+.cg-fact-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--cg-ink-muted); }
+.cg-fact-value { font-size: 13.5px; margin: 2px 0 12px; }
+
+/* ---------- RP Transaction: shared across its screens ---------- */
+.cg-rail { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cg-minirail { display: inline-flex; gap: 3px; align-items: center; }
+.cg-minirail i { width: 15px; height: 5px; border-radius: 99px; background: var(--cg-line); display: block; }
+.cg-minirail i.is-done { background: var(--cg-good); }
+.cg-minirail i.is-current { background: var(--cg-accent); }
+.cg-minirail i.is-stopped { background: var(--cg-critical); }
+
+.cg-sidepanel { border: 1px solid var(--cg-line); border-radius: 10px; padding: 14px 16px; background: var(--cg-surface); }
+.cg-sidepanel h3 { font-size: 13px; margin: 0 0 10px; }
+.cg-form-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); gap: 20px; align-items: start; }
+
+.cg-combo-hit { display: flex; justify-content: space-between; gap: 12px; padding: 7px 10px; border-radius: 7px; }
+.cg-combo-hit + .cg-combo-hit { border-top: 1px solid var(--cg-line); }
+.cg-combo-hit.is-active { background: var(--cg-accent-tint); }
+.cg-combo-name { font-size: 13px; font-weight: 600; }
+.cg-combo-why { font-size: 11.5px; color: var(--cg-ink-muted); }
+
+.cg-colpick { display: flex; flex-wrap: wrap; gap: 6px; }
+.cg-colpick label { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 3px 9px;
+    border: 1px solid var(--cg-line); border-radius: 99px; cursor: pointer; }
+.cg-colpick label.is-on { background: var(--cg-accent-tint); border-color: var(--cg-accent); color: var(--cg-accent); font-weight: 650; }
+
+.cg-band { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }

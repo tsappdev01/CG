@@ -10,6 +10,10 @@ public interface IRelatedPartyTransactionWriter
 
     Task RecordApproverActionAsync(RelatedPartyTransaction t);
 
+    /// <summary>Puts a returned transaction back in front of its approver after the requestor
+    /// has amended it.</summary>
+    Task ResubmitAsync(int id);
+
     Task RecordCcaoActionAsync(RelatedPartyTransaction t);
 
     Task ReleaseAsync(int id, DateTime releasedAtUtc);
@@ -54,6 +58,11 @@ public class RelatedPartyTransactionWriter(IStoredProcedureExecutor sp) : IRelat
         new SqlParameter("@Status", (int)t.Status),
         new SqlParameter("@EscalationReason", (int)t.EscalationReason),
         new SqlParameter("@EscalatedAtUtc", (object?)t.EscalatedAtUtc ?? DBNull.Value));
+
+    public Task ResubmitAsync(int id) => sp.ExecuteAsync(
+        "dbo.usp_RelatedPartyTransaction_Resubmit",
+        new SqlParameter("@Id", id),
+        new SqlParameter("@Status", (int)RpTransactionStatus.AwaitingApproval));
 
     public Task RecordCcaoActionAsync(RelatedPartyTransaction t) => sp.ExecuteAsync(
         "dbo.usp_RelatedPartyTransaction_RecordCcaoAction",

@@ -15,6 +15,11 @@ public enum RpTransactionStatus
     Rejected,
     Escalated,
     ReleasedToRegister,
+
+    /// <summary>Sent back to the requestor to amend and resubmit -- the "returned to user" outcome
+    /// in the workflow (scripts/rp-transaction-workflow.md), which previously had to be done as a
+    /// rejection and so lost the thread. Appended, not inserted: the values are stored as ints.</summary>
+    Returned,
 }
 
 /// <summary>Approver's decision on Form 2 (FRD §3.2.2). Escalate remains a manual option alongside the
@@ -25,6 +30,10 @@ public enum RpApproverAction
     Approve,
     Reject,
     Escalate,
+
+    /// <summary>Sent back for the requestor to fix and resubmit. Appended for the same reason as
+    /// RpTransactionStatus.Returned.</summary>
+    Return,
 }
 
 /// <summary>CCAO's decision on Form 3 (FRD §3.2.3) -- a single consolidated approval representing that

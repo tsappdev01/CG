@@ -45,6 +45,12 @@ public static class RpTransactionNotificationService
         SendAsync(mail, t.Member?.Email, $"{Ref(t)} — Rejected",
             $"Stated RP transaction has been Rejected. User shall not execute.\n\n{CommonBody(t)}");
 
+    /// <summary>Sent back for the requestor to fix. Unlike a rejection this is not the end of the
+    /// transaction, so the mail says what to do next rather than "shall not execute".</summary>
+    public static Task ReturnedByApproverAsync(IActivityEmailSender mail, RelatedPartyTransaction t) =>
+        SendAsync(mail, t.Member?.Email, $"{Ref(t)} — Returned to you",
+            $"Stated RP transaction has been returned to you for amendment. Amend it under My Transactions and resubmit; it goes back to the same approver.\n\nApprover's remarks: {t.ApproverRemarks}\n\n{CommonBody(t)}");
+
     /// <summary>Workflow ref 3d -- Approver approved directly (still pending CCAO/Board sign-off).</summary>
     public static async Task ApprovedByApproverAsync(IActivityEmailSender mail, RelatedPartyTransaction t, IEnumerable<string> ccaoEmails, IEnumerable<string> cfoEmails)
     {

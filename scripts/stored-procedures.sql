@@ -1694,6 +1694,28 @@ BEGIN
 END
 GO
 
+-- A returned transaction going back to its approver after the requestor amended it. Its own
+-- procedure rather than a flag on _Amend because the two are separate acts: the amendment is the
+-- requestor changing the transaction, this is them handing it back.
+--
+-- ApproverAction and ApproverRemarks are deliberately NOT cleared. They are the record of why it
+-- came back, the approver re-reads them alongside the amendment, and they are overwritten when the
+-- approver decides again.
+CREATE OR ALTER PROCEDURE dbo.usp_RelatedPartyTransaction_Resubmit
+    @Id int,
+    @Status int
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.RelatedPartyTransactions
+    SET Status = @Status,
+        ModifiedAtUtc = SYSUTCDATETIME()
+    WHERE Id = @Id
+      AND Status = 5;   -- Returned; anything else is not a resubmission
+END
+GO
+
 -- Approver's decision (Form 2: Approve/Reject/Escalate).
 CREATE OR ALTER PROCEDURE dbo.usp_RelatedPartyTransaction_RecordApproverAction
     @Id int,

@@ -237,17 +237,22 @@ The stage rail reuses `cg-stepper` / `cg-step` from the COI declaration unchange
 
 ## Build order
 
-| | Work | Schema? | Why here |
-| --- | --- | --- | --- |
-| 1 | Transaction detail + timeline (screen 3) | no | Everything links to it; pure UI |
-| 2 | Queue + detail on both review screens (4, 5) | no | Biggest usability win |
-| 3 | `Returned` status and the Return action | small | Closes a flow gap |
-| 4 | Register column picker (6) | no | An hour's work |
-| 5 | Pre-checks (1, 4) | no | Needs the Related Party Master settled |
-| 6 | DoA matrix (7) + value routing | yes | Largest; unblocks routing and limits |
-| 7 | Governance decision block (5) | yes | Audit completeness |
+| | Work | Schema? | Why here | |
+| --- | --- | --- | --- | --- |
+| 1 | Transaction detail + timeline (screen 3) | no | Everything links to it; pure UI | **done** |
+| 2 | Queue + detail on both review screens (4, 5) | no | Biggest usability win | **done** |
+| 3 | `Returned` status and the Return action | small | Closes a flow gap | **done** |
+| 4 | Register column picker (6) | no | An hour's work | **done** |
+| 5 | Pre-checks (1, 4) | no | Needs the Related Party Master settled | |
+| 6 | DoA matrix (7) + value routing | yes | Largest; unblocks routing and limits | |
+| 7 | Governance decision block (5) | yes | Audit completeness | |
 
-1–4 need no migration.
+1–4 are built. They needed no migration: `Returned` and `Return` are appended enum members stored
+as ints, and the only new database object is `usp_RelatedPartyTransaction_Resubmit` in
+`scripts/stored-procedures.sql`, which has to be run before the branch is deployed.
+
+What 1–4 did **not** bring, because it belongs to 5 and 6: the pre-check chips and the routing
+preview pictured on screens 1 and 4. The approver screen shows the SLA countdown only.
 
 ## Decisions needed before building
 

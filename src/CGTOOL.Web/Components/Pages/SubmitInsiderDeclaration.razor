@@ -18,6 +18,12 @@
 <PageTitle>Insider Trading Declaration</PageTitle>
 
 <div class="cg-shell cg-declaration-wizard">
+    @* The one operation on this page where a second click or a closed tab costs something
+       real, so it takes the screen rather than only the button. *@
+    <CgBlockingOverlay Visible="_submitting"
+                       Title="@(_hadExistingRow ? "Saving your changes…" : "Submitting your declaration…")"
+                       Detail="Recording your declaration and preparing your PDF copy. Please do not close this page." />
+
     <p><a href="/my-declarations">← Back to Declarations</a></p>
     <h1 data-icon="doc">Declaration of Transactions in DI Shares by Insiders</h1>
     <p class="cg-subtitle">Employee Name: <b>@_effectiveMember?.FullName</b></p>
@@ -246,7 +252,14 @@
                                     @if (DocIntel.IsConfigured)
                                     {
                                         <button type="button" class="cg-doc-chip" disabled="@_rereadingEmiratesId" @onclick="ReadEmiratesIdAgainAsync">
-                                            @(_rereadingEmiratesId ? "Reading\u2026" : "Read details")
+                                            @if (_rereadingEmiratesId)
+                                            {
+                                                <CgSpinner /><span> Reading…</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Read details</span>
+                                            }
                                         </button>
                                     }
                                 }
@@ -255,7 +268,7 @@
                         </div>
                         @if (_uploadingEmiratesId)
                         {
-                            <progress class="cg-upload-progress" max="100" value="@_emiratesIdUploadProgress"></progress>
+                            <CgProgressBar Label="Uploading…" Percent="_emiratesIdUploadProgress" />
                         }
                         else if (_emiratesIdExpiredNeedsReupload && !HasEmiratesId)
                         {
@@ -303,7 +316,14 @@
                                     @if (DocIntel.IsConfigured)
                                     {
                                         <button type="button" class="cg-doc-chip" disabled="@_rereadingPassport" @onclick="ReadPassportAgainAsync">
-                                            @(_rereadingPassport ? "Reading\u2026" : "Read details")
+                                            @if (_rereadingPassport)
+                                            {
+                                                <CgSpinner /><span> Reading…</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Read details</span>
+                                            }
                                         </button>
                                     }
                                 }
@@ -312,7 +332,7 @@
                         </div>
                         @if (_uploadingPassport)
                         {
-                            <progress class="cg-upload-progress" max="100" value="@_passportUploadProgress"></progress>
+                            <CgProgressBar Label="Uploading…" Percent="_passportUploadProgress" />
                         }
                         else if (_passportExpiredNeedsReupload && !HasPassport)
                         {
@@ -360,7 +380,14 @@
                                     @if (DocIntel.IsConfigured)
                                     {
                                         <button type="button" class="cg-doc-chip" disabled="@_rereadingTradeLicence" @onclick="ReadTradeLicenceAgainAsync">
-                                            @(_rereadingTradeLicence ? "Reading\u2026" : "Read details")
+                                            @if (_rereadingTradeLicence)
+                                            {
+                                                <CgSpinner /><span> Reading…</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Read details</span>
+                                            }
                                         </button>
                                     }
                                 }
@@ -369,7 +396,7 @@
                         </div>
                         @if (_uploadingTradeLicence)
                         {
-                            <progress class="cg-upload-progress" max="100" value="@_tradeLicenceUploadProgress"></progress>
+                            <CgProgressBar Label="Uploading…" Percent="_tradeLicenceUploadProgress" />
                         }
                         else if (_tradeLicenceExpiredNeedsReupload && !HasTradeLicence)
                         {
@@ -414,7 +441,7 @@
                             <InputFile OnChange="OnOtherDocumentSelectedAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingOtherDocument" />
                             @if (_uploadingOtherDocument)
                             {
-                                <progress class="cg-upload-progress" max="100" value="@_otherDocumentUploadProgress"></progress>
+                                <CgProgressBar Label="Uploading…" Percent="_otherDocumentUploadProgress" />
                             }
                             else if (HasOtherDocument)
                             {
@@ -616,7 +643,10 @@
 
                 <div class="cg-actions">
                     <button type="button" class="cg-action-btn" disabled="@_submitting" @onclick="() => _step = Step.Capture2">← Back to edit</button>
-                    <button type="button" class="cg-action-btn cg-good" disabled="@(_submitting || !_agreeConfirmed)" @onclick="SubmitAsync">@(_submitting ? "Saving…" : (_hadExistingRow ? "Save changes" : "Confirm & Submit"))</button>
+                    <CgBusyButton CssClass="cg-good" Disabled="@(!_agreeConfirmed)"
+                                  BusyLabel="@(_hadExistingRow ? "Saving…" : "Submitting…")" OnClick="SubmitAsync">
+                        @(_hadExistingRow ? "Save changes" : "Confirm & Submit")
+                    </CgBusyButton>
                 </div>
             </div>
         }

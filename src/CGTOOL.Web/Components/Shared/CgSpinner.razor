@@ -1,0 +1,16 @@
+@* 1. Spinner — a short operation whose length nobody can predict. Says "the system has your
+   request" and nothing more, which is all there is to say when there is nothing to count. *@
+<span class="cg-spinner @(Large ? "cg-spinner-lg" : "") @(Accent ? "cg-spinner-accent" : "")"
+      role="@(Label is null ? "presentation" : "status")" aria-label="@Label"></span>
+
+@code {
+    [Parameter] public bool Large { get; set; }
+
+    /// <summary>Uses the app's blue rather than inheriting the surrounding text colour. Off inside a
+    /// coloured button, where inheriting is what makes the spinner visible.</summary>
+    [Parameter] public bool Accent { get; set; }
+
+    /// <summary>What a screen reader should say. Null where a visible label sits beside it, so the
+    /// same words are not announced twice.</summary>
+    [Parameter] public string? Label { get; set; }
+}

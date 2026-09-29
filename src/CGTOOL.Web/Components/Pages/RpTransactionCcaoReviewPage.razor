@@ -18,7 +18,7 @@
 
     @if (_step == Step.Loading)
     {
-        <p class="cg-loading"><em>Loading…</em></p>
+        <CgSkeleton Shape="CgSkeleton.SkeletonShape.List" Rows="4" Label="Loading the transactions awaiting your decision…" />
     }
     else if (_step == Step.NoAccess)
     {
@@ -149,7 +149,7 @@
                                 <InputFile OnChange="e => UploadMinutesAsync(e, s)" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingMinutes" />
                                 @if (_uploadingMinutes)
                                 {
-                                    <span class="cg-subtitle">Uploading…</span>
+                                    <CgProgressBar Label="Attaching the minutes…" Percent="_minutesProgress" />
                                 }
                                 @if (s.Documents.Any(d => d.Kind == RpTransactionDocumentKind.GovernanceMinutes))
                                 {
@@ -169,8 +169,8 @@
                             </label>
 
                             <div class="cg-action-bar">
-                                <button type="button" class="cg-action-btn cg-good" disabled="@_acting" @onclick="() => CcaoApproveAsync(s)">Approve</button>
-                                <button type="button" class="cg-action-btn cg-critical" disabled="@_acting" @onclick="() => CcaoRejectAsync(s)">Reject</button>
+                                <CgBusyButton CssClass="cg-good" BusyLabel="Recording…" OnClick="() => CcaoApproveAsync(s)">Approve</CgBusyButton>
+                                <CgBusyButton CssClass="cg-critical" BusyLabel="Recording…" OnClick="() => CcaoRejectAsync(s)">Reject</CgBusyButton>
                                 <span class="cg-subtitle" style="margin:0 0 0 auto;">A rejection needs remarks only — the rest describes an approval.</span>
                             </div>
                         }
@@ -183,7 +183,7 @@
                             </label>
 
                             <div class="cg-action-bar">
-                                <button type="button" class="cg-action-btn cg-good" disabled="@_acting" @onclick="() => ReleaseAsync(s)">Release to RP Register</button>
+                                <CgBusyButton CssClass="cg-good" BusyLabel="Releasing…" OnClick="() => ReleaseAsync(s)">Release to RP Register</CgBusyButton>
                                 <span class="cg-subtitle" style="margin:0 0 0 auto;">Releasing locks the record.</span>
                             </div>
                         }

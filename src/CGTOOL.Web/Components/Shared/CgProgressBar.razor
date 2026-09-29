@@ -1,0 +1,38 @@
+@* 3 and 4 in one component, because they are the same bar and differ only in whether anything can
+   be counted. Percent null draws the indeterminate stripes: the bar moves without claiming a
+   position, which is honest about not knowing rather than inventing a number. *@
+<div class="cg-progress">
+    @if (Label is { Length: > 0 } || Percent is not null)
+    {
+        <div class="cg-progress-head">
+            <span>@Label</span>
+            @if (Percent is { } shown)
+            {
+                <span class="cg-progress-pct">@shown.ToString("0")%</span>
+            }
+        </div>
+    }
+
+    <div class="cg-progress-track @(Percent is null ? "indeterminate" : "")"
+         role="progressbar"
+         aria-valuemin="0" aria-valuemax="100"
+         aria-valuenow="@(Percent?.ToString("0"))"
+         aria-label="@(Label ?? "Progress")">
+        <div class="cg-progress-fill" style="width:@(Percent is { } p ? $"{Math.Clamp(p, 0, 100):0.##}%" : "100%");"></div>
+    </div>
+
+    @if (Detail is { Length: > 0 })
+    {
+        <div class="cg-progress-detail">@Detail</div>
+    }
+</div>
+
+@code {
+    /// <summary>0–100, or null when there is nothing to count.</summary>
+    [Parameter] public double? Percent { get; set; }
+
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>The small line under the bar — "5.6 MB of 8 MB", "record 120 of 900".</summary>
+    [Parameter] public string? Detail { get; set; }
+}

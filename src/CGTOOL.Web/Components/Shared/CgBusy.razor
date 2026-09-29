@@ -1,0 +1,33 @@
+@* The spinner with something to read beside it. A spinner alone tells you the system is busy; the
+   line tells you what it is busy with, which is the difference between waiting and worrying. *@
+@if (Block)
+{
+    <div class="cg-busy-block" role="status" aria-live="polite">
+        <CgSpinner Large="true" Accent="true" />
+        <div>
+            <div class="cg-busy-title">@Title</div>
+            @if (Detail is { Length: > 0 })
+            {
+                <div class="cg-busy-detail">@Detail</div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <span class="cg-busy" role="status" aria-live="polite">
+        <CgSpinner Accent="true" />
+        <span>@Title</span>
+    </span>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "Loading…";
+
+    /// <summary>The second line: what this is waiting on, or what the person should expect.</summary>
+    [Parameter] public string? Detail { get; set; }
+
+    /// <summary>Centred with room around it, for a panel that has nothing else in it yet. Inline
+    /// otherwise, for a line inside a form.</summary>
+    [Parameter] public bool Block { get; set; }
+}

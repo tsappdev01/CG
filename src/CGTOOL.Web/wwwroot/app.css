@@ -3635,3 +3635,179 @@ button.cg-appbar-user {
 .cg-colpick label.is-on { background: var(--cg-accent-tint); border-color: var(--cg-accent); color: var(--cg-accent); font-weight: 650; }
 
 .cg-band { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+
+/* ================= Progress and loading indicators =================
+
+   The house standard, in scripts/progress-indicators.md: one indicator per kind of wait, chosen by
+   whether the operation is short, measurable, blocking or staged -- not one spinner for everything.
+
+   What was here before this section: a bare "Loading..." in muted text (cg-loading), a <progress>
+   element for uploads, cg-progress-track/fill for the one place that had a real bar, and cg-stepper.
+   Everything else below is new.
+
+   Motion is suppressed under prefers-reduced-motion at the end of the section rather than per rule. */
+
+/* ---------- 1. Spinner: short operations of unknown length ---------- */
+.cg-spinner {
+    display: inline-block;
+    width: 1.15em;
+    height: 1.15em;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: cg-spin .7s linear infinite;
+    /* Keeps the ring from sitting on the text baseline and pushing the line height around. */
+    vertical-align: -0.2em;
+    flex: none;
+}
+.cg-spinner-lg { width: 32px; height: 32px; border-width: 3px; }
+.cg-spinner-accent { color: var(--cg-accent); }
+@keyframes cg-spin { to { transform: rotate(360deg); } }
+
+/* The spinner with something to read beside it -- a spinner alone says "busy" and nothing else. */
+.cg-busy {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--cg-ink-muted);
+    font-size: 13.5px;
+}
+.cg-busy-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 28px 16px;
+    text-align: center;
+}
+.cg-busy-title { font-size: 14.5px; font-weight: 650; color: var(--cg-ink); }
+.cg-busy-detail { font-size: 12.5px; color: var(--cg-ink-muted); }
+
+/* ---------- 2. Circular progress: a measurable percentage ---------- */
+/* Drawn with conic-gradient rather than SVG: one element, and the percentage is a custom property
+   the component sets, so nothing has to compute a stroke-dasharray. */
+.cg-radial {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: conic-gradient(var(--cg-accent) calc(var(--cg-radial-value, 0) * 1%), var(--cg-line) 0);
+}
+.cg-radial::before {
+    content: "";
+    position: absolute;
+    inset: 9px;
+    border-radius: 50%;
+    background: var(--cg-surface);
+}
+.cg-radial-value {
+    position: relative;
+    font-size: 19px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.cg-radial-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+/* ---------- 3 & 4. Linear progress, determinate and indeterminate ---------- */
+.cg-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+}
+.cg-progress-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    font-size: 13px;
+}
+.cg-progress-pct { font-weight: 650; font-variant-numeric: tabular-nums; }
+.cg-progress-detail { font-size: 12px; color: var(--cg-ink-muted); }
+
+/* ---------- 5. Skeleton: the shape of the page while its data arrives ---------- */
+.cg-skeleton {
+    background: linear-gradient(90deg, var(--cg-line) 25%, var(--cg-line-strong) 37%, var(--cg-line) 63%);
+    background-size: 400% 100%;
+    animation: cg-skeleton-sheen 1.4s ease-in-out infinite;
+    border-radius: 6px;
+    height: 12px;
+}
+.cg-skeleton-line + .cg-skeleton-line { margin-top: 9px; }
+.cg-skeleton-title { height: 17px; width: 42%; margin-bottom: 14px; }
+.cg-skeleton-block { height: 64px; border-radius: 8px; }
+.cg-skeleton-circle { width: 38px; height: 38px; border-radius: 50%; }
+.cg-skeleton-row { display: flex; align-items: center; gap: 14px; }
+.cg-skeleton-row > .cg-skeleton-lines { flex: 1; }
+.cg-skeleton-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 16px; }
+@keyframes cg-skeleton-sheen {
+    from { background-position: 100% 50%; }
+    to { background-position: 0 50%; }
+}
+
+/* ---------- 6. Button loading state ---------- */
+/* The button keeps its own width while busy so the row does not jump as the label changes, and the
+   spinner inherits the button's text colour, which is what makes it work on both solid and outline. */
+.cg-action-btn.is-busy {
+    position: relative;
+    cursor: progress;
+    opacity: 0.9;
+}
+.cg-action-btn.is-busy > .cg-spinner { margin-right: 7px; }
+
+/* ---------- 7. Overlay: the screen is not to be touched until this finishes ---------- */
+.cg-blocking {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: grid;
+    place-items: center;
+    background: rgba(14, 42, 71, 0.55);
+    backdrop-filter: blur(1.5px);
+}
+.cg-blocking-card {
+    background: var(--cg-surface);
+    border-radius: 12px;
+    padding: 30px 38px;
+    text-align: center;
+    box-shadow: 0 18px 46px rgba(14, 42, 71, 0.32);
+    max-width: 380px;
+}
+.cg-blocking-title { font-size: 16px; font-weight: 700; margin: 14px 0 5px; }
+.cg-blocking-detail { font-size: 13px; color: var(--cg-ink-muted); margin: 0; }
+
+/* ---------- 9. Status with icon ---------- */
+/* Distinct from cg-status-pill, which is a coloured dot on a table row. This is the larger form
+   with a glyph and a sentence under it, for the one thing a screen is reporting on. */
+.cg-status-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    flex: none;
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 700;
+}
+.cg-status-line { display: flex; align-items: flex-start; gap: 11px; }
+.cg-status-line + .cg-status-line { margin-top: 13px; }
+.cg-status-label { font-size: 13.5px; font-weight: 650; }
+.cg-status-detail { font-size: 12.5px; color: var(--cg-ink-muted); margin-top: 1px; }
+.cg-status-icon[data-tone="progress"] { background: var(--cg-accent); }
+.cg-status-icon[data-tone="pending"] { background: var(--cg-warning); }
+.cg-status-icon[data-tone="done"] { background: var(--cg-good); }
+.cg-status-icon[data-tone="failed"] { background: var(--cg-critical); }
+.cg-status-icon[data-tone="paused"] { background: var(--cg-ink-muted); }
+.cg-status-icon[data-tone="waiting"] { background: var(--cg-line-strong); color: var(--cg-ink-muted); }
+
+/* One motion rule for the section: a spinner that cannot spin still has to read as a spinner, so
+   the ring stays and only the movement goes. */
+@media (prefers-reduced-motion: reduce) {
+    .cg-spinner { animation-duration: 2.4s; }
+    .cg-skeleton { animation: none; }
+    .cg-blocking { backdrop-filter: none; }
+}

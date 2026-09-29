@@ -1,0 +1,25 @@
+@* 2. Circular progress — the same information as the bar, in the shape that suits a card or a tile
+   rather than a row. Used where the percentage is the point and there is room to make it large. *@
+<div class="cg-radial-wrap">
+    <div class="cg-radial" style="--cg-radial-value:@(Clamped.ToString("0.##"));"
+         role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@Clamped.ToString("0")"
+         aria-label="@(Label ?? "Progress")">
+        <span class="cg-radial-value">@Clamped.ToString("0")%</span>
+    </div>
+    @if (Label is { Length: > 0 })
+    {
+        <div class="cg-busy-title">@Label</div>
+    }
+    @if (Detail is { Length: > 0 })
+    {
+        <div class="cg-busy-detail">@Detail</div>
+    }
+</div>
+
+@code {
+    [Parameter] public double Percent { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Detail { get; set; }
+
+    private double Clamped => Math.Clamp(Percent, 0, 100);
+}

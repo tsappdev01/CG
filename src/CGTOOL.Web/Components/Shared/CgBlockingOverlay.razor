@@ -1,0 +1,24 @@
+@* 7. Overlay — the screen is not to be touched until this finishes. For the operations where a
+   second click, a navigation or a closed tab costs something real: payment, signing, submission,
+   document generation. Everything else should use a busy button instead, which blocks the one
+   action rather than the whole page. *@
+@if (Visible)
+{
+    <div class="cg-blocking" role="alertdialog" aria-modal="true" aria-live="assertive" aria-label="@Title">
+        <div class="cg-blocking-card">
+            <CgSpinner Large="true" Accent="true" />
+            <div class="cg-blocking-title">@Title</div>
+            <p class="cg-blocking-detail">@Detail</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+
+    [Parameter] public string Title { get; set; } = "Processing…";
+
+    /// <summary>Says what not to do. The default is the one instruction that matters while a
+    /// transactional operation is in flight.</summary>
+    [Parameter] public string Detail { get; set; } = "Please do not close this page.";
+}

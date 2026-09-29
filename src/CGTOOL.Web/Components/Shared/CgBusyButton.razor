@@ -1,0 +1,100 @@
+@* 6. Button loading state — the standard's answer to duplicate Submit, Save, Approve, Pay and Sign.
+   Disabling a button on a flag leaves the person looking at a dead control with no explanation; this
+   says what is happening and refuses the second click at the same time.
+
+   The guard is the component's own, not the caller's: every screen that wrote `disabled="@_saving"`
+   had to remember to set and clear the flag on every path, and a validation failure that returned
+   early left the button stuck. Here the busy state lasts exactly as long as the handler's task. *@
+<button type="@(Submit ? "submit" : "button")"
+        class="cg-action-btn @CssClass @(_busy ? "is-busy" : "")"
+        style="@(_width is { } w ? $"min-width:{w.ToString("0")}px;" : null)"
+        disabled="@(_busy || Disabled)"
+        title="@Title"
+        @ref="_button"
+        @onclick="RunAsync">
+    @if (_busy)
+    {
+        <CgSpinner Label="@BusyLabel" />
+        <span>@BusyLabel</span>
+    }
+    else
+    {
+        @ChildContent
+    }
+</button>
+
+@code {
+    private bool _busy;
+    private ElementReference _button;
+    private double? _width;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>What runs on click. The button is busy for exactly as long as this task, however it
+    /// ends -- including when it throws, which is the case a hand-written flag usually forgets.</summary>
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    /// <summary>Shown in place of the label while it runs. "Submitting…", "Saving…", "Approving…" --
+    /// the verb the person just chose, in progress.</summary>
+    [Parameter] public string BusyLabel { get; set; } = "Working…";
+
+    /// <summary>cg-good, cg-critical, and so on -- whatever the caller would have put on the button.</summary>
+    [Parameter] public string? CssClass { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>Renders as type="submit" for a button inside an EditForm.</summary>
+    [Parameter] public bool Submit { get; set; }
+
+    /// <summary>Raised when the click is refused because one is already running. Lets a screen say
+    /// so rather than appearing to ignore the person.</summary>
+    [Parameter] public EventCallback OnRejectedDoubleClick { get; set; }
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private async Task RunAsync()
+    {
+        // The disabled attribute is the first guard, but a double click can land both events before
+        // the re-render applies it -- which is exactly the duplicate submit this component exists to
+        // stop, so the flag is checked as well.
+        if (_busy)
+        {
+            await OnRejectedDoubleClick.InvokeAsync();
+            return;
+        }
+
+        // Pinning the width before the label changes stops the row of buttons shifting under the
+        // cursor mid-click, which is its own way of causing a misclick.
+        _width ??= await MeasureAsync();
+
+        _busy = true;
+        try
+        {
+            await OnClick.InvokeAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Best effort: if the measurement fails the button simply resizes, which is worse to
+    /// look at and not worth failing the click over.</summary>
+    private async Task<double?> MeasureAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<double>("cgMeasureWidth", _button);
+        }
+        catch (JSException)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+}

@@ -23,6 +23,7 @@ public partial class RpTransactionCcaoReviewPage
     private int? _selectedId;
     private bool _acting;
     private bool _uploadingMinutes;
+    private double? _minutesProgress;
 
     // The offline decision, held per transaction the way remarks already are, so switching between
     // queue items does not lose what has been typed into another one.
@@ -66,10 +67,22 @@ public partial class RpTransactionCcaoReviewPage
             Directory.CreateDirectory(directory);
 
             var fileName = $"{Guid.NewGuid():N}{extension}";
+            // Copied in chunks rather than one CopyToAsync so the bar can report a real percentage
+            // as the file streams in over SignalR, which is what makes it a progress bar rather than
+            // a decoration.
             await using (var source = file.OpenReadStream(MaxMinutesBytes))
             await using (var target = File.Create(Path.Combine(directory, fileName)))
             {
-                await source.CopyToAsync(target);
+                var buffer = new byte[64 * 1024];
+                long copied = 0;
+                int read;
+                while ((read = await source.ReadAsync(buffer)) > 0)
+                {
+                    await target.WriteAsync(buffer.AsMemory(0, read));
+                    copied += read;
+                    _minutesProgress = file.Size > 0 ? copied * 100d / file.Size : null;
+                    StateHasChanged();
+                }
             }
 
             var document = new RelatedPartyTransactionDocument
@@ -86,6 +99,7 @@ public partial class RpTransactionCcaoReviewPage
         finally
         {
             _uploadingMinutes = false;
+            _minutesProgress = null;
         }
     }
 

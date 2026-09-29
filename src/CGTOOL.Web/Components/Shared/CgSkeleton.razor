@@ -1,0 +1,57 @@
+@* 5. Skeleton — the shape of what is coming, while it comes. Replaces a bare "Loading…" on anything
+   with a structure worth anticipating: the reader sees a list is arriving, not just that something
+   is. Hidden from screen readers, which are told what is happening by the live region instead. *@
+<div class="cg-skeleton-wrap" aria-hidden="true">
+    @if (Shape == SkeletonShape.Table)
+    {
+        <div class="cg-skeleton cg-skeleton-title"></div>
+        @for (var row = 0; row < Rows; row++)
+        {
+            <div class="cg-skeleton cg-skeleton-line" style="width:@RowWidth(row);"></div>
+        }
+    }
+    else if (Shape == SkeletonShape.Cards)
+    {
+        <div class="cg-skeleton cg-skeleton-title"></div>
+        <div class="cg-skeleton-cards">
+            @for (var card = 0; card < Rows; card++)
+            {
+                <div class="cg-skeleton cg-skeleton-block"></div>
+            }
+        </div>
+    }
+    else
+    {
+        @for (var row = 0; row < Rows; row++)
+        {
+            <div class="cg-skeleton-row" style="@(row > 0 ? "margin-top:16px;" : "")">
+                <div class="cg-skeleton cg-skeleton-circle"></div>
+                <div class="cg-skeleton-lines">
+                    <div class="cg-skeleton cg-skeleton-line" style="width:38%;"></div>
+                    <div class="cg-skeleton cg-skeleton-line" style="width:68%;"></div>
+                </div>
+            </div>
+        }
+    }
+</div>
+<span class="cg-visually-hidden" role="status" aria-live="polite">@Label</span>
+
+@code {
+    public enum SkeletonShape { Table, Cards, List }
+
+    [Parameter] public SkeletonShape Shape { get; set; } = SkeletonShape.Table;
+
+    [Parameter] public int Rows { get; set; } = 5;
+
+    [Parameter] public string Label { get; set; } = "Loading…";
+
+    /// <summary>Rows of slightly different lengths, because a stack of identical bars reads as a
+    /// graphic rather than as text that has not arrived.</summary>
+    private static string RowWidth(int row) => (row % 4) switch
+    {
+        0 => "92%",
+        1 => "78%",
+        2 => "86%",
+        _ => "64%",
+    };
+}

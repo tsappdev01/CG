@@ -17,6 +17,11 @@
 <PageTitle>Related Party Transactions</PageTitle>
 
 <div class="cg-shell">
+    @* Submission writes the transaction, routes it and mails everyone it concerns; a second
+       click would raise it twice. *@
+    <CgBlockingOverlay Visible="_submitting" Title="Submitting your transaction…"
+                       Detail="Recording it and notifying your approver. Please do not close this page." />
+
     <h1 data-icon="swap">Related Party Transactions</h1>
     <p class="cg-subtitle">Record a transaction with a Related Party and track it through Approver, CCAO, and Board/AC/GA review to release into the RP Register.</p>
     @if (Impersonation.ActingMemberId is not null)
@@ -26,7 +31,7 @@
 
     @if (_step == Step.Loading)
     {
-        <p class="cg-loading"><em>Loading…</em></p>
+        <CgSkeleton Shape="CgSkeleton.SkeletonShape.Table" Rows="5" Label="Loading your transactions…" />
     }
     else if (_step == Step.NoAccess)
     {
@@ -81,8 +86,7 @@
                     <InputFile OnChange="UploadDocumentAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingDocument" />
                     @if (_uploadingDocument)
                     {
-                        <progress class="cg-upload-progress" max="100" value="@_uploadProgress"></progress>
-                        <span class="cg-subtitle">Uploading… @_uploadProgress%</span>
+                        <CgProgressBar Label="Uploading…" Percent="_uploadProgress" />
                     }
                     @if (_pendingDocuments.Count > 0)
                     {
@@ -99,7 +103,7 @@
                 </label>
 
                 <div class="cg-actions">
-                    <button type="button" class="cg-action-btn cg-good" disabled="@_submitting" @onclick="SubmitAsync">Submit</button>
+                    <CgBusyButton CssClass="cg-good" BusyLabel="Submitting…" OnClick="SubmitAsync">Submit</CgBusyButton>
                 </div>
             </div>
 

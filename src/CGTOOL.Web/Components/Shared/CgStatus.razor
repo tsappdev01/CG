@@ -1,0 +1,57 @@
+@* 9. Status with icon — one line saying where something stands, and why. The glyph carries the
+   state at a glance and the colour repeats it; neither is alone, so it survives being printed in
+   grey or read by someone who cannot tell the two reds apart. *@
+<div class="cg-status-line">
+    <span class="cg-status-icon" data-tone="@ToneOf(State)" aria-hidden="true">@GlyphOf(State)</span>
+    <div>
+        <div class="cg-status-label">@(Label ?? DefaultLabel(State))</div>
+        @if (Detail is { Length: > 0 })
+        {
+            <div class="cg-status-detail">@Detail</div>
+        }
+    </div>
+</div>
+
+@code {
+    public enum WorkState { Processing, Pending, Completed, Failed, Paused, Retrying, Waiting }
+
+    [Parameter, EditorRequired] public WorkState State { get; set; }
+
+    /// <summary>Overrides the state's own word where the screen has a better one — "Awaiting your
+    /// approval" rather than "Pending".</summary>
+    [Parameter] public string? Label { get; set; }
+
+    [Parameter] public string? Detail { get; set; }
+
+    private static string ToneOf(WorkState state) => state switch
+    {
+        WorkState.Processing or WorkState.Retrying => "progress",
+        WorkState.Pending => "pending",
+        WorkState.Completed => "done",
+        WorkState.Failed => "failed",
+        WorkState.Paused => "paused",
+        _ => "waiting",
+    };
+
+    private static string GlyphOf(WorkState state) => state switch
+    {
+        WorkState.Processing => "↻",
+        WorkState.Pending => "◷",
+        WorkState.Completed => "✓",
+        WorkState.Failed => "✕",
+        WorkState.Paused => "❙❙",
+        WorkState.Retrying => "↻",
+        _ => "○",
+    };
+
+    private static string DefaultLabel(WorkState state) => state switch
+    {
+        WorkState.Processing => "Processing",
+        WorkState.Pending => "Pending",
+        WorkState.Completed => "Completed",
+        WorkState.Failed => "Failed",
+        WorkState.Paused => "Paused",
+        WorkState.Retrying => "Retrying",
+        _ => "Waiting",
+    };
+}

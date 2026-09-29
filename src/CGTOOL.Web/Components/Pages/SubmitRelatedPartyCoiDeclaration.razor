@@ -25,6 +25,12 @@
 <PageTitle>Related Party & COI Declaration</PageTitle>
 
 <div class="cg-shell cg-declaration-wizard">
+    @* The one operation on this page where a second click or a closed tab costs something
+       real, so it takes the screen rather than only the button. *@
+    <CgBlockingOverlay Visible="_submitting"
+                       Title="@(_hadExistingRow ? "Saving your changes…" : "Submitting your declaration…")"
+                       Detail="Signing and recording your declaration. Please do not close this page." />
+
     <p><a href="/my-declarations">← Back to Declarations</a></p>
     <h1 data-icon="doc">Related Party &amp; Conflict of Interest Declaration</h1>
     @* The declarant's own statement, not a caption: it is what they are signing, and it named them
@@ -438,7 +444,10 @@
 
                 <div class="cg-actions">
                     <button type="button" class="cg-action-btn" disabled="@_submitting" @onclick="() => _step = Step.Conflicts">← Back to edit</button>
-                    <button type="button" class="cg-action-btn cg-good" disabled="@(_submitting || !_attestationConfirmed)" @onclick="SubmitAsync">@(_submitting ? "Saving…" : (_hadExistingRow ? "Save changes" : "Confirm & Submit"))</button>
+                    <CgBusyButton CssClass="cg-good" Disabled="@(!_attestationConfirmed)"
+                                  BusyLabel="@(_hadExistingRow ? "Saving…" : "Submitting…")" OnClick="SubmitAsync">
+                        @(_hadExistingRow ? "Save changes" : "Confirm & Submit")
+                    </CgBusyButton>
                 </div>
             </div>
         }

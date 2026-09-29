@@ -18,7 +18,7 @@
 
     @if (_step == Step.Loading)
     {
-        <p class="cg-loading"><em>Loading…</em></p>
+        <CgSkeleton Shape="CgSkeleton.SkeletonShape.List" Rows="4" Label="Loading the transactions awaiting you…" />
     }
     else if (_step == Step.NoAccess)
     {
@@ -156,11 +156,13 @@
                                   value="@RemarksFor(s.Id)" @oninput="e => _remarks[s.Id] = e.Value?.ToString() ?? string.Empty"></textarea>
                     </label>
 
+                    @* A decision is a transactional operation: the button holds the click for as
+                       long as the work takes and says which verb is running. *@
                     <div class="cg-action-bar">
-                        <button type="button" class="cg-action-btn cg-good" disabled="@_acting" @onclick="() => ApproveAsync(s)">Approve</button>
-                        <button type="button" class="cg-action-btn" disabled="@_acting" @onclick="() => EscalateAsync(s)">Escalate to CCAO</button>
-                        <button type="button" class="cg-action-btn" disabled="@_acting" @onclick="() => ReturnAsync(s)">Return to requestor</button>
-                        <button type="button" class="cg-action-btn cg-critical" disabled="@_acting" @onclick="() => RejectAsync(s)">Reject</button>
+                        <CgBusyButton CssClass="cg-good" BusyLabel="Approving…" OnClick="() => ApproveAsync(s)">Approve</CgBusyButton>
+                        <CgBusyButton BusyLabel="Escalating…" OnClick="() => EscalateAsync(s)">Escalate to CCAO</CgBusyButton>
+                        <CgBusyButton BusyLabel="Returning…" OnClick="() => ReturnAsync(s)">Return to requestor</CgBusyButton>
+                        <CgBusyButton CssClass="cg-critical" BusyLabel="Rejecting…" OnClick="() => RejectAsync(s)">Reject</CgBusyButton>
                     </div>
                 </div>
             }

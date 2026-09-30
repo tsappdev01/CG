@@ -1,3 +1,4 @@
+using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 
@@ -11,7 +12,12 @@ namespace CGTOOL.Web.Data.Governance;
 /// Its own class rather than a private helper on one builder, because there are two documents now
 /// (Insider Trading and Related Party &amp; COI) and they should not drift apart: what differs
 /// between them is the line under the logo and the footer note, which are constructor arguments.</summary>
-internal class DeclarationPdfWriter(PdfDocument document, XImage? logo, string documentTitle, string footerNote)
+internal class DeclarationPdfWriter(
+    PdfDocument document,
+    XImage? logo,
+    string documentTitle,
+    string footerNote,
+    PageOrientation orientation = PageOrientation.Portrait)
 {
     internal static readonly XColor Navy = XColor.FromArgb(14, 42, 71);
     internal static readonly XColor Gold = XColor.FromArgb(217, 182, 90);
@@ -49,6 +55,9 @@ internal class DeclarationPdfWriter(PdfDocument document, XImage? logo, string d
 
         var page = document.AddPage();
         page.Size = PdfSharp.PageSize.A4;
+        // Set after Size, which resets the orientation: a page asked for A4 landscape and given
+        // its size afterwards comes out portrait with the content laid out for a wider sheet.
+        page.Orientation = orientation;
         _pageWidth = page.Width.Point;
         _pageHeight = page.Height.Point;
         _contentWidth = _pageWidth - (2 * Margin);
@@ -82,6 +91,51 @@ internal class DeclarationPdfWriter(PdfDocument document, XImage? logo, string d
         _y += 14;
         _gfx.DrawLine(new XPen(Gold, 1.5), Margin, _y + 10, Margin + 60, _y + 10);
         _y += 20;
+    }
+
+    /// <summary>The band of headline figures a report opens with -- the same four the screen shows,
+    /// in the same order, so a reader holding the PDF and a reader holding the screen are looking
+    /// at the same report. Drawn as equal columns divided by hairlines rather than as a table,
+    /// because these are one row of answers and a header row above them would only repeat the
+    /// labels already under each figure.</summary>
+    public void StatBand((string Label, string Value, string? Sub)[] stats)
+    {
+        if (stats.Length == 0) return;
+
+        const double bandHeight = 42;
+        EnsureSpace(bandHeight + 10);
+
+        var columnWidth = _contentWidth / stats.Length;
+        _gfx.DrawRectangle(new XSolidBrush(LightGrey), Margin, _y, _contentWidth, bandHeight);
+
+        for (var i = 0; i < stats.Length; i++)
+        {
+            var x = Margin + (i * columnWidth);
+            if (i > 0) _gfx.DrawLine(new XPen(BorderGrey, 0.5), x, _y + 6, x, _y + bandHeight - 6);
+
+            _gfx.DrawString(stats[i].Label.ToUpperInvariant(), _footer, new XSolidBrush(Muted), x + 10, _y + 15);
+            _gfx.DrawString(stats[i].Value, _sectionHeading, new XSolidBrush(Navy), x + 10, _y + 33);
+
+            if (stats[i].Sub is { Length: > 0 } sub)
+            {
+                var valueWidth = _gfx.MeasureString(stats[i].Value, _sectionHeading).Width;
+                _gfx.DrawString(sub, _footer, new XSolidBrush(Muted), x + 14 + valueWidth, _y + 33);
+            }
+        }
+
+        _y += bandHeight + 12;
+    }
+
+    /// <summary>What the report was filtered to, printed under the figures. A printed report that
+    /// does not say what it excluded is not evidence of anything -- the reader cannot tell an empty
+    /// result from a filter that hid everything.</summary>
+    public void FilterStatement(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+
+        EnsureSpace(20);
+        _gfx.DrawString(text, _footer, new XSolidBrush(Muted), Margin, _y + 8);
+        _y += 18;
     }
 
     /// <summary>A run of ordinary prose -- the sentence a declaration makes about itself, which a

@@ -45,7 +45,9 @@ column list rather than 400 lines of copied chrome:
 | `ReportSheet.razor` | The paginated A4 sheet: masthead on page 1, continued header after, footer with page N of M. Takes a title, a stat list and the filter statement. |
 | `ReportStatBand.razor` | The four-up figure band. |
 | `ReportToolbar.razor` | Search, the filter slots a report supplies, Excel, Print/PDF. `noprint`. |
-| `ReportExport.cs` | One CSV writer, BOM-prefixed for Excel, replacing the copy in `RpTransactionRegisterPage` and `AuditLogDetailed`. |
+| `ReportWorkbook.cs` | The `.xlsx` writer: one sheet, frozen header row, auto-width columns, the filter statement in a note row above the table. |
+| `ReportPdfBuilder.cs` | The `.pdf` writer, over the existing `DeclarationPdfWriter` in landscape. |
+| `ReportViewer.razor` | The viewing chrome around the sheet: zoom, fit-to-width, page navigation, full-screen. `noprint`. |
 
 Print CSS goes in `app.css` beside the existing `@media print` block rather than inline as the
 design has it — the existing rules already solve the hard part (an overlay nested deep inside
@@ -93,18 +95,47 @@ screen does — not a direct `SaveChanges` from a report page. If that proves aw
 comes out and the report links to the member instead. A silent access change is the one outcome
 not on the table.
 
-**Excel means CSV with a BOM**, as the design does and as the register page already does — not a
-real xlsx. Nobody has asked for formulas or formatting, and a UTF-8 BOM is what makes Excel open
-Arabic names correctly.
+**Three ways out of every report, and they agree with each other.**
+
+- *Print* — the browser prints the sheet as shown, via the `@media print` rules already in
+  `app.css`. The viewing chrome is `noprint`; the sheet, its masthead and its footer are what
+  lands on paper.
+- *PDF* — generated on the server with PDFsharp, not by asking the browser to print to file. A
+  file that arrives by email must look the same for everyone who opens it, and the browser's
+  print-to-PDF stamps its own header and margins. `DeclarationPdfWriter` already draws the
+  navy/gold band, the paginated `DataTable` and the "Page X of N" footer for the declaration
+  PDFs; it gains a landscape option and the reports use it, so the report PDFs and the
+  declaration PDFs are recognisably the same documents.
+- *Excel* — a real `.xlsx` via ClosedXML, not CSV. CSV loses the header formatting, loses the
+  column widths on every open, and asks the reader to trust their locale for dates and numbers.
+  The register page's hand-rolled CSV moves onto the same writer.
+
+All three carry the same filter statement, so a PDF, a spreadsheet and a printout of the same
+report can be compared and can be told apart.
 
 **The legacy RDLC reports are not fixed.** Once a report is rebuilt, the old route is dead. It is
 worth confirming with the business that nobody has bookmarked `/ReportViews/…` before the old app
 is retired.
 
+## Viewing the report
+
+The RDLC viewer the reports are leaving had a real toolbar — page forward and back, jump to page,
+zoom in and out, fit to width. Losing that is a downgrade even when everything else improves, so
+`ReportViewer` carries it:
+
+- **Zoom** in fixed steps, plus **fit to width** and **fit whole page**, because an A4 landscape
+  sheet is wider than most windows and the default of "shrink until it fits" makes a 12-column
+  table unreadable.
+- **Page navigation** — first/previous/next/last, a page number to type into, and `N of M`.
+- **Full screen**, which is what the report is actually read in.
+- The sheet stays a fixed 1123×794 at 100%; zoom scales it with a CSS transform rather than
+  reflowing, so what is on screen is what prints and what the PDF contains.
+
 ## Build order
 
-1. `ReportSheet` / `ReportStatBand` / `ReportToolbar` / `ReportExport`, proven by rendering against
-   the real `app.css` at A4 landscape before any report uses them.
+1. `ReportSheet` / `ReportStatBand` / `ReportToolbar` / `ReportViewer`, plus `ReportWorkbook` and
+   `ReportPdfBuilder`, proven by rendering against the real `app.css` at A4 landscape and by
+   opening a generated `.xlsx` and `.pdf`, before any report uses them.
 2. **Users Report** — the design is in hand, and it is the one with no CGTOOL equivalent at all.
 3. **NIN Report of Submissions** — a flat table, so it exercises the chrome with no per-record view.
 4. **Insider Submission Report** — retrofit the stat band, add `ModifiedOn`/`ModifiedBy`.

@@ -271,13 +271,13 @@ deadline the escalation job now reads — are what the screen offers.
 
 1. **What are the DoA value bands, per entity?** Screen 7 cannot be specified without
    them, and screens 1 and 4 depend on it.
-2. **Where does the counter-party list come from** — the standing Related Party Master
-   (`/reports/related-party-master`), which is what §3.2 says, or submitted declarations,
-   which is what `RelatedPartyMasterSource` does today? **Still open.** The pre-checks read the
-   standing master, because that is what §3.2 names; the dropdown still offers what declarations
-   held, because changing what is selectable is a behaviour change nobody asked for. A name can
-   therefore be selectable and unknown to the check, which reads as "not on the Related Party
-   Master" — a warning, not a refusal. That warning is the mismatch, showing itself.
+2. ~~**Where does the counter-party list come from?**~~ **Settled: the standing Related Party
+   Master**, which is what §3.2 names. The dropdown and the pre-checks now read the same source, so
+   they agree. Names that only a submitted declaration ever held are still offered, under a
+   "Declared elsewhere" group — a declarant can decline the "update My Register?" prompt, and a
+   name that used to be selectable must not silently stop being selectable. This also removed the
+   setup blocker: a deployment with no submitted declarations had an empty dropdown and could not
+   raise a transaction at all.
 3. **May an approver bulk-approve?** Left out above on purpose.
 4. **Is "latest version" in §3.3 intended?** Read literally, a notification is a live
    view rather than a record of what was sent, so a stage 1 email opened after stage 3

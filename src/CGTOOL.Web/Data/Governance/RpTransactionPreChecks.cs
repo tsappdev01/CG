@@ -144,10 +144,10 @@ public class RpTransactionPreCheckService(IDbContextFactory<ApplicationDbContext
     private record MasterMatch(int MemberId, string OwnerName, string Why, DateTime? TradeLicenceExpiry);
 
     /// <summary>Looks the counter-party up on the standing Related Party Master -- the entities, the
-    /// members, their relatives and the companies either holds. This is what §3.2 means by "Related
-    /// Party Master"; the transaction form's own dropdown is still fed from submitted declarations
-    /// (RelatedPartyMasterSource), so a name can be selectable here and unknown to this check. That
-    /// mismatch is exactly what the warning is for.</summary>
+    /// members, their relatives and the companies either holds. The form's dropdown now reads the
+    /// same master (RelatedPartyMasterSource), so the two agree. The "not on the master" warning
+    /// still exists because the dropdown also carries names that only a submitted declaration held,
+    /// and because a transaction can be re-checked long after it was raised.</summary>
     private static async Task<MasterMatch?> FindOnMasterAsync(ApplicationDbContext db, string name)
     {
         var company = await db.Companies.AsNoTracking()

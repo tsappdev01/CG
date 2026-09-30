@@ -64,12 +64,23 @@
                     <span>Name of the counter-party</span>
                     <select class="cg-input" @bind:get="_counterPartyName" @bind:set="OnCounterPartyChangedAsync">
                         <option value="">Select a related party…</option>
-                        @foreach (var name in _counterPartyNames)
+                        @foreach (var group in RelatedPartyMasterSource.Grouped(_counterParties))
                         {
-                            <option value="@name">@name</option>
+                            <optgroup label="@group.Key">
+                                @foreach (var option in group)
+                                {
+                                    <option value="@option.Name">@option.Name@(option.Description is { Length: > 0 } why ? $" — {why}" : "")</option>
+                                }
+                            </optgroup>
                         }
                     </select>
-                    <p class="cg-subtitle">Sourced from the Related Party Register -- every related party in the company: declarants (Normal User/BOD/Executive Member), their declared relatives, and their declared company interests.</p>
+                    <p class="cg-subtitle">
+                        The Related Party Master: the group entities, everyone on the register, their relatives, and the
+                        companies either holds. Maintained in
+                        <a href="/my-register">My Register</a> and on the
+                        <a href="/reports/related-party-master">Related Party Master</a> report — it does not wait for a
+                        declaration cycle. Missing someone? Add them to My Register and reload this page.
+                    </p>
                 </label>
                 <label class="cg-field">
                     <span>Transaction Value</span>
@@ -172,9 +183,14 @@
                                                     <span>Name of the counter-party</span>
                                                     <select class="cg-input" @bind="_amendCounterPartyName">
                                                         <option value="">Select a related party…</option>
-                                                        @foreach (var name in _counterPartyNames)
+                                                        @foreach (var group in RelatedPartyMasterSource.Grouped(_counterParties))
                                                         {
-                                                            <option value="@name">@name</option>
+                                                            <optgroup label="@group.Key">
+                                                                @foreach (var option in group)
+                                                                {
+                                                                    <option value="@option.Name">@option.Name</option>
+                                                                }
+                                                            </optgroup>
                                                         }
                                                     </select>
                                                 </label>

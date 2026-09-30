@@ -38,6 +38,26 @@ public partial class Settings
 
     private bool IsSectionOpen(string title) => _openSections.Contains(title);
 
+    /// <summary>The label of the ancestor that is switched off, or null when nothing above this
+    /// section is hiding it. Hiding a parent hides every item beneath it (NavMenuCatalog.
+    /// EffectiveState walks up), so a section could read "5 of 5 shown" while none of the five
+    /// appeared anywhere -- which is exactly how someone loses a whole menu and cannot see why.</summary>
+    private string? ParentHidden(OrderGroup group)
+    {
+        if (group.ParentKey is null) return null;
+
+        var current = group.ParentKey;
+        while (current is not null)
+        {
+            if (_navVisibility.TryGetValue(current, out var state) && state != NavMenuItemState.Visible)
+            {
+                return NavMenuCatalog.Items.FirstOrDefault(i => i.Key == current)?.Label ?? current;
+            }
+            current = NavMenuCatalog.Items.FirstOrDefault(i => i.Key == current)?.ParentKey;
+        }
+        return null;
+    }
+
     private void ToggleSection(string title)
     {
         if (!_openSections.Remove(title))

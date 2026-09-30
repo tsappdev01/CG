@@ -3636,6 +3636,10 @@ button.cg-appbar-user {
 
 .cg-band { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
 
+/* A section whose parent is switched off: the warning has to outrank the neutral count it
+   replaces, because the whole point is that it contradicts what the section otherwise implies. */
+.cg-menu-section-hidden { color: var(--cg-critical); font-weight: 650; }
+
 /* ================= Progress and loading indicators =================
 
    The house standard, in scripts/progress-indicators.md: one indicator per kind of wait, chosen by

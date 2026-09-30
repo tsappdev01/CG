@@ -33,7 +33,17 @@
                         @onclick="() => ToggleSection(group.Title)" aria-expanded="@open">
                     <span class="cg-menu-chevron" aria-hidden="true"></span>
                     <span class="cg-menu-section-title">@group.Title</span>
-                    <span class="cg-menu-section-count">@VisibleCount(items) of @items.Count shown</span>
+                    @* "5 of 5 shown" is a lie when the section's own entry under Main sections is
+                       hidden: hiding a parent hides everything beneath it, and the count of its
+                       children says nothing about that. *@
+                    @if (ParentHidden(group) is { Length: > 0 } hiddenParent)
+                    {
+                        <span class="cg-menu-section-count cg-menu-section-hidden">Hidden — @hiddenParent is off under Main sections</span>
+                    }
+                    else
+                    {
+                        <span class="cg-menu-section-count">@VisibleCount(items) of @items.Count shown</span>
+                    }
                 </button>
 
                 @if (open)

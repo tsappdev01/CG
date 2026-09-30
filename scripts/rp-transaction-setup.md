@@ -4,8 +4,8 @@ What has to be true before anyone can raise a transaction, in the order it has t
 module itself is built ([design](rp-transaction-design.md), [workflow](rp-transaction-workflow.md));
 this is the configuration it needs to run.
 
-Read the **blocker** first. Three of the five setup steps are optional; that one is not, and it is
-not obvious.
+Steps 0, 2 and 3 are required. Steps 1 and 4 are about making the module useful rather than making
+it work.
 
 ---
 
@@ -32,29 +32,31 @@ a transaction is waiting. See the outbound-email section of `README.md`.
 
 ---
 
-## 1. The blocker: the counter-party list comes from submitted COI declarations
+## 1. The Related Party Master — who can be a counter-party
 
-**A brand new deployment has an empty counter-party dropdown, and nobody can raise a transaction.**
+The counter-party dropdown reads the **standing Related Party Master**, grouped:
 
-The dropdown is fed by `RelatedPartyMasterSource`, which reads the names out of **submitted**
-(non-draft) Related Party & COI declarations: each declarant's declared relatives, and the companies
-declared in their I.B/I.C/I.D sections. No submitted declarations means no names.
+| Group | From |
+| --- | --- |
+| Group entities | Active companies on the register |
+| Users | Active members |
+| Relatives | Every relative in My Register |
+| Members' companies | My Register → My Companies |
+| Relatives' companies | The companies a relative holds |
+| Declared elsewhere | Names that only a submitted COI declaration ever held |
 
-So before anything else:
+This is reference data, maintained directly, so **it does not wait for a declaration cycle**. Add a
+relative or a company in **My Register** and it is selectable on the next page load. Check what is
+there at `/reports/related-party-master`.
 
-1. **Declaration Setup → Notifications → Conflict of Interest** — configure and send a cycle.
-2. Have at least the people who will raise transactions **submit** their RP & COI declaration
-   (`/declarations/related-party-coi`). A draft does not count.
-3. Check `/reports/related-party-register` shows their relatives and companies.
+Each option says why it is a related party — "Ahmed Khan — Nayyar Ali Khan's Spouse" — so the
+requestor is not picking a bare name out of a list of two hundred.
 
-Only then does `/rp-transactions/new` have anything to select.
-
-> This is the open design question in `rp-transaction-design.md`: §3.2 of the spec says the dropdown
-> should come from the standing **Related Party Master** (`/reports/related-party-master`), which is
-> maintained directly and does not need a declaration cycle. The pre-checks already read that
-> master; the dropdown does not. Until that is settled, the declaration cycle is the prerequisite.
-
----
+> Until recently this list came from submitted COI declarations instead, which meant a fresh
+> deployment had an empty dropdown and nobody could raise a transaction. Declared names are still
+> carried, under **Declared elsewhere**, so nothing that used to be selectable stopped being
+> selectable — a declarant can decline the "update My Register?" prompt, and a transaction in flight
+> must not lose its counter-party.
 
 ## 2. Entities — give each one an approving authority
 
@@ -135,7 +137,7 @@ Raise one real transaction and walk it through. Fifteen minutes, and it exercise
 
 | # | As | Do | Expect |
 | --- | --- | --- | --- |
-| 1 | A requestor | `/rp-transactions/new` | The counter-party list has names. If empty, step 1 is not done. |
+| 1 | A requestor | `/rp-transactions/new` | The counter-party list is grouped and populated from the master. |
 | 2 | | Pick a counter-party, enter a value and a description | The Checks panel fills in: whether the counter-party is on the master, whose relationship it is, and where it will route |
 | 3 | | Submit | The overlay appears, then the transaction shows under My Transactions as *Awaiting Approval* |
 | 4 | The approver | `/rp-transactions/approvals` | It is in the queue, with an SLA meter counting to the 30-day escalation |
@@ -154,11 +156,11 @@ Transactions, amends it, and saving resubmits it to the same approver.
 
 | Symptom | Cause |
 | --- | --- |
-| Counter-party dropdown is empty | No submitted COI declarations — step 1 |
+| Counter-party dropdown is empty | Nothing in My Register and no entities or users — step 1 |
 | "No Approver is configured for your entity" | No approving authority on the Company — step 2 |
 | CCAO Review says "restricted to the CCAO position" | Nobody has RP Transaction Role = CCAO — step 3 |
 | No emails arrive anywhere | `Smtp:SqlDbMailProfile` unset — step 0 |
-| RP Transactions missing from the menu | The member lacks the *Related Party Transaction* access flag — step 3 |
+| RP Transactions missing from the menu | Either the member lacks the *Related Party Transaction* access flag (step 3), or the whole group is switched off under **Admin Panel → Settings → Main sections**. Hiding a parent hides everything under it, so the RP Transactions card can read "5 of 5 shown" while nothing appears; it now says so instead. |
 | Value does not change the route | No Delegation of Authority for that entity — step 4. Working as configured, not broken. |
 | "Invalid column name" when deploying the procedures | Procedures run before migrations — step 0 |
 

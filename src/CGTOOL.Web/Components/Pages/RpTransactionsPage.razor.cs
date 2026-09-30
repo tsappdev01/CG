@@ -14,7 +14,7 @@ public partial class RpTransactionsPage
     private Member? _effectiveMember;
     private string _activeTab = "new";
 
-    private List<string> _counterPartyNames = [];
+    private List<RelatedPartyOption> _counterParties = [];
     private List<RelatedPartyTransaction> _myTransactions = [];
 
     private string _counterPartyName = string.Empty;
@@ -63,7 +63,7 @@ public partial class RpTransactionsPage
             return;
         }
 
-        _counterPartyNames = await RelatedPartyMasterSource.GetNamesAsync(db);
+        _counterParties = await RelatedPartyMasterSource.GetOptionsAsync(db);
         await LoadMyTransactionsAsync();
 
         _step = Step.Ready;
@@ -306,7 +306,7 @@ public partial class RpTransactionsPage
             _pendingDocuments.Clear();
 
             await LoadMyTransactionsAsync();
-            _counterPartyNames = await RelatedPartyMasterSource.GetNamesAsync(db);
+            _counterParties = await RelatedPartyMasterSource.GetOptionsAsync(db);
             _activeTab = "mine";
         }
         finally

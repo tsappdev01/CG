@@ -80,7 +80,7 @@
                         <div class="cg-detail-head">
                             <div>
                                 <div class="cg-detail-title">@RpTransactionDisplay.Reference(s) · @s.CounterPartyName</div>
-                                <div class="cg-detail-sub">@ArrivedBy(s) · raised @s.DateOfRequest.ToString("dd/MM/yyyy") by @(s.Member?.FullName ?? s.SubmittedByName)</div>
+                                <div class="cg-detail-sub">@ArrivedBy(s) · raised @s.DateOfRequest.ToString("dd/MM/yyyy") by @RpTransactionDisplay.Person(s.Member, s.SubmittedByName)</div>
                             </div>
                             <div style="text-align:right;">
                                 <div class="cg-detail-amount">AED @s.TransactionValue.ToString("N2")</div>
@@ -93,9 +93,9 @@
                         <h2 style="margin-top:18px;">Transaction</h2>
                         <div class="cg-facts">
                             <div><div class="cg-fact-label">Entity</div><div class="cg-fact-value">@(s.Company?.Name ?? "—")</div></div>
-                            <div><div class="cg-fact-label">Requestor</div><div class="cg-fact-value">@(s.Member?.FullName ?? s.SubmittedByName)</div></div>
+                            <div><div class="cg-fact-label">Requestor</div><div class="cg-fact-value">@RpTransactionDisplay.Person(s.Member, s.SubmittedByName)</div></div>
                             <div><div class="cg-fact-label">Counter-party</div><div class="cg-fact-value">@s.CounterPartyName</div></div>
-                            <div><div class="cg-fact-label">Approver</div><div class="cg-fact-value">@(s.ApproverMember?.FullName ?? "—")</div></div>
+                            <div><div class="cg-fact-label">Approver</div><div class="cg-fact-value">@RpTransactionDisplay.Person(s.ApproverMember)</div></div>
                         </div>
 
                         <div class="cg-fact-label">Description, including material terms and conditions</div>
@@ -113,7 +113,7 @@
                         }
 
                         <h2 style="margin-top:20px;">What has happened so far</h2>
-                        <RpTimeline Transaction="s" />
+                        <RpTimeline Transaction="s" CcaoHolders="_ccaoHolders" />
 
                         @if (_activeTab == "review")
                         {

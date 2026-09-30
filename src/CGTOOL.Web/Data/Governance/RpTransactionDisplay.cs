@@ -43,14 +43,38 @@ public static class RpTransactionDisplay
         _ => string.Empty,
     };
 
-    /// <summary>Who currently needs to act. Terminal statuses have nobody left.</summary>
-    public static string PendingWith(RelatedPartyTransaction t) => t.Status switch
+    /// <summary>Who currently needs to act. Terminal statuses have nobody left.
+    ///
+    /// The CCAO is a position rather than a person, so it read as the bare word "CCAO" and told the
+    /// requestor nothing about who actually has their transaction. Pass the holders and it names
+    /// them; a screen that has not looked them up still gets the position, and no holders at all is
+    /// worth seeing as it stands -- it means nobody can act.</summary>
+    public static string PendingWith(RelatedPartyTransaction t, IReadOnlyList<Member>? ccaoHolders = null) => t.Status switch
     {
-        RpTransactionStatus.AwaitingApproval => t.ApproverMember?.FullName ?? "Approver",
-        RpTransactionStatus.Returned => t.Member?.FullName ?? "Requestor",
-        RpTransactionStatus.Approved or RpTransactionStatus.Escalated => "CCAO",
+        RpTransactionStatus.AwaitingApproval => Person(t.ApproverMember, "Approver"),
+        RpTransactionStatus.Returned => Person(t.Member, "Requestor"),
+        RpTransactionStatus.Approved or RpTransactionStatus.Escalated => CcaoName(ccaoHolders),
         _ => "—",
     };
+
+    private static string CcaoName(IReadOnlyList<Member>? holders) => holders switch
+    {
+        null or { Count: 0 } => "CCAO",
+        { Count: 1 } one => $"{Person(one[0])} (CCAO)",
+        _ => $"CCAO — {string.Join(", ", holders.Select(m => m.FullName))}",
+    };
+
+    /// <summary>A person as the screens name them: their full name, and the job title that says what
+    /// they are. Falls back to whatever name was recorded against the transaction where the member
+    /// is gone or was never linked -- that is a login name, which is better than nothing and is not
+    /// what anyone calls them, so it is only ever the fallback.</summary>
+    public static string Person(Member? member, string? recordedName = null)
+    {
+        var name = member?.FullName is { Length: > 0 } full ? full : recordedName;
+        if (string.IsNullOrWhiteSpace(name)) return "—";
+
+        return member?.JobTitle is { Length: > 0 } title ? $"{name} · {title}" : name;
+    }
 
     /// <summary>The reference as people quote it.</summary>
     public static string Reference(RelatedPartyTransaction t) => RelatedPartyTransaction.DisplayReference(t.Id);

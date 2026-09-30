@@ -166,7 +166,7 @@
                                     <td class="mono">@t.DateOfRequest.ToString("dd/MM/yyyy")</td>
                                     <td><span class="cg-status-pill @RpTransactionDisplay.StatusPillClass(t.Status)">@RpTransactionDisplay.StatusLabel(t.Status)</span></td>
                                     <td><RpStageDots Transaction="t" /></td>
-                                    <td>@RpTransactionDisplay.PendingWith(t)</td>
+                                    <td>@RpTransactionDisplay.PendingWith(t, _ccaoHolders)</td>
                                     <td>
                                         @if (CanAmend(t))
                                         {

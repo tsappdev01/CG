@@ -65,7 +65,7 @@
                         </div>
                         <div class="cg-queue-party">@t.CounterPartyName</div>
                         <div class="cg-queue-meta">
-                            <span>@(t.Member?.FullName ?? t.SubmittedByName)</span>
+                            <span>@RpTransactionDisplay.Person(t.Member, t.SubmittedByName)</span>
                             @if (RpTransactionDisplay.ApproverAge(t, DateTime.UtcNow) is { } age)
                             {
                                 <span class="cg-sla" data-tone="@RpTransactionDisplay.AgeTone(age.Remaining)">
@@ -90,7 +90,7 @@
                         <div>
                             <div class="cg-detail-title">@RpTransactionDisplay.Reference(s) · @s.CounterPartyName</div>
                             <div class="cg-detail-sub">
-                                Raised by @(s.Member?.FullName ?? s.SubmittedByName) (@(s.Company?.Name ?? "—")) · @s.DateOfRequest.ToString("dd/MM/yyyy")
+                                Raised by @RpTransactionDisplay.Person(s.Member, s.SubmittedByName) (@(s.Company?.Name ?? "—")) · @s.DateOfRequest.ToString("dd/MM/yyyy")
                                 @if (s.AmendmentCount > 0)
                                 {
                                     <span> · amended @(s.AmendmentCount == 1 ? "once" : $"{s.AmendmentCount} times")</span>
@@ -122,7 +122,7 @@
                     <h2 style="margin-top:18px;">Transaction</h2>
                     <div class="cg-facts">
                         <div><div class="cg-fact-label">Entity</div><div class="cg-fact-value">@(s.Company?.Name ?? "—")</div></div>
-                        <div><div class="cg-fact-label">Requestor</div><div class="cg-fact-value">@(s.Member?.FullName ?? s.SubmittedByName)</div></div>
+                        <div><div class="cg-fact-label">Requestor</div><div class="cg-fact-value">@RpTransactionDisplay.Person(s.Member, s.SubmittedByName)</div></div>
                         <div><div class="cg-fact-label">Counter-party</div><div class="cg-fact-value">@s.CounterPartyName</div></div>
                         <div><div class="cg-fact-label">Date of request</div><div class="cg-fact-value">@s.DateOfRequest.ToString("dd/MM/yyyy")</div></div>
                     </div>

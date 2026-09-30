@@ -18,6 +18,10 @@ public partial class RpTransactionCcaoReviewPage
     private Dictionary<int, bool> _documentationConfirmed = [];
 
     private List<string> _cfoEmails = [];
+    /// <summary>Whoever holds the CCAO position, loaded once so the screens can name the people a
+    /// transaction is waiting on instead of the position it is waiting at.</summary>
+    private List<Member> _ccaoHolders = [];
+
     private string _search = string.Empty;
     private string _sort = "value";
     private int? _selectedId;
@@ -169,6 +173,7 @@ public partial class RpTransactionCcaoReviewPage
         }
 
         _cfoEmails = await RpTransactionRoleResolver.GetRoleEmailsAsync(db, RpTransactionRole.Cfo);
+        _ccaoHolders = await RpTransactionRoleResolver.GetRoleMembersAsync(db, RpTransactionRole.Ccao);
 
         await LoadAsync();
         _step = Step.Ready;

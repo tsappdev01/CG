@@ -18,6 +18,10 @@ public partial class RpTransactionDetailPage
     private RelatedPartyTransaction? _transaction;
     private bool _loading = true;
     private bool _canAct;
+    /// <summary>Whoever holds the CCAO position, loaded once so the screens can name the people a
+    /// transaction is waiting on instead of the position it is waiting at.</summary>
+    private List<Member> _ccaoHolders = [];
+
     private string ActionLink => _transaction?.Status switch
     {
         RpTransactionStatus.AwaitingApproval => "/rp-transactions/approvals",
@@ -58,6 +62,7 @@ public partial class RpTransactionDetailPage
         {
             _transaction = transaction;
             _canAct = await MayActAsync(db, transaction);
+            _ccaoHolders = await RpTransactionRoleResolver.GetRoleMembersAsync(db, RpTransactionRole.Ccao);
         }
 
         _loading = false;

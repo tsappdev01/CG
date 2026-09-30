@@ -27,6 +27,11 @@ public partial class RpTransactionsPage
             : [new RelatedPartyOption(t.CounterPartyName, "On this transaction", "no longer on the Related Party Master"), .. _counterParties];
     private List<RelatedPartyTransaction> _myTransactions = [];
 
+    /// <summary>Whoever holds the CCAO position, loaded once so the screens can name the people a
+    /// transaction is waiting on instead of the position it is waiting at.</summary>
+    private List<Member> _ccaoHolders = [];
+
+
     private string _counterPartyName = string.Empty;
     private decimal? _transactionValue;
     private string _description = string.Empty;
@@ -74,6 +79,7 @@ public partial class RpTransactionsPage
         }
 
         _counterParties = await RelatedPartyMasterSource.GetOptionsAsync(db);
+        _ccaoHolders = await RpTransactionRoleResolver.GetRoleMembersAsync(db, RpTransactionRole.Ccao);
         await LoadMyTransactionsAsync();
 
         _step = Step.Ready;

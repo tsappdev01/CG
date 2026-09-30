@@ -26,7 +26,7 @@
             <div>
                 <div class="cg-detail-title">@RpTransactionDisplay.Reference(t) · @t.CounterPartyName</div>
                 <div class="cg-detail-sub">
-                    Raised by @(t.Member?.FullName ?? t.SubmittedByName) (@(t.Company?.Name ?? "—")) ·
+                    Raised by @RpTransactionDisplay.Person(t.Member, t.SubmittedByName) (@(t.Company?.Name ?? "—")) ·
                     @t.DateOfRequest.ToString("dd/MM/yyyy")
                     @if (t.AmendmentCount > 0)
                     {
@@ -54,10 +54,10 @@
                 <h2>Transaction</h2>
                 <div class="cg-facts">
                     <div><div class="cg-fact-label">Entity</div><div class="cg-fact-value">@(t.Company?.Name ?? "—")</div></div>
-                    <div><div class="cg-fact-label">Requestor</div><div class="cg-fact-value">@(t.Member?.FullName ?? t.SubmittedByName)</div></div>
+                    <div><div class="cg-fact-label">Requestor</div><div class="cg-fact-value">@RpTransactionDisplay.Person(t.Member, t.SubmittedByName)</div></div>
                     <div><div class="cg-fact-label">Counter-party</div><div class="cg-fact-value">@t.CounterPartyName</div></div>
                     <div><div class="cg-fact-label">Date of request</div><div class="cg-fact-value">@t.DateOfRequest.ToString("dd/MM/yyyy")</div></div>
-                    <div><div class="cg-fact-label">Approver</div><div class="cg-fact-value">@(t.ApproverMember?.FullName ?? "—")</div></div>
+                    <div><div class="cg-fact-label">Approver</div><div class="cg-fact-value">@RpTransactionDisplay.Person(t.ApproverMember)</div></div>
                     <div><div class="cg-fact-label">Released</div><div class="cg-fact-value">@(t.ReleasedAtUtc?.ToLocalDisplay("dd/MM/yyyy") ?? "—")</div></div>
                 </div>
 
@@ -101,7 +101,7 @@
 
             <div class="cg-sidepanel">
                 <h3>History</h3>
-                <RpTimeline Transaction="t" />
+                <RpTimeline Transaction="t" CcaoHolders="_ccaoHolders" />
             </div>
         </div>
     }

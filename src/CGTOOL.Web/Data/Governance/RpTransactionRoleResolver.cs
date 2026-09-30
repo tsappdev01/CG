@@ -8,6 +8,16 @@ namespace CGTOOL.Web.Data.Governance;
 /// their emails.</summary>
 public static class RpTransactionRoleResolver
 {
+    /// <summary>The people holding a position, for naming them on screen. A position is not a
+    /// person -- any number of active members can hold it -- so this returns all of them and the
+    /// caller decides how to say that.</summary>
+    public static Task<List<Member>> GetRoleMembersAsync(ApplicationDbContext db, RpTransactionRole role) =>
+        db.Members
+            .AsNoTracking()
+            .Where(m => m.Active && m.RpTransactionRole == role)
+            .OrderBy(m => m.FullName)
+            .ToListAsync();
+
     public static async Task<List<string>> GetRoleEmailsAsync(ApplicationDbContext db, RpTransactionRole role)
     {
         return await db.Members

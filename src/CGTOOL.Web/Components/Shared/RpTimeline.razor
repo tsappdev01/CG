@@ -4,14 +4,17 @@
 <ul class="cg-timeline">
     <li data-tone="good">
         <div class="cg-timeline-what">Raised</div>
-        <div class="cg-timeline-who">@(Transaction.SubmittedByName)@(Transaction.SubmittedOnBehalfOf is { Length: > 0 } behalf ? $" on behalf of {behalf}" : "") · @Transaction.DateOfRequest.ToLocalDisplay("dd MMM yyyy HH:mm")</div>
+        <div class="cg-timeline-who">
+            @RpTransactionDisplay.Person(Transaction.Member, Transaction.SubmittedByName)@(Transaction.SubmittedOnBehalfOf is { Length: > 0 } ? $" · filed by {Transaction.SubmittedByName}" : "") ·
+            @Transaction.DateOfRequest.ToLocalDisplay("dd MMM yyyy HH:mm")
+        </div>
     </li>
 
     @if (Transaction.AmendmentCount > 0)
     {
         <li>
             <div class="cg-timeline-what">Amended @(Transaction.AmendmentCount == 1 ? "once" : $"{Transaction.AmendmentCount} times")</div>
-            <div class="cg-timeline-who">@(Transaction.Member?.FullName ?? "Requestor") · last @Transaction.ModifiedAtUtc.ToLocalDisplay("dd MMM yyyy HH:mm")</div>
+            <div class="cg-timeline-who">@RpTransactionDisplay.Person(Transaction.Member, "Requestor") · last @Transaction.ModifiedAtUtc.ToLocalDisplay("dd MMM yyyy HH:mm")</div>
         </li>
     }
 
@@ -19,7 +22,7 @@
     {
         <li data-tone="@(approverAction == RpApproverAction.Approve ? "good" : approverAction == RpApproverAction.Reject ? "critical" : "")">
             <div class="cg-timeline-what">@RpTransactionDisplay.ApproverActionLabel(approverAction)</div>
-            <div class="cg-timeline-who">@(Transaction.ApproverMember?.FullName ?? "Approver") · @(Transaction.ApproverActionAtUtc?.ToLocalDisplay("dd MMM yyyy HH:mm") ?? "—")</div>
+            <div class="cg-timeline-who">@RpTransactionDisplay.Person(Transaction.ApproverMember, "Approver") · @(Transaction.ApproverActionAtUtc?.ToLocalDisplay("dd MMM yyyy HH:mm") ?? "—")</div>
             @if (!string.IsNullOrWhiteSpace(Transaction.ApproverRemarks))
             {
                 <div class="cg-timeline-note">@Transaction.ApproverRemarks</div>
@@ -67,6 +70,10 @@
 @code {
     [Parameter, EditorRequired] public RelatedPartyTransaction Transaction { get; set; } = default!;
 
+    /// <summary>Whoever holds the CCAO position, so the open end of the timeline can name them
+    /// rather than saying "With CCAO" to someone waiting to find out who that is.</summary>
+    [Parameter] public IReadOnlyList<Member>? CcaoHolders { get; set; }
+
     /// <summary>The open end of the timeline: who it is with, and — while it is with an approver —
     /// when it escalates by itself. Null once nobody is left to act.</summary>
     private string? Waiting
@@ -75,7 +82,7 @@
         {
             if (Transaction.Status is RpTransactionStatus.Rejected or RpTransactionStatus.ReleasedToRegister) return null;
 
-            var with = $"With {RpTransactionDisplay.PendingWith(Transaction)}";
+            var with = $"With {RpTransactionDisplay.PendingWith(Transaction, CcaoHolders)}";
             if (RpTransactionDisplay.ApproverAge(Transaction, DateTime.UtcNow) is not { } age) return with;
 
             return $"{with} · {age.Elapsed} day{(age.Elapsed == 1 ? "" : "s")} · " +

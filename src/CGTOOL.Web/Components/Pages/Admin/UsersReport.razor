@@ -1,0 +1,49 @@
+@page "/reports/users"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+
+<PageTitle>Users Report</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1 data-icon="report">Users report</h1>
+    <p class="cg-subtitle">Everyone with a CGTOOL account, which entity they belong to, and which parts of the system each of them can reach.</p>
+
+    @if (_members is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <ReportViewer Report="Build()">
+            <Filters>
+                <div class="cg-search-wrap">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                    <input type="search" placeholder="Name or email…" @bind="_search" @bind:event="oninput" aria-label="Search name or email" />
+                </div>
+
+                <select class="cg-input" style="width:auto;" @bind="_companyFilter" aria-label="Filter by entity">
+                    <option value="0">All entities</option>
+                    @foreach (var c in _companies ?? [])
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </select>
+
+                <select class="cg-input" style="width:auto;" @bind="_accessFilter" aria-label="Filter by access">
+                    <option value="">Any access</option>
+                    <option value="coi">RP &amp; COI Declaration</option>
+                    <option value="insider">Insider Declaration</option>
+                    <option value="register">Related Party Register</option>
+                    <option value="rptm">RP Transaction Monitoring</option>
+                    <option value="none">No access at all</option>
+                </select>
+
+                <select class="cg-input" style="width:auto;" @bind="_statusFilter" aria-label="Filter by status">
+                    <option value="active">Active only</option>
+                    <option value="inactive">Inactive only</option>
+                    <option value="">Active and inactive</option>
+                </select>
+            </Filters>
+        </ReportViewer>
+    }
+</div>

@@ -42,6 +42,7 @@ public static class NavMenuCatalog
         new("DeclarationSetup.Notifications", "Notifications", "DeclarationSetup"),
         new("DeclarationSetup.ScheduledMaintenance", "Scheduled Maintenance", "DeclarationSetup"),
 
+        new("Reports.Users", "Users", "Reports"),
         new("Reports.InsiderSubmission", "Insider Submission", "Reports"),
         new("Reports.RpCoiSubmission", "RP & COI Submission", "Reports"),
         new("Reports.RelatedPartyRegister", "Related Party Register", "Reports"),

@@ -135,6 +135,7 @@
                 @if (IsExpanded("Reports"))
                 {
                     <div class="cg-nav-submenu" style="order:@OrderOf("Reports");@HideOf("Reports")">
+                        <div class="nav-item px-3" style="order:@OrderOf("Reports.Users");@HideOf("Reports.Users")"><NavLink class="nav-link" href="reports/users">@LabelOf("Reports.Users")</NavLink></div>
                         <div class="nav-item px-3" style="order:@OrderOf("Reports.InsiderSubmission");@HideOf("Reports.InsiderSubmission")"><NavLink class="nav-link" href="reports/insider-declarations">@LabelOf("Reports.InsiderSubmission")</NavLink></div>
                         <div class="nav-item px-3" style="order:@OrderOf("Reports.RpCoiSubmission");@HideOf("Reports.RpCoiSubmission")"><NavLink class="nav-link" href="reports/related-party-coi-declarations">@LabelOf("Reports.RpCoiSubmission")</NavLink></div>
                         <div class="nav-item px-3" style="order:@OrderOf("Reports.RelatedPartyRegister");@HideOf("Reports.RelatedPartyRegister")"><NavLink class="nav-link" href="reports/related-party-register">@LabelOf("Reports.RelatedPartyRegister")</NavLink></div>

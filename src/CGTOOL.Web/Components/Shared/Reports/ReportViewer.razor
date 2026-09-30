@@ -1,0 +1,245 @@
+@using System.Globalization
+@using CGTOOL.Web.Data.Reports
+@inject IJSRuntime JS
+@inject IWebHostEnvironment Env
+
+@* The chrome every report is read through: the filter line, the three ways out (print, PDF,
+   Excel), the paginated sheets themselves, and the viewer controls under them.
+
+   A report page supplies a ReportDocument and its own filter controls; everything else here is
+   the same for all of them, so adding a report is a query and a column list rather than four
+   hundred lines of copied furniture. *@
+
+<div class="cg-report" @ref="_root">
+    <div class="cg-report-toolbar no-print">
+        <div class="cg-report-filters">@Filters</div>
+        <div class="cg-report-tools">
+            <button type="button" class="cg-action-btn" @onclick="DownloadWorkbookAsync" disabled="@_busy">Excel</button>
+            <button type="button" class="cg-action-btn" @onclick="DownloadPdfAsync" disabled="@_busy">PDF</button>
+            <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print</button>
+        </div>
+    </div>
+
+    <div class="cg-report-viewport" @ref="_viewport">
+        <div class="cg-report-sheets" style="@ScaleStyle">
+            @for (var i = 0; i < PageCount; i++)
+            {
+                var pageNumber = i + 1;
+                var rows = RowsOn(pageNumber);
+                <section class="cg-report-sheet" data-page="@pageNumber" style="@(pageNumber == _page || _showAllPages ? "" : "display:none;")">
+                    @if (pageNumber == 1)
+                    {
+                        <header class="cg-report-masthead">
+                            <div class="cg-report-brand">
+                                <img src="images/di-logo-en-transparent.png" alt="Dubai Investments" />
+                            </div>
+                            <div class="cg-report-headline">
+                                <div class="cg-report-kicker">Corporate Governance Tool</div>
+                                <h2>@Report.Title</h2>
+                            </div>
+                            <dl class="cg-report-meta">
+                                <dt>Date</dt><dd>@Report.GeneratedAt.ToString("dd/MM/yyyy")</dd>
+                                <dt>Prepared by</dt><dd>@Report.PreparedBy</dd>
+                                <dt>Records</dt><dd>@Report.Rows.Count</dd>
+                            </dl>
+                        </header>
+
+                        @if (Report.Stats.Count > 0)
+                        {
+                            <div class="cg-report-stats">
+                                @foreach (var stat in Report.Stats)
+                                {
+                                    <div>
+                                        <div class="cg-report-stat-label">@stat.Label</div>
+                                        <div class="cg-report-stat-value">
+                                            @stat.Value
+                                            @if (stat.Sub is { Length: > 0 } sub)
+                                            {
+                                                <span>@sub</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <div class="cg-report-filter-line">
+                            Filters: @(Report.FilterStatement is { Length: > 0 } f ? f : "none")
+                        </div>
+                    }
+                    else
+                    {
+                        <header class="cg-report-continued">
+                            <span>Dubai Investments · @Report.Title</span>
+                            <span>@Report.GeneratedAt.ToString("dd/MM/yyyy") · continued</span>
+                        </header>
+                    }
+
+                    <div class="cg-report-body">
+                        <table class="cg-report-table">
+                            <colgroup>
+                                @foreach (var column in Report.Columns)
+                                {
+                                    <col style="width:@(column.Width.ToString("0.###", CultureInfo.InvariantCulture))%" />
+                                }
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    @foreach (var column in Report.Columns)
+                                    {
+                                        <th>@column.Header</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in rows)
+                                {
+                                    <tr>
+                                        @for (var c = 0; c < Report.Columns.Count; c++)
+                                        {
+                                            <td>@(c < row.Length ? row[c] : string.Empty)</td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        @if (Report.Rows.Count == 0)
+                        {
+                            <div class="cg-report-empty">No records match the current filters.</div>
+                        }
+                    </div>
+
+                    <footer class="cg-report-foot">
+                        <span>Confidential · For internal compliance use only</span>
+                        <span>cg.dubaiinvestments.com</span>
+                        <span class="cg-report-page-no">Page @pageNumber of @PageCount</span>
+                    </footer>
+                </section>
+            }
+        </div>
+    </div>
+
+    <div class="cg-report-controls no-print">
+        <div class="cg-report-zoom">
+            <button type="button" class="cg-icon-btn" title="Zoom out" @onclick="ZoomOut" disabled="@(_zoom <= MinZoom)">−</button>
+            <span class="cg-report-zoom-level">@((_zoom * 100).ToString("0"))%</span>
+            <button type="button" class="cg-icon-btn" title="Zoom in" @onclick="ZoomIn" disabled="@(_zoom >= MaxZoom)">+</button>
+            <button type="button" class="cg-action-btn" @onclick="FitWidth">Fit width</button>
+            <button type="button" class="cg-action-btn" @onclick="() => _zoom = 1">100%</button>
+        </div>
+
+        <div class="cg-report-pager">
+            <button type="button" class="cg-icon-btn" title="First page" @onclick="() => GoTo(1)" disabled="@(_page <= 1 || _showAllPages)">⏮</button>
+            <button type="button" class="cg-icon-btn" title="Previous page" @onclick="() => GoTo(_page - 1)" disabled="@(_page <= 1 || _showAllPages)">‹</button>
+            <span class="cg-report-page-of">
+                <input type="number" min="1" max="@PageCount" value="@_page" disabled="@_showAllPages"
+                       @onchange="e => GoTo(int.TryParse(e.Value?.ToString(), out var n) ? n : _page)" aria-label="Page number" />
+                of @PageCount
+            </span>
+            <button type="button" class="cg-icon-btn" title="Next page" @onclick="() => GoTo(_page + 1)" disabled="@(_page >= PageCount || _showAllPages)">›</button>
+            <button type="button" class="cg-icon-btn" title="Last page" @onclick="() => GoTo(PageCount)" disabled="@(_page >= PageCount || _showAllPages)">⏭</button>
+        </div>
+
+        <div class="cg-report-view-modes">
+            <label class="cg-report-all-pages">
+                <input type="checkbox" checked="@_showAllPages" @onchange="e => _showAllPages = (bool)e.Value!" />
+                All pages
+            </label>
+            <button type="button" class="cg-action-btn" @onclick="ToggleFullscreenAsync">@(_fullscreen ? "Exit full screen" : "Full screen")</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ReportDocument Report { get; set; } = default!;
+
+    /// <summary>The report's own filter controls, which differ per report -- a year and a quarter
+    /// for the submission reports, a date range for the trading one.</summary>
+    [Parameter] public RenderFragment? Filters { get; set; }
+
+    /// <summary>How many rows a continuation sheet holds. Page 1 holds fewer, because the masthead
+    /// and the figures take the space -- <see cref="RowsOnFirstPage"/>.</summary>
+    [Parameter] public int RowsPerPage { get; set; } = 16;
+
+    [Parameter] public int RowsOnFirstPage { get; set; } = 11;
+
+    private const double MinZoom = 0.5;
+    private const double MaxZoom = 2.0;
+
+    private ElementReference _root;
+    private ElementReference _viewport;
+    private double _zoom = 1;
+    private int _page = 1;
+    private bool _showAllPages;
+    private bool _fullscreen;
+    private bool _busy;
+
+    /// <summary>Zoom scales the sheet rather than reflowing it, so what is on screen is the same
+    /// 1123x794 sheet that prints and that the PDF contains. The wrapper's own height has to be
+    /// scaled with it: a transform does not change layout, so at 150% the sheet would otherwise
+    /// overlap whatever follows it.</summary>
+    private string ScaleStyle =>
+        $"transform:scale({_zoom.ToString("0.###", CultureInfo.InvariantCulture)});" +
+        $"transform-origin:top center;" +
+        $"margin-bottom:{((_zoom - 1) * 794 * (_showAllPages ? PageCount : 1)).ToString("0", CultureInfo.InvariantCulture)}px;";
+
+    private int PageCount => Math.Max(1, (int)Math.Ceiling(Math.Max(0, Report.Rows.Count - RowsOnFirstPage) / (double)RowsPerPage) + 1);
+
+    private IEnumerable<string[]> RowsOn(int pageNumber) => pageNumber == 1
+        ? Report.Rows.Take(RowsOnFirstPage)
+        : Report.Rows.Skip(RowsOnFirstPage + ((pageNumber - 2) * RowsPerPage)).Take(RowsPerPage);
+
+    private void GoTo(int page) => _page = Math.Clamp(page, 1, PageCount);
+
+    private void ZoomIn() => _zoom = Math.Min(MaxZoom, Math.Round(_zoom + 0.1, 2));
+    private void ZoomOut() => _zoom = Math.Max(MinZoom, Math.Round(_zoom - 0.1, 2));
+
+    /// <summary>Fit-to-width is measured rather than guessed: the viewport is whatever the window
+    /// and the sidebar leave, and an A4 landscape sheet is 1123px, so the ratio is the zoom.</summary>
+    private async Task FitWidth()
+    {
+        var width = await JS.InvokeAsync<double>("cgMeasureWidth", _viewport);
+        if (width > 0) _zoom = Math.Clamp(Math.Round((width - 48) / 1123.0, 2), MinZoom, MaxZoom);
+    }
+
+    private async Task ToggleFullscreenAsync() =>
+        _fullscreen = await JS.InvokeAsync<bool>("cgReportViewer.toggleFullscreen", _root);
+
+    /// <summary>Printing shows every page first. Printing what is on screen would otherwise print
+    /// page 4 alone, because the other sheets are display:none and a hidden element does not
+    /// print.</summary>
+    private async Task PrintAsync()
+    {
+        _showAllPages = true;
+        StateHasChanged();
+        await JS.InvokeVoidAsync("cgReportViewer.print");
+    }
+
+    private Task DownloadPdfAsync() => DownloadAsync(
+        () => ReportPdfBuilder.Build(Report, Path.Combine(Env.WebRootPath, "images", "di-logo-en-transparent.png")),
+        Report.FileName("pdf"),
+        "application/pdf");
+
+    private Task DownloadWorkbookAsync() => DownloadAsync(
+        () => ReportWorkbook.Build(Report),
+        Report.FileName("xlsx"),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+    /// <summary>Building either file is CPU work over every row, not just the page on screen, so it
+    /// runs off the circuit's thread -- a 300-page report otherwise freezes the whole UI, including
+    /// the button that started it.</summary>
+    private async Task DownloadAsync(Func<byte[]> build, string fileName, string contentType)
+    {
+        _busy = true;
+        try
+        {
+            var bytes = await Task.Run(build);
+            await JS.InvokeVoidAsync("downloadFileFromBase64", fileName, contentType, Convert.ToBase64String(bytes));
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

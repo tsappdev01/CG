@@ -3815,3 +3815,142 @@ button.cg-appbar-user {
     .cg-skeleton { animation: none; }
     .cg-blocking { backdrop-filter: none; }
 }
+
+/* ── Report viewer ─────────────────────────────────────────────────────────────
+   A report is read as the sheet it will be printed as, not as a web table that
+   reflows: 1123x794 at A4 landscape, fixed, with zoom scaling it rather than
+   rewrapping it. That way what is on screen, what prints and what the PDF
+   contains are the same document, and a reader can point at a row and say which
+   page it is on. The sheet keeps its own light colours in dark mode for the
+   same reason -- paper is white. */
+.cg-report { display: flex; flex-direction: column; gap: 14px; }
+
+.cg-report-toolbar {
+    display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+    padding: 12px 14px; background: var(--cg-surface); border: 1px solid var(--cg-line);
+    border-radius: var(--cg-radius-sm); box-shadow: var(--cg-shadow-sm);
+}
+.cg-report-filters { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; flex: 1; }
+.cg-report-tools { display: flex; gap: 8px; margin-left: auto; }
+
+.cg-report-viewport {
+    background: var(--cg-surface-sunken); border: 1px solid var(--cg-line);
+    border-radius: var(--cg-radius-sm); padding: 24px; overflow: auto;
+}
+.cg-report-sheets { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+
+.cg-report-sheet {
+    width: 1123px; min-height: 794px; flex: none;
+    display: flex; flex-direction: column;
+    background: #FFFFFF; color: #14212E;
+    box-shadow: 0 2px 14px rgba(10, 47, 77, .14);
+}
+
+.cg-report-masthead { display: flex; align-items: stretch; background: var(--cg-navy); color: #fff; }
+.cg-report-brand {
+    padding: 18px 28px; display: flex; align-items: center;
+    border-right: 1px solid rgba(255, 255, 255, .14);
+}
+.cg-report-brand img { height: 40px; }
+.cg-report-headline { flex: 1; padding: 18px 28px; display: flex; flex-direction: column; justify-content: center; }
+.cg-report-kicker { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--cg-gold); }
+.cg-report-headline h2 { font-size: 30px; font-weight: 650; line-height: 1.1; margin: 2px 0 0; color: #fff; }
+.cg-report-meta {
+    padding: 18px 28px; margin: 0; display: grid; grid-template-columns: auto auto;
+    gap: 2px 16px; align-content: center; font-size: 12px;
+}
+.cg-report-meta dt { color: #9FB3C6; }
+.cg-report-meta dd { margin: 0; font-weight: 600; }
+
+.cg-report-stats { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border-bottom: 1px solid #D3D8DE; }
+.cg-report-stats > div { padding: 11px 28px; border-right: 1px solid #E3E6EA; }
+.cg-report-stats > div:last-child { border-right: 0; }
+/* Two lines' worth of room whether the label needs it or not, so the figures sit
+   on one line across the band. Left to itself, "RP Transaction Monitoring" wraps,
+   its number drops half a line below the other four, and the band reads as a
+   mistake. */
+.cg-report-stat-label {
+    font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #56606B;
+    line-height: 1.3; min-height: 26px;
+}
+.cg-report-stat-value { font-size: 24px; font-weight: 650; line-height: 1.15; color: var(--cg-navy); }
+.cg-report-stat-value span { font-size: 11px; font-weight: 400; color: #56606B; margin-left: 5px; }
+
+.cg-report-filter-line { padding: 8px 28px 0; font-size: 11px; color: #56606B; }
+
+.cg-report-continued {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 28px; border-bottom: 3px solid var(--cg-navy);
+    font-size: 12px; color: #56606B;
+}
+.cg-report-continued span:first-child { font-size: 17px; font-weight: 650; color: var(--cg-navy); }
+
+.cg-report-body { flex: 1; padding: 12px 28px 0; }
+.cg-report-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+.cg-report-table thead tr { border-bottom: 2px solid var(--cg-gold); }
+.cg-report-table th {
+    text-align: left; padding: 8px 6px; font-size: 10px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--cg-navy); font-weight: 700; line-height: 1.25;
+}
+.cg-report-table td { padding: 7px 6px; overflow-wrap: anywhere; color: #2C3A47; }
+.cg-report-table tbody tr { border-bottom: 1px solid #E3E6EA; }
+.cg-report-table tbody tr:nth-child(even) { background: #F7F8FA; }
+.cg-report-empty { padding: 48px 0; text-align: center; color: #56606B; }
+
+.cg-report-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    margin: 0 28px; padding: 10px 0 14px; border-top: 1px solid #D3D8DE;
+    font-size: 10px; color: #56606B;
+}
+.cg-report-page-no { font-weight: 600; color: var(--cg-navy); }
+
+.cg-report-controls {
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    padding: 10px 14px; background: var(--cg-surface); border: 1px solid var(--cg-line);
+    border-radius: var(--cg-radius-sm);
+}
+.cg-report-zoom, .cg-report-pager, .cg-report-view-modes { display: flex; gap: 6px; align-items: center; }
+.cg-report-pager { margin: 0 auto; }
+.cg-report-zoom-level { font-size: 12px; color: var(--cg-ink-muted); min-width: 42px; text-align: center; }
+.cg-report-page-of { font-size: 12px; color: var(--cg-ink-muted); display: flex; gap: 6px; align-items: center; }
+.cg-report-page-of input {
+    width: 54px; height: 28px; padding: 2px 6px; font: inherit; font-size: 12px;
+    text-align: center; color: var(--cg-ink); background: var(--cg-surface);
+    border: 1px solid var(--cg-line-strong); border-radius: 6px;
+}
+.cg-report-all-pages { display: flex; gap: 5px; align-items: center; font-size: 12px; color: var(--cg-ink-muted); }
+
+/* Full screen puts the viewer on the browser's own backdrop, which is black by
+   default -- the sheet would float in it with no ground. */
+.cg-report:fullscreen { background: var(--cg-bg); padding: 16px; overflow: auto; }
+
+@media print {
+    /* The same :has() technique the declaration print modal uses, and for the same
+       reason: the sheets sit several levels inside div.page > main > article.content,
+       and a display:none ancestor hides them however they declare themselves. */
+    body:has(.cg-report-sheets) * { display: none !important; }
+    body:has(.cg-report-sheets) *:has(.cg-report-sheets) {
+        display: block !important; position: static !important;
+        height: 0 !important; min-height: 0 !important; max-height: none !important;
+        margin: 0 !important; padding: 0 !important; border: none !important;
+        background: none !important; overflow: visible !important;
+    }
+    .cg-report-sheets, .cg-report-sheets * { display: revert !important; }
+    .cg-report-sheets {
+        display: block !important; transform: none !important; margin: 0 !important;
+    }
+    .cg-report-sheet {
+        display: flex !important; width: auto !important; min-height: 0 !important;
+        box-shadow: none !important; margin: 0 !important;
+        break-after: page;
+    }
+    .cg-report-sheet:last-child { break-after: auto; }
+    .cg-report-viewport { overflow: visible !important; max-height: none !important; }
+}
+
+/* A *named* page rather than a bare `@page`, which is global: setting landscape
+   there would have turned every existing printout landscape too, including the
+   declaration print modals that are laid out for portrait. Only elements that
+   ask for this page by name get it. */
+@page cg-report-landscape { size: A4 landscape; margin: 8mm; }
+.cg-report-sheet { page: cg-report-landscape; }

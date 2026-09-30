@@ -451,6 +451,24 @@ LEFT JOIN [InsiderTrading].[dbo].[Companies] sc ON LTRIM(RTRIM(sc.Name)) = tc.Na
 LEFT JOIN [CGS].[dbo].[Members] am ON am.Id = tc.ApprovingAuthorityMemberId
 ORDER BY tc.Name;
 
+PRINT 'Users linked to more than one entity in dbo.UserCompanies -- CGTOOL gives a member one:';
+/* [ApplicationUsers].[CompanyId] is the entity a person belongs to, and that is
+   what migrated. [dbo].[UserCompanies] is a second, many-to-many list -- 337
+   rows across 657 users -- which reads as a viewing scope rather than
+   membership. CGTOOL has no equivalent, so nothing is invented for it here;
+   these are the people for whom that decision matters. */
+SELECT u.Id, u.Name, u.Email,
+       home.Name AS HomeEntity,
+       COUNT(*) AS ExtraEntityLinks,
+       STRING_AGG(oc.Name, ', ') WITHIN GROUP (ORDER BY oc.Name) AS LinkedEntities
+FROM [InsiderTrading].[dbo].[UserCompanies] uc
+JOIN [InsiderTrading].[dbo].[ApplicationUsers] u ON u.Id = uc.UserId
+JOIN [InsiderTrading].[dbo].[Companies] oc ON oc.Id = uc.CompanyId
+LEFT JOIN [InsiderTrading].[dbo].[Companies] home ON home.Id = u.CompanyId
+WHERE u.deleted_on IS NULL AND uc.CompanyId <> u.CompanyId
+GROUP BY u.Id, u.Name, u.Email, home.Name
+ORDER BY COUNT(*) DESC, u.Name;
+
 PRINT 'Users with a JobTitleID -- resolve against dbo.JobTitleMaster once its definition is in hand:';
 SELECT COUNT(*) AS UsersWithUnresolvedJobTitleId
 FROM [InsiderTrading].[dbo].[ApplicationUsers] u

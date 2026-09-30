@@ -273,11 +273,12 @@ deadline the escalation job now reads — are what the screen offers.
    them, and screens 1 and 4 depend on it.
 2. ~~**Where does the counter-party list come from?**~~ **Settled: the standing Related Party
    Master**, which is what §3.2 names. The dropdown and the pre-checks now read the same source, so
-   they agree. Names that only a submitted declaration ever held are still offered, under a
-   "Declared elsewhere" group — a declarant can decline the "update My Register?" prompt, and a
-   name that used to be selectable must not silently stop being selectable. This also removed the
-   setup blocker: a deployment with no submitted declarations had an empty dropdown and could not
-   raise a transaction at all.
+   they agree, and declarations are not a source at all: a name declared once and never added to
+   My Register is not on the master, and offering it would say it is. This also removed the setup
+   blocker — a deployment with no submitted declarations had an empty dropdown and could not raise
+   a transaction at all. A transaction already naming a counter-party that has since left the
+   master keeps it selectable on its own amend form, labelled, so amending something else cannot
+   silently change who it was with.
 3. **May an approver bulk-approve?** Left out above on purpose.
 4. **Is "latest version" in §3.3 intended?** Read literally, a notification is a live
    view rather than a record of what was sent, so a stage 1 email opened after stage 3

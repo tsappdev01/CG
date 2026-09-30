@@ -43,7 +43,10 @@ The counter-party dropdown reads the **standing Related Party Master**, grouped:
 | Relatives | Every relative in My Register |
 | Members' companies | My Register → My Companies |
 | Relatives' companies | The companies a relative holds |
-| Declared elsewhere | Names that only a submitted COI declaration ever held |
+
+**That is the whole list.** Declarations are not a source: a name declared once and never added to
+My Register is not on the master, and offering it would say it is. If someone should be selectable,
+add them to My Register.
 
 This is reference data, maintained directly, so **it does not wait for a declaration cycle**. Add a
 relative or a company in **My Register** and it is selectable on the next page load. Check what is
@@ -53,10 +56,13 @@ Each option says why it is a related party — "Ahmed Khan — Nayyar Ali Khan's
 requestor is not picking a bare name out of a list of two hundred.
 
 > Until recently this list came from submitted COI declarations instead, which meant a fresh
-> deployment had an empty dropdown and nobody could raise a transaction. Declared names are still
-> carried, under **Declared elsewhere**, so nothing that used to be selectable stopped being
-> selectable — a declarant can decline the "update My Register?" prompt, and a transaction in flight
-> must not lose its counter-party.
+> deployment had an empty dropdown and nobody could raise a transaction.
+>
+> One consequence of the change: a transaction already raised may name a counter-party that is no
+> longer on the master — declared once and never registered, or since removed. The **amend** form
+> keeps that name selectable for that transaction alone, labelled *no longer on the Related Party
+> Master*, so amending the value or the description cannot silently change who the transaction was
+> with. Nothing puts it back in the list for new transactions.
 
 ## 2. Entities — give each one an approving authority
 

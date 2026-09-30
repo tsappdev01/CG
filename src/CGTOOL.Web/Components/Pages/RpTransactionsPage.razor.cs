@@ -15,6 +15,16 @@ public partial class RpTransactionsPage
     private string _activeTab = "new";
 
     private List<RelatedPartyOption> _counterParties = [];
+
+    /// <summary>The list the amend form offers. The master is the only source for a new transaction,
+    /// but a transaction already raised may name a counter-party that has since left the master --
+    /// removed from My Register, or an entity deactivated. Dropping it from the list would leave the
+    /// select with nothing matching, so amending the value or the description would silently change
+    /// who the transaction was with. It is offered for that transaction alone, and marked.</summary>
+    private List<RelatedPartyOption> AmendOptions(RelatedPartyTransaction t) =>
+        _counterParties.Any(o => string.Equals(o.Name, t.CounterPartyName, StringComparison.OrdinalIgnoreCase))
+            ? _counterParties
+            : [new RelatedPartyOption(t.CounterPartyName, "On this transaction", "no longer on the Related Party Master"), .. _counterParties];
     private List<RelatedPartyTransaction> _myTransactions = [];
 
     private string _counterPartyName = string.Empty;

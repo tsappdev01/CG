@@ -18,10 +18,12 @@ public record RelatedPartyOption(string Name, string Group, string? Description)
 /// transacted with. The master has neither problem -- it is reference data, maintained directly, and
 /// does not wait for a declaration cycle.
 ///
-/// Declared names are still included. They are almost always a subset of the master (the declaration
-/// is populated from My Register), but a declarant can decline the "update My Register?" prompt, and
-/// a name that used to be selectable must not silently stop being selectable while transactions
-/// referring to it are in flight.</summary>
+/// Declarations are deliberately NOT a source. A name declared once and never added to My Register
+/// is not on the master, and offering it here would say it is. Where that name is the counter-party
+/// of a transaction already raised, the amend form keeps it selectable for that transaction alone
+/// (see RpTransactionsPage.AmendOptions) so amending something else cannot silently change who it
+/// was with -- but nothing puts it back in the list for new transactions. The fix for a name that
+/// should be there is to add it to My Register.</summary>
 public static class RelatedPartyMasterSource
 {
     public const string Entities = "Group entities";
@@ -29,12 +31,11 @@ public static class RelatedPartyMasterSource
     public const string Relatives = "Relatives";
     public const string MemberCompanies = "Members' companies";
     public const string RelativeCompanies = "Relatives' companies";
-    public const string Declared = "Declared elsewhere";
 
     /// <summary>The order the groups appear in the dropdown: the company's own entities first, then
     /// people, then the companies behind them.</summary>
     private static readonly string[] GroupOrder =
-        [Entities, Users, Relatives, MemberCompanies, RelativeCompanies, Declared];
+        [Entities, Users, Relatives, MemberCompanies, RelativeCompanies];
 
     /// <summary>Every related party, grouped. Names are distinct across the whole list -- a company
     /// held by two relatives is one option, described by the first relationship found, not two
@@ -74,19 +75,6 @@ public static class RelatedPartyMasterSource
                 h.FamilyMember!.Name + " — " + h.FamilyMember.Member!.FullName + "'s " + h.FamilyMember.Relationship.ToString()))
             .ToListAsync());
 
-        // What declarations held, for the names the master has not caught up with. Added last so
-        // that anything already on the master keeps its own group and its own description.
-        var declarations = await db.RelatedPartyCoiDeclarations
-            .AsNoTracking()
-            .Include(d => d.Relatives)
-            .Include(d => d.Companies)
-            .Where(d => !d.IsDraft)
-            .ToListAsync();
-
-        options.AddRange(declarations.SelectMany(d =>
-            d.Relatives.Select(r => new RelatedPartyOption(r.Name, Declared, "Declared relative"))
-             .Concat(d.Companies.Select(c => new RelatedPartyOption(c.LegalCompanyName, Declared, "Declared company interest")))));
-
         return options
             .Where(o => !string.IsNullOrWhiteSpace(o.Name))
             .GroupBy(o => o.Name.Trim(), StringComparer.OrdinalIgnoreCase)
@@ -96,7 +84,9 @@ public static class RelatedPartyMasterSource
             .ToList();
     }
 
-    /// <summary>The groups in display order, with their options. Empty groups are left out.</summary>
+    /// <summary>The groups in display order, with their options. Empty groups are left out. A group
+    /// this class does not define -- the amend form's "On this transaction" -- sorts first, which is
+    /// where the transaction's own counter-party belongs.</summary>
     public static IEnumerable<IGrouping<string, RelatedPartyOption>> Grouped(IEnumerable<RelatedPartyOption> options) =>
         options
             .GroupBy(o => o.Group)

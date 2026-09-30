@@ -75,9 +75,9 @@
                         }
                     </select>
                     <p class="cg-subtitle">
-                        The Related Party Master: the group entities, everyone on the register, their relatives, and the
-                        companies either holds. Maintained in
-                        <a href="/my-register">My Register</a> and on the
+                        The Related Party Master, and only that: the group entities, everyone on the register, their
+                        relatives, and the companies either holds. Maintained in
+                        <a href="/my-register">My Register</a> and shown on the
                         <a href="/reports/related-party-master">Related Party Master</a> report — it does not wait for a
                         declaration cycle. Missing someone? Add them to My Register and reload this page.
                     </p>
@@ -183,7 +183,7 @@
                                                     <span>Name of the counter-party</span>
                                                     <select class="cg-input" @bind="_amendCounterPartyName">
                                                         <option value="">Select a related party…</option>
-                                                        @foreach (var group in RelatedPartyMasterSource.Grouped(_counterParties))
+                                                        @foreach (var group in RelatedPartyMasterSource.Grouped(AmendOptions(t)))
                                                         {
                                                             <optgroup label="@group.Key">
                                                                 @foreach (var option in group)

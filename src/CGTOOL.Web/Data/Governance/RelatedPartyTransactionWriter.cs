@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.Data.SqlClient;
 
 namespace CGTOOL.Web.Data.Governance;
@@ -62,10 +63,15 @@ public class RelatedPartyTransactionWriter(IStoredProcedureExecutor sp) : IRelat
         new SqlParameter("@EscalationReason", (int)t.EscalationReason),
         new SqlParameter("@EscalatedAtUtc", (object?)t.EscalatedAtUtc ?? DBNull.Value));
 
+    // The status is spelled out with its type rather than passed as a bare value, because
+    // AwaitingApproval is zero and SqlParameter has both (string, object) and (string, SqlDbType)
+    // constructors: a compile-time 0 is implicitly convertible to any enum, so C# picks the
+    // SqlDbType overload and builds a parameter that carries a type and no value. It compiles, and
+    // SQL Server then refuses the call with "expects parameter '@Status', which was not supplied".
     public Task ResubmitAsync(int id) => sp.ExecuteAsync(
         "dbo.usp_RelatedPartyTransaction_Resubmit",
         new SqlParameter("@Id", id),
-        new SqlParameter("@Status", (int)RpTransactionStatus.AwaitingApproval));
+        new SqlParameter("@Status", SqlDbType.Int) { Value = (int)RpTransactionStatus.AwaitingApproval });
 
     public Task RecordCcaoActionAsync(RelatedPartyTransaction t) => sp.ExecuteAsync(
         "dbo.usp_RelatedPartyTransaction_RecordCcaoAction",

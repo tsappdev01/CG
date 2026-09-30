@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:#e4e6ea;color:#14212e;font-family:"Barlow",system-ui,sans-serif;font-size:14px;line-height:1.5}
+a{color:#0b3a5c;text-underline-offset:3px}a:hover{color:#a57f2c}
+:focus{outline:none}:focus-visible{outline:2px solid #b8913f;outline-offset:2px}
+@page{size:A4 landscape;margin:0}
+@media print{
+  body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .noprint{display:none !important}
+  .sheet-wrap{padding:0 !important;gap:0 !important}
+  [data-page]{display:flex !important;box-shadow:none !important;break-after:page;margin:0 !important}
+  .edit-only{pointer-events:none}
+}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column">
+  <header class="noprint" style="background:#0a2f4d;color:#fff;border-bottom:3px solid #b8913f">
+    <nav style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:24px;padding:14px 24px;flex-wrap:wrap">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:19px;margin-right:auto">Dubai Investments <span style="color:#d9bd7c;font-weight:400">· Compliance</span></div>
+      <div style="display:flex;gap:20px;font-size:14px;flex-wrap:wrap">
+        <a href="#" style="color:#fff;text-decoration:none">Home</a>
+        <a href="#" style="color:#c9d6e2;text-decoration:none">Transactions</a>
+        <a href="#" style="color:#c9d6e2;text-decoration:none">Add New</a>
+        <a href="#" style="color:#c9d6e2;text-decoration:none">Insider Declaration</a>
+        <a href="#" style="color:#c9d6e2;text-decoration:none">RP &amp; COI Declaration</a>
+      </div>
+      <div style="font-size:14px;color:#c9d6e2;padding-left:20px;border-left:1px solid rgba(255,255,255,.2)">Hello, lata!</div>
+    </nav>
+  </header>
+
+  <div class="noprint" style="background:#fff;border-bottom:1px solid #d3d8de;position:sticky;top:0;z-index:5">
+    <div style="max-width:1200px;margin:0 auto;padding:12px 24px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <label style="display:flex;flex-direction:column;gap:4px;flex:1 1 220px">
+        <span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#56606b">Search</span>
+        <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Name or email" style="height:36px;padding:6px 10px;font:inherit;font-size:14px;color:#14212e;background:#f4f5f7;border:1px solid #cdd3da">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;flex:0 1 190px">
+        <span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#56606b">Company</span>
+        <select value="{{ company }}" onChange="{{ onCompany }}" style="height:36px;padding:6px 8px;font:inherit;font-size:14px;color:#14212e;background:#f4f5f7;border:1px solid #cdd3da">
+          <sc-for list="{{ companies }}" as="c"><option value="{{ c }}">{{ c }}</option></sc-for>
+        </select>
+      </label>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#56606b">Has access</span>
+        <div style="display:flex;border:1px solid #cdd3da;height:36px">
+          <sc-for list="{{ accessOpts }}" as="o" hint-placeholder-count="4">
+            <button onClick="{{ o.pick }}" style="{{ o.style }}">{{ o.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button onClick="{{ toggleEdit }}" style="{{ editBtnStyle }}">{{ editLabel }}</button>
+        <button onClick="{{ exportCsv }}" style="height:36px;padding:0 14px;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:15px;background:#fff;color:#0a2f4d;border:1px solid #0a2f4d;cursor:pointer" style-hover="background:#eef2f6">Excel</button>
+        <button onClick="{{ print }}" style="height:36px;padding:0 16px;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:15px;background:#0a2f4d;color:#fff;border:1px solid #0a2f4d;cursor:pointer" style-hover="background:#123f63">Download PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet-wrap" style="flex:1;padding:28px 16px 20px;display:flex;flex-direction:column;align-items:center;gap:20px;overflow-x:auto">
+    <sc-for list="{{ pages }}" as="p" hint-placeholder-count="1">
+      <section data-page="{{ p.num }}" data-screen-label="Report page {{ p.num }}" style="{{ p.style }}">
+        <sc-if value="{{ p.first }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:stretch;background:#0a2f4d;color:#fff">
+            <div style="padding:22px 32px;display:flex;align-items:center;gap:14px;border-right:1px solid rgba(255,255,255,.14)">
+              <div style="width:34px;height:34px;background:#b8913f;border-radius:50% 50% 50% 0"></div>
+              <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;line-height:.95;letter-spacing:.005em">Dubai<br>Investments</div>
+            </div>
+            <div style="flex:1;padding:22px 32px;display:flex;flex-direction:column;justify-content:center">
+              <div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#d9bd7c">Compliance · Access control</div>
+              <div style="font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:34px;line-height:1.05">Users Report</div>
+            </div>
+            <div style="padding:22px 32px;display:grid;grid-template-columns:auto auto;gap:2px 18px;align-content:center;font-size:12px">
+              <span style="color:#9fb3c6">Date</span><span style="font-weight:600">30/09/2026</span>
+              <span style="color:#9fb3c6">Prepared by</span><span style="font-weight:600">lata</span>
+              <span style="color:#9fb3c6">Records</span><span style="font-weight:600">{{ total }}</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #d3d8de">
+            <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+              <div style="padding:12px 32px;border-right:1px solid #e3e6ea">
+                <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#56606b">{{ s.label }}</div>
+                <div style="display:flex;align-items:baseline;gap:6px">
+                  <span style="font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:26px;line-height:1.1;color:#0a2f4d">{{ s.value }}</span>
+                  <span style="font-size:11px;color:#56606b">{{ s.sub }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="padding:8px 32px 0;font-size:11px;color:#56606b">Filters: {{ filterText }}</div>
+        </sc-if>
+        <sc-if value="{{ p.notFirst }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 32px;border-bottom:3px solid #0a2f4d">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:18px;color:#0a2f4d">Dubai Investments · Users Report</div>
+            <div style="font-size:12px;color:#56606b">30/09/2026 · continued</div>
+          </div>
+        </sc-if>
+
+        <div style="flex:1;padding:12px 32px 0">
+          <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:12px">
+            <colgroup>
+              <col style="width:44px"><col style="width:17%"><col style="width:22%"><col style="width:14%"><col style="width:11%"><col><col><col>
+            </colgroup>
+            <thead>
+              <tr style="border-bottom:2px solid #b8913f">
+                <th style="text-align:left;padding:8px 6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#0a2f4d;font-weight:700">S. No</th>
+                <th style="text-align:left;padding:8px 6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#0a2f4d;font-weight:700">Name</th>
+                <th style="text-align:left;padding:8px 6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#0a2f4d;font-weight:700">Email</th>
+                <th style="text-align:left;padding:8px 6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#0a2f4d;font-weight:700">Company</th>
+                <th style="text-align:left;padding:8px 6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#0a2f4d;font-weight:700">Department</th>
+                <th style="text-align:center;padding:8px 6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#0a2f4d;font-weight:700;line-height:1.25">RP, COI Declaration Access</th>
+                <th style="text-align:center;padding:8px 6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#0a2f4d;font-weight:700;line-height:1.25">Insider Declaration Access</th>
+                <th style="text-align:center;padding:8px 6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#0a2f4d;font-weight:700;line-height:1.25">RP Transaction Monitoring Access</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ p.rows }}" as="r" hint-placeholder-count="10">
+                <tr style="{{ r.style }}">
+                  <td style="padding:7px 6px;color:#56606b;font-variant-numeric:tabular-nums">{{ r.n }}</td>
+                  <td style="padding:7px 6px;font-weight:600;overflow-wrap:anywhere">{{ r.name }}</td>
+                  <td style="padding:7px 6px;overflow-wrap:anywhere;color:#2c3a47">{{ r.email }}</td>
+                  <td style="padding:7px 6px">{{ r.company }}</td>
+                  <td style="padding:7px 6px;color:#56606b">{{ r.dept }}</td>
+                  <sc-for list="{{ r.access }}" as="a">
+                    <td style="padding:5px 6px;text-align:center">
+                      <button class="edit-only" onClick="{{ a.toggle }}" title="{{ a.title }}" style="{{ a.style }}">{{ a.label }}</button>
+                    </td>
+                  </sc-for>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <sc-if value="{{ p.empty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:48px 0;text-align:center;color:#56606b">No users match the current filters.</div>
+          </sc-if>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:0 32px;padding:10px 0 14px;border-top:1px solid #d3d8de;font-size:10px;color:#56606b">
+          <span>Confidential · For internal compliance use only</span>
+          <span>cg.dubaiinvestments.com</span>
+          <span style="font-weight:600;color:#0a2f4d">Page {{ p.num }} of {{ pageCount }}</span>
+        </div>
+      </section>
+    </sc-for>
+
+    <div class="noprint" style="display:flex;align-items:center;gap:6px">
+      <button onClick="{{ prev }}" style="height:34px;min-width:34px;padding:0 10px;background:#fff;border:1px solid #cdd3da;color:#0a2f4d;cursor:pointer;font:inherit" style-hover="background:#eef2f6">‹ Prev</button>
+      <sc-for list="{{ pageBtns }}" as="b" hint-placeholder-count="2">
+        <button onClick="{{ b.go }}" style="{{ b.style }}">{{ b.num }}</button>
+      </sc-for>
+      <button onClick="{{ next }}" style="height:34px;min-width:34px;padding:0 10px;background:#fff;border:1px solid #cdd3da;color:#0a2f4d;cursor:pointer;font:inherit" style-hover="background:#eef2f6">Next ›</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;rowsPerPage&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:12,&quot;min&quot;:6,&quot;max&quot;:20,&quot;tsType&quot;:&quot;number&quot;}}">
+const NAVY = '#0a2f4d', GOLD = '#b8913f';
+const SEED = [
+  ['Sanjay Vig','Sanjay.vig@almalcapital.com','Al Mal Capital','',1,1,0],
+  ['Roshan Bhupendra Shah','roshan.shah@almalcapital.com','Al Mal Capital','',1,1,0],
+  ['Khalid Al Mansoori','khalid.mansoori@dubaiinvestments.com','Dubai Investments','Finance',1,1,1],
+  ['Priya Nair','priya.nair@dubaiinvestments.com','Dubai Investments','Compliance',1,1,1],
+  ['Omar Haddad','omar.haddad@dubaiinvestments.com','Dubai Investments','Legal',1,0,1],
+  ['Fatima Al Suwaidi','fatima.suwaidi@dubaiinvestments.com','Dubai Investments','HR',0,1,0],
+  ['Rahul Menon','rahul.menon@emiratesextrusion.com','Emirates Extrusion','Finance',1,1,0],
+  ['Aisha Rahman','aisha.rahman@emiratesextrusion.com','Emirates Extrusion','Operations',0,1,0],
+  ['Daniel Brooks','daniel.brooks@almalcapital.com','Al Mal Capital','Investments',1,1,1],
+  ['Mariam Youssef','mariam.youssef@dubaiinvestments.com','Dubai Investments','Internal Audit',1,1,1],
+  ['Vikram Desai','vikram.desai@masharie.com','Masharie','Finance',1,0,0],
+  ['Layla Hassan','layla.hassan@masharie.com','Masharie','Projects',0,1,0],
+  ['Ahmed Al Falasi','ahmed.falasi@dubaiinvestments.com','Dubai Investments','Treasury',1,1,1],
+  ['Sneha Kulkarni','sneha.kulkarni@dubaiinvestments.com','Dubai Investments','IT',0,0,0],
+  ['Yousef Karim','yousef.karim@emiratesextrusion.com','Emirates Extrusion','Procurement',1,1,0],
+  ['Hana Saeed','hana.saeed@almalcapital.com','Al Mal Capital','Risk',1,1,1],
+  ['George Mathew','george.mathew@masharie.com','Masharie','Legal',1,0,1],
+  ['Noura Al Ketbi','noura.ketbi@dubaiinvestments.com','Dubai Investments','Strategy',1,1,0],
+  ['Arjun Pillai','arjun.pillai@dubaiinvestments.com','Dubai Investments','Finance',1,1,0],
+  ['Sara Abdullah','sara.abdullah@emiratesextrusion.com','Emirates Extrusion','HR',0,1,0],
+  ['Tariq Aziz','tariq.aziz@almalcapital.com','Al Mal Capital','Operations',1,1,0],
+  ['Rania Farouk','rania.farouk@dubaiinvestments.com','Dubai Investments','Compliance',1,1,1],
+];
+const ACC = [['coi','RP, COI Declaration'],['insider','Insider Declaration'],['rptm','RP Transaction Monitoring']];
+
+class Component extends DCLogic {
+  state = {
+    users: SEED.map((u,i)=>({id:i,name:u[0],email:u[1],company:u[2],dept:u[3],coi:!!u[4],insider:!!u[5],rptm:!!u[6]})),
+    q:'', company:'All companies', access:'any', page:1, edit:false,
+  };
+  toggle(id,k){ this.setState(s=>({users:s.users.map(u=>u.id===id?{...u,[k]:!u[k]}:u)})); }
+  filtered(){
+    const {users,q,company,access}=this.state, t=q.trim().toLowerCase();
+    return users.filter(u=>(!t||u.name.toLowerCase().includes(t)||u.email.toLowerCase().includes(t))
+      &&(company==='All companies'||u.company===company)&&(access==='any'||u[access]));
+  }
+  exportCsv(){
+    const esc=v=>`"${String(v).replace(/"/g,'""')}"`;
+    const head=['S. No','Name','Email','Company','Department','RP, COI Declaration Access','Insider Declaration Access','RP Transaction Monitoring Access'];
+    const lines=[head.map(esc).join(',')].concat(this.filtered().map((u,i)=>[i+1,u.name,u.email,u.company,u.dept,u.coi?'True':'False',u.insider?'True':'False',u.rptm?'True':'False'].map(esc).join(',')));
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv'}));
+    a.download='Users Report 30-09-2026.csv'; a.click();
+  }
+  renderVals(){
+    const {users,company,access,edit,q}=this.state;
+    const per=this.props.rowsPerPage ?? 12;
+    const list=this.filtered();
+    const pageCount=Math.max(1,Math.ceil(list.length/per));
+    const page=Math.min(this.state.page,pageCount);
+    const companies=['All companies',...Array.from(new Set(users.map(u=>u.company))).sort()];
+    const pages=Array.from({length:pageCount},(_,pi)=>{
+      const num=pi+1;
+      return {
+        num, first:num===1, notFirst:num!==1, empty:list.length===0,
+        style:`width:1123px;min-height:794px;flex:none;background:#fff;box-shadow:0 2px 14px rgba(10,47,77,.14);display:${num===page?'flex':'none'};flex-direction:column`,
+        rows:list.slice(pi*per,pi*per+per).map((u,i)=>({
+          n:pi*per+i+1, name:u.name, email:u.email, company:u.company, dept:u.dept||'—',
+          style:`border-bottom:1px solid #e3e6ea;background:${i%2?'#f7f8fa':'#fff'}`,
+          access:ACC.map(([k,label])=>{
+            const on=u[k];
+            return {
+              label:on?'True':'False', title:edit?`Toggle ${label} access`:'',
+              toggle:()=>edit&&this.toggle(u.id,k),
+              style:`display:inline-flex;align-items:center;justify-content:center;min-width:58px;height:22px;padding:0 8px;font:inherit;font-size:11px;font-weight:600;letter-spacing:.02em;border:1px solid ${on?NAVY:'#cdd3da'};background:${on?NAVY:'#fff'};color:${on?'#fff':'#7a838c'};cursor:${edit?'pointer':'default'};${edit?`outline:1px dashed ${GOLD};outline-offset:2px;`:''}`,
+            };
+          }),
+        })),
+      };
+    });
+    const count=k=>list.filter(u=>u[k]).length;
+    const accLabel={any:'Any',coi:'RP, COI',insider:'Insider',rptm:'RP Txn'};
+    const btn=(active)=>`height:34px;min-width:34px;padding:0 10px;font:inherit;cursor:pointer;border:1px solid ${active?NAVY:'#cdd3da'};background:${active?NAVY:'#fff'};color:${active?'#fff':NAVY}`;
+    return {
+      q, company, companies, total:list.length, pageCount, pages,
+      onQ:e=>this.setState({q:e.target.value,page:1}),
+      onCompany:e=>this.setState({company:e.target.value,page:1}),
+      accessOpts:Object.keys(accLabel).map((k,i)=>({label:accLabel[k],pick:()=>this.setState({access:k,page:1}),
+        style:`padding:0 12px;font:inherit;font-size:13px;border:0;${i?'border-left:1px solid #cdd3da;':''}cursor:pointer;background:${access===k?NAVY:'#fff'};color:${access===k?'#fff':'#14212e'}`})),
+      stats:[
+        {label:'Users',value:list.length,sub:`of ${users.length}`},
+        {label:'RP, COI Declaration',value:count('coi'),sub:'with access'},
+        {label:'Insider Declaration',value:count('insider'),sub:'with access'},
+        {label:'RP Transaction Monitoring',value:count('rptm'),sub:'with access'},
+      ],
+      filterText:[company, access==='any'?'Any access':`${accLabel[access]} access`, q?`Search “${q}”`:null].filter(Boolean).join(' · '),
+      pageBtns:Array.from({length:pageCount},(_,i)=>({num:i+1,go:()=>this.setState({page:i+1}),style:btn(i+1===page)})),
+      prev:()=>this.setState({page:Math.max(1,page-1)}),
+      next:()=>this.setState({page:Math.min(pageCount,page+1)}),
+      toggleEdit:()=>this.setState(s=>({edit:!s.edit})),
+      editLabel:edit?'Done editing':'Edit access',
+      editBtnStyle:`height:36px;padding:0 14px;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:15px;cursor:pointer;border:1px solid ${GOLD};background:${edit?GOLD:'#fff'};color:${edit?'#fff':'#7a5a17'}`,
+      exportCsv:()=>this.exportCsv(),
+      print:()=>window.print(),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,834 @@
+<title>CGTOOL Feature Catalogue</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:wght@400;600&family=Architects+Daughter&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the nav tree as a contents page, then one card per menu item —
+   description on the left, wireframe on the right, stacking on a phone. */
+:root {
+  --paper:#F7F8F9; --card:#FFFFFF; --ink:#1A1F26; --ink-soft:#5A6472; --ink-faint:#8C95A3;
+  --rule:#DFE4EA; --accent:#2F5D7C; --accent-soft:#EAF0F5;
+  --sketch:#9AA4B2; --sketch-fill:#EDF0F3; --sketch-ink:#6B7483;
+  --ok:#2E7D4F; --ok-bg:#E8F4EC; --warn:#9A5B12; --warn-bg:#FBF1E3; --todo:#B03A32; --todo-bg:#FBEBEA;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --hand:"Architects Daughter","Comic Sans MS",cursive;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#14181D; --card:#1B2027; --ink:#E6E9ED; --ink-soft:#A3ACB9; --ink-faint:#767F8C;
+  --rule:#2B323B; --accent:#7FB2D4; --accent-soft:#1E2A34;
+  --sketch:#5C6672; --sketch-fill:#222932; --sketch-ink:#96A0AD;
+  --ok:#6FCB95; --ok-bg:#1A2A21; --warn:#D9A35C; --warn-bg:#2B2318; --todo:#E58A82; --todo-bg:#2C1D1C;
+  color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --paper:#14181D; --card:#1B2027; --ink:#E6E9ED; --ink-soft:#A3ACB9; --ink-faint:#767F8C;
+  --rule:#2B323B; --accent:#7FB2D4; --accent-soft:#1E2A34;
+  --sketch:#5C6672; --sketch-fill:#222932; --sketch-ink:#96A0AD;
+  --ok:#6FCB95; --ok-bg:#1A2A21; --warn:#D9A35C; --warn-bg:#2B2318; --todo:#E58A82; --todo-bg:#2C1D1C;
+  color-scheme:dark;}
+
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:20px;padding-block:40px 72px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,5vw,40px);line-height:1.12;margin:0 0 10px;text-wrap:balance;letter-spacing:-.015em}
+.lede{font-size:18px;color:var(--ink-soft);margin:0;max-width:64ch}
+.meta{font-family:var(--mono);font-size:12px;color:var(--ink-faint);letter-spacing:.04em;margin-top:16px}
+.callout{border:1px solid var(--rule);border-left:4px solid var(--accent);background:var(--card);border-radius:3px;padding:14px 18px;margin-top:26px}
+.callout p{margin:0;font-size:15px;color:var(--ink-soft)}
+.callout strong{color:var(--ink)}
+
+.toc{margin-top:30px;border:1px solid var(--rule);background:var(--card);border-radius:4px;padding:16px 18px}
+.toc h2{font-family:var(--display);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 12px}
+.toc ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.toc li strong{display:block;font-family:var(--display);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:5px}
+.toc a{display:block;color:var(--ink-soft);text-decoration:none;font-size:14px;padding:1px 0;border-bottom:1px solid transparent}
+.toc a:hover{color:var(--accent);border-bottom-color:var(--rule)}
+.toc a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+h2.group{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin:52px 0 0;padding-bottom:8px;border-bottom:1px solid var(--rule);scroll-margin-top:16px}
+.group-note{font-size:14.5px;color:var(--ink-soft);margin:10px 0 0;max-width:66ch}
+
+.feat{margin-top:26px;border:1px solid var(--rule);background:var(--card);border-radius:4px;padding:18px;display:grid;gap:18px;grid-template-columns:1fr;scroll-margin-top:16px}
+@media (min-width:860px){.feat{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);align-items:start}}
+.feat-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.feat-head h3{font-family:var(--display);font-weight:600;font-size:19px;margin:0;letter-spacing:-.01em}
+.route{font-family:var(--mono);font-size:11.5px;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:3px}
+.who{font-size:13px;color:var(--ink-faint);margin:8px 0 0}
+.who b{color:var(--ink-soft);font-weight:600}
+.feat p.desc{margin:10px 0 0;font-size:15.5px;color:var(--ink-soft)}
+.does{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:5px}
+.does li{font-size:14px;color:var(--ink-soft);padding-left:16px;position:relative}
+.does li::before{content:"—";position:absolute;left:0;color:var(--ink-faint)}
+.st{display:inline-block;font-weight:600;font-size:11.5px;padding:2px 9px;border-radius:99px;margin-top:10px}
+.st-ok{color:var(--ok);background:var(--ok-bg)} .st-warn{color:var(--warn);background:var(--warn-bg)} .st-todo{color:var(--todo);background:var(--todo-bg)}
+
+/* Wireframe kit — crude on purpose. */
+.wf{border:1.5px dashed var(--sketch);border-radius:4px;background:var(--sketch-fill);padding:10px;font-family:var(--hand);color:var(--sketch-ink);font-size:13px;overflow-x:auto}
+.wf-screen{min-width:300px;border:1.5px solid var(--sketch);border-radius:3px;background:var(--card);padding:10px 11px;display:flex;flex-direction:column;gap:8px}
+.wf-h{font-family:var(--display);font-weight:600;font-size:13.5px;color:var(--sketch-ink)}
+.wf-sub{font-size:12px;color:var(--sketch)}
+.wf-line{height:8px;border-radius:2px;background:var(--sketch-fill);border:1px solid var(--sketch)}
+.wf-row{display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end}
+.wf-row>*{min-width:0}
+.wf-field{flex:1 1 110px;display:flex;flex-direction:column;gap:3px}
+.wf-field span{font-size:11.5px}
+.wf-in{height:22px;border:1.5px solid var(--sketch);border-radius:2px;background:var(--sketch-fill);display:flex;align-items:center;padding:0 6px;font-size:11.5px;color:var(--sketch)}
+.wf-btn{display:inline-flex;align-items:center;padding:3px 11px;border:1.5px solid var(--sketch);border-radius:2px;font-size:12px;background:var(--sketch-fill);white-space:nowrap}
+.wf-btn.solid{background:var(--sketch);color:var(--card)}
+.wf-box{border:1.5px solid var(--sketch);border-radius:2px;padding:8px 9px;display:flex;flex-direction:column;gap:5px}
+.wf-box.dash{border-style:dashed}
+.wf-tbl{border:1.5px solid var(--sketch);border-radius:2px;overflow:hidden}
+.wf-tr{display:flex;border-bottom:1px solid var(--sketch)}
+.wf-tr:last-child{border-bottom:0}
+.wf-tr.head{background:var(--sketch-fill);font-size:11.5px}
+.wf-td{flex:1;padding:4px 7px;border-right:1px solid var(--sketch);font-size:11.5px;min-width:0}
+.wf-td:last-child{border-right:0}
+.wf-stats{display:flex;border:1.5px solid var(--sketch);border-radius:2px}
+.wf-stat{flex:1;padding:6px 8px;border-right:1px solid var(--sketch);min-width:0}
+.wf-stat:last-child{border-right:0}
+.wf-stat b{display:block;font-family:var(--display);font-size:15px}
+.wf-stat span{font-size:10.5px}
+.wf-note{margin-top:7px;font-size:12px;color:var(--sketch);display:flex;gap:5px}
+.wf-note::before{content:"↳";flex:none}
+.wf-steps{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:11.5px}
+.wf-num{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--sketch);display:grid;place-items:center;font-size:10.5px;flex:none}
+.wf-num.on{background:var(--sketch);color:var(--card)}
+.wf-rule{width:12px;height:1.5px;background:var(--sketch)}
+.wf-menu{display:flex;flex-direction:column;gap:4px}
+.wf-mi{display:flex;align-items:center;gap:7px;font-size:12px;padding:2px 0}
+.wf-mi .sq{width:11px;height:11px;border:1.5px solid var(--sketch);border-radius:2px;flex:none}
+.wf-mi.sub{padding-left:18px;font-size:11.5px;color:var(--sketch)}
+footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--rule);font-size:13.5px;color:var(--ink-faint)}
+</style>
+<div class="wrap">
+
+<h1>CGTOOL feature catalogue</h1>
+<p class="lede">Every item in the navigation menu: what it is for, who uses it, and a wireframe of what the screen carries.</p>
+<p class="meta">Dubai Investments PJSC · Corporate Governance Tool · 29 features · October 2026</p>
+
+<div class="callout">
+  <p><strong>The wireframes are sketches, not the design.</strong> CGTOOL is built and its interface is finished. These drawings show only which fields, states and actions each screen has to carry, so a feature can be understood without opening the application. Nothing about their layout or styling describes the product.</p>
+</div>
+
+<div class="toc">
+  <h2>The menu</h2>
+  <ol>
+    <li><strong>Top</strong>
+      <a href="#f-dashboard">Dashboard</a></li>
+    <li><strong>My Account</strong>
+      <a href="#f-profile">Profile</a>
+      <a href="#f-register">My Register</a>
+      <a href="#f-declarations">Declarations</a></li>
+    <li><strong>RP Transactions</strong>
+      <a href="#f-rpt-new">Add New Transaction</a>
+      <a href="#f-rpt-mine">My Transactions</a>
+      <a href="#f-rpt-approvals">Pending My Approval</a>
+      <a href="#f-rpt-ccao">CCAO Review</a>
+      <a href="#f-rpt-register">RP Transaction Register</a></li>
+    <li><strong>Reports</strong>
+      <a href="#f-rep-users">Users</a>
+      <a href="#f-rep-insider">Insider Submission</a>
+      <a href="#f-rep-coi">RP &amp; COI Submission</a>
+      <a href="#f-rep-rpregister">Related Party Register</a>
+      <a href="#f-rep-rpmaster">Related Party Master</a></li>
+    <li><strong>Investor Relations</strong>
+      <a href="#f-ir-register">Share Register</a>
+      <a href="#f-ir-trading">Shares Trading</a></li>
+    <li><strong>Declaration Setup</strong>
+      <a href="#f-ds-notifications">Notifications</a>
+      <a href="#f-ds-scheduled">Scheduled Maintenance</a></li>
+    <li><strong>Admin Panel</strong>
+      <a href="#f-adm-users">User Management</a>
+      <a href="#f-adm-claim">Claim Administrator Role</a>
+      <a href="#f-adm-company">Company</a>
+      <a href="#f-adm-dept">Departments</a>
+      <a href="#f-adm-job">Job Title</a>
+      <a href="#f-adm-policy">Policy Documents</a>
+      <a href="#f-adm-doa">Delegation of Authority</a>
+      <a href="#f-adm-settings">Settings</a>
+      <a href="#f-adm-daily">Audit — Daily Logs</a>
+      <a href="#f-adm-detailed">Audit — Detailed Log</a>
+      <a href="#f-adm-periodic">Audit — Periodic Review</a></li>
+  </ol>
+</div>
+
+<h2 class="group" id="g-top">Top level</h2>
+
+<article class="feat" id="f-dashboard">
+  <div>
+    <div class="feat-head"><h3>Dashboard</h3><span class="route">/</span></div>
+    <p class="who"><b>Who:</b> everyone, on sign-in</p>
+    <p class="desc">The compliance position for a chosen period, in one view. It counts, per declaration type, how many people were required to declare, how many have, how many are still outstanding and how many are overdue — and counts down to the next due date.</p>
+    <ul class="does">
+      <li>Filter by year and quarter</li>
+      <li>One card per declaration type, with complete / pending / overdue</li>
+      <li>Days until the next deadline still ahead</li>
+      <li>Reminders sent for the period, however they were sent</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-row"><div class="wf-h">Dashboard</div><div class="wf-field" style="flex:0 1 80px"><div class="wf-in">Q_ ____</div></div></div>
+    <div class="wf-row">
+      <div class="wf-box" style="flex:1 1 130px"><div class="wf-sub">Insider Trading</div><div class="wf-stats"><div class="wf-stat"><span>Done</span><b>00</b></div><div class="wf-stat"><span>Pending</span><b>00</b></div><div class="wf-stat"><span>Overdue</span><b>00</b></div></div></div>
+      <div class="wf-box" style="flex:1 1 130px"><div class="wf-sub">Related Party &amp; COI</div><div class="wf-stats"><div class="wf-stat"><span>Done</span><b>00</b></div><div class="wf-stat"><span>Pending</span><b>00</b></div><div class="wf-stat"><span>Overdue</span><b>00</b></div></div></div>
+    </div>
+    <div class="wf-box dash"><div class="wf-sub">Next deadline in __ days · __ reminders sent this period</div></div>
+  </div><div class="wf-note">Overdue is counted separately from pending — the two need different action.</div></div>
+</article>
+
+<h2 class="group" id="g-account">My Account</h2>
+<p class="group-note">What each person holds about themselves. Everyone sees this group.</p>
+
+<article class="feat" id="f-profile">
+  <div>
+    <div class="feat-head"><h3>Profile</h3><span class="route">/Account/Manage</span></div>
+    <p class="who"><b>Who:</b> everyone</p>
+    <p class="desc">The account settings for the signed-in login — the standard identity management pages. Authentication is through the corporate directory, so there is no CGTOOL password to change here.</p>
+    <ul class="does">
+      <li>View the linked account and email</li>
+      <li>Two-factor settings where enabled</li>
+      <li>Personal data export and account pages</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Profile</div>
+    <div class="wf-row"><div class="wf-field"><span>Signed in as</span><div class="wf-in">[directory account]</div></div></div>
+    <div class="wf-row"><div class="wf-field"><span>Email</span><div class="wf-in">[work address]</div></div></div>
+    <div class="wf-box dash"><div class="wf-sub">Security — two-factor, personal data</div><div class="wf-line" style="width:56%"></div></div>
+  </div><div class="wf-note">No password field: the directory holds the credential.</div></div>
+</article>
+
+<article class="feat" id="f-register">
+  <div>
+    <div class="feat-head"><h3>My Register</h3><span class="route">/my-register</span></div>
+    <p class="who"><b>Who:</b> everyone</p>
+    <p class="desc">Your standing record of relatives and the companies you or they have an interest in, plus the documents that evidence them. Entered once and reused by every declaration period, so declaring becomes a confirmation rather than a re-entry.</p>
+    <ul class="does">
+      <li>Add, edit and delete relatives with their relationship</li>
+      <li>Add companies with legal name, nature of business and nature of holding</li>
+      <li>Attach Emirates ID, passport, trade licence and other documents</li>
+      <li>Duplicate entries are refused, showing the record that already exists</li>
+      <li>Expiring and expired documents are flagged rather than hidden</li>
+      <li>Every change is written to the audit trail</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-row"><div class="wf-h">My Register</div><span class="wf-btn solid">+ Add relative</span><span class="wf-btn">+ Add company</span></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Name</div><div class="wf-td">Relationship</div><div class="wf-td">Docs</div><div class="wf-td">Expiry</div></div>
+      <div class="wf-tr"><div class="wf-td">[name]</div><div class="wf-td">Spouse</div><div class="wf-td">2</div><div class="wf-td">valid</div></div>
+      <div class="wf-tr"><div class="wf-td">[name]</div><div class="wf-td">Father</div><div class="wf-td">1</div><div class="wf-td">EXPIRED</div></div>
+    </div>
+    <div class="wf-box dash"><div class="wf-sub">Companies — mine and my relatives'</div><div class="wf-line"></div><div class="wf-line" style="width:70%"></div></div>
+  </div><div class="wf-note">Document details are read off each file where capture is configured, for the person to check.</div></div>
+</article>
+
+<article class="feat" id="f-declarations">
+  <div>
+    <div class="feat-head"><h3>Declarations</h3><span class="route">/my-declarations</span></div>
+    <p class="who"><b>Who:</b> everyone with declaration access</p>
+    <p class="desc">Your open and past declarations, for both types. Each open period shows its deadline and whether you have submitted; each past one can be reopened and printed. Where you are approved to act for someone else, you file here on their behalf and both names are recorded.</p>
+    <ul class="does">
+      <li>Start or resume the Insider Declaration for an open period</li>
+      <li>Start or resume the Related Party &amp; COI Declaration</li>
+      <li>Reopen a submitted declaration while its edit window is open</li>
+      <li>See a closed window stated rather than silently refused</li>
+      <li>Switch to file on behalf of another person where approved</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Declarations</div>
+    <div class="wf-box"><div class="wf-row"><div class="wf-sub">Insider Declaration — Q_ ____</div><span class="wf-btn solid">Start</span></div><div class="wf-sub">Due dd/mm/yyyy · not submitted</div></div>
+    <div class="wf-box"><div class="wf-row"><div class="wf-sub">RP &amp; COI Declaration — Q_ ____</div><span class="wf-btn">View</span></div><div class="wf-sub">Submitted dd/mm · edit window closed</div></div>
+    <div class="wf-box dash"><div class="wf-sub">Earlier periods</div><div class="wf-line" style="width:62%"></div></div>
+  </div><div class="wf-note">A draft shows as not submitted, because that is what it is.</div></div>
+</article>
+
+<h2 class="group" id="g-rpt">RP Transactions</h2>
+<p class="group-note">The related party transaction workflow, from raising through approval and governance decision to the register. Each screen is one stage, and a person sees only the stages their role reaches.</p>
+
+<article class="feat" id="f-rpt-new">
+  <div>
+    <div class="feat-head"><h3>Add New Transaction</h3><span class="route">/rp-transactions/new</span></div>
+    <p class="who"><b>Who:</b> anyone with RP Transaction access</p>
+    <p class="desc">Raises a transaction with a related party. The entity and requestor are taken from your own record and locked; the counter-party can only be chosen from the Related Party Master, so a party that has not been declared cannot be transacted with by accident.</p>
+    <ul class="does">
+      <li>Pick a counter-party from the Related Party Master</li>
+      <li>Enter value, date of request and the material terms</li>
+      <li>Attach the purchase order, contract or quotation</li>
+      <li>See the pre-check results at submission, pass or fail</li>
+      <li>A value over the delegated authority routes higher automatically</li>
+    </ul>
+    <span class="st st-ok">Built</span><span class="st st-warn">Over-limit routing untested</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Add New Transaction</div>
+    <div class="wf-row"><div class="wf-field"><span>Entity (locked)</span><div class="wf-in"></div></div><div class="wf-field"><span>User (locked)</span><div class="wf-in"></div></div></div>
+    <div class="wf-row"><div class="wf-field"><span>Counter-party — master only</span><div class="wf-in">[dropdown]</div></div><div class="wf-field"><span>Value (AED)</span><div class="wf-in">0.00</div></div></div>
+    <div class="wf-field"><span>Description, material terms</span><div class="wf-in" style="height:34px"></div></div>
+    <div class="wf-box"><div class="wf-sub">Pre-checks</div><div class="wf-row"><span class="wf-btn">✓ On master</span><span class="wf-btn">✓ Within authority</span></div></div>
+    <div class="wf-row"><span class="wf-btn solid">Submit</span><span class="wf-btn">Save draft</span></div>
+  </div></div>
+</article>
+
+<article class="feat" id="f-rpt-mine">
+  <div>
+    <div class="feat-head"><h3>My Transactions</h3><span class="route">/rp-transactions/mine</span></div>
+    <p class="who"><b>Who:</b> anyone who has raised a transaction</p>
+    <p class="desc">Everything you have raised, with its reference, status and the person it is currently with. Opening one shows its whole life: who raised it, every amendment, each decision with its remarks, and how long before it escalates.</p>
+    <ul class="does">
+      <li>Filter and search your own transactions</li>
+      <li>See who holds it, named with their job title</li>
+      <li>Amend and resubmit a returned transaction</li>
+      <li>Read the full history, including remarks on every decision</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">My Transactions</div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Ref</div><div class="wf-td">Counter-party</div><div class="wf-td">Value</div><div class="wf-td">Status</div><div class="wf-td">With</div></div>
+      <div class="wf-tr"><div class="wf-td">RPT-____</div><div class="wf-td"></div><div class="wf-td">AED</div><div class="wf-td">Returned</div><div class="wf-td">me</div></div>
+      <div class="wf-tr"><div class="wf-td">RPT-____</div><div class="wf-td"></div><div class="wf-td">AED</div><div class="wf-td">Approved</div><div class="wf-td">[name · title]</div></div>
+    </div>
+    <div class="wf-box dash"><div class="wf-sub">What has happened so far</div><div class="wf-line" style="width:80%"></div><div class="wf-line" style="width:64%"></div></div>
+  </div><div class="wf-note">"With" names a person, not a position.</div></div>
+</article>
+
+<article class="feat" id="f-rpt-approvals">
+  <div>
+    <div class="feat-head"><h3>Pending My Approval</h3><span class="route">/rp-transactions/approvals</span></div>
+    <p class="who"><b>Who:</b> approvers</p>
+    <p class="desc">Your approval queue. Each item shows the entity, value, requestor and how long it has waited, with the supporting documents attached and the pre-check results visible. You approve it, or return it with remarks the requestor will see.</p>
+    <ul class="does">
+      <li>Work a queue sorted by value or age</li>
+      <li>See days waited and days left before escalation</li>
+      <li>Read the attached documents before deciding</li>
+      <li>Approve, or return with remarks</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Pending My Approval</div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Ref</div><div class="wf-td">Raised by</div><div class="wf-td">Value</div><div class="wf-td">Waiting</div></div>
+      <div class="wf-tr"><div class="wf-td">RPT-____</div><div class="wf-td">[name · title]</div><div class="wf-td">AED</div><div class="wf-td">3d / 27 left</div></div>
+      <div class="wf-tr"><div class="wf-td">RPT-____</div><div class="wf-td">[name · title]</div><div class="wf-td">AED</div><div class="wf-td">26d / 4 left</div></div>
+    </div>
+    <div class="wf-box"><div class="wf-sub">Selected transaction — detail, documents, pre-checks</div><div class="wf-line"></div></div>
+    <div class="wf-row"><span class="wf-btn solid">Approve</span><span class="wf-btn">Return with remarks</span></div>
+  </div><div class="wf-note">At 30 days it escalates to the CCAO on its own, and the reason is recorded.</div></div>
+</article>
+
+<article class="feat" id="f-rpt-ccao">
+  <div>
+    <div class="feat-head"><h3>CCAO Review</h3><span class="route">/rp-transactions/ccao-review</span></div>
+    <p class="who"><b>Who:</b> the CCAO, and administrators</p>
+    <p class="desc">Everything approved and waiting on a governance decision. The decision itself is taken at a meeting rather than on screen, so this records it: the deciding body, the meeting date, the members who abstained as conflicted, the compliance conclusion and the minutes as evidence. Approving releases the transaction to the register.</p>
+    <ul class="does">
+      <li>Review the transaction, its approvals and its documents</li>
+      <li>Record the deciding body and meeting date</li>
+      <li>Name the members who abstained as conflicted</li>
+      <li>Attach the minutes or approval evidence</li>
+      <li>Approve and release, or reject with remarks</li>
+    </ul>
+    <span class="st st-warn">Written, untested against a database</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">CCAO Review</div>
+    <div class="wf-box dash"><div class="wf-sub">Transaction, approvals, documents — read-only</div><div class="wf-line" style="width:70%"></div></div>
+    <div class="wf-row"><div class="wf-field"><span>Decided by *</span><div class="wf-in">Board / Cttee</div></div><div class="wf-field"><span>Meeting date *</span><div class="wf-in">dd/mm/yyyy</div></div></div>
+    <div class="wf-field"><span>Abstained as conflicted</span><div class="wf-in">[names]</div></div>
+    <div class="wf-field"><span>Minutes</span><div class="wf-in">[PDF/JPG/PNG ≤10MB]</div></div>
+    <div class="wf-field"><span>CCAO remarks *</span><div class="wf-in" style="height:30px"></div></div>
+    <div class="wf-row"><span class="wf-btn solid">Approve &amp; release</span><span class="wf-btn">Reject</span></div>
+  </div><div class="wf-note">A rejection needs remarks only; the rest of the form describes an approval.</div></div>
+</article>
+
+<article class="feat" id="f-rpt-register">
+  <div>
+    <div class="feat-head"><h3>RP Transaction Register</h3><span class="route">/rp-transactions/register</span></div>
+    <p class="who"><b>Who:</b> compliance, auditors, administrators</p>
+    <p class="desc">The complete record of released transactions — the thing handed to an auditor. Each row carries the transaction, its approvals, the governance decision and the dates, filterable by entity, period and value and exportable whole.</p>
+    <ul class="does">
+      <li>Filter by entity, period, value and counter-party</li>
+      <li>See the approval and decision trail per transaction</li>
+      <li>Export the register</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-row"><div class="wf-h">RP Transaction Register</div><span class="wf-btn">Export</span></div>
+    <div class="wf-row"><div class="wf-field"><span>Entity</span><div class="wf-in">All</div></div><div class="wf-field"><span>Period</span><div class="wf-in">Q_ ____</div></div></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Ref</div><div class="wf-td">Entity</div><div class="wf-td">Counter-party</div><div class="wf-td">Value</div><div class="wf-td">Decision</div><div class="wf-td">Released</div></div>
+      <div class="wf-tr"><div class="wf-td">RPT-____</div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td">AED</div><div class="wf-td">Board dd/mm</div><div class="wf-td">dd/mm</div></div>
+    </div>
+  </div></div>
+</article>
+<h2 class="group" id="g-reports">Reports</h2>
+<p class="group-note">The compliance returns. Every report opens as the paginated sheet it will be printed as, states the filters it was taken with, and offers Print, PDF and Excel. Restricted to administrators.</p>
+
+<article class="feat" id="f-rep-users">
+  <div>
+    <div class="feat-head"><h3>Users</h3><span class="route">/reports/users</span></div>
+    <p class="who"><b>Who:</b> compliance, IT audit</p>
+    <p class="desc">Who holds an account and what each of them can reach. The report an access review is run from: it answers "who has this" as a figure at the top rather than as a column to count down.</p>
+    <ul class="does">
+      <li>Every user with entity, department and the four access flags</li>
+      <li>Counts per module across the filtered set</li>
+      <li>Filter by entity, by a single access type, or by no access at all</li>
+      <li>Active only by default — a list padded with leavers overstates the finding</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Users Report</div>
+    <div class="wf-stats"><div class="wf-stat"><span>Users</span><b>00</b></div><div class="wf-stat"><span>RP &amp; COI</span><b>00</b></div><div class="wf-stat"><span>Insider</span><b>00</b></div><div class="wf-stat"><span>RP Register</span><b>00</b></div><div class="wf-stat"><span>RP Txn</span><b>00</b></div></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">#</div><div class="wf-td">Name</div><div class="wf-td">Email</div><div class="wf-td">Entity</div><div class="wf-td">×4 access</div></div>
+      <div class="wf-tr"><div class="wf-td">1</div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td">T T F F</div></div>
+    </div>
+  </div></div>
+</article>
+
+<article class="feat" id="f-rep-insider">
+  <div>
+    <div class="feat-head"><h3>Insider Submission</h3><span class="route">/reports/insider-submission</span></div>
+    <p class="who"><b>Who:</b> compliance</p>
+    <p class="desc">Who was asked to file an Insider Declaration for a period and who has. Opens on the newest period, which is what it is almost always wanted for. Replaces the legacy report whose last two columns printed an expression error on every row.</p>
+    <ul class="does">
+      <li>Total submissions, non-submissions and total users notified</li>
+      <li>One row per notified person, with when and by whom it was last modified</li>
+      <li>Filter by year, quarter, entity and submission status</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Insider Declaration Submission Report</div>
+    <div class="wf-stats"><div class="wf-stat"><span>Total Submissions</span><b>00</b></div><div class="wf-stat"><span>Non Submissions</span><b>00</b></div><div class="wf-stat"><span>Total Users</span><b>00</b></div></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">#</div><div class="wf-td">User</div><div class="wf-td">Dept</div><div class="wf-td">Company</div><div class="wf-td">Subm.</div><div class="wf-td">Modified on / by</div></div>
+      <div class="wf-tr"><div class="wf-td">1</div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td">Yes</div><div class="wf-td"></div></div>
+    </div>
+  </div><div class="wf-note">"Modified by" is whoever actually submitted, marked where they filed on another's behalf.</div></div>
+</article>
+
+<article class="feat" id="f-rep-coi">
+  <div>
+    <div class="feat-head"><h3>RP &amp; COI Submission</h3><span class="route">/reports/related-party-coi-declarations</span></div>
+    <p class="who"><b>Who:</b> compliance</p>
+    <p class="desc">The same return for the Related Party &amp; COI Declaration: everyone notified for a period and whether they completed it, with what each declared summarised per row and the individual declaration printable from it.</p>
+    <ul class="does">
+      <li>Per person: relatives, companies and conflicts declared, or nothing to declare</li>
+      <li>Filter by year, quarter, entity and status</li>
+      <li>Print a single declaration, or the whole return</li>
+      <li>Open the documents a declarant uploaded</li>
+    </ul>
+    <span class="st st-ok">Built</span><span class="st st-todo">Not yet on the new report chrome</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">RP &amp; COI Submission Report</div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Member</div><div class="wf-td">Entity</div><div class="wf-td">Quarter</div><div class="wf-td">Subm.</div><div class="wf-td">Relatives</div><div class="wf-td">Companies</div><div class="wf-td">Conflicts</div></div>
+      <div class="wf-tr"><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td">Q_ __</div><div class="wf-td">✓</div><div class="wf-td">Yes (2)</div><div class="wf-td">No</div><div class="wf-td">Yes (1)</div></div>
+    </div>
+    <div class="wf-row"><span class="wf-btn">Documents</span><span class="wf-btn">Print this record</span></div>
+  </div></div>
+</article>
+
+<article class="feat" id="f-rep-rpregister">
+  <div>
+    <div class="feat-head"><h3>Related Party Register</h3><span class="route">/reports/related-party-register</span></div>
+    <p class="who"><b>Who:</b> compliance</p>
+    <p class="desc">Every related party declared in a submitted RP &amp; COI declaration, consolidated across all declarants, with a complete trace back to the declaration it came from. One list rather than many forms.</p>
+    <ul class="does">
+      <li>All declared parties in one place, across every declarant</li>
+      <li>Trace each entry back to its source declaration</li>
+      <li>Filter by entity, period and party type</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Related Party Register</div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Party</div><div class="wf-td">Type</div><div class="wf-td">Declared by</div><div class="wf-td">Entity</div><div class="wf-td">Source</div></div>
+      <div class="wf-tr"><div class="wf-td">[name]</div><div class="wf-td">Relative</div><div class="wf-td">[declarant]</div><div class="wf-td"></div><div class="wf-td">Q_ __ decl.</div></div>
+      <div class="wf-tr"><div class="wf-td">[company]</div><div class="wf-td">Company</div><div class="wf-td">[declarant]</div><div class="wf-td"></div><div class="wf-td">Q_ __ decl.</div></div>
+    </div>
+  </div><div class="wf-note">The Source column is the point: every row can be traced to the declaration that produced it.</div></div>
+</article>
+
+<article class="feat" id="f-rep-rpmaster">
+  <div>
+    <div class="feat-head"><h3>Related Party Master</h3><span class="route">/reports/related-party-master</span></div>
+    <p class="who"><b>Who:</b> compliance; and the transaction screens, which read from it</p>
+    <p class="desc">The master list of parties the group considers related, in five standing categories: group entities, users with a declaration type, relatives, companies owned by relatives, and companies related to members. This is the list the counter-party dropdown on a new transaction is drawn from.</p>
+    <ul class="does">
+      <li>Five categories in one grouped list</li>
+      <li>Users shown with their declaration type and active status</li>
+      <li>Feeds the counter-party selection on RP transactions</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Related Party Master</div>
+    <div class="wf-box dash"><div class="wf-sub">Entities</div><div class="wf-line" style="width:72%"></div></div>
+    <div class="wf-box dash"><div class="wf-sub">Users — with declaration type and status</div><div class="wf-line" style="width:84%"></div></div>
+    <div class="wf-box dash"><div class="wf-sub">Relatives</div><div class="wf-line" style="width:60%"></div></div>
+    <div class="wf-box dash"><div class="wf-sub">Relatives' companies · Members' companies</div><div class="wf-line" style="width:76%"></div></div>
+  </div><div class="wf-note">Master only. A party declared elsewhere but not on the master is not selectable.</div></div>
+</article>
+
+<h2 class="group" id="g-ir">Investor Relations</h2>
+<p class="group-note">Externally sourced shareholding data, loaded as dated snapshots so any past position can be reproduced.</p>
+
+<article class="feat" id="f-ir-register">
+  <div>
+    <div class="feat-head"><h3>Share Register</h3><span class="route">/admin/investor-relations/share-register</span></div>
+    <p class="who"><b>Who:</b> investor relations, compliance</p>
+    <p class="desc">The DIC shareholder register, uploaded as dated snapshots. Any previously uploaded "as on" date can be viewed, filtered and printed, and the full upload history is kept as the change log.</p>
+    <ul class="does">
+      <li>Upload a register snapshot for an "as on" date</li>
+      <li>View, filter and print any past snapshot</li>
+      <li>Upload history retained as the change log</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-row"><div class="wf-h">Share Register</div><span class="wf-btn solid">Upload snapshot</span></div>
+    <div class="wf-row"><div class="wf-field"><span>As on date</span><div class="wf-in">dd/mm/yyyy ▾</div></div><div class="wf-field"><span>Search holder</span><div class="wf-in"></div></div></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Holder</div><div class="wf-td">NIN</div><div class="wf-td">Shares</div><div class="wf-td">%</div></div>
+      <div class="wf-tr"><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td"></div></div>
+    </div>
+    <div class="wf-box dash"><div class="wf-sub">Upload history — who uploaded what, when</div></div>
+  </div></div>
+</article>
+
+<article class="feat" id="f-ir-trading">
+  <div>
+    <div class="feat-head"><h3>Shares Trading</h3><span class="route">/admin/investor-relations/share-trading</span></div>
+    <p class="who"><b>Who:</b> investor relations, compliance</p>
+    <p class="desc">DFM share movements, uploaded per report date. Shows each investor's opening and closing quantity and the net buy or sell movement as at a given report date — the data an insider dealing check is run against.</p>
+    <ul class="does">
+      <li>Upload movements for a report date</li>
+      <li>Opening quantity, closing quantity and net movement per investor</li>
+      <li>Filter and print for any report date</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-row"><div class="wf-h">Shares Trading</div><span class="wf-btn solid">Upload</span></div>
+    <div class="wf-row"><div class="wf-field"><span>Report date</span><div class="wf-in">dd/mm/yyyy ▾</div></div></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Investor</div><div class="wf-td">NIN</div><div class="wf-td">Opening</div><div class="wf-td">Closing</div><div class="wf-td">Net</div></div>
+      <div class="wf-tr"><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td">0</div><div class="wf-td">0</div><div class="wf-td">+/− 0</div></div>
+    </div>
+  </div><div class="wf-note">Net movement is what a dealing check reads; opening and closing are kept so it can be verified.</div></div>
+</article>
+
+<h2 class="group" id="g-setup">Declaration Setup</h2>
+<p class="group-note">How a declaration period is opened and how reminders are timed. Administrators only.</p>
+
+<article class="feat" id="f-ds-notifications">
+  <div>
+    <div class="feat-head"><h3>Notifications</h3><span class="route">/admin/declarations-setup</span></div>
+    <p class="who"><b>Who:</b> administrators</p>
+    <p class="desc">Opens a declaration period. Choose the declaration, configure its email template, choose the recipients, then send now or schedule for a future date. The recipient list is stored with the cycle rather than recomputed, so the period's return stays true even after people join or leave.</p>
+    <ul class="does">
+      <li>Choose the declaration type and the period it covers</li>
+      <li>Configure the notification template</li>
+      <li>Resolve recipients by entity, by group, or individually</li>
+      <li>Send now, or schedule for a future date</li>
+      <li>See exactly who was sent what and when</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Declaration Notifications</div>
+    <div class="wf-row"><div class="wf-field"><span>Declaration</span><div class="wf-in">Insider / RP &amp; COI</div></div><div class="wf-field"><span>Period</span><div class="wf-in">Q_ ____</div></div><div class="wf-field"><span>Due</span><div class="wf-in">dd/mm/yyyy</div></div></div>
+    <div class="wf-box"><div class="wf-sub">Template</div><div class="wf-line"></div><div class="wf-line" style="width:70%"></div></div>
+    <div class="wf-box dash"><div class="wf-sub">Recipients — resolved now, stored with the cycle</div><div class="wf-row"><span class="wf-btn">All</span><span class="wf-btn">By entity</span><span class="wf-btn">Pick people</span></div></div>
+    <div class="wf-row"><span class="wf-btn solid">Send now</span><span class="wf-btn">Schedule send</span></div>
+  </div></div>
+</article>
+
+<article class="feat" id="f-ds-scheduled">
+  <div>
+    <div class="feat-head"><h3>Scheduled Maintenance</h3><span class="route">/admin/declarations-setup/scheduled-maintenance</span></div>
+    <p class="who"><b>Who:</b> administrators</p>
+    <p class="desc">The recurring dates that trigger reminder emails. Set the days in the cycle on which outstanding declarants are chased, so reminders run on a schedule rather than being remembered and sent by hand.</p>
+    <ul class="does">
+      <li>Configure recurring reminder dates per activity</li>
+      <li>Reminders stop for anyone who has submitted</li>
+      <li>Sent reminders are logged against the period</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Scheduled Maintenance</div>
+    <div class="wf-sub">Recurring dates that trigger reminder emails</div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Activity</div><div class="wf-td">Month</div><div class="wf-td">Day</div><div class="wf-td">—</div></div>
+      <div class="wf-tr"><div class="wf-td">Reminder 1</div><div class="wf-td">__</div><div class="wf-td">__</div><div class="wf-td">edit · del</div></div>
+      <div class="wf-tr"><div class="wf-td">Reminder 2</div><div class="wf-td">__</div><div class="wf-td">__</div><div class="wf-td">edit · del</div></div>
+    </div>
+    <div class="wf-row"><span class="wf-btn solid">+ Add date</span></div>
+  </div></div>
+</article>
+<h2 class="group" id="g-admin">Admin Panel</h2>
+<p class="group-note">Reference data, access and the audit trail. Administrators only; a person without the role does not see this group at all.</p>
+
+<article class="feat" id="f-adm-users">
+  <div>
+    <div class="feat-head"><h3>User Management</h3><span class="route">/admin/user-management</span></div>
+    <p class="who"><b>Who:</b> administrators</p>
+    <p class="desc">Manage users, assign roles and control access across the system. Each person's record carries their entity, department, job title, declaration type and the four module access flags, plus the link to their directory login and who may act on their behalf.</p>
+    <ul class="does">
+      <li>Create, edit and deactivate users</li>
+      <li>Set the four module access flags independently</li>
+      <li>Set the RP transaction position — CCAO, CFO, COO, MD &amp; CEO</li>
+      <li>Link a directory login to a person record</li>
+      <li>Approve who may file on another person's behalf</li>
+      <li>Import users from a spreadsheet, with rejected rows reported</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-row"><div class="wf-h">User Management</div><span class="wf-btn solid">+ Add user</span><span class="wf-btn">Import</span></div>
+    <div class="wf-row"><div class="wf-field"><span>Search</span><div class="wf-in"></div></div><div class="wf-field"><span>Entity</span><div class="wf-in">All</div></div></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Name</div><div class="wf-td">Entity</div><div class="wf-td">Role</div><div class="wf-td">Access</div><div class="wf-td">Active</div></div>
+      <div class="wf-tr"><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td">CCAO</div><div class="wf-td">T T F T</div><div class="wf-td">✓</div></div>
+    </div>
+    <div class="wf-box dash"><div class="wf-sub">Record — details · access · login link · impersonation</div></div>
+  </div></div>
+</article>
+
+<article class="feat" id="f-adm-claim">
+  <div>
+    <div class="feat-head"><h3>Claim Administrator Role</h3><span class="route">/admin/setup</span></div>
+    <p class="who"><b>Who:</b> the first administrator, at first install</p>
+    <p class="desc">The bootstrap screen. A new installation has no administrator, and nobody can grant the role without already holding it — this breaks that circle by letting the first signed-in user claim it. It exists for installation and is not part of day-to-day use.</p>
+    <ul class="does">
+      <li>Claim the administrator role on a fresh installation</li>
+      <li>Thereafter, roles are granted from User Management</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Administrator setup</div>
+    <div class="wf-box dash"><div class="wf-sub">No administrator exists yet on this installation.</div><div class="wf-line" style="width:64%"></div></div>
+    <div class="wf-row"><span class="wf-btn solid">Claim the Administrator role</span></div>
+  </div><div class="wf-note">Once an administrator exists, this route stops offering the claim.</div></div>
+</article>
+
+<article class="feat" id="f-adm-company">
+  <div>
+    <div class="feat-head"><h3>Company</h3><span class="route">/admin/companies</span></div>
+    <p class="who"><b>Who:</b> administrators</p>
+    <p class="desc">The group entities. Each carries its legal name, short code, entity type, sector and address, plus its approving authority and delegate — the people a transaction raised in that entity routes to. The entity type decides which declaration wording its members receive.</p>
+    <ul class="does">
+      <li>Add and edit entities, with a unique short code</li>
+      <li>Set the entity type, which picks the declaration wording</li>
+      <li>Name the approving authority and the delegate, or mark either not applicable</li>
+      <li>Upload an entity logo</li>
+      <li>Deactivate an entity without deleting its history</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Company — [name]</div>
+    <div class="wf-row"><div class="wf-field"><span>Legal name</span><div class="wf-in"></div></div><div class="wf-field"><span>Short code</span><div class="wf-in">unique</div></div></div>
+    <div class="wf-row"><div class="wf-field"><span>Entity type</span><div class="wf-in">[dropdown]</div></div><div class="wf-field"><span>Sector</span><div class="wf-in"></div></div></div>
+    <div class="wf-box"><div class="wf-sub">Authority</div><div class="wf-row"><div class="wf-field"><span>Approving authority</span><div class="wf-in">[person]</div></div><div class="wf-field"><span>Delegate</span><div class="wf-in">[person]</div></div></div><div class="wf-row"><span class="wf-btn">☐ Not applicable</span></div></div>
+    <div class="wf-row"><span class="wf-btn solid">Save</span></div>
+  </div><div class="wf-note">Entity type left unset is a real state — it means nobody has chosen one yet.</div></div>
+</article>
+
+<article class="feat" id="f-adm-dept">
+  <div>
+    <div class="feat-head"><h3>Departments</h3><span class="route">/admin/departments</span></div>
+    <p class="who"><b>Who:</b> administrators</p>
+    <p class="desc">The department list each user record is assigned from, and the column every submission return groups by. Each has a unique code and a name, and can be deactivated without disturbing the people already assigned to it.</p>
+    <ul class="does">
+      <li>Add and edit departments with a unique code</li>
+      <li>Deactivate rather than delete, so history survives</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-row"><div class="wf-h">Departments</div><span class="wf-btn solid">+ Add</span></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Code</div><div class="wf-td">Name</div><div class="wf-td">Users</div><div class="wf-td">Active</div></div>
+      <div class="wf-tr"><div class="wf-td">FIN</div><div class="wf-td">Finance</div><div class="wf-td">__</div><div class="wf-td">✓</div></div>
+      <div class="wf-tr"><div class="wf-td">LEG</div><div class="wf-td">Legal</div><div class="wf-td">__</div><div class="wf-td">✓</div></div>
+    </div>
+  </div></div>
+</article>
+
+<article class="feat" id="f-adm-job">
+  <div>
+    <div class="feat-head"><h3>Job Title</h3><span class="route">/admin/job-titles</span></div>
+    <p class="who"><b>Who:</b> administrators</p>
+    <p class="desc">The job title list offered on a user record. Titles appear beside names on the RP Transaction screens, so a reader can tell who an approver is without looking them up.</p>
+    <ul class="does">
+      <li>Add and edit job titles</li>
+      <li>Deactivate a title without changing the people who hold it</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-row"><div class="wf-h">Job Titles</div><span class="wf-btn solid">+ Add</span></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Title</div><div class="wf-td">Held by</div><div class="wf-td">Active</div></div>
+      <div class="wf-tr"><div class="wf-td">[title]</div><div class="wf-td">__</div><div class="wf-td">✓</div></div>
+    </div>
+  </div></div>
+</article>
+
+<article class="feat" id="f-adm-policy">
+  <div>
+    <div class="feat-head"><h3>Policy Documents</h3><span class="route">/admin/policy-documents</span></div>
+    <p class="who"><b>Who:</b> administrators</p>
+    <p class="desc">The corporate policy document the application links to. Declarants read the policy from here before declaring, so the version they were shown is the version on file. Earlier versions are kept rather than replaced.</p>
+    <ul class="does">
+      <li>Upload a new version of the policy</li>
+      <li>Earlier versions retained with their dates</li>
+      <li>The declaration screens link to the current version</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-row"><div class="wf-h">Policy Documents</div><span class="wf-btn solid">Upload new version</span></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Version</div><div class="wf-td">Uploaded</div><div class="wf-td">By</div><div class="wf-td">Current</div></div>
+      <div class="wf-tr"><div class="wf-td">v_</div><div class="wf-td">dd/mm/yyyy</div><div class="wf-td"></div><div class="wf-td">✓</div></div>
+      <div class="wf-tr"><div class="wf-td">v_</div><div class="wf-td">dd/mm/yyyy</div><div class="wf-td"></div><div class="wf-td"></div></div>
+    </div>
+  </div><div class="wf-note">Superseded versions stay, so it is provable which text a past declarant was shown.</div></div>
+</article>
+
+<article class="feat" id="f-adm-doa">
+  <div>
+    <div class="feat-head"><h3>Delegation of Authority</h3><span class="route">/admin/doa-matrix</span></div>
+    <p class="who"><b>Who:</b> administrators</p>
+    <p class="desc">The approval limits that decide where a transaction routes. Each entity's matrix sets, per role, the value up to which that role may approve; a transaction above the limit goes higher. Changing a matrix never re-routes a transaction already in flight.</p>
+    <ul class="does">
+      <li>Set approval limits per entity and role</li>
+      <li>Submission routing reads the matrix at the moment of submission</li>
+      <li>Changes are audited and do not disturb transactions in flight</li>
+    </ul>
+    <span class="st st-warn">Written, untested against a database</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-row"><div class="wf-h">Delegation of Authority</div><div class="wf-field" style="flex:0 1 110px"><div class="wf-in">[entity] ▾</div></div></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Role</div><div class="wf-td">Approves up to (AED)</div><div class="wf-td">Escalates to</div></div>
+      <div class="wf-tr"><div class="wf-td">Approver</div><div class="wf-td">__________</div><div class="wf-td">CFO</div></div>
+      <div class="wf-tr"><div class="wf-td">CFO</div><div class="wf-td">__________</div><div class="wf-td">MD &amp; CEO</div></div>
+      <div class="wf-tr"><div class="wf-td">MD &amp; CEO</div><div class="wf-td">unlimited</div><div class="wf-td">—</div></div>
+    </div>
+    <div class="wf-row"><span class="wf-btn solid">Save matrix</span></div>
+  </div><div class="wf-note">A transaction already submitted keeps the route it was given.</div></div>
+</article>
+
+<article class="feat" id="f-adm-settings">
+  <div>
+    <div class="feat-head"><h3>Settings</h3><span class="route">/admin/settings</span></div>
+    <p class="who"><b>Who:</b> administrators</p>
+    <p class="desc">Application-wide configuration: the idle lock timeout, the menu itself — which items appear, in what order and under what name — and the other switches that change behaviour without a redeploy.</p>
+    <ul class="does">
+      <li>Set the idle screen-lock timeout</li>
+      <li>Reorder menu items and rename them</li>
+      <li>Hide a menu item, or remove it</li>
+      <li>Hiding a parent hides everything under it, and says so</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Settings</div>
+    <div class="wf-box"><div class="wf-sub">Session</div><div class="wf-row"><div class="wf-field"><span>Idle lock after</span><div class="wf-in">__ minutes</div></div></div></div>
+    <div class="wf-box"><div class="wf-sub">Main sections — order, name, visibility</div>
+      <div class="wf-menu">
+        <div class="wf-mi"><span class="sq"></span>My Account <span class="wf-btn">▲▼</span><span class="wf-btn">rename</span><span class="wf-btn">hide</span></div>
+        <div class="wf-mi"><span class="sq"></span>RP Transactions <span class="wf-btn">▲▼</span><span class="wf-btn">rename</span><span class="wf-btn">hide</span></div>
+        <div class="wf-mi sub">↳ hiding a parent hides every item under it</div>
+      </div>
+    </div>
+  </div></div>
+</article>
+
+<article class="feat" id="f-adm-daily">
+  <div>
+    <div class="feat-head"><h3>Audit Logs — Daily Logs</h3><span class="route">/admin/audit-log</span></div>
+    <p class="who"><b>Who:</b> administrators, internal audit</p>
+    <p class="desc">Who did what, why, and from where — retained for SCA compliance audit. The daily view is the working one: a day at a time, filterable by person and action.</p>
+    <ul class="does">
+      <li>Browse a day's activity</li>
+      <li>Filter by user, action type and entity</li>
+      <li>Export for an auditor</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-row"><div class="wf-h">Audit log — daily</div><div class="wf-field" style="flex:0 1 110px"><div class="wf-in">dd/mm/yyyy</div></div></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Time</div><div class="wf-td">User</div><div class="wf-td">Action</div><div class="wf-td">Record</div><div class="wf-td">From</div></div>
+      <div class="wf-tr"><div class="wf-td">hh:mm</div><div class="wf-td"></div><div class="wf-td">Updated</div><div class="wf-td">Member #__</div><div class="wf-td">ip</div></div>
+    </div>
+  </div></div>
+</article>
+
+<article class="feat" id="f-adm-detailed">
+  <div>
+    <div class="feat-head"><h3>Audit Logs — Detailed Log</h3><span class="route">/admin/audit-log/detailed</span></div>
+    <p class="who"><b>Who:</b> internal audit, IT audit</p>
+    <p class="desc">Who did what, to which record, when, from where, why, and who approved it. Tamper-evident and retained for SCA, ITGC and ITSC audit: each entry carries a sequence number and is chained to the one before it, so a removed or altered entry is detectable rather than invisible.</p>
+    <ul class="does">
+      <li>Before and after values for every change</li>
+      <li>Sequence and hash chain, so tampering shows</li>
+      <li>Filter by user, record type, date range and reason</li>
+      <li>Export the filtered set</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Audit log — detailed</div>
+    <div class="wf-row"><div class="wf-field"><span>From</span><div class="wf-in">dd/mm</div></div><div class="wf-field"><span>To</span><div class="wf-in">dd/mm</div></div><div class="wf-field"><span>User</span><div class="wf-in">All</div></div><span class="wf-btn">Export</span></div>
+    <div class="wf-tbl">
+      <div class="wf-tr head"><div class="wf-td">Seq</div><div class="wf-td">When</div><div class="wf-td">Who</div><div class="wf-td">Record</div><div class="wf-td">Before → After</div><div class="wf-td">Chain</div></div>
+      <div class="wf-tr"><div class="wf-td">0001</div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td">[old] → [new]</div><div class="wf-td">✓</div></div>
+    </div>
+  </div><div class="wf-note">The chain column is the tamper evidence: a break in it is the finding.</div></div>
+</article>
+
+<article class="feat" id="f-adm-periodic">
+  <div>
+    <div class="feat-head"><h3>Audit Logs — Periodic Review</h3><span class="route">/admin/audit-log/periodic</span></div>
+    <p class="who"><b>Who:</b> internal audit</p>
+    <p class="desc">The same log over a chosen date range, for the periodic review an auditor signs. A reviewer works the period, records that they have reviewed it, and that sign-off is itself kept — so the control can be evidenced, not just performed.</p>
+    <ul class="does">
+      <li>Review the log over an arbitrary date range</li>
+      <li>Record a review sign-off against the period</li>
+      <li>Past sign-offs retained with who signed and when</li>
+    </ul>
+    <span class="st st-ok">Built</span>
+  </div>
+  <div class="wf"><div class="wf-screen">
+    <div class="wf-h">Audit log — periodic review</div>
+    <div class="wf-row"><div class="wf-field"><span>Period from</span><div class="wf-in">dd/mm</div></div><div class="wf-field"><span>to</span><div class="wf-in">dd/mm</div></div></div>
+    <div class="wf-box dash"><div class="wf-sub">Entries in the period</div><div class="wf-line"></div><div class="wf-line" style="width:68%"></div></div>
+    <div class="wf-box"><div class="wf-sub">Sign-off</div><div class="wf-row"><div class="wf-field"><span>Reviewed by</span><div class="wf-in">[me]</div></div><span class="wf-btn solid">Record review</span></div></div>
+    <div class="wf-box dash"><div class="wf-sub">Previous sign-offs — who, when, which period</div></div>
+  </div><div class="wf-note">The sign-off is the evidence that the review happened.</div></div>
+</article>
+
+<footer>
+  29 features, matching the navigation menu as built. Traces to the high-level requirements and to the 55-story backlog, which carries the acceptance criteria. Status badges summarise the backlog; where the two differ, the backlog is current.
+</footer>
+
+</div>

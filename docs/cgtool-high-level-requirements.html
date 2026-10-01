@@ -1,0 +1,467 @@
+<title>CGTOOL Requirements Wireframes</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Architects+Daughter&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a single measured column of requirements; each one is a statement, a
+   coverage strip, and a wireframe that stands apart from the prose as a sketch. */
+:root {
+  --paper: #F7F8F9;
+  --card: #FFFFFF;
+  --ink: #1A1F26;
+  --ink-soft: #5A6472;
+  --ink-faint: #8C95A3;
+  --rule: #DFE4EA;
+  --accent: #2F5D7C;
+  --accent-soft: #EAF0F5;
+  --sketch: #9AA4B2;
+  --sketch-fill: #EDF0F3;
+  --sketch-ink: #6B7483;
+  --ok: #2E7D4F;  --ok-bg: #E8F4EC;
+  --warn: #9A5B12; --warn-bg: #FBF1E3;
+  --todo: #B03A32; --todo-bg: #FBEBEA;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --hand: "Architects Daughter", "Comic Sans MS", cursive;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #14181D; --card: #1B2027; --ink: #E6E9ED; --ink-soft: #A3ACB9;
+    --ink-faint: #767F8C; --rule: #2B323B; --accent: #7FB2D4; --accent-soft: #1E2A34;
+    --sketch: #5C6672; --sketch-fill: #222932; --sketch-ink: #96A0AD;
+    --ok: #6FCB95; --ok-bg: #1A2A21; --warn: #D9A35C; --warn-bg: #2B2318;
+    --todo: #E58A82; --todo-bg: #2C1D1C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #14181D; --card: #1B2027; --ink: #E6E9ED; --ink-soft: #A3ACB9;
+  --ink-faint: #767F8C; --rule: #2B323B; --accent: #7FB2D4; --accent-soft: #1E2A34;
+  --sketch: #5C6672; --sketch-fill: #222932; --sketch-ink: #96A0AD;
+  --ok: #6FCB95; --ok-bg: #1A2A21; --warn: #D9A35C; --warn-bg: #2B2318;
+  --todo: #E58A82; --todo-bg: #2C1D1C;
+  color-scheme: dark;
+}
+
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 920px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; }
+
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 5vw, 40px); line-height: 1.12; margin: 0 0 10px; text-wrap: balance; letter-spacing: -0.015em; }
+.lede { font-size: 18px; color: var(--ink-soft); margin: 0 0 4px; max-width: 62ch; }
+.meta { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); letter-spacing: .04em; margin-top: 18px; }
+
+.callout { border: 1px solid var(--rule); border-left: 4px solid var(--accent); background: var(--card); border-radius: 3px; padding: 16px 18px; margin: 28px 0 0; }
+.callout p { margin: 0; font-size: 15px; color: var(--ink-soft); }
+.callout strong { color: var(--ink); }
+
+h2.group { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); margin: 52px 0 0; padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
+
+.req { margin-top: 30px; }
+.req-head { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+.req-id { font-family: var(--mono); font-size: 13px; color: var(--accent); background: var(--accent-soft); padding: 3px 8px; border-radius: 3px; white-space: nowrap; }
+.req-title { font-family: var(--display); font-weight: 600; font-size: 21px; margin: 0; flex: 1; min-width: 0; letter-spacing: -0.01em; }
+.req p { margin: 12px 0 0; max-width: 66ch; }
+.req p.must { font-size: 16.5px; }
+
+.strip { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; font-size: 12.5px; }
+.strip .lab { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.chip { font-family: var(--mono); font-size: 11.5px; padding: 2px 7px; border-radius: 3px; border: 1px solid var(--rule); color: var(--ink-soft); background: var(--card); }
+.st { font-family: var(--body); font-weight: 600; font-size: 11.5px; padding: 2px 9px; border-radius: 99px; letter-spacing: .02em; }
+.st-ok { color: var(--ok); background: var(--ok-bg); }
+.st-warn { color: var(--warn); background: var(--warn-bg); }
+.st-todo { color: var(--todo); background: var(--todo-bg); }
+
+/* ── Wireframe kit. Deliberately crude: dashed edges, grey bars for text, a
+      hand face for annotations. It describes what a screen must carry, not how
+      the built screen looks. ── */
+.wf { margin-top: 20px; border: 1.5px dashed var(--sketch); border-radius: 4px; background: var(--sketch-fill); padding: 12px; font-family: var(--hand); color: var(--sketch-ink); font-size: 13.5px; overflow-x: auto; }
+.wf-cap { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 10px; }
+.wf-screen { min-width: 480px; border: 1.5px solid var(--sketch); border-radius: 3px; background: var(--card); }
+.wf-bar { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1.5px solid var(--sketch); }
+.wf-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--sketch); flex: none; }
+.wf-url { flex: 1; height: 14px; border: 1.5px solid var(--sketch); border-radius: 2px; background: var(--sketch-fill); }
+.wf-body { display: flex; min-height: 150px; }
+.wf-side { width: 112px; flex: none; border-right: 1.5px solid var(--sketch); padding: 10px 8px; display: flex; flex-direction: column; gap: 7px; }
+.wf-main { flex: 1; min-width: 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.wf-nav { height: 11px; border-radius: 2px; background: var(--sketch-fill); border: 1px solid var(--sketch); }
+.wf-nav.on { background: var(--sketch); }
+.wf-h { font-family: var(--display); font-weight: 600; font-size: 14px; color: var(--sketch-ink); }
+.wf-sub { font-size: 12.5px; color: var(--sketch); }
+.wf-line { height: 8px; border-radius: 2px; background: var(--sketch-fill); border: 1px solid var(--sketch); }
+.wf-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.wf-row > * { min-width: 0; }
+.wf-field { flex: 1 1 140px; display: flex; flex-direction: column; gap: 3px; }
+.wf-field span { font-size: 12px; }
+.wf-in { height: 24px; border: 1.5px solid var(--sketch); border-radius: 2px; background: var(--sketch-fill); display: flex; align-items: center; padding: 0 7px; font-size: 12px; color: var(--sketch); }
+.wf-btn { display: inline-flex; align-items: center; padding: 4px 13px; border: 1.5px solid var(--sketch); border-radius: 2px; font-size: 12.5px; background: var(--sketch-fill); }
+.wf-btn.solid { background: var(--sketch); color: var(--card); }
+.wf-box { border: 1.5px solid var(--sketch); border-radius: 2px; padding: 9px 10px; display: flex; flex-direction: column; gap: 6px; }
+.wf-box.dash { border-style: dashed; }
+.wf-tbl { border: 1.5px solid var(--sketch); border-radius: 2px; overflow: hidden; }
+.wf-tr { display: flex; border-bottom: 1px solid var(--sketch); }
+.wf-tr:last-child { border-bottom: 0; }
+.wf-tr.head { background: var(--sketch-fill); font-size: 12px; }
+.wf-td { flex: 1; padding: 5px 8px; border-right: 1px solid var(--sketch); font-size: 12px; min-width: 0; }
+.wf-td:last-child { border-right: 0; }
+.wf-steps { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.wf-step { display: flex; align-items: center; gap: 5px; }
+.wf-num { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--sketch); display: grid; place-items: center; font-size: 11px; flex: none; }
+.wf-num.on { background: var(--sketch); color: var(--card); }
+.wf-rule { width: 16px; height: 1.5px; background: var(--sketch); }
+.wf-stats { display: flex; border: 1.5px solid var(--sketch); border-radius: 2px; }
+.wf-stat { flex: 1; padding: 7px 9px; border-right: 1px solid var(--sketch); min-width: 0; }
+.wf-stat:last-child { border-right: 0; }
+.wf-stat b { display: block; font-family: var(--display); font-size: 17px; color: var(--sketch-ink); }
+.wf-stat span { font-size: 11px; }
+.wf-note { margin-top: 8px; font-size: 12.5px; color: var(--sketch); display: flex; gap: 6px; align-items: flex-start; }
+.wf-note::before { content: "↳"; flex: none; }
+.wf-time { display: flex; flex-direction: column; gap: 7px; border-left: 1.5px solid var(--sketch); padding-left: 12px; margin-left: 6px; }
+.wf-ev { font-size: 12px; position: relative; }
+.wf-ev::before { content: ""; position: absolute; left: -17px; top: 5px; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--sketch); background: var(--card); }
+.wf-ev.now::before { background: var(--sketch); }
+
+footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--rule); font-size: 13.5px; color: var(--ink-faint); }
+@media (max-width: 560px) { .wf { padding: 8px; } }
+</style>
+
+<div class="wrap">
+
+<h1>CGTOOL high-level requirements</h1>
+<p class="lede">Ten requirements covering the Corporate Governance Tool, each with a wireframe of the screen that satisfies it. Derived from the 55-story backlog.</p>
+<p class="meta">Dubai Investments PJSC · October 2026 · for vendor review</p>
+
+<div class="callout">
+  <p><strong>The wireframes are sketches, not the design.</strong> CGTOOL is built and its interface is finished. These drawings exist only to show what each screen has to carry — which fields, which states, which decisions — so a requirement can be read without opening the application. Nothing about their layout, spacing or styling describes the product.</p>
+</div>
+
+<h2 class="group">Identity and personal records</h2>
+
+<section class="req">
+  <div class="req-head"><span class="req-id">HLR-1</span><h3 class="req-title">Access is granted per module and proven per person</h3></div>
+  <p class="must">The system must authenticate through the corporate directory rather than its own credential store, and must grant each person access to each of the four modules independently. A person signed in but not yet linked to a staff record must be told so by name of the screen that fixes it, rather than shown an empty application. Every grant and revocation must be attributable.</p>
+  <div class="strip"><span class="lab">Stories</span><span class="chip">ACC-01…06</span><span class="st st-ok">Built</span><span class="st st-todo">SSO addresses outstanding</span></div>
+
+  <div class="wf">
+    <div class="wf-cap">Wireframe — user record, access section</div>
+    <div class="wf-screen">
+      <div class="wf-bar"><span class="wf-dot"></span><span class="wf-url"></span></div>
+      <div class="wf-body">
+        <div class="wf-side"><div class="wf-nav"></div><div class="wf-nav on"></div><div class="wf-nav"></div><div class="wf-nav"></div></div>
+        <div class="wf-main">
+          <div class="wf-h">User — [full name]</div>
+          <div class="wf-row">
+            <div class="wf-field"><span>Entity</span><div class="wf-in">[dropdown]</div></div>
+            <div class="wf-field"><span>Department</span><div class="wf-in">[dropdown]</div></div>
+            <div class="wf-field"><span>Linked login</span><div class="wf-in">[directory account]</div></div>
+          </div>
+          <div class="wf-box">
+            <div class="wf-sub">Module access — four independent switches</div>
+            <div class="wf-row">
+              <span class="wf-btn">☐ RP &amp; COI Declaration</span>
+              <span class="wf-btn">☐ Insider Declaration</span>
+              <span class="wf-btn">☐ Related Party Register</span>
+              <span class="wf-btn">☐ RP Transactions</span>
+            </div>
+          </div>
+          <div class="wf-row"><span class="wf-btn solid">Save</span><span class="wf-btn">Cancel</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-note">Saving writes a before/after entry to the audit trail. A login already linked elsewhere is refused with the reason.</div>
+  </div>
+</section>
+
+<section class="req">
+  <div class="req-head"><span class="req-id">HLR-2</span><h3 class="req-title">Each person keeps one standing register of their related parties</h3></div>
+  <p class="must">The system must hold each person's relatives and the companies they or their relatives have an interest in as a standing record, entered once and reused by every declaration period. It must refuse duplicates by showing the existing record, track document expiry rather than presenting lapsed documents as current, and keep every addition, change and deletion attributable.</p>
+  <div class="strip"><span class="lab">Stories</span><span class="chip">REG-01…06</span><span class="st st-ok">Built</span></div>
+
+  <div class="wf">
+    <div class="wf-cap">Wireframe — my register</div>
+    <div class="wf-screen">
+      <div class="wf-bar"><span class="wf-dot"></span><span class="wf-url"></span></div>
+      <div class="wf-body">
+        <div class="wf-side"><div class="wf-nav on"></div><div class="wf-nav"></div><div class="wf-nav"></div></div>
+        <div class="wf-main">
+          <div class="wf-h">My Register</div>
+          <div class="wf-row"><span class="wf-btn solid">+ Add relative</span><span class="wf-btn">+ Add company</span></div>
+          <div class="wf-tbl">
+            <div class="wf-tr head"><div class="wf-td">Name</div><div class="wf-td">Relationship</div><div class="wf-td">Documents</div><div class="wf-td">Expiry</div><div class="wf-td">—</div></div>
+            <div class="wf-tr"><div class="wf-td">[name]</div><div class="wf-td">Spouse</div><div class="wf-td">2 files</div><div class="wf-td">valid</div><div class="wf-td">edit · del</div></div>
+            <div class="wf-tr"><div class="wf-td">[name]</div><div class="wf-td">Father</div><div class="wf-td">1 file</div><div class="wf-td">EXPIRED</div><div class="wf-td">edit · del</div></div>
+          </div>
+          <div class="wf-box dash"><div class="wf-sub">Companies — legal name · nature of business · nature of holding · linked relative</div><div class="wf-line"></div><div class="wf-line" style="width:72%"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-note">An expired document stays visible and is marked, rather than being hidden or silently accepted on a return.</div>
+  </div>
+</section>
+
+<h2 class="group">Declarations</h2>
+
+<section class="req">
+  <div class="req-head"><span class="req-id">HLR-3</span><h3 class="req-title">Declaration periods are opened deliberately and their recipients are provable</h3></div>
+  <p class="must">The system must let an administrator open a declaration period for a named quarter and a chosen population, send the notification, remind those still outstanding, and stop reminding anyone who has submitted. It must be able to show, for any person and any period, exactly what was sent to them and when — a claim of "I never received it" has to be answerable from the system rather than from a mailbox.</p>
+  <div class="strip"><span class="lab">Stories</span><span class="chip">NOT-01…03</span><span class="st st-ok">Built</span></div>
+
+  <div class="wf">
+    <div class="wf-cap">Wireframe — declaration cycle setup</div>
+    <div class="wf-screen">
+      <div class="wf-bar"><span class="wf-dot"></span><span class="wf-url"></span></div>
+      <div class="wf-body">
+        <div class="wf-side"><div class="wf-nav"></div><div class="wf-nav on"></div></div>
+        <div class="wf-main">
+          <div class="wf-h">Declaration Setup — new cycle</div>
+          <div class="wf-row">
+            <div class="wf-field"><span>Type</span><div class="wf-in">Insider / RP &amp; COI</div></div>
+            <div class="wf-field"><span>Period</span><div class="wf-in">Q__ ____</div></div>
+            <div class="wf-field"><span>Due date</span><div class="wf-in">dd/mm/yyyy</div></div>
+          </div>
+          <div class="wf-box"><div class="wf-sub">Recipients — resolved now and stored with the cycle</div><div class="wf-row"><span class="wf-btn">All entities</span><span class="wf-btn">Selected entities…</span><span class="wf-btn">Selected people…</span></div><div class="wf-line" style="width:40%"></div></div>
+          <div class="wf-row"><span class="wf-btn solid">Send now</span><span class="wf-btn">Schedule</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-note">The recipient list is kept, not recomputed, so the period's return stays true even after people join or leave.</div>
+  </div>
+</section>
+
+<section class="req">
+  <div class="req-head"><span class="req-id">HLR-4</span><h3 class="req-title">A declaration is captured in steps, saved as a draft, and submitted once</h3></div>
+  <p class="must">Both declarations must be captured as a visible sequence of steps that shows how much is left, allow a part-finished answer to be saved and resumed, and show everything back before submission. A draft must never count as a submission: until the person submits they remain outstanding, and the system must say which state they are in. On submission the declaration must be issued to the declarant as a PDF and remain readable afterwards.</p>
+  <div class="strip"><span class="lab">Stories</span><span class="chip">INS-01…07</span><span class="chip">COI-01…05</span><span class="st st-ok">Built</span></div>
+
+  <div class="wf">
+    <div class="wf-cap">Wireframe — declaration wizard, any step</div>
+    <div class="wf-screen">
+      <div class="wf-bar"><span class="wf-dot"></span><span class="wf-url"></span></div>
+      <div class="wf-body">
+        <div class="wf-side"><div class="wf-nav"></div><div class="wf-nav on"></div><div class="wf-nav"></div></div>
+        <div class="wf-main">
+          <div class="wf-h">[Declaration name] — Q_ ____</div>
+          <div class="wf-steps">
+            <span class="wf-step"><span class="wf-num on">1</span>Relatives</span><span class="wf-rule"></span>
+            <span class="wf-step"><span class="wf-num">2</span>Companies</span><span class="wf-rule"></span>
+            <span class="wf-step"><span class="wf-num">3</span>Board roles</span><span class="wf-rule"></span>
+            <span class="wf-step"><span class="wf-num">4</span>Conflicts</span><span class="wf-rule"></span>
+            <span class="wf-step"><span class="wf-num">5</span>Review</span>
+          </div>
+          <div class="wf-box dash">
+            <div class="wf-sub">Rows carried in from My Register, confirmable here</div>
+            <div class="wf-line"></div><div class="wf-line" style="width:80%"></div>
+            <div class="wf-row"><span class="wf-btn">☐ I have nothing to declare in this section</span></div>
+          </div>
+          <div class="wf-row"><span class="wf-btn">← Back</span><span class="wf-btn">Save as draft</span><span class="wf-btn solid">Next →</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-note">"Nothing to declare" is a stored answer, not a skipped step — leaving the section empty without it blocks the move to the next step.</div>
+    <div class="wf-note">The Insider variant reads uploaded Emirates ID and passport and pre-fills number, name and expiry for the declarant to check.</div>
+  </div>
+</section>
+
+<h2 class="group">Related party transactions</h2>
+
+<section class="req">
+  <div class="req-head"><span class="req-id">HLR-5</span><h3 class="req-title">A transaction can only be raised against a declared related party</h3></div>
+  <p class="must">The system must restrict the counter-party of a new transaction to parties already on the Related Party Master, raise it in the name of the person submitting it, and require the material terms and supporting documents. Its pre-checks — counter-party on the master, value against the submitter's delegated authority — must be shown with their result rather than applied silently.</p>
+  <div class="strip"><span class="lab">Stories</span><span class="chip">RPT-01…04</span><span class="st st-ok">Built</span></div>
+
+  <div class="wf">
+    <div class="wf-cap">Wireframe — raise a transaction</div>
+    <div class="wf-screen">
+      <div class="wf-bar"><span class="wf-dot"></span><span class="wf-url"></span></div>
+      <div class="wf-body">
+        <div class="wf-side"><div class="wf-nav on"></div><div class="wf-nav"></div><div class="wf-nav"></div><div class="wf-nav"></div></div>
+        <div class="wf-main">
+          <div class="wf-h">Add New Transaction</div>
+          <div class="wf-row">
+            <div class="wf-field"><span>Entity (locked)</span><div class="wf-in">[from my record]</div></div>
+            <div class="wf-field"><span>User (locked)</span><div class="wf-in">[me]</div></div>
+            <div class="wf-field"><span>Date of request</span><div class="wf-in">[today]</div></div>
+          </div>
+          <div class="wf-row">
+            <div class="wf-field"><span>Counter-party — Related Party Master only</span><div class="wf-in">[searchable dropdown]</div></div>
+            <div class="wf-field"><span>Transaction value (AED)</span><div class="wf-in">0.00</div></div>
+          </div>
+          <div class="wf-field"><span>Description, including material terms and conditions</span><div class="wf-in" style="height:46px;align-items:flex-start;padding-top:5px">[long text]</div></div>
+          <div class="wf-box dash"><div class="wf-sub">Documents — PO, contract, quotation</div><div class="wf-row"><span class="wf-btn">+ Attach</span><span class="wf-btn">[file].pdf ×</span></div></div>
+          <div class="wf-box">
+            <div class="wf-sub">Pre-checks, shown at submission</div>
+            <div class="wf-row"><span class="wf-btn">✓ Counter-party on master</span><span class="wf-btn">✓ Within delegated authority</span></div>
+          </div>
+          <div class="wf-row"><span class="wf-btn solid">Submit</span><span class="wf-btn">Save draft</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-note">A value over the limit does not block submission — it routes the transaction to the higher authority in the DoA matrix.</div>
+  </div>
+</section>
+
+<section class="req">
+  <div class="req-head"><span class="req-id">HLR-6</span><h3 class="req-title">Every transaction shows where it is, who holds it, and how long they have held it</h3></div>
+  <p class="must">The system must give the requestor and the approver the same account of a transaction: its status, the person it is currently with named rather than described by position, the full history including each amendment and each decision with its remarks, and the time remaining before it escalates. An approver must be able to return it with remarks that the requestor sees. After thirty days without action it must escalate automatically and record the reason.</p>
+  <div class="strip"><span class="lab">Stories</span><span class="chip">RPT-05…09</span><span class="st st-ok">Built</span><span class="st st-warn">Routing untested</span></div>
+
+  <div class="wf">
+    <div class="wf-cap">Wireframe — approver queue and transaction history</div>
+    <div class="wf-screen">
+      <div class="wf-bar"><span class="wf-dot"></span><span class="wf-url"></span></div>
+      <div class="wf-body">
+        <div class="wf-side"><div class="wf-nav"></div><div class="wf-nav"></div><div class="wf-nav on"></div><div class="wf-nav"></div></div>
+        <div class="wf-main">
+          <div class="wf-h">Pending My Approval</div>
+          <div class="wf-tbl">
+            <div class="wf-tr head"><div class="wf-td">Ref</div><div class="wf-td">Counter-party</div><div class="wf-td">Value</div><div class="wf-td">Raised by</div><div class="wf-td">Waiting</div></div>
+            <div class="wf-tr"><div class="wf-td">RPT-000__</div><div class="wf-td">[party]</div><div class="wf-td">AED ___</div><div class="wf-td">[name · title]</div><div class="wf-td">3d / 27 left</div></div>
+            <div class="wf-tr"><div class="wf-td">RPT-000__</div><div class="wf-td">[party]</div><div class="wf-td">AED ___</div><div class="wf-td">[name · title]</div><div class="wf-td">26d / 4 left</div></div>
+          </div>
+          <div class="wf-sub" style="margin-top:4px">What has happened so far</div>
+          <div class="wf-time">
+            <div class="wf-ev">Raised — [name · job title] · [date]</div>
+            <div class="wf-ev">Amended 2 times — last [date]</div>
+            <div class="wf-ev now">Awaiting approval — with [name · job title] · 3 days · escalates in 27</div>
+          </div>
+          <div class="wf-row"><span class="wf-btn solid">Approve</span><span class="wf-btn">Return with remarks</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-note">The open end of the history names a person, not a position. Where a position is held by several people, all of them are named.</div>
+  </div>
+</section>
+
+<section class="req">
+  <div class="req-head"><span class="req-id">HLR-7</span><h3 class="req-title">The governance decision is recorded with its evidence before release</h3></div>
+  <p class="must">The system must let the CCAO record a decision taken outside it — the deciding body, the meeting date, the members who abstained as conflicted, and the compliance conclusion — with the minutes attached, and must require that record before a transaction can be released to the register. The register must then hold every released transaction with its approvals, its decision and its dates, filterable and exportable for an auditor.</p>
+  <div class="strip"><span class="lab">Stories</span><span class="chip">RPT-10…13</span><span class="st st-warn">Written, untested</span></div>
+
+  <div class="wf">
+    <div class="wf-cap">Wireframe — CCAO review</div>
+    <div class="wf-screen">
+      <div class="wf-bar"><span class="wf-dot"></span><span class="wf-url"></span></div>
+      <div class="wf-body">
+        <div class="wf-side"><div class="wf-nav"></div><div class="wf-nav"></div><div class="wf-nav"></div><div class="wf-nav on"></div></div>
+        <div class="wf-main">
+          <div class="wf-h">CCAO Review — RPT-000__</div>
+          <div class="wf-box dash"><div class="wf-sub">Transaction, approvals and documents, read-only</div><div class="wf-line"></div><div class="wf-line" style="width:64%"></div></div>
+          <div class="wf-sub">Record the governance decision</div>
+          <div class="wf-row">
+            <div class="wf-field"><span>Decided by *</span><div class="wf-in">Board / Audit Cttee / …</div></div>
+            <div class="wf-field"><span>Meeting date *</span><div class="wf-in">dd/mm/yyyy</div></div>
+          </div>
+          <div class="wf-field"><span>Members who abstained as conflicted</span><div class="wf-in">[names, comma separated]</div></div>
+          <div class="wf-field"><span>Minutes or approval evidence</span><div class="wf-in">[PDF / JPG / PNG, ≤10 MB]</div></div>
+          <div class="wf-field"><span>CCAO remarks * — compliance conclusion and basis of the offline decision</span><div class="wf-in" style="height:38px;align-items:flex-start;padding-top:5px"></div></div>
+          <div class="wf-row"><span class="wf-btn solid">Approve &amp; release</span><span class="wf-btn">Reject</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-note">A rejection needs remarks only. The rest of the form describes an approval, and release is blocked until it is complete.</div>
+  </div>
+</section>
+
+<h2 class="group">Reporting and data</h2>
+
+<section class="req">
+  <div class="req-head"><span class="req-id">HLR-8</span><h3 class="req-title">A report is read as the document it will become</h3></div>
+  <p class="must">Every report must present as the paginated sheet it will be printed as, opening with the figures that answer the question it exists to answer. It must be printable, exportable as a server-generated PDF identical for every recipient, and exportable as a spreadsheet with a filterable header. Every one of those outputs must state the filters it was taken with — a report that does not say what it excluded cannot be distinguished from one that found nothing.</p>
+  <div class="strip"><span class="lab">Stories</span><span class="chip">REP-01…05</span><span class="st st-ok">Built</span></div>
+
+  <div class="wf">
+    <div class="wf-cap">Wireframe — report viewer</div>
+    <div class="wf-screen">
+      <div class="wf-bar"><span class="wf-dot"></span><span class="wf-url"></span></div>
+      <div class="wf-main" style="padding:12px 14px">
+        <div class="wf-row">
+          <div class="wf-field" style="flex:1 1 110px"><span>Search</span><div class="wf-in"></div></div>
+          <div class="wf-field" style="flex:0 1 100px"><span>Period</span><div class="wf-in">Q_ ____</div></div>
+          <div class="wf-field" style="flex:0 1 100px"><span>Entity</span><div class="wf-in">All</div></div>
+          <div style="display:flex;gap:6px;align-items:flex-end"><span class="wf-btn">Excel</span><span class="wf-btn">PDF</span><span class="wf-btn solid">Print</span></div>
+        </div>
+        <div class="wf-box" style="margin-top:4px">
+          <div class="wf-row" style="justify-content:space-between"><span class="wf-h">[Report title]</span><span class="wf-sub">Date · Prepared by · Records</span></div>
+          <div class="wf-stats">
+            <div class="wf-stat"><span>Figure 1</span><b>00</b></div>
+            <div class="wf-stat"><span>Figure 2</span><b>00</b></div>
+            <div class="wf-stat"><span>Figure 3</span><b>00</b></div>
+          </div>
+          <div class="wf-sub">Filters: [stated here, and on every export]</div>
+          <div class="wf-tbl">
+            <div class="wf-tr head"><div class="wf-td">#</div><div class="wf-td">[col]</div><div class="wf-td">[col]</div><div class="wf-td">[col]</div></div>
+            <div class="wf-tr"><div class="wf-td">1</div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td"></div></div>
+            <div class="wf-tr"><div class="wf-td">2</div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td"></div></div>
+          </div>
+          <div class="wf-row" style="justify-content:space-between"><span class="wf-sub">Confidential — internal use</span><span class="wf-sub">Page 1 of __</span></div>
+        </div>
+        <div class="wf-row" style="justify-content:center;align-items:center">
+          <span class="wf-btn">−</span><span class="wf-sub">100%</span><span class="wf-btn">+</span><span class="wf-btn">Fit width</span>
+          <span class="wf-btn">⏮</span><span class="wf-btn">‹</span><span class="wf-sub">1 of __</span><span class="wf-btn">›</span><span class="wf-btn">⏭</span>
+          <span class="wf-btn">☐ All pages</span><span class="wf-btn">Full screen</span>
+        </div>
+      </div>
+    </div>
+    <div class="wf-note">The filter line and the page footer are part of the sheet, so they survive printing and both exports.</div>
+  </div>
+</section>
+
+<section class="req">
+  <div class="req-head"><span class="req-id">HLR-9</span><h3 class="req-title">The compliance returns answer who was asked and who complied</h3></div>
+  <p class="must">The system must produce, for any period: who was required to declare and who has, per declaration type; a single person's declared interests in full; who holds an account and which modules each can reach; and share dealing over a date range. Each must be reproducible later for the same period — a return filed for a past quarter must still render as it did.</p>
+  <div class="strip"><span class="lab">Stories</span><span class="chip">REP-06…10</span><span class="st st-ok">3 built</span><span class="st st-todo">3 to build</span></div>
+
+  <div class="wf">
+    <div class="wf-cap">Wireframe — submission return</div>
+    <div class="wf-screen">
+      <div class="wf-main" style="padding:12px 14px">
+        <div class="wf-h">[Insider / RP &amp; COI] Declaration Submission Report</div>
+        <div class="wf-stats">
+          <div class="wf-stat"><span>Total Submissions</span><b>00</b></div>
+          <div class="wf-stat"><span>Non Submissions</span><b>00</b></div>
+          <div class="wf-stat"><span>Total Users</span><b>00</b></div>
+        </div>
+        <div class="wf-tbl">
+          <div class="wf-tr head"><div class="wf-td">S.No</div><div class="wf-td">User</div><div class="wf-td">Department</div><div class="wf-td">Company</div><div class="wf-td">Submitted</div><div class="wf-td">Modified on</div><div class="wf-td">Modified by</div></div>
+          <div class="wf-tr"><div class="wf-td">1</div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td">Yes</div><div class="wf-td"></div><div class="wf-td"></div></div>
+          <div class="wf-tr"><div class="wf-td">2</div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td"></div><div class="wf-td">No</div><div class="wf-td">—</div><div class="wf-td">—</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-note">"Modified by" is the person who actually submitted, marked where they filed on another's behalf.</div>
+  </div>
+</section>
+
+<section class="req">
+  <div class="req-head"><span class="req-id">HLR-10</span><h3 class="req-title">Legacy records move across without loss and without invention</h3></div>
+  <p class="must">The system must migrate the legacy users, declarations, related party master and transactions, with their original dates and their attached documents re-linked. It must be runnable without writing anything, repeatable without duplicating anything, and must not overwrite a record edited since. Where the legacy data has no equivalent for a field, the field must be left unset and reported rather than guessed — and the run must produce a reconciliation a reviewer can sign.</p>
+  <div class="strip"><span class="lab">Stories</span><span class="chip">MIG-01…05</span><span class="st st-warn">Users written, untested</span><span class="st st-todo">Declarations &amp; transactions to build</span></div>
+
+  <div class="wf">
+    <div class="wf-cap">Wireframe — migration reconciliation</div>
+    <div class="wf-screen">
+      <div class="wf-main" style="padding:12px 14px">
+        <div class="wf-h">Migration run — [dry run / committed]</div>
+        <div class="wf-tbl">
+          <div class="wf-tr head"><div class="wf-td">Step</div><div class="wf-td">Legacy rows</div><div class="wf-td">Migrated</div><div class="wf-td">Not migrated</div></div>
+          <div class="wf-tr"><div class="wf-td">Users</div><div class="wf-td">___</div><div class="wf-td">___</div><div class="wf-td">___</div></div>
+          <div class="wf-tr"><div class="wf-td">Declarations</div><div class="wf-td">___</div><div class="wf-td">___</div><div class="wf-td">___</div></div>
+          <div class="wf-tr"><div class="wf-td">Transactions</div><div class="wf-td">___</div><div class="wf-td">___</div><div class="wf-td">___</div></div>
+        </div>
+        <div class="wf-box dash">
+          <div class="wf-sub">Not migrated — every row with its reason</div>
+          <div class="wf-line"></div><div class="wf-line" style="width:76%"></div>
+        </div>
+        <div class="wf-box dash">
+          <div class="wf-sub">Decisions left to a person — no equivalent in the legacy data</div>
+          <div class="wf-line" style="width:58%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-note">The dry run performs the real inserts and rolls them back, so these counts are what would happen rather than an estimate of it.</div>
+  </div>
+</section>
+
+<footer>
+  Traces to the 55-story backlog (<span style="font-family:var(--mono);font-size:12.5px">CGTOOL-User-Stories.xlsx</span>), which carries the acceptance criteria and the per-story build status. Status badges here summarise that sheet; where the two differ, the sheet is current.
+</footer>
+
+</div>

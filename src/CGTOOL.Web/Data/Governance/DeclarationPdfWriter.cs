@@ -173,11 +173,21 @@ internal class DeclarationPdfWriter(
 
         foreach (var (label, value) in rows)
         {
+            // The label wraps to its own column like the value does. Drawn on one line, a label
+            // wider than 180 points ran straight over the value beside it -- the declaration's
+            // "I / my relatives hold shares in DI PJSC?" came out overlapping its own answer.
+            var labelLines = WrapText(label, _label, labelWidth - 8);
             var lines = WrapText(value, _value, valueWidth - 8);
-            var rowHeight = Math.Max(18, (lines.Count * 12) + 6);
+            var rowHeight = Math.Max(18, (Math.Max(labelLines.Count, lines.Count) * 12) + 6);
             EnsureSpace(rowHeight);
 
-            _gfx.DrawString(label, _label, new XSolidBrush(TextDark), Margin, _y + 12);
+            var ly = _y + 12;
+            foreach (var line in labelLines)
+            {
+                _gfx.DrawString(line, _label, new XSolidBrush(TextDark), Margin, ly);
+                ly += 12;
+            }
+
             var ty = _y + 12;
             foreach (var line in lines)
             {

@@ -40,12 +40,33 @@ public static class ReportPdfBuilder
         writer.StatBand([.. report.Stats.Select(s => (s.Label, s.Value, s.Sub))]);
         writer.FilterStatement($"Filters: {(report.FilterStatement is { Length: > 0 } f ? f : "none")}");
 
-        // Widths are normalised rather than trusted: a definition whose fractions sum to 0.9 would
-        // otherwise draw a table that stops short of the right margin for no visible reason.
-        var total = report.Columns.Sum(c => c.Width);
-        var fractions = report.Columns.Select(c => c.Width / total).ToArray();
+        if (report.IsDetail)
+        {
+            foreach (var record in report.Records)
+            {
+                // Each person starts a page of their own, as the legacy detail report did. A
+                // record split across a page break is harder to read than a short page.
+                writer.NewPage();
+                writer.SectionHeading(record.Title);
+                if (record.Subtitle is { Length: > 0 } sub) writer.Paragraph(sub);
 
-        writer.DataTable([.. report.Columns.Select(c => c.Header)], fractions, report.Rows);
+                if (record.Facts.Count > 0)
+                    writer.KeyValueTable([.. record.Facts.Select(f => (f.Label, f.Value))]);
+
+                foreach (var table in record.Tables)
+                {
+                    writer.SectionHeading(table.Heading);
+                    if (table.Rows.Count == 0)
+                        writer.Paragraph(table.EmptyNote ?? "None.");
+                    else
+                        writer.DataTable([.. table.Columns.Select(c => c.Header)], Fractions(table.Columns), table.Rows);
+                }
+            }
+        }
+        else
+        {
+            writer.DataTable([.. report.Columns.Select(c => c.Header)], Fractions(report.Columns), report.Rows);
+        }
 
         writer.CloseCurrentPage();
         writer.FinishAllPages();
@@ -53,5 +74,16 @@ public static class ReportPdfBuilder
         using var stream = new MemoryStream();
         document.Save(stream, false);
         return stream.ToArray();
+    }
+
+    /// <summary>Column widths normalised rather than trusted: a definition whose fractions sum to
+    /// 0.9 would otherwise draw a table that stops short of the right margin for no visible
+    /// reason.</summary>
+    private static double[] Fractions(IReadOnlyList<ReportColumn> columns)
+    {
+        var total = columns.Sum(c => c.Width);
+        return total <= 0
+            ? [.. Enumerable.Repeat(1.0 / Math.Max(1, columns.Count), columns.Count)]
+            : [.. columns.Select(c => c.Width / total)];
     }
 }

@@ -1,0 +1,43 @@
+@page "/reports/insider-nin"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+
+<PageTitle>NIN Report of Submissions</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1 data-icon="report">NIN report of submissions</h1>
+    <p class="cg-subtitle">Every declarant's National Investor Number and DI shareholding, as declared for the period.</p>
+
+    @if (_rows is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <ReportViewer Report="Build()">
+            <Filters>
+                <div class="cg-search-wrap">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                    <input type="search" placeholder="Search user or NIN…" @bind="_search" @bind:event="oninput" aria-label="Search user or NIN" />
+                </div>
+                <select class="cg-input" style="width:auto;" @bind="_yearFilter" aria-label="Filter by year">
+                    <option value="0">All years</option>
+                    @foreach (var y in Years()) { <option value="@y">@y</option> }
+                </select>
+                <select class="cg-input" style="width:auto;" @bind="_quarterFilter" aria-label="Filter by quarter">
+                    <option value="0">All quarters</option>
+                    <option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option>
+                </select>
+                <select class="cg-input" style="width:auto;" @bind="_companyFilter" aria-label="Filter by entity">
+                    <option value="0">All entities</option>
+                    @foreach (var c in _companies ?? []) { <option value="@c.Id">@c.Name</option> }
+                </select>
+                <select class="cg-input" style="width:auto;" @bind="_ninFilter" aria-label="Filter by NIN">
+                    <option value="">With and without a NIN</option>
+                    <option value="yes">Holds a NIN</option>
+                    <option value="no">No NIN</option>
+                </select>
+            </Filters>
+        </ReportViewer>
+    }
+</div>

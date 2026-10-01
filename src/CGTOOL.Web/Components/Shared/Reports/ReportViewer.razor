@@ -40,7 +40,7 @@
                             <dl class="cg-report-meta">
                                 <dt>Date</dt><dd>@Report.GeneratedAt.ToString("dd/MM/yyyy")</dd>
                                 <dt>Prepared by</dt><dd>@Report.PreparedBy</dd>
-                                <dt>Records</dt><dd>@Report.Rows.Count</dd>
+                                <dt>Records</dt><dd>@Report.Count</dd>
                             </dl>
                         </header>
 
@@ -76,6 +76,75 @@
                     }
 
                     <div class="cg-report-body">
+                        @if (Report.IsDetail)
+                        {
+                            @foreach (var record in RecordsOn(pageNumber))
+                            {
+                                <div class="cg-report-record">
+                                    <h3>@record.Title</h3>
+                                    @if (record.Subtitle is { Length: > 0 } sub)
+                                    {
+                                        <p class="cg-report-record-sub">@sub</p>
+                                    }
+
+                                    @if (record.Facts.Count > 0)
+                                    {
+                                        <dl class="cg-report-facts">
+                                            @foreach (var fact in record.Facts)
+                                            {
+                                                <div><dt>@fact.Label</dt><dd>@fact.Value</dd></div>
+                                            }
+                                        </dl>
+                                    }
+
+                                    @foreach (var table in record.Tables)
+                                    {
+                                        <h4>@table.Heading</h4>
+                                        @if (table.Rows.Count == 0)
+                                        {
+                                            <p class="cg-report-record-none">@(table.EmptyNote ?? "None.")</p>
+                                        }
+                                        else
+                                        {
+                                            <table class="cg-report-table">
+                                                <colgroup>
+                                                    @foreach (var column in table.Columns)
+                                                    {
+                                                        <col style="width:@(column.Width.ToString("0.###", CultureInfo.InvariantCulture))%" />
+                                                    }
+                                                </colgroup>
+                                                <thead>
+                                                    <tr>
+                                                        @foreach (var column in table.Columns)
+                                                        {
+                                                            <th>@column.Header</th>
+                                                        }
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var line in table.Rows)
+                                                    {
+                                                        <tr>
+                                                            @for (var c = 0; c < table.Columns.Count; c++)
+                                                            {
+                                                                <td>@(c < line.Length ? line[c] : string.Empty)</td>
+                                                            }
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        }
+                                    }
+                                </div>
+                            }
+
+                            @if (Report.Records.Count == 0)
+                            {
+                                <div class="cg-report-empty">No records match the current filters.</div>
+                            }
+                        }
+                        else
+                        {
                         <table class="cg-report-table">
                             <colgroup>
                                 @foreach (var column in Report.Columns)
@@ -107,6 +176,7 @@
                         @if (Report.Rows.Count == 0)
                         {
                             <div class="cg-report-empty">No records match the current filters.</div>
+                        }
                         }
                     </div>
 
@@ -184,11 +254,19 @@
         $"transform-origin:top center;" +
         $"margin-bottom:{((_zoom - 1) * 794 * (_showAllPages ? PageCount : 1)).ToString("0", CultureInfo.InvariantCulture)}px;";
 
-    private int PageCount => Math.Max(1, (int)Math.Ceiling(Math.Max(0, Report.Rows.Count - RowsOnFirstPage) / (double)RowsPerPage) + 1);
+    /// <summary>A detail report runs one person to a sheet, as the legacy one did -- a record split
+    /// across a page break is harder to read than a short page. A tabular report fills each sheet,
+    /// with page 1 holding fewer because the masthead and figures take the space.</summary>
+    private int PageCount => Report.IsDetail
+        ? Math.Max(1, Report.Records.Count)
+        : Math.Max(1, (int)Math.Ceiling(Math.Max(0, Report.Rows.Count - RowsOnFirstPage) / (double)RowsPerPage) + 1);
 
     private IEnumerable<string[]> RowsOn(int pageNumber) => pageNumber == 1
         ? Report.Rows.Take(RowsOnFirstPage)
         : Report.Rows.Skip(RowsOnFirstPage + ((pageNumber - 2) * RowsPerPage)).Take(RowsPerPage);
+
+    private IEnumerable<ReportRecord> RecordsOn(int pageNumber) =>
+        Report.Records.Skip(pageNumber - 1).Take(1);
 
     private void GoTo(int page) => _page = Math.Clamp(page, 1, PageCount);
 

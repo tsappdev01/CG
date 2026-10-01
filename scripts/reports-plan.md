@@ -131,6 +131,30 @@ zoom in and out, fit to width. Losing that is a downgrade even when everything e
 - The sheet stays a fixed 1123×794 at 100%; zoom scales it with a CSS transform rather than
   reflowing, so what is on screen is what prints and what the PDF contains.
 
+## Status — October 2026
+
+All seven legacy reports are rebuilt and on the shared chrome. The report
+framework gained a second shape along the way: a **detail report**, one sheet
+per person, because the two detailed submission reports do not fit a row — a
+declarant can hold a NIN, hold shares, and have any number of relatives who
+hold either. A report now carries rows or records, never both, and each of the
+three writers branches on that rather than guessing from whichever list happens
+to be empty.
+
+Two things that the legacy reports could not do, and now do:
+
+- An empty grid on a detail sheet says which answer produced it. "Nothing to
+  declare" and "nobody filled this in" printed identically before, and they are
+  not the same finding.
+- The Insider Trading report matches each movement's NIN against the NINs on
+  submitted declarations, so it can tell a declared insider from any other
+  investor. That match is the reason for running it.
+
+One thing the legacy report had that this one does not: a monetary **Value**
+column. The uploaded DFM data carries quantities, not prices, so the report
+shows opening, closing and net quantity instead. A column of zeroes would be
+worse than no column — raise it if a price feed exists somewhere.
+
 ## Build order
 
 1. `ReportSheet` / `ReportStatBand` / `ReportToolbar` / `ReportViewer`, plus `ReportWorkbook` and

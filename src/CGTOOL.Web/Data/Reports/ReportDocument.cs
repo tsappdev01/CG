@@ -12,6 +12,32 @@ public sealed record ReportColumn(string Header, double Width, bool Numeric = fa
 /// <summary>One of the headline figures a report opens with.</summary>
 public sealed record ReportStat(string Label, string Value, string? Sub = null);
 
+/// <summary>A label and its value on a detail sheet -- "Employee Name", "Has NIN?".</summary>
+public sealed record ReportFact(string Label, string Value);
+
+/// <summary>A grid inside a detail sheet: the NIN holders under one declarant, the related parties
+/// under one member. Its own columns, because a detail sheet carries several grids that have
+/// nothing to do with each other.</summary>
+/// <param name="EmptyNote">What to print instead of an empty grid. A declaration that says
+/// "nothing to declare" and one that was never filled in look identical as a blank table, and they
+/// are not the same thing.</param>
+public sealed record ReportSubTable(
+    string Heading,
+    IReadOnlyList<ReportColumn> Columns,
+    IReadOnlyList<string[]> Rows,
+    string? EmptyNote = null);
+
+/// <summary>One sheet of a detail report: a person, their facts, and the grids beneath them.
+///
+/// Detail reports are a different shape from the tabular ones -- the legacy Insider Submission
+/// Detail ran to 304 pages, one per declarant -- so a report carries either rows or records, never
+/// both.</summary>
+public sealed record ReportRecord(
+    string Title,
+    string? Subtitle,
+    IReadOnlyList<ReportFact> Facts,
+    IReadOnlyList<ReportSubTable> Tables);
+
 /// <summary>A report, described once and rendered four ways: on screen, on paper, as a PDF and as
 /// a spreadsheet. The four must agree -- a PDF that shows different numbers from the screen it was
 /// generated from is worse than no PDF -- so each report page builds one of these and hands the
@@ -37,9 +63,23 @@ public sealed class ReportDocument
     /// cannot be told apart from one that found nothing.</summary>
     public string FilterStatement { get; init; } = string.Empty;
 
-    public required IReadOnlyList<ReportColumn> Columns { get; init; }
+    /// <summary>The columns of a tabular report. Empty on a detail report.</summary>
+    public IReadOnlyList<ReportColumn> Columns { get; init; } = [];
 
-    public required IReadOnlyList<string[]> Rows { get; init; }
+    /// <summary>The rows of a tabular report. Empty on a detail report.</summary>
+    public IReadOnlyList<string[]> Rows { get; init; } = [];
+
+    /// <summary>The sheets of a detail report, one per person. Empty on a tabular report.</summary>
+    public IReadOnlyList<ReportRecord> Records { get; init; } = [];
+
+    /// <summary>Which of the two shapes this is. A report sets Rows or Records, never both, and
+    /// every writer branches here rather than guessing from whichever list happens to be empty --
+    /// a tabular report that legitimately found nothing would otherwise be drawn as a detail
+    /// report with no sheets.</summary>
+    public bool IsDetail => Records.Count > 0 || Columns.Count == 0;
+
+    /// <summary>How many records or rows the report holds, for the masthead's count.</summary>
+    public int Count => IsDetail ? Records.Count : Rows.Count;
 
     /// <summary>A file name for a download: the report and the day it was taken, which is what
     /// makes one of these findable again in a folder of them six months later.</summary>

@@ -1,0 +1,42 @@
+@page "/reports/insider-trading"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+
+<PageTitle>Insider Trading Report</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1 data-icon="report">Insider trading report</h1>
+    <p class="cg-subtitle">DI share movements over a date range, matched against the National Investor Numbers declared by insiders.</p>
+
+    @if (_records is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <ReportViewer Report="Build()">
+            <Filters>
+                <div class="cg-search-wrap">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                    <input type="search" placeholder="Name or NIN…" @bind="_search" @bind:event="oninput" aria-label="Search name or NIN" />
+                </div>
+                <label class="cg-field" style="width:auto;"><span>Start date</span>
+                    <UaeDateInput Value="_startDate" ValueChanged="d => _startDate = d" />
+                </label>
+                <label class="cg-field" style="width:auto;"><span>End date</span>
+                    <UaeDateInput Value="_endDate" ValueChanged="d => _endDate = d" />
+                </label>
+                <select class="cg-input" style="width:auto;" @bind="_movementFilter" aria-label="Filter by movement">
+                    <option value="moved">Movements only</option>
+                    <option value="buy">Increases only</option>
+                    <option value="sell">Decreases only</option>
+                    <option value="">Including no movement</option>
+                </select>
+                <select class="cg-input" style="width:auto;" @bind="_insiderFilter" aria-label="Filter by insider">
+                    <option value="insiders">Declared insiders only</option>
+                    <option value="">Every investor</option>
+                </select>
+            </Filters>
+        </ReportViewer>
+    }
+</div>

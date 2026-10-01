@@ -44,7 +44,11 @@ public static class NavMenuCatalog
 
         new("Reports.Users", "Users", "Reports"),
         new("Reports.InsiderSubmission", "Insider Submission", "Reports"),
+        new("Reports.InsiderDetail", "Insider Detail", "Reports"),
+        new("Reports.InsiderNin", "NIN Submissions", "Reports"),
         new("Reports.RpCoiSubmission", "RP & COI Submission", "Reports"),
+        new("Reports.RpCoiDetail", "RP & COI Detail", "Reports"),
+        new("Reports.InsiderTrading", "Insider Trading", "Reports"),
         new("Reports.RelatedPartyRegister", "Related Party Register", "Reports"),
         new("Reports.RelatedPartyMaster", "Related Party Master", "Reports"),
 

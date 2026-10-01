@@ -38,7 +38,7 @@ public static class ReportWorkbook
         }
 
         sheet.Cell(row, 1).Value =
-            $"Prepared by {report.PreparedBy} on {report.GeneratedAt:dd MMM yyyy HH:mm} · {report.Rows.Count} record(s)";
+            $"Prepared by {report.PreparedBy} on {report.GeneratedAt:dd MMM yyyy HH:mm} · {report.Count} record(s)";
         sheet.Cell(row, 1).Style.Font.SetFontColor(XLColor.Gray);
         sheet.Range(row, 1, row, columnCount).Merge();
         row++;
@@ -65,6 +65,17 @@ public static class ReportWorkbook
                 row++;
             }
             row++;
+        }
+
+        if (report.IsDetail)
+        {
+            WriteRecords(sheet, report, ref row);
+
+            sheet.Columns(1, 6).AdjustToContents(1, 8, 60);
+
+            using var detailStream = new MemoryStream();
+            workbook.SaveAs(detailStream);
+            return detailStream.ToArray();
         }
 
         var headerRow = row;
@@ -120,6 +131,83 @@ public static class ReportWorkbook
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();
+    }
+
+    /// <summary>A detail report written down the sheet rather than across it: one block per
+    /// person, their facts as label/value pairs, then each grid under its own heading. One sheet
+    /// rather than one tab per person, because a workbook with 304 tabs is not usable.</summary>
+    private static void WriteRecords(IXLWorksheet sheet, ReportDocument report, ref int row)
+    {
+        foreach (var record in report.Records)
+        {
+            sheet.Cell(row, 1).Value = record.Title;
+            sheet.Cell(row, 1).Style.Font.SetBold().Font.SetFontSize(12).Font.SetFontColor(Navy);
+            row++;
+
+            if (record.Subtitle is { Length: > 0 } sub)
+            {
+                sheet.Cell(row, 1).Value = sub;
+                sheet.Cell(row, 1).Style.Font.SetItalic().Font.SetFontColor(XLColor.Gray);
+                row++;
+            }
+
+            foreach (var fact in record.Facts)
+            {
+                sheet.Cell(row, 1).Value = fact.Label;
+                sheet.Cell(row, 1).Style.Font.SetBold();
+                sheet.Cell(row, 2).SetValue(fact.Value);
+                row++;
+            }
+
+            foreach (var table in record.Tables)
+            {
+                row++;
+                sheet.Cell(row, 1).Value = table.Heading;
+                sheet.Cell(row, 1).Style.Font.SetBold().Font.SetFontColor(Navy);
+                row++;
+
+                if (table.Rows.Count == 0)
+                {
+                    sheet.Cell(row, 1).SetValue(table.EmptyNote ?? "None.");
+                    sheet.Cell(row, 1).Style.Font.SetItalic().Font.SetFontColor(XLColor.Gray);
+                    row++;
+                    continue;
+                }
+
+                for (var c = 0; c < table.Columns.Count; c++)
+                {
+                    var cell = sheet.Cell(row, c + 1);
+                    cell.Value = table.Columns[c].Header;
+                    cell.Style.Font.SetBold().Font.SetFontColor(XLColor.White);
+                    cell.Style.Fill.SetBackgroundColor(Navy);
+                }
+                row++;
+
+                foreach (var data in table.Rows)
+                {
+                    for (var c = 0; c < table.Columns.Count && c < data.Length; c++)
+                    {
+                        var cell = sheet.Cell(row, c + 1);
+                        if (table.Columns[c].Numeric && decimal.TryParse(data[c], out var number))
+                        {
+                            cell.Value = number;
+                            cell.Style.NumberFormat.SetFormat("#,##0.##");
+                        }
+                        else
+                        {
+                            cell.SetValue(data[c]);
+                        }
+                    }
+                    row++;
+                }
+            }
+
+            // A blank row and a rule between people, so a reader scrolling finds the boundaries.
+            row++;
+            sheet.Range(row, 1, row, 6).Style.Border.SetTopBorder(XLBorderStyleValues.Thin);
+            sheet.Range(row, 1, row, 6).Style.Border.SetTopBorderColor(Gold);
+            row += 2;
+        }
     }
 
     private static string SheetName(string title)

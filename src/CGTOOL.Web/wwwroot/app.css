@@ -3954,3 +3954,16 @@ button.cg-appbar-user {
    ask for this page by name get it. */
 @page cg-report-landscape { size: A4 landscape; margin: 8mm; }
 .cg-report-sheet { page: cg-report-landscape; }
+
+/* A detail report's sheet: one person, their facts, and the grids beneath them.
+   The figures band and the table styling above are for the tabular shape; this
+   is the other one. */
+.cg-report-record + .cg-report-record { margin-top: 18px; padding-top: 16px; border-top: 1px solid #D3D8DE; }
+.cg-report-record h3 { font-size: 16px; font-weight: 650; color: var(--cg-navy); margin: 0 0 2px; }
+.cg-report-record h4 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--cg-navy); margin: 14px 0 5px; }
+.cg-report-record-sub { font-size: 12px; color: #56606B; margin: 0 0 8px; }
+.cg-report-record-none { font-size: 12px; font-style: italic; color: #56606B; margin: 0; }
+.cg-report-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 28px; margin: 8px 0 0; }
+.cg-report-facts > div { display: flex; gap: 10px; align-items: baseline; border-bottom: 1px dotted #D3D8DE; padding-bottom: 3px; }
+.cg-report-facts dt { font-size: 11.5px; color: #56606B; flex: 0 0 42%; }
+.cg-report-facts dd { font-size: 12.5px; font-weight: 600; margin: 0; color: #14212E; min-width: 0; overflow-wrap: anywhere; }

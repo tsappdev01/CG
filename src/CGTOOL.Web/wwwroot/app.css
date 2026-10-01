@@ -3927,9 +3927,15 @@ button.cg-appbar-user {
 @media print {
     /* The same :has() technique the declaration print modal uses, and for the same
        reason: the sheets sit several levels inside div.page > main > article.content,
-       and a display:none ancestor hides them however they declare themselves. */
-    body:has(.cg-report-sheets) * { display: none !important; }
-    body:has(.cg-report-sheets) *:has(.cg-report-sheets) {
+       and a display:none ancestor hides them however they declare themselves.
+
+       The hide selector must stay at `body *`. Scoping it to
+       `body:has(.cg-report-sheets) *` reads tidier and silently breaks the whole
+       thing: that scores (0,1,1) against the `.cg-report-sheets` reveal's (0,1,0),
+       and with both !important the more specific one wins -- the sheets stayed
+       hidden and every report printed a blank page. */
+    body * { display: none !important; }
+    body *:has(.cg-report-sheets) {
         display: block !important; position: static !important;
         height: 0 !important; min-height: 0 !important; max-height: none !important;
         margin: 0 !important; padding: 0 !important; border: none !important;
@@ -3948,12 +3954,18 @@ button.cg-appbar-user {
     .cg-report-viewport { overflow: visible !important; max-height: none !important; }
 }
 
-/* A *named* page rather than a bare `@page`, which is global: setting landscape
-   there would have turned every existing printout landscape too, including the
-   declaration print modals that are laid out for portrait. Only elements that
-   ask for this page by name get it. */
-@page cg-report-landscape { size: A4 landscape; margin: 8mm; }
-.cg-report-sheet { page: cg-report-landscape; }
+/* Landscape for reports only.
+
+   `@page` is global and cannot be scoped by a selector, so putting landscape here
+   unconditionally would turn every existing printout landscape too, including the
+   declaration print modals laid out for portrait. A *named* page -- `@page name`
+   plus `page: name` on the element -- is the textbook answer and did not work:
+   the browser went on printing portrait and ignored it.
+
+   So this is scoped in time instead, and there is no @page rule here at all:
+   cgReportViewer.print() in js/report-viewer.js inserts one immediately before
+   printing and removes it afterwards, so it exists only while a report is being
+   printed and every other printout keeps the portrait default. */
 
 /* A detail report's sheet: one person, their facts, and the grids beneath them.
    The figures band and the table styling above are for the tabular shape; this

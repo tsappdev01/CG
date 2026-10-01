@@ -3891,6 +3891,10 @@ button.cg-appbar-user {
 .cg-report-table th {
     text-align: left; padding: 8px 6px; font-size: 10px; letter-spacing: .08em;
     text-transform: uppercase; color: var(--cg-navy); font-weight: 700; line-height: 1.25;
+    /* Headers wrap like the cells below them. Without this a long heading in a narrow
+       column -- "IDENTIFICATION" at fourteen columns wide -- ran straight over its
+       neighbour, and the uppercase letter-spacing makes it worse than the body text. */
+    overflow-wrap: anywhere;
 }
 .cg-report-table td { padding: 7px 6px; overflow-wrap: anywhere; color: #2C3A47; }
 .cg-report-table tbody tr { border-bottom: 1px solid #E3E6EA; }

@@ -2,11 +2,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
 using CGTOOL.Web.Data;
 using CGTOOL.Web.Data.Governance;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components;
+using CGTOOL.Web.Data.Reports;
 
 namespace CGTOOL.Web.Components.Pages.Admin;
 
 public partial class RelatedPartyRegister
 {
+    [Inject] private AuthenticationStateProvider AuthState { get; set; } = default!;
+
     /// <summary>One row per CoiCompanyEntry (I.B/I.C/I.D), consolidated across every declarant --
     /// Functional Spec §6 "Related Party Register &amp; Reporting."</summary>
     private class RegisterRow
@@ -61,6 +66,7 @@ public partial class RelatedPartyRegister
     private List<RegisterRow>? _rows;
     private List<RelativeRow>? _relativeRows;
     private List<Company>? _companies;
+    private string _preparedBy = "unknown";
     private string _activeTab = "relatives";
     private string _search = string.Empty;
     private int _yearFilter;
@@ -71,13 +77,14 @@ public partial class RelatedPartyRegister
     private string _expiryFilter = string.Empty;
     private string _sortColumn = "RelatedParty";
     private bool _sortAscending = true;
-    private bool _showPrintPreview;
     private RelativeRow? _viewDocumentsRecord;
 
-    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     protected override async Task OnInitializedAsync()
     {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        _preparedBy = state.User.Identity?.Name ?? "unknown";
+
         // Own DbContext instance (not the shared circuit-scoped one) -- this page's several
         // sequential queries would otherwise race against whatever else on the circuit happens to
         // touch the shared context, throwing "A second operation was started on this context
@@ -278,5 +285,154 @@ public partial class RelatedPartyRegister
         _activeTab = tab;
         _sortColumn = tab == "relatives" ? "RelatedParty" : "Expiry";
         _sortAscending = true;
+    }
+
+    /// <summary>Whichever tab is in front, as a report document. One viewer rather than two,
+    /// because the tabs are two views of one register and a reader printing "the register" means
+    /// the one they are looking at.</summary>
+    private ReportDocument Build() => _activeTab == "companies" ? BuildCompanies() : BuildRelatives();
+
+    private ReportDocument BuildRelatives()
+    {
+        var rows = FilteredRelativeRows();
+
+        return new ReportDocument
+        {
+            Title = "Related Party Register",
+            Subtitle = "Every related party declared in a submitted Related Party & COI declaration, consolidated across all declarants.",
+            PreparedBy = _preparedBy,
+            Stats =
+            [
+                new ReportStat("Related parties", rows.Count.ToString(), "declared"),
+                new ReportStat("Declarants", rows.Select(r => r.MemberName).Distinct().Count().ToString(), ""),
+                new ReportStat("Entities", rows.Select(r => r.EntityShortCode ?? "—").Distinct().Count().ToString(), ""),
+                new ReportStat("Company interests", _rows!.Count.ToString(), "on the other tab"),
+            ],
+            FilterStatement = FilterStatement("Related Party Register"),
+            Columns =
+            [
+                new("S. No", 4),
+                new("Member", 12),
+                new("Related Party", 13),
+                new("Category", 8),
+                new("Company", 11),
+                new("Designation", 9),
+                new("Name as per Emirates ID", 13),
+                new("Emirates ID", 10),
+                new("Emirates Expiry", 8),
+                new("Entity", 5),
+                new("Entity Type", 7),
+            ],
+            Rows =
+            [
+                .. rows.Select((r, i) => new[]
+                {
+                    (i + 1).ToString(),
+                    r.MemberName,
+                    r.RelatedParty,
+                    r.Category,
+                    r.CompanyName ?? "—",
+                    r.Designation ?? "—",
+                    r.EmiratesIdNameOnCard ?? "—",
+                    r.EmiratesIdNumber ?? "—",
+                    r.EmiratesIdExpiryDate?.ToString("dd/MM/yyyy") ?? "—",
+                    r.EntityShortCode ?? "—",
+                    CompanyEntityTypes.Label(r.EntityType),
+                })
+            ],
+        };
+    }
+
+    private ReportDocument BuildCompanies()
+    {
+        var rows = FilteredRows();
+
+        return new ReportDocument
+        {
+            Title = "Related Party Register — Company Interests",
+            Subtitle = "Companies declared under I.B (self-owned), I.C (relative-owned) and I.D (board or executive role).",
+            PreparedBy = _preparedBy,
+            Stats =
+            [
+                new ReportStat("Company interests", rows.Count.ToString(), "declared"),
+                new ReportStat("I.B self-owned", rows.Count(r => r.OwnerType == CoiCompanyOwnerType.Self).ToString(), ""),
+                new ReportStat("I.C relative-owned", rows.Count(r => r.OwnerType == CoiCompanyOwnerType.Relative).ToString(), ""),
+                new ReportStat("I.D board / executive", rows.Count(r => r.OwnerType == CoiCompanyOwnerType.BoardOrExecutiveRole).ToString(), ""),
+            ],
+            FilterStatement = FilterStatement("Company Interests"),
+            Columns =
+            [
+                new("S. No", 4),
+                new("Member", 13),
+                new("Table", 7),
+                new("Legal Company Name", 17),
+                new("Principal Business Activity", 15),
+                new("Designation", 9),
+                new("Trade Licence No.", 10),
+                new("Licence Expiry", 8),
+                new("Documents", 6),
+                new("Entity", 5),
+                new("Quarter", 6),
+            ],
+            Rows =
+            [
+                .. rows.Select((r, i) => new[]
+                {
+                    (i + 1).ToString(),
+                    r.MemberName,
+                    TableLabel(r.OwnerType),
+                    r.LegalCompanyName,
+                    r.PrincipalBusinessActivity ?? "—",
+                    r.Designation ?? "—",
+                    r.TradeLicenseNumber ?? "—",
+                    r.TradeLicenseExpiryDate?.ToString("dd/MM/yyyy") ?? "—",
+                    // A sheet cannot carry the per-row button the grid had, so it carries the
+                    // count instead: the question a printed register answers is whether evidence
+                    // was filed, and opening the file is done from the declaration.
+                    r.Documents.Count == 0 ? "None" : r.Documents.Count.ToString(),
+                    r.EntityShortCode ?? "—",
+                    $"Q{r.Quarter} {r.Year}",
+                })
+            ],
+        };
+    }
+
+    /// <summary>I.B / I.C / I.D are what the declaration form calls its three company tables, and
+    /// what a reviewer reading this beside the form is looking for.</summary>
+    private static string TableLabel(CoiCompanyOwnerType type) => type switch
+    {
+        CoiCompanyOwnerType.Self => "I.B Self",
+        CoiCompanyOwnerType.Relative => "I.C Relative",
+        CoiCompanyOwnerType.BoardOrExecutiveRole => "I.D Board role",
+        _ => type.ToString(),
+    };
+
+    private string FilterStatement(string tab)
+    {
+        var parts = new List<string>
+        {
+            tab,
+            _yearFilter > 0 ? _yearFilter.ToString() : "All years",
+            _quarterFilter > 0 ? $"Q{_quarterFilter}" : "All quarters",
+            _companyFilter > 0 ? _companies?.FirstOrDefault(c => c.Id == _companyFilter)?.Name ?? "Unknown entity" : "All entities",
+            string.IsNullOrWhiteSpace(_designationFilter) ? "All designations" : _designationFilter,
+        };
+
+        if (_activeTab == "companies")
+        {
+            parts.Add(string.IsNullOrWhiteSpace(_ownerTypeFilter)
+                ? "All tables"
+                : Enum.TryParse<CoiCompanyOwnerType>(_ownerTypeFilter, out var owner) ? TableLabel(owner) : _ownerTypeFilter);
+            parts.Add(_expiryFilter switch
+            {
+                "expired" => "Expired licences",
+                "expiring-soon" => "Licences expiring within 60 days",
+                "valid" => "Valid licences",
+                _ => "All licences",
+            });
+        }
+
+        if (_search.Trim() is { Length: > 0 } term) parts.Add($"Search \u201c{term}\u201d");
+        return string.Join(" \u00b7 ", parts);
     }
 }

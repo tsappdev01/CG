@@ -2,7 +2,6 @@
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
-@inject IJSRuntime JS
 
 <PageTitle>Related Party Master</PageTitle>
 
@@ -20,212 +19,49 @@
     }
     else
     {
-        @* Each one filters the list to what it counts: on a master list the first question is
-           almost always "show me just the users" or "just the relatives' companies". *@
-        <section class="cg-kpis" aria-label="Related party master overview">
-            @foreach (var (source, label) in Tiles)
-            {
-                <button type="button" class="cg-kpi cg-kpi-button @(_sourceFilter == source.ToString() ? "is-selected" : "")"
-                        aria-pressed="@(_sourceFilter == source.ToString())"
-                        @onclick="() => ToggleSource(source)">
-                    <div class="cg-kpi-label">@label</div>
-                    <div class="cg-kpi-value">@CountOf(source)</div>
-                </button>
-            }
-        </section>
-
-        <div class="cg-controls">
-            <div class="cg-search-wrap">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
-                <input type="search" placeholder="Search name, member, entity, licence…" @bind="_search" @bind:event="oninput" aria-label="Search the master" />
-            </div>
-
-            <select class="cg-input" style="width:auto;" @bind="_sourceFilter" aria-label="Filter by what the related party is">
-                <option value="">All related parties</option>
-                <option value="@MasterSource.Entity">Entities</option>
-                <option value="@MasterSource.User">Users</option>
-                <option value="@MasterSource.Relative">Relatives</option>
-                <option value="@MasterSource.MemberCompany">Members' companies</option>
-                <option value="@MasterSource.RelativeCompany">Relatives' companies</option>
-            </select>
-
-            <select class="cg-input" style="width:auto;" @bind="_typeFilter" aria-label="Filter by type">
-                <option value="">All types</option>
-                @foreach (var t in AvailableTypes())
-                {
-                    <option value="@t">@t</option>
-                }
-            </select>
-
-            <select class="cg-input" style="width:auto;" @bind="_companyFilter" aria-label="Filter by entity">
-                <option value="0">All entities</option>
-                @foreach (var c in _companies ?? [])
-                {
-                    <option value="@c.Id">@c.Name</option>
-                }
-            </select>
-
-            <select class="cg-input" style="width:auto;" @bind="_holdingFilter" aria-label="Filter by nature of holding">
-                <option value="">All holdings</option>
-                <option value="@RelatedPartyHoldingNature.Owned">Owned</option>
-                <option value="@RelatedPartyHoldingNature.Subsidiary">Subsidiary</option>
-                <option value="@RelatedPartyHoldingNature.Affiliate">Affiliate</option>
-            </select>
-
-            <select class="cg-input" style="width:auto;" @bind="_statusFilter" aria-label="Filter by status">
-                <option value="">All statuses</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-            </select>
-
-            <button type="button" class="cg-action-btn" @onclick="ClearFilters">Clear Filters</button>
-
-            <span class="cg-result-count">@FilteredRows().Count record(s)</span>
-        </div>
-
-        <div class="cg-actions">
-            <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = true">Print Preview</button>
-        </div>
-
-        <div class="cg-table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>S.No</th>
-                        <SortableHeader Label="Related Party Name" Column="Name" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                        <SortableHeader Label="Related Party" Column="Source" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                        <SortableHeader Label="Type" Column="Type" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                        @* Status sits here rather than at the end of sixteen columns, where it was only
-                           reachable by scrolling the table sideways. *@
-                        <th>Status</th>
-                        <SortableHeader Label="Entity" Column="Entity" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                        <th>Department</th>
-                        <th>Member</th>
-                        <SortableHeader Label="Related To" Column="RelatedTo" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                        <th>Relationship</th>
-                        <th>Identification</th>
-                        <th>Nationality</th>
-                        <th>Nature of Holding</th>
-                        <th>Nature of Interest</th>
-                        <th>Holding %</th>
-                        <th>Principal Business Activity</th>
-                        <th>Trade Licence No.</th>
-                        <SortableHeader Label="Licence Expiry" Column="Expiry" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
-                    </tr>
-                </thead>
-                <tbody>
-                    @{ var i = 0; }
-                    @foreach (var r in FilteredRows())
-                    {
-                        i++;
-                        <tr class="cg-data-row">
-                            <td>@i</td>
-                            <td>@r.Name</td>
-                            <td>@SourceLabel(r.Source)</td>
-                            <td>@(r.Type ?? "—")</td>
-                            <td>
-                                @if (r.Active is { } active)
-                                {
-                                    <span class="cg-status-pill @(active ? "cleared" : "flagged")">@(active ? "Active" : "Inactive")</span>
-                                }
-                                else
-                                {
-                                    <span>—</span>
-                                }
-                            </td>
-                            <td>@(r.EntityName ?? "—")</td>
-                            <td>@(r.Department ?? "—")</td>
-                            <td>@(r.MemberName ?? "—")</td>
-                            <td>@(r.RelatedTo ?? "—")</td>
-                            <td>@(r.Relationship ?? "—")</td>
-                            <td class="mono">@(r.IdentificationNumber ?? "—")</td>
-                            <td>@(r.Nationality ?? "—")</td>
-                            <td>@HoldingLabel(r.NatureOfHolding)</td>
-                            <td>@(r.NatureOfInterest ?? "—")</td>
-                            <td class="mono">@(r.OwnershipPercentage is { } p ? $"{p:0.##}%" : "—")</td>
-                            <td>@(r.PrincipalBusinessActivity ?? "—")</td>
-                            <td class="mono">@(r.TradeLicenceNumber ?? "—")</td>
-                            <td class="mono">@(r.TradeLicenceExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-            @if (FilteredRows().Count == 0)
-            {
-                <div class="cg-empty-state">No related parties match these filters.</div>
-            }
-        </div>
-
-        @if (_showPrintPreview)
-        {
-            <div class="cg-print-overlay">
-                <div class="cg-print-modal cg-print-modal-wide">
-                    <div class="cg-print-modal-actions no-print">
-                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
-                        <button type="button" class="cg-action-btn" @onclick="() => _showPrintPreview = false">Close</button>
-                    </div>
-                    <div class="cg-print-area">
-                        <div class="cg-print-header">
-                            <img src="images/di-logo.jpg" alt="Dubai Investments" />
-                            <div>
-                                <h2>Corporate Governance Tool — Related Party Master</h2>
-                                <PrintFooter />
-                            </div>
-                        </div>
-                        <div class="cg-table-wrap">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>S.No</th>
-                                        <th>Related Party Name</th>
-                                        <th>Related Party</th>
-                                        <th>Type</th>
-                                        <th>Status</th>
-                                        <th>Entity</th>
-                                        <th>Department</th>
-                                        <th>Member</th>
-                                        <th>Related To</th>
-                                        <th>Relationship</th>
-                                        <th>Identification</th>
-                                        <th>Nationality</th>
-                                        <th>Nature of Holding</th>
-                                        <th>Nature of Interest</th>
-                                        <th>Holding %</th>
-                                        <th>Trade Licence No.</th>
-                                        <th>Licence Expiry</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @{ var pi = 0; }
-                                    @foreach (var r in FilteredRows())
-                                    {
-                                        pi++;
-                                        <tr class="cg-data-row">
-                                            <td>@pi</td>
-                                            <td>@r.Name</td>
-                                            <td>@SourceLabel(r.Source)</td>
-                                            <td>@(r.Type ?? "—")</td>
-                                            <td>@(r.Active is { } a ? (a ? "Active" : "Inactive") : "—")</td>
-                                            <td>@(r.EntityName ?? "—")</td>
-                                            <td>@(r.Department ?? "—")</td>
-                                            <td>@(r.MemberName ?? "—")</td>
-                                            <td>@(r.RelatedTo ?? "—")</td>
-                                            <td>@(r.Relationship ?? "—")</td>
-                                            <td class="mono">@(r.IdentificationNumber ?? "—")</td>
-                                            <td>@(r.Nationality ?? "—")</td>
-                                            <td>@HoldingLabel(r.NatureOfHolding)</td>
-                                            <td>@(r.NatureOfInterest ?? "—")</td>
-                                            <td class="mono">@(r.OwnershipPercentage is { } pp ? $"{pp:0.##}%" : "—")</td>
-                                            <td class="mono">@(r.TradeLicenceNumber ?? "—")</td>
-                                            <td class="mono">@(r.TradeLicenceExpiryDate?.ToString("dd/MM/yyyy") ?? "—")</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+        <ReportViewer Report="Build()">
+            <Filters>
+                <div class="cg-search-wrap">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                    <input type="search" placeholder="Search name, member, entity, licence…" @bind="_search" @bind:event="oninput" aria-label="Search the master" />
                 </div>
-            </div>
-        }
+
+                @* The five counts moved into the sheet's figure band, so this dropdown is now the
+                   only way to narrow to one kind -- which the tiles used to do when clicked. *@
+                <select class="cg-input" style="width:auto;" @bind="_sourceFilter" aria-label="Filter by what the related party is">
+                    <option value="">All related parties</option>
+                    <option value="@MasterSource.Entity">Entities</option>
+                    <option value="@MasterSource.User">Users</option>
+                    <option value="@MasterSource.Relative">Relatives</option>
+                    <option value="@MasterSource.MemberCompany">Members' companies</option>
+                    <option value="@MasterSource.RelativeCompany">Relatives' companies</option>
+                </select>
+
+                <select class="cg-input" style="width:auto;" @bind="_typeFilter" aria-label="Filter by type">
+                    <option value="">All types</option>
+                    @foreach (var t in AvailableTypes()) { <option value="@t">@t</option> }
+                </select>
+
+                <select class="cg-input" style="width:auto;" @bind="_companyFilter" aria-label="Filter by entity">
+                    <option value="0">All entities</option>
+                    @foreach (var c in _companies ?? []) { <option value="@c.Id">@c.Name</option> }
+                </select>
+
+                <select class="cg-input" style="width:auto;" @bind="_holdingFilter" aria-label="Filter by nature of holding">
+                    <option value="">All holdings</option>
+                    <option value="@RelatedPartyHoldingNature.Owned">Owned</option>
+                    <option value="@RelatedPartyHoldingNature.Subsidiary">Subsidiary</option>
+                    <option value="@RelatedPartyHoldingNature.Affiliate">Affiliate</option>
+                </select>
+
+                <select class="cg-input" style="width:auto;" @bind="_statusFilter" aria-label="Filter by status">
+                    <option value="">All statuses</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+
+                <button type="button" class="cg-action-btn" @onclick="ClearFilters">Clear filters</button>
+            </Filters>
+        </ReportViewer>
     }
 </div>

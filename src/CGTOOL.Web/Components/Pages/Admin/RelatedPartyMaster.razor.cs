@@ -2,11 +2,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
 using CGTOOL.Web.Data;
 using CGTOOL.Web.Data.Governance;
+using CGTOOL.Web.Data.Reports;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components;
 
 namespace CGTOOL.Web.Components.Pages.Admin;
 
 public partial class RelatedPartyMaster
 {
+    [Inject] private AuthenticationStateProvider AuthState { get; set; } = default!;
+
     /// <summary>Where a row came from. The master is a union of four standing lists, and which one a
     /// row came from decides what its Type column means and which of the other columns it can fill --
     /// so it is carried on the row rather than worked out again at render time.</summary>
@@ -79,6 +84,7 @@ public partial class RelatedPartyMaster
 
     private List<MasterRow>? _rows;
     private List<Company>? _companies;
+    private string _preparedBy = "unknown";
     private string _search = string.Empty;
     private string _sourceFilter = string.Empty;
     private int _companyFilter;
@@ -87,12 +93,12 @@ public partial class RelatedPartyMaster
     private string _statusFilter = string.Empty;
     private string _sortColumn = "Name";
     private bool _sortAscending = true;
-    private bool _showPrintPreview;
-
-    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     protected override async Task OnInitializedAsync()
     {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        _preparedBy = state.User.Identity?.Name ?? "unknown";
+
         // Own DbContext instance rather than the circuit-scoped one, like the other reports: these
         // sequential queries would otherwise race whatever else on the circuit touches the shared
         // context ("a second operation was started on this context instance").
@@ -325,5 +331,81 @@ public partial class RelatedPartyMaster
         _typeFilter = string.Empty;
         _holdingFilter = string.Empty;
         _statusFilter = string.Empty;
+    }
+
+    /// <summary>The master as a report document. The five tile counts become the sheet's figure
+    /// band -- they answered "how much of each kind is on here", which is exactly what a figure
+    /// band is for, and they now print and export with the rest of the report rather than only
+    /// existing on screen.</summary>
+    private ReportDocument Build()
+    {
+        var rows = FilteredRows();
+
+        return new ReportDocument
+        {
+            Title = "Related Party Master",
+            Subtitle = "Every related party the system knows about: entities, declarants, and the companies held by them and by their relatives.",
+            PreparedBy = _preparedBy,
+            Stats = [.. Tiles.Select(t => new ReportStat(t.Label, CountOf(t.Source).ToString(), null))],
+            FilterStatement = FilterStatement(),
+            Columns =
+            [
+                // These sum to 100. They are percentages of the sheet, and letting them total
+                // 102 drew a table two points wider than the page it sits on.
+                new("S. No", 3),
+                new("Related Party Name", 12),
+                new("Related Party", 8),
+                new("Type", 7),
+                new("Status", 5),
+                new("Entity", 9),
+                new("Department", 7),
+                new("Member", 8),
+                new("Related To", 8),
+                new("Relationship", 7),
+                new("Identification", 8),
+                new("Nature of Holding", 7),
+                new("Holding %", 4, Numeric: true),
+                new("Trade Licence No.", 7),
+            ],
+            Rows =
+            [
+                .. rows.Select((r, i) => new[]
+                {
+                    (i + 1).ToString(),
+                    r.Name,
+                    SourceLabel(r.Source),
+                    r.Type ?? "—",
+                    r.Active is null ? "—" : r.Active.Value ? "Active" : "Inactive",
+                    r.EntityName ?? "—",
+                    r.Department ?? "—",
+                    r.MemberName ?? "—",
+                    r.RelatedTo ?? "—",
+                    r.Relationship ?? "—",
+                    r.IdentificationNumber ?? "—",
+                    HoldingLabel(r.NatureOfHolding),
+                    r.OwnershipPercentage?.ToString("0.##") ?? "—",
+                    r.TradeLicenceNumber ?? "—",
+                })
+            ],
+        };
+    }
+
+    private string FilterStatement()
+    {
+        var parts = new List<string>
+        {
+            string.IsNullOrWhiteSpace(_sourceFilter)
+                ? "All related parties"
+                : Enum.TryParse<MasterSource>(_sourceFilter, out var source) ? SourceLabel(source) : _sourceFilter,
+            string.IsNullOrWhiteSpace(_typeFilter) ? "All types" : _typeFilter,
+            _companyFilter > 0
+                ? _companies?.FirstOrDefault(c => c.Id == _companyFilter)?.Name ?? "Unknown entity"
+                : "All entities",
+            string.IsNullOrWhiteSpace(_holdingFilter) ? "All holdings" : _holdingFilter,
+            _statusFilter switch { "active" => "Active only", "inactive" => "Inactive only", _ => "All statuses" },
+        };
+
+        if (_search.Trim() is { Length: > 0 } term) parts.Add($"Search \u201c{term}\u201d");
+        return string.Join(" \u00b7 ", parts);
     }
 }

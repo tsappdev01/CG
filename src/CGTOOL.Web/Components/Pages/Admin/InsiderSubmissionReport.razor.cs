@@ -11,8 +11,7 @@ namespace CGTOOL.Web.Components.Pages.Admin;
 ///
 /// It is deliberately the same shape as the one it replaces -- the same three figures at the top,
 /// the same seven columns -- because Compliance reads it against prior quarters and a report that
-/// reorganises itself cannot be compared with the ones already filed. The richer screen at
-/// /reports/insider-declarations stays as it is: this one is the printable submission return.</summary>
+/// reorganises itself cannot be compared with the ones already filed.</summary>
 public partial class InsiderSubmissionReport
 {
     [Inject] private IDbContextFactory<ApplicationDbContext> DbFactory { get; set; } = default!;

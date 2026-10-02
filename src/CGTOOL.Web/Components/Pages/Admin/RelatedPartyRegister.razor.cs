@@ -77,7 +77,6 @@ public partial class RelatedPartyRegister
     private string _expiryFilter = string.Empty;
     private string _sortColumn = "RelatedParty";
     private bool _sortAscending = true;
-    private RelativeRow? _viewDocumentsRecord;
 
 
     protected override async Task OnInitializedAsync()
@@ -189,7 +188,6 @@ public partial class RelatedPartyRegister
         _ => relationship.ToString(),
     };
 
-    private static bool HasAnyDocument(RelativeRow r) => r.Declaration.Companies.Any(c => c.Documents.Count > 0);
 
     private List<int> AvailableYears() => (_rows ?? [])
         .Select(r => r.Year)

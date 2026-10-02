@@ -11,7 +11,7 @@ namespace CGTOOL.Web.Components.Pages.Admin;
 /// the two grids the form produces -- the related parties declared, and the conflicts of interest.
 ///
 /// The legacy report printed both grids' headers even when there was nothing under them, which
-/// reads as missing data. Here an empty grid says which answer produced it: "nothing to declare"
+/// read as missing data. Here an empty grid says which answer produced it: "nothing to declare"
 /// is a different finding from a section nobody filled in.</summary>
 public partial class RpCoiDetailReport
 {

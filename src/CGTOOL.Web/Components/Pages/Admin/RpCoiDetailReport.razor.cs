@@ -115,6 +115,8 @@ public partial class RpCoiDetailReport
                         ? "Declared nothing to declare in all three company sections."
                         : "No companies entered."),
 
+                Documents(d),
+
                 new ReportSubTable(
                     "Conflict of Interest Declaration Form",
                     [new("Legal Name", 34), new("Nature of Business", 28), new("Nature of My Interest", 38)],
@@ -126,6 +128,36 @@ public partial class RpCoiDetailReport
                     })],
                     d.NothingToDeclareConflicts ? "Declared no conflicts of interest." : "No conflicts entered."),
             ]);
+    }
+
+    /// <summary>The trade licences uploaded against this declarant's companies. Ported from the
+    /// old report, where it sat behind a per-row button and a modal; here it is a section of the
+    /// person's own sheet, which is where a reviewer already is.
+    ///
+    /// The file name rather than the word "View" is the link text, because this report prints and
+    /// exports and a relative path resolves from neither -- the cell has to say something true
+    /// without the link.</summary>
+    private static ReportSubTable Documents(RelatedPartyCoiDeclaration d)
+    {
+        var files = d.Companies
+            .SelectMany(c => c.Documents.Select(doc => (Company: c.LegalCompanyName, Doc: doc)))
+            .OrderBy(x => x.Company).ThenBy(x => x.Doc.FileName)
+            .ToList();
+
+        return new ReportSubTable(
+            "Documents",
+            [new("Company", 38), new("File", 40), new("Uploaded", 22)],
+            [.. files.Select(f => new[]
+            {
+                f.Company,
+                f.Doc.FileName,
+                f.Doc.UploadedAtUtc.ToLocalDisplay("dd/MM/yyyy"),
+            })],
+            d.Companies.Count == 0
+                ? "No companies were declared, so there are no licences to file."
+                : "No trade licences were uploaded against the declared companies.",
+            LinkColumn: 1,
+            RowLinks: [.. files.Select(f => (string?)f.Doc.FilePath)]);
     }
 
     /// <summary>Which section of the form the company came from — the declarant's own, a

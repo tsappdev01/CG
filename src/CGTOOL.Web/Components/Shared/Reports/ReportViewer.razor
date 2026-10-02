@@ -122,12 +122,26 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    @foreach (var line in table.Rows)
+                                                    @for (var r = 0; r < table.Rows.Count; r++)
                                                     {
+                                                        var line = table.Rows[r];
+                                                        var href = table.RowLinks is { } links && r < links.Count ? links[r] : null;
                                                         <tr>
                                                             @for (var c = 0; c < table.Columns.Count; c++)
                                                             {
-                                                                <td>@(c < line.Length ? line[c] : string.Empty)</td>
+                                                                var text = c < line.Length ? line[c] : string.Empty;
+                                                                <td>
+                                                                    @if (c == table.LinkColumn && href is { Length: > 0 })
+                                                                    {
+                                                                        @* Opens in its own tab: the reviewer is part-way through a
+                                                                           report and should not lose their place to look at a scan. *@
+                                                                        <a href="@href" target="_blank" rel="noopener">@text</a>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        @text
+                                                                    }
+                                                                </td>
                                                             }
                                                         </tr>
                                                     }

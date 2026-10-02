@@ -45,7 +45,9 @@ public static class DeclarationSubmissionSource
         var declarations = await db.RelatedPartyCoiDeclarations
             .AsNoTracking()
             .Include(d => d.Relatives)
-            .Include(d => d.Companies)
+            // The uploaded trade licences hang off the company entries, and the detail report
+            // lists them, so they have to come along with the companies.
+            .Include(d => d.Companies).ThenInclude(c => c.Documents)
             .Include(d => d.Conflicts)
             .ToListAsync();
 

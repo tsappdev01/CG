@@ -112,6 +112,8 @@ public partial class InsiderDetailReport
                     d.RelativesHaveNin ? "Declared that relatives hold a NIN, but no holders were listed."
                                        : "Declared that no relatives hold a National Investor Number."),
 
+                Documents(d),
+
                 new ReportSubTable(
                     "Relatives holding DI shares",
                     [new("Name", 36), new("Relationship", 22), new("NIN", 24), new("Shares", 18, Numeric: true)],
@@ -125,6 +127,48 @@ public partial class InsiderDetailReport
                     d.RelativesHoldShares ? "Declared that relatives hold shares, but none were listed."
                                           : "Declared that no relatives hold shares in DI PJSC."),
             ]);
+    }
+
+    /// <summary>What the declarant uploaded as evidence, with the number and expiry they go with.
+    /// Ported from the old report, where it lived behind a per-row button and a modal; here it is a
+    /// section of the person's own sheet, because that is where a reviewer is already looking.
+    ///
+    /// The file name rather than the word "View" is the link text. This report prints and exports,
+    /// and a relative path does not resolve from a PDF or a spreadsheet -- so the cell has to say
+    /// something true without the link, and the file's name does.</summary>
+    private static ReportSubTable Documents(InsiderDeclaration d)
+    {
+        var files = new List<(string Kind, string? Number, DateTime? Expiry, string? Path)>
+        {
+            ("Emirates ID", d.EmiratesIdNumber, d.EmiratesIdExpiryDate, d.EmiratesIdPath),
+            ("Passport", d.PassportNumber, d.PassportExpiryDate, d.PassportPath),
+            ("Trade Licence", d.TradeLicenceNumber, d.TradeLicenceExpiryDate, d.TradeLicencePath),
+            ("Other document", null, null, d.OtherDocumentPath),
+        };
+
+        var filed = files.Where(f => f.Path is { Length: > 0 }).ToList();
+
+        return new ReportSubTable(
+            "Documents",
+            [new("Document", 26), new("Number", 26), new("Expiry", 18), new("File", 30)],
+            [.. filed.Select(f => new[]
+            {
+                f.Kind,
+                f.Number ?? "—",
+                f.Expiry?.ToString("dd/MM/yyyy") ?? "—",
+                FileNameOf(f.Path!),
+            })],
+            "No documents were uploaded with this declaration.",
+            LinkColumn: 3,
+            RowLinks: [.. filed.Select(f => (string?)f.Path)]);
+    }
+
+    /// <summary>The name a person would recognise, out of a stored path like
+    /// "uploads/declarations/9f2c…-emirates-id.jpg".</summary>
+    private static string FileNameOf(string path)
+    {
+        var name = path.Replace('\\', '/').Split('/').LastOrDefault();
+        return string.IsNullOrWhiteSpace(name) ? "Open" : name;
     }
 
     /// <summary>"FatherInLaw" is how the enum spells it; "Father in law" is how a reader does.</summary>

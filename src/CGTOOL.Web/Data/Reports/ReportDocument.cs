@@ -21,11 +21,18 @@ public sealed record ReportFact(string Label, string Value);
 /// <param name="EmptyNote">What to print instead of an empty grid. A declaration that says
 /// "nothing to declare" and one that was never filled in look identical as a blank table, and they
 /// are not the same thing.</param>
+/// <param name="LinkColumn">Which column, if any, is a link on screen -- the uploaded document a
+/// reviewer opens. The cell's text is written to stay useful without it: the PDF and the
+/// spreadsheet leave the building and a relative path would not resolve from either, so the text
+/// is the file's own name rather than the word "View".</param>
+/// <param name="RowLinks">One href per row, in row order, or null where that row has no file.</param>
 public sealed record ReportSubTable(
     string Heading,
     IReadOnlyList<ReportColumn> Columns,
     IReadOnlyList<string[]> Rows,
-    string? EmptyNote = null);
+    string? EmptyNote = null,
+    int? LinkColumn = null,
+    IReadOnlyList<string?>? RowLinks = null);
 
 /// <summary>One sheet of a detail report: a person, their facts, and the grids beneath them.
 ///

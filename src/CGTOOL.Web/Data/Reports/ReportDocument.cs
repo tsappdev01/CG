@@ -9,6 +9,10 @@ namespace CGTOOL.Web.Data.Reports;
 /// any other column -- these tables are read down, not totalled.</param>
 public sealed record ReportColumn(string Header, double Width, bool Numeric = false);
 
+/// <summary>How a report's subtitle should read. Warning is for a sentence the reader must not
+/// skim past -- the audit trail saying its own record may have been tampered with.</summary>
+public enum ReportTone { Normal, Warning }
+
 /// <summary>One of the headline figures a report opens with.</summary>
 public sealed record ReportStat(string Label, string Value, string? Sub = null);
 
@@ -58,6 +62,9 @@ public sealed class ReportDocument
 
     /// <summary>The line under the title -- what the report answers, in a sentence.</summary>
     public string? Subtitle { get; init; }
+
+    /// <summary>Whether that line is ordinary or a warning.</summary>
+    public ReportTone SubtitleTone { get; init; } = ReportTone.Normal;
 
     public required string PreparedBy { get; init; }
 

@@ -140,6 +140,26 @@ internal class DeclarationPdfWriter(
 
     /// <summary>A run of ordinary prose -- the sentence a declaration makes about itself, which a
     /// label/value table has no room for.</summary>
+    /// <summary>A paragraph the reader must not skim past -- drawn bold, in the critical colour,
+    /// on its own tinted band.</summary>
+    public void WarningParagraph(string text)
+    {
+        var lines = WrapText(text, _label, _contentWidth - 20);
+        var height = (lines.Count * 12) + 14;
+        EnsureSpace(height + 8);
+
+        _gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(253, 236, 236)), Margin, _y, _contentWidth, height);
+        _gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(220, 38, 38)), Margin, _y, 3, height);
+
+        var ty = _y + 15;
+        foreach (var line in lines)
+        {
+            _gfx.DrawString(line, _label, new XSolidBrush(XColor.FromArgb(153, 27, 27)), Margin + 12, ty);
+            ty += 12;
+        }
+        _y += height + 10;
+    }
+
     public void Paragraph(string text)
     {
         foreach (var line in WrapText(text, _value, _contentWidth))

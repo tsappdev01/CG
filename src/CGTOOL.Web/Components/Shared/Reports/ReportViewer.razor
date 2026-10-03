@@ -63,6 +63,11 @@
                             </div>
                         }
 
+                        @if (Report.Subtitle is { Length: > 0 } subtitle)
+                        {
+                            <p class="cg-report-subtitle @(Report.SubtitleTone == ReportTone.Warning ? "is-warning" : "")">@subtitle</p>
+                        }
+
                         <div class="cg-report-filter-line">
                             Filters: @(Report.FilterStatement is { Length: > 0 } f ? f : "none")
                         </div>

@@ -1,0 +1,55 @@
+@page "/reports/audit-trail"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+
+<PageTitle>Audit Trail</PageTitle>
+
+<div class="cg-shell cg-shell-full">
+    <h1 data-icon="shield">Audit trail</h1>
+    <p class="cg-subtitle">
+        Everything people did in the system, one day at a time, written in plain words.
+        Use it to review a period and sign it off.
+    </p>
+
+    @if (_entries is null)
+    {
+        <p class="cg-loading"><em>Loading…</em></p>
+    }
+    else
+    {
+        <ReportViewer Report="Build()">
+            <Filters>
+                <div class="cg-search-wrap">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></svg>
+                    <input type="search" placeholder="Search a name or anything written…" @bind="_search" @bind:event="oninput" aria-label="Search the audit trail" />
+                </div>
+
+                <label class="cg-field" style="width:auto;"><span>From</span>
+                    <UaeDateInput Value="_from" ValueChanged="d => _from = d" />
+                </label>
+                <label class="cg-field" style="width:auto;"><span>To</span>
+                    <UaeDateInput Value="_to" ValueChanged="d => _to = d" />
+                </label>
+
+                <select class="cg-input" style="width:auto;" @bind="_personFilter" aria-label="Filter by person">
+                    <option value="">Anyone</option>
+                    @foreach (var p in People()) { <option value="@p">@p</option> }
+                </select>
+
+                <select class="cg-input" style="width:auto;" @bind="_areaFilter" aria-label="Filter by part of the system">
+                    <option value="">Everything</option>
+                    @foreach (var a in AuditTrailLanguage.Areas) { <option value="@a">@a</option> }
+                </select>
+
+                <select class="cg-input" style="width:auto;" @bind="_changeFilter" aria-label="Filter by kind of change">
+                    <option value="">Every kind of change</option>
+                    <option value="added">Things added</option>
+                    <option value="changed">Things changed</option>
+                    <option value="removed">Things removed or made inactive</option>
+                    <option value="access">Access changes and refusals</option>
+                    <option value="behalf">Done on someone's behalf</option>
+                </select>
+            </Filters>
+        </ReportViewer>
+    }
+</div>

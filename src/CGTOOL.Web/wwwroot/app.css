@@ -3983,3 +3983,13 @@ button.cg-appbar-user {
 .cg-report-facts > div { display: flex; gap: 10px; align-items: baseline; border-bottom: 1px dotted #D3D8DE; padding-bottom: 3px; }
 .cg-report-facts dt { font-size: 11.5px; color: #56606B; flex: 0 0 42%; }
 .cg-report-facts dd { font-size: 12.5px; font-weight: 600; margin: 0; color: #14212E; min-width: 0; overflow-wrap: anywhere; }
+
+/* The sentence under a report's title. It was being written into the PDF and the
+   spreadsheet and never drawn on screen, so a report whose subtitle carries its
+   conclusion -- the audit trail stating whether its own record is intact -- said
+   nothing at all to the person reading it on the page. */
+.cg-report-subtitle { font-size: 12.5px; color: #56606B; margin: 10px 28px 0; }
+.cg-report-subtitle.is-warning {
+    margin: 12px 28px 0; padding: 9px 12px; font-size: 13px; font-weight: 650;
+    color: #991B1B; background: #FDECEC; border-left: 3px solid #DC2626; border-radius: 3px;
+}

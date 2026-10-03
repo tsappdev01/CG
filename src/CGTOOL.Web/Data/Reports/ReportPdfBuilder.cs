@@ -35,7 +35,11 @@ public static class ReportPdfBuilder
 
         writer.NewPage();
 
-        if (report.Subtitle is { Length: > 0 } subtitle) writer.Paragraph(subtitle);
+        if (report.Subtitle is { Length: > 0 } subtitle)
+        {
+            if (report.SubtitleTone == ReportTone.Warning) writer.WarningParagraph(subtitle);
+            else writer.Paragraph(subtitle);
+        }
 
         writer.StatBand([.. report.Stats.Select(s => (s.Label, s.Value, s.Sub))]);
         writer.FilterStatement($"Filters: {(report.FilterStatement is { Length: > 0 } f ? f : "none")}");

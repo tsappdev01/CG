@@ -43,6 +43,7 @@ public static class NavMenuCatalog
         new("DeclarationSetup.ScheduledMaintenance", "Scheduled Maintenance", "DeclarationSetup"),
 
         new("Reports.Users", "Users", "Reports"),
+        new("Reports.AuditTrail", "Audit Trail", "Reports"),
         new("Reports.InsiderSubmission", "Insider Submission", "Reports"),
         new("Reports.InsiderDetail", "Insider Detail", "Reports"),
         new("Reports.InsiderNin", "NIN Submissions", "Reports"),

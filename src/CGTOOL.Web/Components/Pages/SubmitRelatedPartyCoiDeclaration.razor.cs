@@ -1727,7 +1727,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     // happened -- a PDF really attached, or the app to go and read it in.
     private string BuildConfirmationEmail(bool attached)
     {
-        const string logoTag = "<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"Dubai Investments\" height=\"44\" style=\"display:block;\" />";
+        const string logoTag = "<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"Dubai Investments Park\" height=\"44\" style=\"display:block;\" />";
         var rows = string.Join("", BuildSummary().Split("; ").Select(row =>
         {
             var parts = row.Split(':', 2);
@@ -1752,7 +1752,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
                   <td align="center">
                     <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;border-radius:6px;overflow:hidden;">
                       <tr>
-                        <td style="background-color:#0E2A47;padding:24px 32px;">
+                        <td style="background-color:#002850;padding:24px 32px;">
                           {logoTag}
                           <div style="color:#D9B65A;font-size:16px;font-weight:600;margin-top:8px;">Corporate Governance Tool</div>
                         </td>

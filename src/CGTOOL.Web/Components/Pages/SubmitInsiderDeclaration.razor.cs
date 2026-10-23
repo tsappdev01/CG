@@ -1640,7 +1640,7 @@ public partial class SubmitInsiderDeclaration
     // SqlMail.AttachmentFolderConfigured -- see SqlDbMailSender for why that's conditional).
     private string BuildConfirmationEmail(string summary, bool attached)
     {
-        const string logoTag = "<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"Dubai Investments\" height=\"44\" style=\"display:block;\" />";
+        const string logoTag = "<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"Dubai Investments Park\" height=\"44\" style=\"display:block;\" />";
         var rows = string.Join("", summary.Split("; ").Select(row =>
         {
             var parts = row.Split(':', 2);
@@ -1667,7 +1667,7 @@ public partial class SubmitInsiderDeclaration
                   <td align="center">
                     <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;border-radius:6px;overflow:hidden;">
                       <tr>
-                        <td style="background-color:#0E2A47;padding:24px 32px;">
+                        <td style="background-color:#002850;padding:24px 32px;">
                           {{logoTag}}
                           <div style="color:#D9B65A;font-size:16px;font-weight:600;margin-top:8px;">Corporate Governance Tool</div>
                           <div style="color:#FFFFFF;font-size:12px;margin-top:2px;">Insider Trading Declaration — {{(_hadExistingRow ? "Update Confirmation" : "Submission Confirmation")}}</div>

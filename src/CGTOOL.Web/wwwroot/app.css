@@ -1,6 +1,11 @@
 :root {
-    /* Palette follows the 2026 admin design: a blue primary on near-white surfaces, with the
-       DI navy kept for the sidebar and DI gold demoted to a brand accent (the avatar ring). */
+    /* Palette taken from the Dubai Investments Park logo, sampled from the artwork rather than
+       guessed: the wordmark ink #182030, the monogram blue #002850, and the swoosh #706058 --
+       which is the brand's only non-blue and so takes the place the old DI gold held.
+
+       That swoosh needs two values. At 2.5:1 against the navy it is nearly invisible, so anything
+       drawn ON a navy field -- the sidebar, the report masthead, the PDF header -- uses the
+       lightened --cg-brand-on-dark instead, and only light surfaces get --cg-brand itself. */
     --cg-bg: #F4F7FB;
     --cg-surface: #FFFFFF;
     --cg-surface-sunken: #F7F9FC;
@@ -9,12 +14,13 @@
     --cg-ink-faint: #94A3B8;
     --cg-line: #E6EBF2;
     --cg-line-strong: #D3DCE8;
-    --cg-accent: #2563EB;
-    --cg-accent-ink: #1D4ED8;
-    --cg-accent-tint: #EFF5FF;
-    --cg-navy: #12325C;
-    --cg-navy-deep: #0A1E3C;
-    --cg-gold: #D8A62A;
+    --cg-accent: #1A4F86;
+    --cg-accent-ink: #123A66;
+    --cg-accent-tint: #EAF1F8;
+    --cg-navy: #002850;
+    --cg-navy-deep: #182030;
+    --cg-brand: #706058;
+    --cg-brand-on-dark: #B5A69C;
     --cg-good: #16A34A;
     --cg-good-tint: #E9F8EF;
     --cg-warning: #B45309;
@@ -37,12 +43,13 @@
         --cg-ink-faint: #6D7683;
         --cg-line: #252D38;
         --cg-line-strong: #333B48;
-        --cg-accent: #5B9BFF;
-        --cg-accent-ink: #93BDFF;
-        --cg-accent-tint: #16243B;
-        --cg-navy: #12325C;
-        --cg-navy-deep: #0A1E3C;
-        --cg-gold: #E3BB55;
+        --cg-accent: #6FA8DC;
+        --cg-accent-ink: #A8C9E8;
+        --cg-accent-tint: #15212E;
+        --cg-navy: #002850;
+        --cg-navy-deep: #182030;
+        --cg-brand: #B5A69C;
+        --cg-brand-on-dark: #C8BDB4;
         --cg-good: #4ADE80;
         --cg-good-tint: #12291B;
         --cg-warning: #E2A24C;
@@ -3440,12 +3447,13 @@ button.cg-appbar-user {
 .cg-signin-head { min-height: 88px; }
 .cg-signin-foot { min-height: 56px; font-size: 13px; color: #B9C6DB; }
 
-.cg-signin-head a, .cg-signin-foot a { color: #E7C77F; font-size: 13.5px; }
+.cg-signin-head a, .cg-signin-foot a { color: var(--cg-brand-on-dark); font-size: 13.5px; }
 .cg-signin-head a:hover, .cg-signin-foot a:hover { color: #fff; }
 
-/* di-logo-en-transparent.png is the supplied logo with its navy background matted out, so it
-   sits directly on the stage with nothing around it -- the panel that used to be here existed
-   only to make the original file's opaque rectangle look deliberate. */
+/* The supplied DIP logo is dark artwork on an opaque white card -- there is no transparency in
+   the file at all -- so on the navy stage it reads as a white plate rather than sitting directly
+   on it. That is how the asset was given to us and how a dark-on-light mark is normally placed on
+   a dark field; a knockout (white artwork, no plate) would sit cleaner if one is available. */
 .cg-signin-brand { display: inline-flex; align-items: center; }
 .cg-signin-brand img { height: 38px; display: block; }
 
@@ -3462,7 +3470,7 @@ button.cg-appbar-user {
 
 .cg-signin-pitch { width: 520px; max-width: 100%; display: flex; flex-direction: column; gap: 18px; }
 .cg-signin-eyebrow {
-    font-size: 13px; font-weight: 600; color: #E7C77F;
+    font-size: 13px; font-weight: 600; color: var(--cg-brand-on-dark);
     text-transform: uppercase; letter-spacing: 0.12em;
 }
 /* Georgia rather than a webfont: this server is reached from inside the network and a Google
@@ -3768,7 +3776,7 @@ button.cg-appbar-user {
     z-index: 1200;
     display: grid;
     place-items: center;
-    background: rgba(14, 42, 71, 0.55);
+    background: rgba(24, 32, 48, 0.55);
     backdrop-filter: blur(1.5px);
 }
 .cg-blocking-card {
@@ -3776,7 +3784,7 @@ button.cg-appbar-user {
     border-radius: 12px;
     padding: 30px 38px;
     text-align: center;
-    box-shadow: 0 18px 46px rgba(14, 42, 71, 0.32);
+    box-shadow: 0 18px 46px rgba(24, 32, 48, 0.32);
     max-width: 380px;
 }
 .cg-blocking-title { font-size: 16px; font-weight: 700; margin: 14px 0 5px; }
@@ -3853,7 +3861,7 @@ button.cg-appbar-user {
 }
 .cg-report-brand img { height: 40px; }
 .cg-report-headline { flex: 1; padding: 18px 28px; display: flex; flex-direction: column; justify-content: center; }
-.cg-report-kicker { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--cg-gold); }
+.cg-report-kicker { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--cg-brand-on-dark); }
 .cg-report-headline h2 { font-size: 30px; font-weight: 650; line-height: 1.1; margin: 2px 0 0; color: #fff; }
 .cg-report-meta {
     padding: 18px 28px; margin: 0; display: grid; grid-template-columns: auto auto;
@@ -3887,7 +3895,7 @@ button.cg-appbar-user {
 
 .cg-report-body { flex: 1; padding: 12px 28px 0; }
 .cg-report-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
-.cg-report-table thead tr { border-bottom: 2px solid var(--cg-gold); }
+.cg-report-table thead tr { border-bottom: 2px solid var(--cg-brand); }
 .cg-report-table th {
     text-align: left; padding: 8px 6px; font-size: 10px; letter-spacing: .08em;
     text-transform: uppercase; color: var(--cg-navy); font-weight: 700; line-height: 1.25;

@@ -65,7 +65,7 @@ public class SqlDbMailMemberWelcomeEmailSender(SqlDbMailSender mail) : IMemberWe
     {
         if (string.IsNullOrWhiteSpace(member.Email)) return false;
 
-        const string logoTag = "<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"Dubai Investments\" height=\"48\" style=\"display:block;\" />";
+        const string logoTag = "<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"Dubai Investments Park\" height=\"48\" style=\"display:block;\" />";
         var html = WelcomeEmailTemplate.BuildHtml(member, logoTag);
         await mail.SendAsync(member.Email, WelcomeEmailTemplate.Subject, html, ct);
         return true;

@@ -11,8 +11,8 @@ namespace CGTOOL.Web.Data.Reports;
 /// the reader opens is what was sent.</summary>
 public static class ReportWorkbook
 {
-    private static readonly XLColor Navy = XLColor.FromArgb(14, 42, 71);
-    private static readonly XLColor Gold = XLColor.FromArgb(217, 182, 90);
+    private static readonly XLColor Navy = XLColor.FromArgb(0, 40, 80);
+    private static readonly XLColor Brand = XLColor.FromArgb(112, 96, 88);
 
     public static byte[] Build(ReportDocument report)
     {
@@ -89,7 +89,7 @@ public static class ReportWorkbook
             cell.Style.Alignment.SetVertical(XLAlignmentVerticalValues.Center);
         }
         sheet.Range(headerRow, 1, headerRow, columnCount).Style.Border.SetBottomBorder(XLBorderStyleValues.Medium);
-        sheet.Range(headerRow, 1, headerRow, columnCount).Style.Border.SetBottomBorderColor(Gold);
+        sheet.Range(headerRow, 1, headerRow, columnCount).Style.Border.SetBottomBorderColor(Brand);
         row++;
 
         foreach (var data in report.Rows)
@@ -205,7 +205,7 @@ public static class ReportWorkbook
             // A blank row and a rule between people, so a reader scrolling finds the boundaries.
             row++;
             sheet.Range(row, 1, row, 6).Style.Border.SetTopBorder(XLBorderStyleValues.Thin);
-            sheet.Range(row, 1, row, 6).Style.Border.SetTopBorderColor(Gold);
+            sheet.Range(row, 1, row, 6).Style.Border.SetTopBorderColor(Brand);
             row += 2;
         }
     }

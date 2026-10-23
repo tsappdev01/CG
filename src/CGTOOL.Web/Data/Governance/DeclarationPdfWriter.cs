@@ -19,8 +19,14 @@ internal class DeclarationPdfWriter(
     string footerNote,
     PageOrientation orientation = PageOrientation.Portrait)
 {
-    internal static readonly XColor Navy = XColor.FromArgb(14, 42, 71);
-    internal static readonly XColor Gold = XColor.FromArgb(217, 182, 90);
+    internal static readonly XColor Navy = XColor.FromArgb(0, 40, 80);
+
+    /// <summary>The logo's swoosh, for rules and headings drawn on a white page.</summary>
+    internal static readonly XColor Brand = XColor.FromArgb(112, 96, 88);
+
+    /// <summary>The same colour lightened, for anything drawn on the navy header band, where the
+    /// swoosh itself sits at about 2.5:1 and reads as a smudge.</summary>
+    internal static readonly XColor BrandOnDark = XColor.FromArgb(181, 166, 156);
     private static readonly XColor LightGrey = XColor.FromArgb(245, 246, 248);
     private static readonly XColor RowStripe = XColor.FromArgb(250, 250, 251);
     private static readonly XColor TextDark = XColor.FromArgb(27, 36, 48);
@@ -89,7 +95,7 @@ internal class DeclarationPdfWriter(
 
         _gfx.DrawString(text, _sectionHeading, new XSolidBrush(Navy), Margin, _y + 10);
         _y += 14;
-        _gfx.DrawLine(new XPen(Gold, 1.5), Margin, _y + 10, Margin + 60, _y + 10);
+        _gfx.DrawLine(new XPen(Brand, 1.5), Margin, _y + 10, Margin + 60, _y + 10);
         _y += 20;
     }
 
@@ -323,19 +329,19 @@ internal class DeclarationPdfWriter(
             var height = page.Height.Point;
 
             gfx.DrawRectangle(new XSolidBrush(Navy), 0, 0, width, HeaderHeight);
-            gfx.DrawRectangle(new XSolidBrush(Gold), 0, HeaderHeight, width, 3);
+            gfx.DrawRectangle(new XSolidBrush(Brand), 0, HeaderHeight, width, 3);
 
             if (logo is not null)
             {
                 var logoHeight = 44.0;
                 var logoWidth = logoHeight * logo.PixelWidth / logo.PixelHeight;
                 gfx.DrawImage(logo, Margin, (HeaderHeight - logoHeight) / 2, logoWidth, logoHeight);
-                gfx.DrawString("Corporate Governance Tool", _title, new XSolidBrush(Gold), Margin + logoWidth + 16, 34);
+                gfx.DrawString("Corporate Governance Tool", _title, new XSolidBrush(BrandOnDark), Margin + logoWidth + 16, 34);
                 gfx.DrawString(documentTitle, _subtitle, XBrushes.White, Margin + logoWidth + 16, 52);
             }
             else
             {
-                gfx.DrawString("Corporate Governance Tool", _title, new XSolidBrush(Gold), Margin, 34);
+                gfx.DrawString("Corporate Governance Tool", _title, new XSolidBrush(BrandOnDark), Margin, 34);
                 gfx.DrawString(documentTitle, _subtitle, XBrushes.White, Margin, 52);
             }
 

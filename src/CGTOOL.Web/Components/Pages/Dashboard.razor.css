@@ -174,7 +174,7 @@
 .cg-selbar > div { display: flex; gap: 10px; }
 .cg-selbar button { height: 34px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
 .cg-selbar-ghost { padding: 0 13px; border: 1px solid rgba(255, 255, 255, 0.42); background: transparent; color: #fff; }
-.cg-selbar-go { padding: 0 15px; border: none; background: var(--cg-gold); color: var(--cg-navy-deep); font-weight: 700; }
+.cg-selbar-go { padding: 0 15px; border: none; background: var(--cg-brand-on-dark); color: var(--cg-navy-deep); font-weight: 700; }
 .cg-selbar button:disabled { opacity: 0.6; cursor: default; }
 
 .cg-pager { padding: 12px 20px; margin: 0; }

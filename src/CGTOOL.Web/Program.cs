@@ -201,6 +201,10 @@ else
 }
 
 var graphConfigured = !string.IsNullOrWhiteSpace(azureAdSection["ClientSecret"]) && !string.IsNullOrWhiteSpace(azureAdSection["TenantId"]);
+// Resolves a stored avatar path to one that will load. Singleton: it only reads
+// IWebHostEnvironment and the file system.
+builder.Services.AddSingleton<ProfilePictureResolver>();
+
 if (graphConfigured)
 {
     builder.Services.AddSingleton<IDirectoryEmployeeProvider, GraphDirectoryEmployeeProvider>();

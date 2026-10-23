@@ -8,6 +8,7 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityUserAccessor UserAccessor
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ProfilePictureResolver ProfilePictures
 
 <PageTitle>Profile</PageTitle>
 
@@ -177,9 +178,8 @@
 
         _userName = await UserManager.GetUserNameAsync(user);
         _phoneNumber = await UserManager.GetPhoneNumberAsync(user);
-        _picturePath = string.IsNullOrEmpty(user.ProfilePicturePath)
-            ? null
-            : $"{user.ProfilePicturePath}?v={DateTime.UtcNow.Ticks}";
+        var storedPicture = ProfilePictures.Resolve(user.ProfilePicturePath);
+        _picturePath = storedPicture is null ? null : $"{storedPicture}?v={DateTime.UtcNow.Ticks}";
 
         // An account with an external login signs in through Entra; the setup account does not.
         _isSingleSignOn = (await UserManager.GetLoginsAsync(user)).Count > 0;

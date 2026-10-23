@@ -5,6 +5,7 @@
 @inject AuthenticationStateProvider AuthState
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject ImpersonationContext Impersonation
+@inject ProfilePictureResolver ProfilePictures
 
 <AuthorizeView>
     <Authorized>
@@ -148,7 +149,8 @@
 
         await using var db = await DbFactory.CreateDbContextAsync();
 
-        var path = await db.Users.Where(u => u.Id == userId).Select(u => u.ProfilePicturePath).FirstOrDefaultAsync();
+        var path = ProfilePictures.Resolve(
+            await db.Users.Where(u => u.Id == userId).Select(u => u.ProfilePicturePath).FirstOrDefaultAsync());
         _picturePath = string.IsNullOrEmpty(path) ? path : $"{path}?v={DateTime.UtcNow.Ticks}";
 
         _displayName = await db.Members.Where(m => m.ApplicationUserId == userId).Select(m => m.FullName).FirstOrDefaultAsync()

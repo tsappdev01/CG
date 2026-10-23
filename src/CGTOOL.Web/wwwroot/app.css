@@ -3455,7 +3455,9 @@ button.cg-appbar-user {
    on it. That is how the asset was given to us and how a dark-on-light mark is normally placed on
    a dark field; a knockout (white artwork, no plate) would sit cleaner if one is available. */
 .cg-signin-brand { display: inline-flex; align-items: center; }
-.cg-signin-brand img { height: 38px; display: block; }
+/* 46px to match the sidebar's .cg-brand-logo -- the same mark at the same size either side
+   of signing in. */
+.cg-signin-brand img { height: 46px; display: block; }
 
 .cg-signin-main {
     position: relative;

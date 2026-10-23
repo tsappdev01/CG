@@ -7,6 +7,7 @@
 @inject AuthenticationStateProvider AuthState
 @inject UserManager<ApplicationUser> UserManager
 @inject RoleManager<IdentityRole> RoleManager
+@inject ProfilePictureResolver ProfilePictures
 @inject NavigationManager Nav
 @inject ToastService Toasts
 @inject IJSRuntime JS
@@ -259,7 +260,7 @@
                                 <td class="cg-num-col">@rowNumber</td>
                                 <td>
                                     <div class="cg-user-cell">
-                                        @{ var photo = _users?.FirstOrDefault(u => u.Id == m.ApplicationUserId)?.ProfilePicturePath; }
+                                        @{ var photo = ProfilePictures.Resolve(_users?.FirstOrDefault(u => u.Id == m.ApplicationUserId)?.ProfilePicturePath); }
                                         @if (!string.IsNullOrEmpty(photo))
                                         {
                                             <img src="@photo" alt="" class="cg-table-avatar" />

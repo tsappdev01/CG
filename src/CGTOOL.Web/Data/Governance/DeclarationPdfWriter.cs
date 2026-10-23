@@ -21,12 +21,12 @@ internal class DeclarationPdfWriter(
 {
     internal static readonly XColor Navy = XColor.FromArgb(0, 40, 80);
 
-    /// <summary>The logo's swoosh, for rules and headings drawn on a white page.</summary>
-    internal static readonly XColor Brand = XColor.FromArgb(112, 96, 88);
+    /// <summary>The logo's gold, for rules and headings drawn on a white page.</summary>
+    internal static readonly XColor Brand = XColor.FromArgb(175, 131, 46);
 
     /// <summary>The same colour lightened, for anything drawn on the navy header band, where the
     /// swoosh itself sits at about 2.5:1 and reads as a smudge.</summary>
-    internal static readonly XColor BrandOnDark = XColor.FromArgb(181, 166, 156);
+    internal static readonly XColor BrandOnDark = XColor.FromArgb(199, 154, 60);
     private static readonly XColor LightGrey = XColor.FromArgb(245, 246, 248);
     private static readonly XColor RowStripe = XColor.FromArgb(250, 250, 251);
     private static readonly XColor TextDark = XColor.FromArgb(27, 36, 48);
@@ -333,7 +333,9 @@ internal class DeclarationPdfWriter(
 
             if (logo is not null)
             {
-                var logoHeight = 44.0;
+                // 32, not the 44 the old logo used: this wordmark is 4.4:1 rather than
+                // 2.3:1, so the same height would push the title 90pt further right.
+                var logoHeight = 32.0;
                 var logoWidth = logoHeight * logo.PixelWidth / logo.PixelHeight;
                 gfx.DrawImage(logo, Margin, (HeaderHeight - logoHeight) / 2, logoWidth, logoHeight);
                 gfx.DrawString("Corporate Governance Tool", _title, new XSolidBrush(BrandOnDark), Margin + logoWidth + 16, 34);

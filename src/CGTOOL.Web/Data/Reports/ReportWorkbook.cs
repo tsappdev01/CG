@@ -12,7 +12,7 @@ namespace CGTOOL.Web.Data.Reports;
 public static class ReportWorkbook
 {
     private static readonly XLColor Navy = XLColor.FromArgb(0, 40, 80);
-    private static readonly XLColor Brand = XLColor.FromArgb(112, 96, 88);
+    private static readonly XLColor Brand = XLColor.FromArgb(175, 131, 46);
 
     public static byte[] Build(ReportDocument report)
     {

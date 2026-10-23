@@ -20,7 +20,7 @@ internal static class WelcomeEmailTemplate
                   <tr>
                     <td style="background-color:#002850;padding:24px 32px;">
                       {{logoTag}}
-                      <div style="color:#B5A69C;font-size:16px;font-weight:600;margin-top:8px;">Corporate Governance Tool</div>
+                      <div style="color:#C79A3C;font-size:16px;font-weight:600;margin-top:8px;">Corporate Governance Tool</div>
                     </td>
                   </tr>
                   <tr>

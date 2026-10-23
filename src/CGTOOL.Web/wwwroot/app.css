@@ -1,11 +1,12 @@
 :root {
-    /* Palette taken from the Dubai Investments Park logo, sampled from the artwork rather than
-       guessed: the wordmark ink #182030, the monogram blue #002850, and the swoosh #706058 --
-       which is the brand's only non-blue and so takes the place the old DI gold held.
+    /* Palette sampled from the DIPHOLDING artwork rather than guessed: the navy it sits on
+       (#002850), the darker ink of the wordmark (#182030), and the gold of the D monogram
+       (#AF832E), which is the brand's only non-blue.
 
-       That swoosh needs two values. At 2.5:1 against the navy it is nearly invisible, so anything
-       drawn ON a navy field -- the sidebar, the report masthead, the PDF header -- uses the
-       lightened --cg-brand-on-dark instead, and only light surfaces get --cg-brand itself. */
+       The gold needs two values. At 4.30:1 on the navy it carries a rule but sits under the 4.5:1
+       a caption needs, so anything drawn as TEXT on a navy field -- the sidebar, the report
+       masthead, the PDF header -- uses --cg-brand-on-dark (#C79A3C, 5.72:1), and light surfaces
+       get --cg-brand itself, where 3.44:1 clears the 3:1 that a rule or a border asks for. */
     --cg-bg: #F4F7FB;
     --cg-surface: #FFFFFF;
     --cg-surface-sunken: #F7F9FC;
@@ -19,8 +20,8 @@
     --cg-accent-tint: #EAF1F8;
     --cg-navy: #002850;
     --cg-navy-deep: #182030;
-    --cg-brand: #706058;
-    --cg-brand-on-dark: #B5A69C;
+    --cg-brand: #AF832E;
+    --cg-brand-on-dark: #C79A3C;
     --cg-good: #16A34A;
     --cg-good-tint: #E9F8EF;
     --cg-warning: #B45309;
@@ -48,8 +49,8 @@
         --cg-accent-tint: #15212E;
         --cg-navy: #002850;
         --cg-navy-deep: #182030;
-        --cg-brand: #B5A69C;
-        --cg-brand-on-dark: #C8BDB4;
+        --cg-brand: #C79A3C;
+        --cg-brand-on-dark: #D4A845;
         --cg-good: #4ADE80;
         --cg-good-tint: #12291B;
         --cg-warning: #E2A24C;
@@ -3455,9 +3456,10 @@ button.cg-appbar-user {
    on it. That is how the asset was given to us and how a dark-on-light mark is normally placed on
    a dark field; a knockout (white artwork, no plate) would sit cleaner if one is available. */
 .cg-signin-brand { display: inline-flex; align-items: center; }
-/* 46px to match the sidebar's .cg-brand-logo -- the same mark at the same size either side
-   of signing in. */
-.cg-signin-brand img { height: 46px; display: block; }
+/* 38px to match the sidebar's .cg-brand-logo -- the same mark at the same size either side
+   of signing in. The DIPHOLDING wordmark is 4.4:1, so a height that suited the old 2.3:1 card
+   would run it the full width of the sidebar. */
+.cg-signin-brand img { height: 38px; display: block; }
 
 .cg-signin-main {
     position: relative;

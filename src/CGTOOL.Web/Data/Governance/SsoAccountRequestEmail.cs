@@ -28,7 +28,7 @@ public static class SsoAccountRequestEmail
                 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;border-radius:6px;overflow:hidden;">
                   <tr>
                     <td style="background-color:#002850;padding:24px 32px;">
-                      <div style="color:#D9B65A;font-size:16px;font-weight:600;">Corporate Governance Tool</div>
+                      <div style="color:#B5A69C;font-size:16px;font-weight:600;">Corporate Governance Tool</div>
                     </td>
                   </tr>
                   <tr>

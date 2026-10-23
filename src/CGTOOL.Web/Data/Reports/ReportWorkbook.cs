@@ -88,8 +88,6 @@ public static class ReportWorkbook
             cell.Style.Alignment.SetWrapText();
             cell.Style.Alignment.SetVertical(XLAlignmentVerticalValues.Center);
         }
-        sheet.Range(headerRow, 1, headerRow, columnCount).Style.Border.SetBottomBorder(XLBorderStyleValues.Medium);
-        sheet.Range(headerRow, 1, headerRow, columnCount).Style.Border.SetBottomBorderColor(Brand);
         row++;
 
         foreach (var data in report.Rows)
@@ -120,6 +118,12 @@ public static class ReportWorkbook
             table.Style.Border.SetInsideBorder(XLBorderStyleValues.Thin);
             table.Style.Border.SetInsideBorderColor(XLColor.LightGray);
         }
+
+        // Drawn after the body's gridlines, not alongside the header. The pass above covers the
+        // boundary between the header and the first row, so a rule set with the header is
+        // overwritten by it and never reaches the file -- the export had no rule at all.
+        sheet.Range(headerRow, 1, headerRow, columnCount).Style.Border.SetBottomBorder(XLBorderStyleValues.Medium);
+        sheet.Range(headerRow, 1, headerRow, columnCount).Style.Border.SetBottomBorderColor(Brand);
 
         // Freeze the header so it stays visible, and filter it so the reader can narrow the sheet
         // further without coming back to ask for another version of the report.

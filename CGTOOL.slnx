@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CGTOOL.Web/CGTOOL.Web.csproj" />
+  </Folder>
+</Solution>

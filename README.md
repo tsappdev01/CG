@@ -18,10 +18,16 @@ impersonation).
 
 ### Toolchain
 
-The SDK is pinned in `global.json` to the 10.0.1xx band (`rollForward: latestFeature`), so every
-machine and build agent compiles against the same major SDK. Install the .NET 10 SDK, or use
-Visual Studio 2026, which ships with it. Visual Studio 2022 cannot build this project — it does not
-carry a .NET 10 SDK.
+The SDK is pinned in `global.json` to 10.0.402 (`rollForward: latestFeature`), so every machine
+and build agent compiles against the same major SDK and none of them builds on one older than that
+band. Install the .NET 10 SDK, or use Visual Studio 2026, which ships with it. Visual Studio 2022
+cannot build this project — it does not carry a .NET 10 SDK.
+
+The solution is `CGTOOL.slnx`, the XML format that Visual Studio 2026 and the `dotnet` CLI both
+read natively; `CGTOOL.sln` was deleted in the same change. The old format repeated the project's
+GUID in four places and stamped a Visual Studio version that nothing reads, and the new one names
+the project path and nothing else. Only one solution file may sit in the repository root: with both
+present `dotnet build` stops with MSB1011 rather than choosing one.
 
 ## Project layout
 

@@ -2,8 +2,7 @@
 @inject IJSRuntime JS
 @inject IConfiguration Configuration
 @inject AuthenticationStateProvider AuthState
-@inject IActiveDirectoryAuthenticator DirectoryAuthenticator
-@inject ToastService Toasts
+@inject NavigationManager Navigation
 
 <AuthorizeView>
     <Authorized>
@@ -12,9 +11,11 @@
             <div class="cg-lock-overlay">
                 <div class="cg-lock-card">
                     <h2>Session locked</h2>
-                    <p class="cg-subtitle">No activity for @IdleDescription. Enter your password to continue where you left off.</p>
-                    <input type="password" class="cg-input" @bind="_password" @bind:event="oninput" placeholder="Password" />
-                    <button type="button" class="cg-action-btn cg-good" @onclick="UnlockAsync">Unlock</button>
+                    <p class="cg-subtitle">
+                        No activity for @IdleDescription. Signing you out — confirm who you are with
+                        Microsoft and you will come back to this screen.
+                    </p>
+                    <CgSpinner />
                 </div>
             </div>
         }
@@ -44,7 +45,6 @@
     private string IdleDescription => IdleMinutes == 1 ? "1 minute" : $"{IdleMinutes} minutes";
 
     private bool _locked;
-    private string _password = string.Empty;
     private DotNetObjectReference<IdleLockOverlay>? _selfRef;
     private bool _started;
 
@@ -62,34 +62,32 @@
         }
     }
 
+    /// <summary>
+    /// Hands the browser to /Account/Lock, which signs the session out and sends the person back
+    /// through Entra with prompt=login, returning them to this same URL.
+    ///
+    /// It used to ask for a password here and check it with IActiveDirectoryAuthenticator. On a
+    /// deployment with no ActiveDirectory:Server configured that resolves to the local Identity
+    /// password hash -- which an SSO account does not have -- so the box rejected every password
+    /// anyone could type and the only way back in was to refresh the page. Which also says what
+    /// the lock was worth: it was a flag on this component, and refreshing cleared it.
+    ///
+    /// Unsaved form content on the page does not survive this, and cannot: the circuit ends when
+    /// the browser navigates away. That is the price of a lock that actually closes the session,
+    /// and the reason the idle window is a deployment setting.
+    /// </summary>
     [JSInvokable]
     public void OnIdleTimeout()
     {
+        if (_locked) return;
+
         _locked = true;
-        _password = string.Empty;
         StateHasChanged();
-    }
 
-    private async Task UnlockAsync()
-    {
-        var state = await AuthState.GetAuthenticationStateAsync();
-        var username = state.User.Identity?.Name;
-        if (string.IsNullOrEmpty(username))
-        {
-            Toasts.ShowError("Could not resolve the current user.");
-            return;
-        }
-
-        var result = await DirectoryAuthenticator.AuthenticateAsync(username, _password);
-        if (!result.Succeeded)
-        {
-            Toasts.ShowError("Incorrect password.");
-            return;
-        }
-
-        _locked = false;
-        _password = string.Empty;
-        await JS.InvokeVoidAsync("cgtoolIdleLock.start", _selfRef, IdleTimeoutMs);
+        var returnUrl = "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.NavigateTo(
+            $"Account/Lock?returnUrl={Uri.EscapeDataString(returnUrl)}",
+            forceLoad: true);
     }
 
     public async ValueTask DisposeAsync()

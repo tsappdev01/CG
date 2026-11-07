@@ -59,6 +59,24 @@ if (!string.IsNullOrWhiteSpace(azureAdSection["ClientId"]) && !string.IsNullOrWh
         // registrations already use, so leaving it out changes nothing.
         options.CallbackPath = azureAdSection["CallbackPath"] ?? "/signin-oidc-azuread";
         options.Scope.Add("User.Read");
+
+        // Lets a caller ask Entra to challenge the person again even though their tenant session
+        // is still good, by putting "prompt" in the authentication properties. The idle lock is
+        // the one caller: without this, re-authenticating is a no-op -- Entra sees a live session,
+        // issues a token without asking anything, and the "lock" opens for whoever is at the desk.
+        options.Events = new OpenIdConnectEvents
+        {
+            OnRedirectToIdentityProvider = context =>
+            {
+                if (context.Properties.Items.TryGetValue("prompt", out var prompt)
+                    && !string.IsNullOrWhiteSpace(prompt))
+                {
+                    context.ProtocolMessage.Prompt = prompt;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
 }
 

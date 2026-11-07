@@ -124,7 +124,7 @@ src/CGTOOL.Web/
     Pages/Admin/MemberDetail.razor(.cs)     Add/edit a single member on its own page
     Pages/Admin/                       Companies, Departments, Declaration Setup,
                                         Schedule Activities, Audit Log
-    Layout/IdleLockOverlay.razor            15-minute inactivity lock
+    Layout/IdleLockOverlay.razor            15-minute inactivity lock (signs out, re-auths via Entra)
     Layout/ImpersonationBanner.razor        Member-level "acting on behalf of" banner (RPR/COI)
     Layout/AdminImpersonationBanner.razor   Admin support "log in as" banner (UM-03)
 ```
@@ -541,9 +541,35 @@ it would break the chain, and a review is a later assertion about an event rathe
 
 ## Screen lock on inactivity
 
-After a period with no keyboard, mouse or touch activity the screen locks, and the signed-in
-user has to re-enter their password to carry on where they left off — the page is not reloaded
-and nothing in progress is lost. Signing out is not involved.
+After a period with no keyboard, mouse or touch activity the session is signed out and the
+person is sent back through Entra, returning to the screen they were on.
+
+It worked the other way until it was changed, and it is worth knowing why it moved, because the
+old version read better on paper. It drew an overlay with a password box, checked the password
+with `IActiveDirectoryAuthenticator`, and left the circuit alive so nothing in progress was lost.
+
+Two things were wrong with it. The password never matched: with no `ActiveDirectory:Server`
+configured, that interface resolves to `LocalIdentityAuthenticator`, which checks the local
+ASP.NET Identity password hash — and an account that signs in through SSO has no such hash, so
+every password anyone could type was rejected. Every SSO user who left their desk was locked out
+of the application by its own lock. And the lock itself was a `bool` on a component: refreshing
+the page cleared it. The only way past the unopenable dialog was the keypress that also defeated
+the control.
+
+So the lock now does the thing it was describing. `/Account/Lock` signs the authentication cookie
+out server-side and challenges Entra with `prompt=login`, which is what makes Entra ask rather
+than hand back a token from its own live session; the existing external-login callback signs the
+person back in and returns them to the URL they came from. Back and F5 reach a signed-out
+application, because the session really did end.
+
+The cost is real and is the reason this was not the original design: unsaved form content does
+not survive, and cannot — the Blazor circuit ends when the browser navigates away. An idle window
+long enough that people are genuinely gone is the setting that makes this bearable, which is why
+it is a setting.
+
+People who sign in on the corporate-directory form rather than through Entra — External Members,
+who have no tenant account — go to the sign-in page instead, or the lock would strand them at
+Microsoft.
 
 ```json
 "Security": {
@@ -626,7 +652,7 @@ on the framework method that catches it, which is not ours to annotate.
 | All database writes via stored procedures | `scripts/stored-procedures.sql` + `Data/Governance/*Writer.cs`/`StoredProcedureExecutor.cs` (see **Database writes go through stored procedures** above) |
 | Insider Declaration / Related Party &amp; COI declaration submission | `/my-declarations` — every signed-in user submits their own declarations for each open `DeclarationSetup` period; one submission per user per period (unique index) |
 | Normal Staff role restricted to declarations only | `GovernanceRoles.IsNormalStaffOnly` — hides Dashboard/Impersonate from nav and redirects direct navigation to `/my-declarations` for users whose only role is Normal Staff |
-| Sign out / 15-minute lock | `IdleLockOverlay` — locks without ending the session; unlock re-verifies the password |
+| Sign out / 15-minute lock | `IdleLockOverlay` + `/Account/Lock` — signs the session out and re-challenges Entra with `prompt=login`, returning to the same screen |
 | Switch user (general) | Nav "Switch User" signs out to the login page |
 | UM-01 Azure AD employee lookup | `GraphDirectoryEmployeeProvider` (see above) |
 | UM-02 Azure AD SSO | OpenID Connect external login provider (see **Authentication**) |

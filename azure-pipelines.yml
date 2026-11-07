@@ -85,3 +85,39 @@ steps:
         -AppPoolName "$(appPoolName)"
       failOnStderr: false
       pwsh: false
+
+  # Last, and always() so it runs even when the deploy failed -- a failed run leaves just as much
+  # behind as a successful one, and this agent shares a disk with SQL Server that is already at
+  # 95%. A self-contained publish is ~130MB a time, so without this the staging folder alone
+  # accounts for a gigabyte over a handful of runs.
+  #
+  # Only what this pipeline created: the staging folder it published into, and the agent's own
+  # temp directory, which is temporary by definition and is where the SDK archive is unpacked.
+  # The checkout and the tool cache are left alone -- deleting those would mean re-downloading the
+  # SDK and re-restoring every run.
+  - task: PowerShell@2
+    displayName: 'Clean up what this run left behind'
+    condition: always()
+    inputs:
+      targetType: 'inline'
+      pwsh: false
+      script: |
+        function Get-FreeGb {
+            (Get-PSDrive -Name C).Free / 1GB
+        }
+        $before = Get-FreeGb
+
+        foreach ($path in @('$(publishPath)', '$(Agent.TempDirectory)')) {
+            if (-not (Test-Path $path)) { continue }
+            # -ErrorAction SilentlyContinue throughout: something in temp may still be held by a
+            # process, and failing the run over tidy-up would turn a good deploy red.
+            Get-ChildItem $path -Force -ErrorAction SilentlyContinue |
+                Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "Cleared $path"
+        }
+
+        $after = Get-FreeGb
+        Write-Host ("Free space on C: {0:N1} GB -> {1:N1} GB (reclaimed {2:N1} GB)." -f $before, $after, ($after - $before))
+        if ($after -lt 5) {
+            Write-Host "##vso[task.logissue type=warning]Under 5 GB free on C: after cleanup. This agent shares the disk with SQL Server; look at C:\inetpub\logs\LogFiles and the agent's _tool folder."
+        }

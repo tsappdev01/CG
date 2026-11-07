@@ -75,6 +75,11 @@ Three things it cannot do for you:
    `ASPNETCORE_ENVIRONMENT` is set that way regardless, because appsettings.json cannot name the
    environment that decides which appsettings file is read.
 
+Every run ends by clearing its own staging folder and the agent's temp directory, whether it
+succeeded or not. A self-contained publish is around 130MB, and the agent shares C: with SQL
+Server. The checkout and the SDK tool cache are deliberately left, since clearing those would
+mean re-downloading the SDK and re-restoring on every run.
+
 ### What the deploy will not overwrite
 
 `Deploy-ToIis.ps1` mirrors the publish output into the site folder, which means it deletes what is
@@ -83,9 +88,14 @@ no longer in the build. Two things are excluded because they are not the build's
 * **`wwwroot\uploads`** -- profile pictures, trade licences, signatures and declaration
   attachments. They exist only on the server and are gitignored, so an unguarded mirror would
   delete every one of them on the first deploy.
-* **`appsettings.json`** -- the server's copy holds the real connection string and Entra secret,
-  where the repository's has empty placeholders. Pass `-OverwriteAppSettings` to deploy it anyway,
-  and expect to put the secrets back.
+* **`appsettings.json` and `appsettings.Development.json`** -- the server owns these. Neither is
+  copied over nor deleted, so whatever is on the server stays. The list is the `PreserveFiles`
+  parameter, so adding another file is a one-line change rather than an edit to the logic. Pass
+  `-OverwriteAppSettings` to deploy the build's copies anyway, and expect to put the secrets back.
+
+  `appsettings.Development.json` is only read when `ASPNETCORE_ENVIRONMENT` is `Development`,
+  which the app pool sets to `Production` -- so it sits there harmlessly. It matters on the day
+  someone flips the environment to debug something, because it then wins over `appsettings.json`.
 
 The data-protection key ring is safe either way: it defaults to
 `C:\ProgramData\CGTOOL\DataProtectionKeys`, outside the site folder. If `DataProtection:KeyRingPath`

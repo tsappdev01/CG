@@ -27,6 +27,9 @@ param(
     [Parameter(Mandatory)] [string] $SitePath,
     [Parameter(Mandatory)] [string] $AppPoolName,
     [int] $RequiredRuntimeMajor = 10,
+    # Files the server owns. They are never copied over and never deleted, so whatever is on the
+    # server stays there. Add to this list rather than editing the logic below.
+    [string[]] $PreserveFiles = @('appsettings.json', 'appsettings.Development.json'),
     [switch] $OverwriteAppSettings
 )
 
@@ -73,18 +76,20 @@ else {
 
 $excludeDirs  = @((Join-Path $SitePath 'wwwroot\uploads'))
 $excludeFiles = @()
-# Only exclude it when the server already HAS one. On a brand-new site folder there is nothing
-# to protect, and excluding it unconditionally means the very first deploy to a new site copies
-# no appsettings.json at all -- the app then starts with no connection string and no Entra
-# settings, which looks like a broken build rather than a missing file.
-$destinationAppSettings = Join-Path $SitePath 'appsettings.json'
-if (-not $OverwriteAppSettings -and (Test-Path $destinationAppSettings)) {
-    $excludeFiles += $destinationAppSettings
-}
-elseif (-not $OverwriteAppSettings) {
-    Write-Host "No appsettings.json on the server yet, so the build's copy is being deployed." `
-               "Put the real connection string and secrets in it (or better, in the app pool's" `
-               "environment variables) -- later deploys will leave it alone."
+# Each is excluded only when the server already HAS it. On a brand-new site folder there is
+# nothing to protect, and excluding unconditionally would mean the very first deploy copies no
+# appsettings.json at all -- the app then starts with no connection string, which looks like a
+# broken build rather than a missing file.
+foreach ($name in $PreserveFiles) {
+    if ($OverwriteAppSettings) { break }
+    $destination = Join-Path $SitePath $name
+    if (Test-Path $destination) {
+        $excludeFiles += $destination
+    }
+    else {
+        Write-Host "No $name on the server yet, so the build's copy is being deployed if it has one." `
+                   "Put the real values in it afterwards -- later deploys will leave it alone."
+    }
 }
 
 Write-Host "Stopping app pool '$AppPoolName'..."
@@ -102,16 +107,10 @@ if ((Get-WebAppPoolState -Name $AppPoolName).Value -ne 'Stopped') {
 }
 
 try {
-    # dotnet publish copies every appsettings.*.json, so the Development overrides ride along to
-    # a server that has no business reading them. Excluded from the copy, and removed from the
-    # destination if an earlier deploy already put one there: if anything ever sets this site to
-    # Development, that file would win over appsettings.json, and it holds a localhost address.
-    $strayDevSettings = Join-Path $SitePath 'appsettings.Development.json'
-    if (Test-Path $strayDevSettings) {
-        Remove-Item $strayDevSettings -Force
-        Write-Host "Removed $strayDevSettings -- development overrides do not belong on a server."
-    }
-    $excludeFiles += (Join-Path $SitePath 'appsettings.Development.json')
+    # appsettings.Development.json is preserved rather than deleted: it is the server's to keep,
+    # and it is only ever read when ASPNETCORE_ENVIRONMENT is Development, which the app pool
+    # sets to Production. If that ever changes, this file wins over appsettings.json -- so what
+    # is in it matters on the day someone flips the environment to debug something.
 
     $robocopyArgs = @($PublishPath, $SitePath, '/MIR', '/NFL', '/NDL', '/NJH', '/NP', '/R:2', '/W:2')
     foreach ($d in $excludeDirs)  { $robocopyArgs += @('/XD', $d) }

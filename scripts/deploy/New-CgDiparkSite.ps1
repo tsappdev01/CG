@@ -29,7 +29,9 @@ param(
     [string] $SiteName    = 'DIP CGS',
     [string] $AppPoolName = 'DIP CGS',
     [string] $SitePath    = 'C:\Websites\CGDIP',
-    [string] $HostName    = 'cg.dipark.com'
+    [string] $HostName    = 'cg.dipark.com',
+    [string] $AspNetCoreEnvironment = 'Production',
+    [string] $PublicBaseUrl = 'https://cg.dipark.com'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -90,6 +92,33 @@ foreach ($path in @((Join-Path $SitePath 'wwwroot\uploads'), 'C:\ProgramData\CGT
     Write-Host "Granted Modify on $path to $identity"
 }
 
+# ---- app pool environment variables --------------------------------------------------------
+# ASP.NET Core defaults to Production only when nothing says otherwise, and plenty of things do:
+# a web.config carried over from a Debug publish, a machine-wide variable, a value someone set
+# while testing. Left on Development the site serves the developer exception page to the world
+# and reads appsettings.Development.json -- where Branding:PublicBaseUrl is localhost, so every
+# reminder e-mail would link people to their own machine. Set it explicitly rather than hoping.
+#
+# On the app pool, not in web.config: publish regenerates web.config on every deploy, so a value
+# put there lasts until the next one. These survive.
+function Set-AppPoolEnvironmentVariable {
+    param([string] $Pool, [string] $Name, [string] $Value)
+
+    $filter = "system.applicationHost/applicationPools/add[@name='$Pool']/environmentVariables"
+    # Remove-then-add rather than a get/compare: the collection is awkward to read back, and
+    # removing something that is not there is harmless with -ErrorAction SilentlyContinue.
+    Remove-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter $filter `
+        -name '.' -AtElement @{name=$Name} -ErrorAction SilentlyContinue
+    Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter $filter `
+        -name '.' -value @{name=$Name; value=$Value}
+    Write-Host "  $Name = $Value"
+}
+
+Write-Host "Setting app pool environment variables..."
+Set-AppPoolEnvironmentVariable -Pool $AppPoolName -Name 'ASPNETCORE_ENVIRONMENT' -Value $AspNetCoreEnvironment
+Set-AppPoolEnvironmentVariable -Pool $AppPoolName -Name 'Branding__PublicBaseUrl' -Value $PublicBaseUrl
+
 Write-Host ""
-Write-Host "Site ready. Still to do by hand: .NET 10 Hosting Bundle, DNS, and the app pool's"
-Write-Host "environment variables for the connection string and Entra secret (README)."
+Write-Host "Site ready. Still to do by hand: the .NET 10 Hosting Bundle, DNS, and the connection"
+Write-Host "string and Entra secret -- as app pool environment variables alongside the two above,"
+Write-Host "where they override appsettings.json and survive every deploy (README)."

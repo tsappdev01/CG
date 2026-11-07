@@ -32,6 +32,7 @@ variables:
   sitePath: 'C:\Websites\CGDIP'
   # Set to false once the site is settled, if you would rather CI never touched IIS configuration.
   ensureSite: 'true'
+  aspNetCoreEnvironment: 'Production'
 
 steps:
   # useGlobalJson, not a pinned version here: global.json already names the SDK (10.0.402) and two
@@ -63,6 +64,8 @@ steps:
         -AppPoolName "$(appPoolName)"
         -SitePath "$(sitePath)"
         -HostName "$(siteHostName)"
+        -AspNetCoreEnvironment "$(aspNetCoreEnvironment)"
+        -PublicBaseUrl "https://$(siteHostName)"
       failOnStderr: false
       pwsh: false
 

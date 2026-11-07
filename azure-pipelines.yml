@@ -65,7 +65,6 @@ steps:
         -SitePath "$(sitePath)"
         -HostName "$(siteHostName)"
         -AspNetCoreEnvironment "$(aspNetCoreEnvironment)"
-        -PublicBaseUrl "https://$(siteHostName)"
       failOnStderr: false
       pwsh: false
 

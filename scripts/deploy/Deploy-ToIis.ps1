@@ -69,6 +69,17 @@ if ((Get-WebAppPoolState -Name $AppPoolName).Value -ne 'Stopped') {
 }
 
 try {
+    # dotnet publish copies every appsettings.*.json, so the Development overrides ride along to
+    # a server that has no business reading them. Excluded from the copy, and removed from the
+    # destination if an earlier deploy already put one there: if anything ever sets this site to
+    # Development, that file would win over appsettings.json, and it holds a localhost address.
+    $strayDevSettings = Join-Path $SitePath 'appsettings.Development.json'
+    if (Test-Path $strayDevSettings) {
+        Remove-Item $strayDevSettings -Force
+        Write-Host "Removed $strayDevSettings -- development overrides do not belong on a server."
+    }
+    $excludeFiles += (Join-Path $SitePath 'appsettings.Development.json')
+
     $robocopyArgs = @($PublishPath, $SitePath, '/MIR', '/NFL', '/NDL', '/NJH', '/NP', '/R:2', '/W:2')
     foreach ($d in $excludeDirs)  { $robocopyArgs += @('/XD', $d) }
     foreach ($f in $excludeFiles) { $robocopyArgs += @('/XF', $f) }

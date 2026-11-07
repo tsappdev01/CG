@@ -57,9 +57,12 @@ Three things it cannot do for you:
    answers 500.19 or 500.31. Install it, then `iisreset`.
 2. **DNS** for `cg.dipark.com`, pointing at this server.
 3. **The certificate**, if one was not installed when the script ran. Install it and re-run.
-4. **The secrets**, as app pool environment variables (see above). They override
-   `appsettings.json`, and unlike that file they survive a deploy -- which is the reason to prefer
-   them.
+4. **The values in the site's own `appsettings.json`** -- the connection string, the Entra
+   secret, and `Branding:PublicBaseUrl`, which must be the site's own address or reminder e-mails
+   link people somewhere else. A deploy leaves that file alone once it exists, so this is a
+   once-per-server job. App pool environment variables are the alternative and override it;
+   `ASPNETCORE_ENVIRONMENT` is set that way regardless, because appsettings.json cannot name the
+   environment that decides which appsettings file is read.
 
 ### What the deploy will not overwrite
 

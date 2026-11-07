@@ -31,7 +31,11 @@ param(
     [string] $SitePath    = 'C:\Websites\CGDIP',
     [string] $HostName    = 'cg.dipark.com',
     [string] $AspNetCoreEnvironment = 'Production',
-    [string] $PublicBaseUrl = 'https://cg.dipark.com'
+    # Off by default: this deployment keeps its configuration in the server's appsettings.json,
+    # and an environment variable of the same name would silently win over it. Pass the switch
+    # only where the variable is wanted instead of the file.
+    [string] $PublicBaseUrl = '',
+    [switch] $SetPublicBaseUrlVariable
 )
 
 $ErrorActionPreference = 'Stop'
@@ -115,10 +119,20 @@ function Set-AppPoolEnvironmentVariable {
 }
 
 Write-Host "Setting app pool environment variables..."
+# ASPNETCORE_ENVIRONMENT is the one that has to be here. It is a host setting rather than app
+# configuration -- appsettings.json cannot name the environment that decides which appsettings
+# file is read -- and left unset the app can end up on Development, serving the developer
+# exception page and its stack traces to anyone who can provoke an error.
 Set-AppPoolEnvironmentVariable -Pool $AppPoolName -Name 'ASPNETCORE_ENVIRONMENT' -Value $AspNetCoreEnvironment
-Set-AppPoolEnvironmentVariable -Pool $AppPoolName -Name 'Branding__PublicBaseUrl' -Value $PublicBaseUrl
+
+if ($SetPublicBaseUrlVariable -and $PublicBaseUrl) {
+    Set-AppPoolEnvironmentVariable -Pool $AppPoolName -Name 'Branding__PublicBaseUrl' -Value $PublicBaseUrl
+}
+else {
+    Write-Host "  Branding:PublicBaseUrl left to appsettings.json -- set it there to the site's own address."
+}
 
 Write-Host ""
-Write-Host "Site ready. Still to do by hand: the .NET 10 Hosting Bundle, DNS, and the connection"
-Write-Host "string and Entra secret -- as app pool environment variables alongside the two above,"
-Write-Host "where they override appsettings.json and survive every deploy (README)."
+Write-Host "Site ready. Still to do by hand: the .NET 10 Hosting Bundle, DNS, and the values in"
+Write-Host "$SitePath\appsettings.json -- the connection string, the Entra secret, and"
+Write-Host "Branding:PublicBaseUrl. Deploys leave that file alone once it exists."

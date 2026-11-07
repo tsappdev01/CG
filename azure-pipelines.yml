@@ -1,0 +1,53 @@
+# Build and deploy CGTOOL to IIS on UATWEB01.
+#
+# Runs on the Default pool, whose agent is the service "Azure Pipelines Agent
+# (TechSourcedxb.Default.UATWEB01Agent)" ON UATWEB01 itself. That is deliberate: the agent and the
+# web site are the same machine, so the publish output is copied straight into place and nothing
+# has to cross the network or be staged as an artifact.
+#
+# The site has to exist first. scripts/deploy/New-CgDiparkSite.ps1 creates it; run that once,
+# elevated, on UATWEB01.
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr: none
+
+pool:
+  name: Default
+
+variables:
+  projectPath: 'src/CGTOOL.Web/CGTOOL.Web.csproj'
+  buildConfiguration: 'Release'
+  publishPath: '$(Build.ArtifactStagingDirectory)\publish'
+  siteName: 'cg.dipark.com'
+  appPoolName: 'cg.dipark.com'
+  sitePath: 'C:\Websites\CG_DIP'
+
+steps:
+  # useGlobalJson, not a pinned version here: global.json already names the SDK (10.0.402) and two
+  # places saying which SDK to use is one place to forget.
+  - task: UseDotNet@2
+    displayName: 'Install the SDK global.json asks for'
+    inputs:
+      packageType: 'sdk'
+      useGlobalJson: true
+
+  - script: dotnet restore "$(projectPath)"
+    displayName: 'Restore'
+
+  - script: dotnet publish "$(projectPath)" --configuration $(buildConfiguration) --no-restore --output "$(publishPath)"
+    displayName: 'Publish'
+
+  - task: PowerShell@2
+    displayName: 'Deploy to IIS'
+    inputs:
+      filePath: 'scripts/deploy/Deploy-ToIis.ps1'
+      arguments: >-
+        -PublishPath "$(publishPath)"
+        -SitePath "$(sitePath)"
+        -AppPoolName "$(appPoolName)"
+      failOnStderr: false
+      pwsh: false

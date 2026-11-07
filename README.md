@@ -29,6 +29,58 @@ GUID in four places and stamped a Visual Studio version that nothing reads, and 
 the project path and nothing else. Only one solution file may sit in the repository root: with both
 present `dotnet build` stops with MSB1011 rather than choosing one.
 
+## Deployment
+
+`azure-pipelines.yml` builds `main` and deploys it to IIS on UATWEB01. It runs on the **Default**
+pool, whose agent is a service on UATWEB01 itself, so the publish output is copied straight into
+place rather than crossing the network as an artifact.
+
+The site has to exist before the first run. Once, elevated, on UATWEB01:
+
+```powershell
+.\scripts\deploy\New-CgDiparkSite.ps1
+```
+
+That creates the `cg.dipark.com` site and app pool at `C:\Websites\CG_DIP`, sets the pool to **No
+Managed Code** (the runtime is in the app, not in IIS), turns off timed recycling (each recycle
+drops every open SignalR circuit mid-session), binds HTTPS if a matching certificate is already
+installed, and grants the pool identity write access to `wwwroot\uploads` and the data-protection
+key ring. It is re-runnable.
+
+Four things it cannot do for you:
+
+1. **The .NET 10 Hosting Bundle** -- not the SDK and not the runtime, the Hosting Bundle, which
+   carries the ASP.NET Core Module IIS needs to hand requests to the app. Without it the site
+   answers 500.19 or 500.31. Install it, then `iisreset`.
+2. **DNS** for `cg.dipark.com`, pointing at this server.
+3. **The certificate**, if one was not installed when the script ran. Install it and re-run.
+4. **The secrets**, as app pool environment variables (see above). They override
+   `appsettings.json`, and unlike that file they survive a deploy -- which is the reason to prefer
+   them.
+
+### What the deploy will not overwrite
+
+`Deploy-ToIis.ps1` mirrors the publish output into the site folder, which means it deletes what is
+no longer in the build. Two things are excluded because they are not the build's to manage:
+
+* **`wwwroot\uploads`** -- profile pictures, trade licences, signatures and declaration
+  attachments. They exist only on the server and are gitignored, so an unguarded mirror would
+  delete every one of them on the first deploy.
+* **`appsettings.json`** -- the server's copy holds the real connection string and Entra secret,
+  where the repository's has empty placeholders. Pass `-OverwriteAppSettings` to deploy it anyway,
+  and expect to put the secrets back.
+
+The data-protection key ring is safe either way: it defaults to
+`C:\ProgramData\CGTOOL\DataProtectionKeys`, outside the site folder. If `DataProtection:KeyRingPath`
+is ever pointed inside the site, exclude it too, or every deploy signs everyone out.
+
+### What the pipeline does not do
+
+It does not run `scripts/stored-procedures.sql`. EF migrations apply themselves at startup
+(`Program.cs`), but the procedures are deployed by hand, once per database, in the order the SQL
+section below describes. A pipeline that ran them unattended would be a pipeline that could take
+the database with it.
+
 ## Project layout
 
 ```

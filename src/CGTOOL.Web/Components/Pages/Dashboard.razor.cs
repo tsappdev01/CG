@@ -343,20 +343,42 @@ public partial class Dashboard
             // One query for the batch rather than one per row, and its own short-lived context --
             // the circuit's is shared with whatever else this page is doing.
             Dictionary<int, string> onBehalfCc;
+            Dictionary<DeclarationCycleType, string> bodyTemplates;
             await using (var db = await DbFactory.CreateDbContextAsync())
             {
                 onBehalfCc = await DeclarationCycleReminderHostedService.ResolveOnBehalfCcAsync(
                     db, [.. targets.Select(t => t.MemberId)], default);
+
+                // The same body the first notice went out with. A chaser written separately from
+                // the notification is a second thing to keep in step, and this one had already
+                // drifted: the notice is branded, says what the declaration covers and links
+                // straight to it, while the chaser was four lines of plain text signed
+                // "Corporate Affairs".
+                var types = targets.Select(t => ToLogCategory(t.Category)).Distinct().ToList();
+                bodyTemplates = await db.DeclarationCycleSetups.AsNoTracking()
+                    .Where(x => types.Contains(x.Type) && x.EmailBody != null && x.EmailBody != "")
+                    .ToDictionaryAsync(x => x.Type, x => x.EmailBody!);
             }
+
+            var baseUrl = DeclarationCycleReminderHostedService.BaseUrl(Config, Nav.BaseUri);
 
             foreach (var row in targets)
             {
                 var cc = onBehalfCc.GetValueOrDefault(row.MemberId);
                 var label = CategoryLabel(row.Category);
+
+                // The subject still says this is a reminder and which period it is for -- that is
+                // what tells a chaser apart from the notice in an inbox that holds both.
                 var subject = $"Reminder: {label} declaration due — Q{row.Quarter} {row.Year}";
-                var body = $"Dear {row.MemberName},<br/><br/>" +
-                           $"Our records show your {label} declaration for Q{row.Quarter} {row.Year} is still pending, due by {row.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")}. " +
-                           "Please log in and submit it at your earliest convenience.<br/><br/>Regards,<br/>Corporate Affairs";
+
+                var body = bodyTemplates.TryGetValue(ToLogCategory(row.Category), out var template)
+                    ? DeclarationCycleReminderHostedService.ApplyPlaceholders(
+                        template, row.MemberName, row.DueDateUtc, baseUrl, Branding.ParentHoldingCompany)
+                    // No template configured for this declaration, which is possible before anyone
+                    // has set one up. Better a plain chaser than a blank one.
+                    : $"Dear {row.MemberName},<br/><br/>"
+                      + $"Our records show your {label} declaration for Q{row.Quarter} {row.Year} is still pending, due by {row.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")}. "
+                      + "Please log in and submit it at your earliest convenience.<br/><br/>Regards,<br/>Corporate Affairs";
 
                 await EmailSender.SendAsync(row.Email, subject, body, default, cc);
 

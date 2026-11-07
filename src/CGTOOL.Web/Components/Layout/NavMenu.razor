@@ -7,6 +7,7 @@
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavMenuStateNotifier NavState
 @inject BuildVersion Build
+@inject ImpersonationContext Impersonation
 
 <a class="cg-brand" href="">
     <img src="images/di-logo-en.png" alt="DIP Holding PLC" class="cg-brand-logo" />
@@ -55,6 +56,20 @@
             </Authorized>
         </AuthorizeView>
 
+        @* Hidden while acting on behalf of someone else. These are the administrator's own tools
+           -- running reports, opening declaration periods, uploading the register -- and none of
+           them is a thing being done as somebody else. A sidebar that offers them anyway makes
+           the acting state easy to forget, which is how an administrator opens a declaration
+           period believing they are themselves and then files a declaration believing they still
+           are. The audit trail records both names either way; the point is the person, not the
+           record.
+
+           Hidden, not blocked: the pages still carry their own role checks, and this is the menu.
+
+           They come back by themselves on Switch back to my profile -- the condition reads the
+           acting state rather than copying it. *@
+        @if (!ActingOnBehalf)
+        {
         <AuthorizeView>
             <Authorized>
                 @if (!GovernanceRoles.IsNormalStaffOnly(context.User))
@@ -196,6 +211,7 @@
                 }
             </Authorized>
         </AuthorizeView>
+        }
 
         <AuthorizeView>
             <NotAuthorized>
@@ -275,10 +291,20 @@
         _expandedGroups.Add(key);
     }
 
+    /// <summary>Whether the signed-in user is filing for somebody else right now.</summary>
+    private bool ActingOnBehalf => Impersonation.ActingMemberId is not null;
+
+    private void OnActingChanged() => InvokeAsync(StateHasChanged);
+
     protected override async Task OnInitializedAsync()
     {
         NavigationManager.LocationChanged += OnLocationChanged;
         NavState.Changed += OnMenuCustomisationChangedAsync;
+
+        // Starting or ending an impersonation changes what this menu shows, and neither is a
+        // navigation -- without this the sidebar would keep the administrator's sections until the
+        // next page load.
+        Impersonation.Changed += OnActingChanged;
         await RefreshAccessAsync();
         await ReloadCustomisationAsync();
     }
@@ -334,5 +360,6 @@
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
         NavState.Changed -= OnMenuCustomisationChangedAsync;
+        Impersonation.Changed -= OnActingChanged;
     }
 }

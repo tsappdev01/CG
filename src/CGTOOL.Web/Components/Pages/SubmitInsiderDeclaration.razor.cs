@@ -238,10 +238,45 @@ public partial class SubmitInsiderDeclaration
             }
 
             await PrefillDocumentsFromPriorDeclarationAsync();
+            await PrefillNinFromDfmProfileAsync(db);
         }
 
         _step = _run is null ? Step.NotDue : Step.Capture1;
     }
+
+    /// <summary>Answers question 1 from My Workspace: a member who has recorded a DFM investor
+    /// number has a NIN, and it is this one. Asking them to type it again every quarter is asking
+    /// them to re-key a number the application already holds, with a chance each time of getting
+    /// it wrong.
+    ///
+    /// A default, not a decision -- both buttons still work and the number can be edited. Only on
+    /// a declaration being started from scratch: a draft or a submitted one is reloaded through
+    /// LoadForEditAsync, which returns before this, so an answer someone gave is never overwritten
+    /// by what their profile says today.
+    ///
+    /// Only a valid number is carried across. A half-typed one in My Workspace would otherwise
+    /// arrive here pre-answered "Yes" and then refuse to submit, which is worse than an empty
+    /// field.</summary>
+    private async Task PrefillNinFromDfmProfileAsync(ApplicationDbContext db)
+    {
+        if (_effectiveMember is null) return;
+
+        var investorNumber = await db.MemberDfmProfiles.AsNoTracking()
+            .Where(profile => profile.MemberId == _effectiveMember.Id)
+            .Select(profile => profile.InvestorNumber)
+            .FirstOrDefaultAsync();
+
+        if (!Nin.IsValid(investorNumber)) return;
+
+        _hasNin = true;
+        _ninNumber = investorNumber!.Trim();
+        _ninFromDfm = true;
+    }
+
+    /// <summary>Whether the number in the box arrived from My Workspace rather than being typed
+    /// here, so the form can say so. A value that fills itself in and explains nothing reads as a
+    /// glitch.</summary>
+    private bool _ninFromDfm;
 
     // Carries Emirates ID / Passport / Trade Licence details forward from the declarant's most recent
     // prior submission (any earlier cycle, not just last quarter) so they don't have to re-enter and

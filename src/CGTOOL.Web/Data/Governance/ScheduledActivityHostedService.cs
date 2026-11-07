@@ -47,9 +47,17 @@ public class ScheduledActivityHostedService(IServiceScopeFactory scopeFactory, I
 
             var recipients = await ResolveRecipientsAsync(db, activity.Type, ct);
             var label = ActivityLabel(activity.Type);
-            foreach (var email in recipients)
+
+            // Copied, like every other declaration reminder: a person approved to file for a
+            // colleague cannot act on a notice they never saw.
+            var onBehalfCc = await DeclarationCycleReminderHostedService.ResolveOnBehalfCcAsync(
+                db, [.. recipients.Select(r => r.MemberId)], ct);
+
+            foreach (var (memberId, email) in recipients)
             {
-                await emailSender.SendAsync(email, $"{label} declaration reminder", $"This is a reminder that your {label} declaration is due.", ct);
+                await emailSender.SendAsync(email, $"{label} declaration reminder",
+                    $"This is a reminder that your {label} declaration is due.", ct,
+                    onBehalfCc.GetValueOrDefault(memberId));
             }
 
             var triggeredAt = DateTime.UtcNow;
@@ -58,7 +66,9 @@ public class ScheduledActivityHostedService(IServiceScopeFactory scopeFactory, I
         }
     }
 
-    private static Task<List<string>> ResolveRecipientsAsync(ApplicationDbContext db, ScheduledActivityType type, CancellationToken ct)
+    /// <summary>The id travels with the address: whoever may file on this person's behalf is looked
+    /// up by member, and an address alone cannot be looked up by.</summary>
+    private static async Task<List<(int MemberId, string Email)>> ResolveRecipientsAsync(ApplicationDbContext db, ScheduledActivityType type, CancellationToken ct)
     {
         var query = db.Members.Where(m => m.Active && m.Email != null);
 
@@ -68,7 +78,11 @@ public class ScheduledActivityHostedService(IServiceScopeFactory scopeFactory, I
             _ => query.Where(m => m.InsiderTradingAccess || m.IsBoardMember),
         };
 
-        return query.Select(m => m.Email!).ToListAsync(ct);
+        // Projected to an anonymous type and paired afterwards: a tuple constructed inside the
+        // query is the provider's business to translate, and a reminder run is not the place to
+        // find out it would rather not.
+        var rows = await query.Select(m => new { m.Id, Email = m.Email! }).ToListAsync(ct);
+        return [.. rows.Select(r => (r.Id, r.Email))];
     }
 
     private static string ActivityLabel(ScheduledActivityType type) => type switch

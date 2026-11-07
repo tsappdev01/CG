@@ -335,15 +335,30 @@ public partial class Dashboard
             var state = await AuthState.GetAuthenticationStateAsync();
             var actorName = state.User.Identity?.Name ?? "unknown";
 
+            // Copied on a chaser for the same reason they are copied on the notice that started
+            // the clock: someone approved to file for a colleague cannot act on a reminder they
+            // never saw. The scheduled reminders have always done this; the button beside the row
+            // did not, so chasing by hand quietly reached fewer people than leaving it alone.
+            //
+            // One query for the batch rather than one per row, and its own short-lived context --
+            // the circuit's is shared with whatever else this page is doing.
+            Dictionary<int, string> onBehalfCc;
+            await using (var db = await DbFactory.CreateDbContextAsync())
+            {
+                onBehalfCc = await DeclarationCycleReminderHostedService.ResolveOnBehalfCcAsync(
+                    db, [.. targets.Select(t => t.MemberId)], default);
+            }
+
             foreach (var row in targets)
             {
+                var cc = onBehalfCc.GetValueOrDefault(row.MemberId);
                 var label = CategoryLabel(row.Category);
                 var subject = $"Reminder: {label} declaration due — Q{row.Quarter} {row.Year}";
                 var body = $"Dear {row.MemberName},<br/><br/>" +
                            $"Our records show your {label} declaration for Q{row.Quarter} {row.Year} is still pending, due by {row.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")}. " +
                            "Please log in and submit it at your earliest convenience.<br/><br/>Regards,<br/>Corporate Affairs";
 
-                await EmailSender.SendAsync(row.Email, subject, body);
+                await EmailSender.SendAsync(row.Email, subject, body, default, cc);
 
                 await ReminderLogWriter.InsertAsync(new DeclarationReminderLog
                 {
@@ -358,7 +373,8 @@ public partial class Dashboard
                 });
 
                 await AuditLog.LogAsync(actorName, AuditAction.Notify, nameof(DeclarationReminderLog), row.MemberId.ToString(),
-                    $"Sent {label} declaration reminder to {row.MemberName} (Q{row.Quarter} {row.Year})");
+                    $"Sent {label} declaration reminder to {row.MemberName} (Q{row.Quarter} {row.Year})"
+                    + (cc is { Length: > 0 } ? $", copied to {cc}" : string.Empty));
             }
 
             Toasts.ShowSuccess(targets.Count == 1

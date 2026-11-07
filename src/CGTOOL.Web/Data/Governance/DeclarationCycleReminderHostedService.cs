@@ -82,7 +82,7 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
                 var body = ApplyPlaceholders(setup.EmailBody, fullName, run.DueDateUtc, baseUrl ?? BaseUrl(null), parentHoldingCompany);
                 try
                 {
-                    await emailSender.SendAsync(email, $"Reminder: {setup.EmailSubject}", body, ct,
+                    await emailSender.SendAsync(email, ReminderSubject(setup.Type, run), body, ct,
                         onBehalfCc.GetValueOrDefault(memberId));
                     await auditLog.LogAsync("System", AuditAction.Notify, nameof(Member), memberId.ToString(),
                         $"Reminder {reminderNumber}/{setup.ReminderCount} for {setup.Type} sent to {fullName} <{email}>, due {run.DueDateUtc.ToLocalDisplay():yyyy-MM-dd}");
@@ -203,6 +203,25 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
         await auditLog.LogAsync(actorName, AuditAction.Recall, nameof(DeclarationCycleRun), run.Id.ToString(),
             $"{TypeLabel(type)} notification for {periodLabel} (sent {run.SentAtUtc.ToLocalDisplay("dd/MM/yyyy")}) recalled; {run.Recipients.Count} recipient(s) notified.");
     }
+
+    /// <summary>What a chaser is called in an inbox that already holds the notice.
+    ///
+    /// It used to be "Reminder: " in front of the notification's own subject, which made the two
+    /// mails near-identical in a list and told the reader nothing about which period was being
+    /// chased. Naming the declaration and the quarter answers both at a glance, and matches the
+    /// subject the Remind button on the dashboard sends.</summary>
+    public static string ReminderSubject(DeclarationCycleType type, DeclarationCycleRun run) =>
+        $"Reminder: {ShortTypeLabel(type)} declaration due — Q{run.PeriodQuarter} {run.PeriodYear}";
+
+    /// <summary>The short name, for a subject line. "Related Party &amp; Conflict of Interest
+    /// declaration due — Q1 2026" is most of an inbox column before it reaches the quarter, which
+    /// is the part being looked for.</summary>
+    private static string ShortTypeLabel(DeclarationCycleType type) => type switch
+    {
+        DeclarationCycleType.InsiderTrading => "Insider Trading",
+        DeclarationCycleType.ConflictOfInterest => "RP/COI",
+        _ => TypeLabel(type),
+    };
 
     private static string TypeLabel(DeclarationCycleType type) => type switch
     {

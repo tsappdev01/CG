@@ -368,8 +368,11 @@ public partial class Dashboard
                 var label = CategoryLabel(row.Category);
 
                 // The subject still says this is a reminder and which period it is for -- that is
-                // what tells a chaser apart from the notice in an inbox that holds both.
-                var subject = $"Reminder: {label} declaration due — Q{row.Quarter} {row.Year}";
+                // what tells a chaser apart from the notice in an inbox that holds both. Built
+                // where the scheduled reminders build theirs, so the two say the same thing.
+                var subject = DeclarationCycleReminderHostedService.ReminderSubject(
+                    ToLogCategory(row.Category),
+                    new DeclarationCycleRun { PeriodQuarter = row.Quarter, PeriodYear = row.Year });
 
                 var body = bodyTemplates.TryGetValue(ToLogCategory(row.Category), out var template)
                     ? DeclarationCycleReminderHostedService.ApplyPlaceholders(

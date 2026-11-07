@@ -107,10 +107,15 @@
 /* ---------- Filters ---------- */
 /* Filters, the table and the pager are one card: they are one thing to use, and stacking three
    bordered blocks put two hairlines between every step of it. */
+/* The search and the period filters, above the cards they govern. Its own card rather than a bare
+   row: it sits between the page header and the figures, and an unboxed row of inputs there reads
+   as part of the header. */
+.cg-dash-filter-bar { padding: 16px 20px; margin-bottom: 16px; }
+
 .cg-dash-table { padding: 0 !important; overflow: hidden; }
 
 .cg-dash-filters {
-    padding: 16px 20px;
+    padding: 13px 20px;
     display: flex;
     flex-direction: column;
     gap: 13px;

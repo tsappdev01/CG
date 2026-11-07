@@ -19,8 +19,19 @@
         Toasts.OnShow += HandleShow;
     }
 
+    /// <summary>Pressing Refresh four times used to put four "Dashboard refreshed." notices on the
+    /// screen, one under another, saying the same thing four times and covering the page while
+    /// they said it. The same message arriving again replaces the one already up and restarts its
+    /// six seconds, so what is on screen is the latest of them and there is one of it.
+    ///
+    /// Only an identical message, matched on its text and its level. Two different things that
+    /// happened both deserve saying, and a warning that reads like a success is not the same
+    /// notice.</summary>
     private void HandleShow(ToastMessage toast)
     {
+        _active.RemoveAll(t => t.Level == toast.Level
+            && string.Equals(t.Text, toast.Text, StringComparison.Ordinal));
+
         _active.Add(toast);
         InvokeAsync(StateHasChanged);
 

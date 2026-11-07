@@ -35,6 +35,51 @@
     }
     else
     {
+        @* Above the cards, because it governs them: the year, the quarter and the category
+           decide what the percentages are of, not just which rows are listed underneath.
+           Below them it read as the table's own search. *@
+        <section class="cg-card cg-dash-filter-bar">
+                <div class="cg-filter-row">
+                    <label class="cg-filter cg-filter-grow">
+                        <span>Search</span>
+                        <input type="search" class="cg-input" placeholder="Name, email or entity"
+                               value="@_search" @oninput="e => { _search = e.Value?.ToString() ?? string.Empty; ResetToFirstPage(); }" />
+                    </label>
+                    <label class="cg-filter">
+                        <span>Year</span>
+                        <select class="cg-input" @bind="_yearFilter" @bind:after="ResetToFirstPage">
+                            <option value="0">All years</option>
+                            @foreach (var y in AvailableYears())
+                            {
+                                <option value="@y">@y</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="cg-filter">
+                        <span>Quarter</span>
+                        <select class="cg-input" @bind="_quarterFilter" @bind:after="ResetToFirstPage">
+                            <option value="0">All quarters</option>
+                            <option value="1">Q1</option>
+                            <option value="2">Q2</option>
+                            <option value="3">Q3</option>
+                            <option value="4">Q4</option>
+                        </select>
+                    </label>
+                    <label class="cg-filter">
+                        <span>Category</span>
+                        <select class="cg-input" @bind="_categoryFilter" @bind:after="ResetToFirstPage">
+                            <option value="">All categories</option>
+                            <option value="insider">Insider Trading</option>
+                            <option value="coi">RP / COI</option>
+                        </select>
+                    </label>
+                    @if (AnyFilterApplied)
+                    {
+                        <button type="button" class="cg-link-btn" @onclick="ClearFilters">Clear filters</button>
+                    }
+                </div>
+        </section>
+
         <section class="cg-dash-cards" aria-label="Declaration totals">
             @* One card per declaration category: how far through it is, and what is left. The bar is
                the same three numbers read across -- complete, then overdue at the far end. *@
@@ -86,45 +131,6 @@
 
         <section class="cg-card cg-dash-table">
             <div class="cg-dash-filters">
-                <div class="cg-filter-row">
-                    <label class="cg-filter cg-filter-grow">
-                        <span>Search</span>
-                        <input type="search" class="cg-input" placeholder="Name, email or entity"
-                               value="@_search" @oninput="e => { _search = e.Value?.ToString() ?? string.Empty; ResetToFirstPage(); }" />
-                    </label>
-                    <label class="cg-filter">
-                        <span>Year</span>
-                        <select class="cg-input" @bind="_yearFilter" @bind:after="ResetToFirstPage">
-                            <option value="0">All years</option>
-                            @foreach (var y in AvailableYears())
-                            {
-                                <option value="@y">@y</option>
-                            }
-                        </select>
-                    </label>
-                    <label class="cg-filter">
-                        <span>Quarter</span>
-                        <select class="cg-input" @bind="_quarterFilter" @bind:after="ResetToFirstPage">
-                            <option value="0">All quarters</option>
-                            <option value="1">Q1</option>
-                            <option value="2">Q2</option>
-                            <option value="3">Q3</option>
-                            <option value="4">Q4</option>
-                        </select>
-                    </label>
-                    <label class="cg-filter">
-                        <span>Category</span>
-                        <select class="cg-input" @bind="_categoryFilter" @bind:after="ResetToFirstPage">
-                            <option value="">All categories</option>
-                            <option value="insider">Insider Trading</option>
-                            <option value="coi">RP / COI</option>
-                        </select>
-                    </label>
-                    @if (AnyFilterApplied)
-                    {
-                        <button type="button" class="cg-link-btn" @onclick="ClearFilters">Clear filters</button>
-                    }
-                </div>
 
                 <div class="cg-filter-row cg-filter-row-end">
                     @* Status is a chip row rather than a fifth dropdown: it is the thing most often

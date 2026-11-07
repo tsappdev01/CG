@@ -15,6 +15,10 @@ public interface IInsiderDeclarationWriter
     Task DeleteRelativesAsync(int insiderDeclarationId);
 
     Task DeleteNinHoldersAsync(int insiderDeclarationId);
+
+    Task<int> InsertDocumentAsync(int insiderDeclarationId, InsiderDeclarationDocument document);
+
+    Task DeleteDocumentsAsync(int insiderDeclarationId);
 }
 
 /// <summary>Callers must wrap InsertAsync + InsertRelativeAsync/InsertNinHolderAsync (or
@@ -70,6 +74,19 @@ public class InsiderDeclarationWriter(IStoredProcedureExecutor sp) : IInsiderDec
         new SqlParameter("@NameOfShareHolder", holder.NameOfShareHolder),
         new SqlParameter("@NinNumber", holder.NinNumber),
         new SqlParameter("@Additional", (object?)holder.Additional ?? DBNull.Value));
+
+    public Task<int> InsertDocumentAsync(int insiderDeclarationId, InsiderDeclarationDocument document) => sp.InsertAsync(
+        "dbo.usp_InsiderDeclarationDocument_Insert",
+        new SqlParameter("@InsiderDeclarationId", insiderDeclarationId),
+        new SqlParameter("@DocumentTypeId", document.DocumentTypeId),
+        new SqlParameter("@FilePath", (object?)document.FilePath ?? DBNull.Value),
+        new SqlParameter("@OriginalFileName", (object?)document.OriginalFileName ?? DBNull.Value),
+        new SqlParameter("@DocumentNumber", (object?)document.DocumentNumber ?? DBNull.Value),
+        new SqlParameter("@ExpiryDate", (object?)document.ExpiryDate ?? DBNull.Value));
+
+    public Task DeleteDocumentsAsync(int insiderDeclarationId) => sp.ExecuteAsync(
+        "dbo.usp_InsiderDeclarationDocument_DeleteForDeclaration",
+        new SqlParameter("@InsiderDeclarationId", insiderDeclarationId));
 
     public Task UpdateAsync(InsiderDeclaration declaration) => sp.ExecuteAsync(
         "dbo.usp_InsiderDeclaration_Update",

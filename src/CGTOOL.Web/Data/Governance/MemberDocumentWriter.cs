@@ -23,7 +23,8 @@ public class MemberDocumentWriter(IStoredProcedureExecutor sp) : IMemberDocument
         new SqlParameter("@ExpiryDate", (object?)document.ExpiryDate ?? DBNull.Value),
         new SqlParameter("@IssueDate", (object?)document.IssueDate ?? DBNull.Value),
         new SqlParameter("@DateOfBirth", (object?)document.DateOfBirth ?? DBNull.Value),
-        new SqlParameter("@UploadedAtUtc", document.UploadedAtUtc));
+        new SqlParameter("@UploadedAtUtc", document.UploadedAtUtc),
+        new SqlParameter("@DocumentTypeId", (object?)document.DocumentTypeId ?? DBNull.Value));
 
     public Task UpdateAsync(MemberDocument document) => sp.ExecuteAsync("dbo.usp_MemberDocument_Update",
         new SqlParameter("@Id", document.Id),
@@ -36,7 +37,8 @@ public class MemberDocumentWriter(IStoredProcedureExecutor sp) : IMemberDocument
         new SqlParameter("@ExpiryDate", (object?)document.ExpiryDate ?? DBNull.Value),
         new SqlParameter("@IssueDate", (object?)document.IssueDate ?? DBNull.Value),
         new SqlParameter("@DateOfBirth", (object?)document.DateOfBirth ?? DBNull.Value),
-        new SqlParameter("@UploadedAtUtc", document.UploadedAtUtc));
+        new SqlParameter("@UploadedAtUtc", document.UploadedAtUtc),
+        new SqlParameter("@DocumentTypeId", (object?)document.DocumentTypeId ?? DBNull.Value));
 
     public Task DeleteAsync(int id) => sp.ExecuteAsync("dbo.usp_MemberDocument_Delete", new SqlParameter("@Id", id));
 }

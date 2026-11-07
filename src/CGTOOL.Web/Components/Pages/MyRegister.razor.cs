@@ -112,6 +112,15 @@ public partial class MyRegister : ComponentBase
             .Where(d => d.MemberId == _effectiveMember.Id)
             .OrderBy(d => d.Kind).ThenBy(d => d.Id)
             .ToListAsync());
+
+        // Which documents are being asked for, from the Document Centre. Only the active ones are
+        // loaded: an inactive type is not shown, and nothing already filed against it is lost --
+        // it simply stops being asked for.
+        _documentTypes.Clear();
+        _documentTypes.AddRange(await db.DocumentTypes.AsNoTracking()
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.SortOrder).ThenBy(t => t.Name)
+            .ToListAsync());
     }
 
     private IEnumerable<FamilyMember> FilteredRelatives()
@@ -463,34 +472,80 @@ public partial class MyRegister : ComponentBase
 
     private const long MaxMemberDocumentBytes = 10 * 1024 * 1024;
 
-    private static readonly (MemberDocumentKind Kind, string Title, string Blurb)[] NamedDocumentKinds =
-    [
-        (MemberDocumentKind.EmiratesId, "Emirates ID", "Number, name on the ID, expiry and date of birth."),
-        (MemberDocumentKind.Passport, "Passport", "Number, nationality, issue and expiry dates."),
-        (MemberDocumentKind.TradeLicence, "Trade License", "Licence number, legal name and expiry."),
-    ];
+    /// <summary>What the Document Centre is currently asking for. This was a static array of three
+    /// documents with their titles and blurbs written in; it is a table now, so a document can be
+    /// renamed, made optional or switched off, and new ones added, without a redeploy.</summary>
+    private readonly List<DocumentType> _documentTypes = [];
+
+    /// <summary>The documents with capture wiring behind them -- Emirates ID, passport, trade
+    /// licence -- in the order the Document Centre puts them. "Other" is excluded: it is the
+    /// free-form list further down the page rather than a card of its own.</summary>
+    private IEnumerable<DocumentType> NamedDocumentTypes =>
+        _documentTypes.Where(t => t.BuiltInKind is not null && t.BuiltInKind != MemberDocumentKind.Other);
+
+    /// <summary>Document types an administrator added. They take a file, a reference and an expiry
+    /// date, and nothing is read off them -- see DocumentType.</summary>
+    private IEnumerable<DocumentType> AddedDocumentTypes =>
+        _documentTypes.Where(t => t.BuiltInKind is null);
+
+    /// <summary>The catch-all row, when it is being asked for. Null switches the whole free-form
+    /// section off.</summary>
+    private DocumentType? OtherDocumentType =>
+        _documentTypes.FirstOrDefault(t => t.BuiltInKind == MemberDocumentKind.Other);
 
     /// <summary>A person has one Emirates ID, so these three are looked up rather than listed --
     /// uploading again replaces what is on file. "Other" is the list.</summary>
     private MemberDocument? DocumentOf(MemberDocumentKind kind) =>
         kind == MemberDocumentKind.Other ? null : _documents.FirstOrDefault(d => d.Kind == kind);
 
-    private List<MemberDocument> OtherDocuments() =>
-        _documents.Where(d => d.Kind == MemberDocumentKind.Other).OrderBy(d => d.Id).ToList();
+    /// <summary>The one document on file against an added type. Like the named kinds and unlike
+    /// Other, a type someone defined is a single slot: uploading again replaces it.</summary>
+    private MemberDocument? DocumentOfType(int documentTypeId) =>
+        _documents.FirstOrDefault(d => d.DocumentTypeId == documentTypeId);
 
-    private static string KindTitle(MemberDocument document) => document.Kind switch
+    /// <summary>Free-form Other uploads only. A document filed against an added type also carries
+    /// Kind = Other, so that it keeps working everywhere that sorts by kind -- the type id is what
+    /// tells the two apart.</summary>
+    private List<MemberDocument> OtherDocuments() =>
+        _documents.Where(d => d.Kind == MemberDocumentKind.Other && d.DocumentTypeId is null)
+            .OrderBy(d => d.Id).ToList();
+
+    private static string RequirementLabel(DocumentType type) => type.IsMandatory ? "Required" : "Optional";
+
+    /// <summary>What to call a document in a toast or an audit line. The Document Centre's name
+    /// wins where there is one, so renaming a document there renames it in the log too; the
+    /// built-in names stay as the fallback for a row whose type has since been deleted.</summary>
+    private string KindTitle(MemberDocument document)
     {
-        MemberDocumentKind.EmiratesId => "Emirates ID",
-        MemberDocumentKind.Passport => "Passport",
-        MemberDocumentKind.TradeLicence => "Trade License",
-        _ => string.IsNullOrWhiteSpace(document.Title) ? "Other document" : document.Title!,
-    };
+        if (document.DocumentTypeId is { } typeId)
+        {
+            var named = _documentTypes.FirstOrDefault(t => t.Id == typeId);
+            if (named is not null) return named.Name;
+        }
+
+        var builtIn = _documentTypes.FirstOrDefault(t => t.BuiltInKind == document.Kind);
+        if (builtIn is not null && document.Kind != MemberDocumentKind.Other) return builtIn.Name;
+
+        return document.Kind switch
+        {
+            MemberDocumentKind.EmiratesId => "Emirates ID",
+            MemberDocumentKind.Passport => "Passport",
+            MemberDocumentKind.TradeLicence => "Trade License",
+            _ => string.IsNullOrWhiteSpace(document.Title) ? "Other document" : document.Title!,
+        };
+    }
 
     /// <summary>Keyed by kind rather than by row id: a new Other document has no id until it is
     /// written, and the flag has to survive that.</summary>
     private readonly HashSet<MemberDocumentKind> _uploadingKinds = [];
 
+    /// <summary>Tracked separately from the kinds: every added type uploads as Kind.Other, so
+    /// keying the spinner on the kind would spin all of them at once.</summary>
+    private readonly HashSet<int> _uploadingTypeIds = [];
+
     private bool IsUploadingDocument(MemberDocumentKind kind) => _uploadingKinds.Contains(kind);
+
+    private bool IsUploadingType(int documentTypeId) => _uploadingTypeIds.Contains(documentTypeId);
 
     /// <summary>A document whose expiry has passed. The declaration refuses to be submitted on one,
     /// so it is worth saying here, where the member can actually replace it, rather than leaving
@@ -500,7 +555,7 @@ public partial class MyRegister : ComponentBase
 
     private int ExpiredDocumentCount => _documents.Count(IsExpired);
 
-    private async Task OnMemberDocumentSelectedAsync(MemberDocumentKind kind, MemberDocument? existing, InputFileChangeEventArgs e)
+    private async Task OnMemberDocumentSelectedAsync(MemberDocumentKind kind, MemberDocument? existing, InputFileChangeEventArgs e, int? documentTypeId = null)
     {
         if (_effectiveMember is null) return;
 
@@ -529,7 +584,8 @@ public partial class MyRegister : ComponentBase
             return;
         }
 
-        _uploadingKinds.Add(kind);
+        if (documentTypeId is { } uploadingType) _uploadingTypeIds.Add(uploadingType);
+        else _uploadingKinds.Add(kind);
         StateHasChanged();
         try
         {
@@ -542,6 +598,7 @@ public partial class MyRegister : ComponentBase
                 {
                     MemberId = _effectiveMember.Id,
                     Kind = kind,
+                    DocumentTypeId = documentTypeId,
                     UploadedAtUtc = DateTime.UtcNow,
                 };
                 document.Id = await DocumentWriter.InsertAsync(document);
@@ -573,7 +630,8 @@ public partial class MyRegister : ComponentBase
         }
         finally
         {
-            _uploadingKinds.Remove(kind);
+            if (documentTypeId is { } finishedType) _uploadingTypeIds.Remove(finishedType);
+            else _uploadingKinds.Remove(kind);
             if (File.Exists(temporaryFile)) File.Delete(temporaryFile);
         }
     }
@@ -670,7 +728,7 @@ public partial class MyRegister : ComponentBase
 
     private void CancelOtherDocument() => _addingOtherDocument = false;
 
-    private static string SnapshotOf(MemberDocument d) => string.Join("; ",
+    private string SnapshotOf(MemberDocument d) => string.Join("; ",
     [
         $"Document: {KindTitle(d)}",
         $"Number: {Show(d.DocumentNumber)}",

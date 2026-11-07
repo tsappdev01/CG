@@ -24,6 +24,17 @@ public class MemberDocument
 
     public MemberDocumentKind Kind { get; set; }
 
+    /// <summary>Which row of the Document Centre this is, for a document type an administrator
+    /// added. Null for the three built-in kinds and for a free-form "Other" upload, both of which
+    /// <see cref="Kind"/> already identifies -- so nothing that was on file before the Document
+    /// Centre existed had to be rewritten to keep working.
+    ///
+    /// An added type stores Kind = Other as well, so every query that sorts documents by kind
+    /// still sees something it understands. The one thing that has to know the difference is the
+    /// list of free-form Other documents, which filters this to null.</summary>
+    public int? DocumentTypeId { get; set; }
+    public DocumentType? DocumentType { get; set; }
+
     /// <summary>What an Other document is. Ignored for the three named kinds, which title
     /// themselves.</summary>
     [MaxLength(120)]

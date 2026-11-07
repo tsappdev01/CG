@@ -44,6 +44,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<OwnedCompany> OwnedCompanies => Set<OwnedCompany>();
     public DbSet<MemberDocument> MemberDocuments => Set<MemberDocument>();
+    public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
+    public DbSet<InsiderDeclarationDocument> InsiderDeclarationDocuments => Set<InsiderDeclarationDocument>();
     public DbSet<FamilyMemberHolding> FamilyMemberHoldings => Set<FamilyMemberHolding>();
     public DbSet<DelegationOfAuthority> DelegationsOfAuthority => Set<DelegationOfAuthority>();
     public DbSet<DelegationOfAuthorityBand> DelegationOfAuthorityBands => Set<DelegationOfAuthorityBand>();
@@ -59,6 +61,43 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<NavMenuItemOrder>()
             .HasIndex(n => n.ItemKey)
             .IsUnique();
+
+        // Two document types with the same name would be indistinguishable on every screen that
+        // shows them, and on the reports that group by them.
+        builder.Entity<DocumentType>()
+            .HasIndex(d => d.Name)
+            .IsUnique();
+
+        // At most one row per built-in kind. A second "Passport" row carrying BuiltInKind.Passport
+        // would be a name with the same code behind it, and nothing to say which one the
+        // declaration's PassportPath column belongs to. Filtered, so the many rows with no kind at
+        // all do not collide with each other.
+        builder.Entity<DocumentType>()
+            .HasIndex(d => d.BuiltInKind)
+            .IsUnique()
+            .HasFilter("[BuiltInKind] IS NOT NULL");
+
+        // Restrict, not cascade: a type someone has already filed documents against must not take
+        // them with it. The Document Centre offers Inactive for exactly this reason, and the
+        // delete it does offer refuses when anything references the row.
+        builder.Entity<MemberDocument>()
+            .HasOne(d => d.DocumentType)
+            .WithMany()
+            .HasForeignKey(d => d.DocumentTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<InsiderDeclarationDocument>()
+            .HasOne(d => d.DocumentType)
+            .WithMany()
+            .HasForeignKey(d => d.DocumentTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The declaration owns its attachments: deleting a draft takes them with it.
+        builder.Entity<InsiderDeclarationDocument>()
+            .HasOne(d => d.InsiderDeclaration)
+            .WithMany()
+            .HasForeignKey(d => d.InsiderDeclarationId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.Entity<NavMenuItemLabel>()
             .HasIndex(n => n.ItemKey)

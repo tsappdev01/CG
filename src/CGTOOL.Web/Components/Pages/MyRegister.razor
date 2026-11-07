@@ -53,15 +53,19 @@
             @if (_documentsOpen)
             {
             <div class="cg-accordion-body">
-                @foreach (var named in NamedDocumentKinds)
+                @foreach (var named in NamedDocumentTypes)
                 {
-                    var kind = named.Kind;
+                    var kind = named.BuiltInKind!.Value;
                     var doc = DocumentOf(kind);
                     <div class="cg-doc-panel @(IsExpired(doc) ? "is-expired" : "")">
                         <div class="cg-doc-panel-head">
                             <div>
-                                <h3>@named.Title @if (IsExpired(doc)) { <span class="cg-pill-critical">Expired</span> }</h3>
-                                <p class="cg-subtitle">@named.Blurb</p>
+                                <h3>
+                                    @named.Name
+                                    <span class="cg-pill @(named.IsMandatory ? "cg-pill-required" : "")">@RequirementLabel(named)</span>
+                                    @if (IsExpired(doc)) { <span class="cg-pill-critical">Expired</span> }
+                                </h3>
+                                <p class="cg-subtitle">@named.Description</p>
                             </div>
                             <div class="cg-doc-panel-file">
                                 <InputFile OnChange="e => OnMemberDocumentSelectedAsync(kind, doc, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploadingDocument(kind)" />
@@ -133,11 +137,74 @@
                     </div>
                 }
 
+                @* Document types an administrator added in the Document Centre. One slot each, like
+                   the named documents above and unlike the free-form list below -- a type someone
+                   defined is a specific document, so uploading again replaces it. Nothing is read
+                   off them: there is no trained model for a document invented this afternoon, and
+                   appearing to try would just return empty fields. *@
+                @foreach (var type in AddedDocumentTypes)
+                {
+                    var added = DocumentOfType(type.Id);
+                    <div class="cg-doc-panel @(IsExpired(added) ? "is-expired" : "")">
+                        <div class="cg-doc-panel-head">
+                            <div>
+                                <h3>
+                                    @type.Name
+                                    <span class="cg-pill @(type.IsMandatory ? "cg-pill-required" : "")">@RequirementLabel(type)</span>
+                                    @if (IsExpired(added)) { <span class="cg-pill-critical">Expired</span> }
+                                </h3>
+                                <p class="cg-subtitle">@type.Description</p>
+                            </div>
+                            <div class="cg-doc-panel-file">
+                                <InputFile OnChange="e => OnMemberDocumentSelectedAsync(MemberDocumentKind.Other, added, e, type.Id)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploadingType(type.Id)" />
+                                @if (IsUploadingType(type.Id))
+                                {
+                                    <span class="cg-doc-upload-state">Uploading…</span>
+                                    <progress class="cg-doc-progress"></progress>
+                                }
+                                else if (added is not null && !string.IsNullOrEmpty(added.FilePath))
+                                {
+                                    <a class="cg-doc-chip" href="@added.FilePath" target="_blank" rel="noopener">View</a>
+                                }
+                            </div>
+                        </div>
+
+                        @if (added is not null && !string.IsNullOrEmpty(added.FilePath))
+                        {
+                            <div class="cg-form-grid cg-captured-grid">
+                                <label class="cg-field">
+                                    <span>Reference No</span>
+                                    <input class="cg-input" @bind="added.DocumentNumber" maxlength="100" />
+                                </label>
+                                <label class="cg-field">
+                                    <span>Expiry Date</span>
+                                    <UaeDateInput Value="added.ExpiryDate"
+                                                  CssClass="@(IsExpired(added) ? "cg-input-invalid" : null)"
+                                                  ValueChanged="d => added.ExpiryDate = d" />
+                                    @if (IsExpired(added))
+                                    {
+                                        <span class="cg-field-error">Expired — upload a current one. A declaration cannot be submitted on it.</span>
+                                    }
+                                </label>
+                            </div>
+                            <div class="cg-actions cg-doc-panel-actions">
+                                <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveDocumentAsync(added)">Save</button>
+                                <button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveDocument(added)">Remove</button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (OtherDocumentType is { } otherType)
+                {
                 <div class="cg-doc-panel">
                     <div class="cg-doc-panel-head">
                         <div>
-                            <h3>Other Documents</h3>
-                            <p class="cg-subtitle">Anything else worth keeping on file — a visa, a power of attorney, a certificate. Name it yourself; these are not read automatically.</p>
+                            <h3>
+                                @otherType.Name
+                                <span class="cg-pill @(otherType.IsMandatory ? "cg-pill-required" : "")">@RequirementLabel(otherType)</span>
+                            </h3>
+                            <p class="cg-subtitle">@otherType.Description</p>
                         </div>
                         <div class="cg-doc-panel-file">
                             @if (_addingOtherDocument)
@@ -206,6 +273,7 @@
                         <p class="cg-subtitle">Nothing else on file.</p>
                     }
                 </div>
+                }
             </div>
             }
         </section>

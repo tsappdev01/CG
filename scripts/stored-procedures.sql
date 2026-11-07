@@ -2105,6 +2105,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_MemberDocument_Insert
     @IssueDate datetime2 = NULL,
     @DateOfBirth datetime2 = NULL,
     @UploadedAtUtc datetime2,
+    @DocumentTypeId int = NULL,
     @NewId int OUTPUT
 AS
 BEGIN
@@ -2112,10 +2113,10 @@ BEGIN
 
     INSERT INTO dbo.MemberDocuments
         (MemberId, Kind, Title, FilePath, OriginalFileName, DocumentNumber, HolderName,
-         Nationality, ExpiryDate, IssueDate, DateOfBirth, UploadedAtUtc)
+         Nationality, ExpiryDate, IssueDate, DateOfBirth, UploadedAtUtc, DocumentTypeId)
     VALUES
         (@MemberId, @Kind, @Title, @FilePath, @OriginalFileName, @DocumentNumber, @HolderName,
-         @Nationality, @ExpiryDate, @IssueDate, @DateOfBirth, @UploadedAtUtc);
+         @Nationality, @ExpiryDate, @IssueDate, @DateOfBirth, @UploadedAtUtc, @DocumentTypeId);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -2132,12 +2133,14 @@ CREATE OR ALTER PROCEDURE dbo.usp_MemberDocument_Update
     @ExpiryDate datetime2 = NULL,
     @IssueDate datetime2 = NULL,
     @DateOfBirth datetime2 = NULL,
-    @UploadedAtUtc datetime2
+    @UploadedAtUtc datetime2,
+    @DocumentTypeId int = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     UPDATE dbo.MemberDocuments
-    SET Title = @Title,
+    SET DocumentTypeId = @DocumentTypeId,
+        Title = @Title,
         FilePath = @FilePath,
         OriginalFileName = @OriginalFileName,
         DocumentNumber = @DocumentNumber,
@@ -2224,6 +2227,123 @@ AS
 BEGIN
     SET NOCOUNT ON;
     DELETE FROM dbo.FamilyMemberHoldings WHERE Id = @Id;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_DocumentType_Insert
+    @Name nvarchar(120),
+    @Description nvarchar(300) = NULL,
+    @IsMandatory bit,
+    @IsActive bit,
+    @SortOrder int,
+    @NewId int OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    /*
+        BuiltInKind is not a parameter. The three documents the application reads automatically are
+        seeded with theirs; anything added here has none, and nothing added here can claim one. A
+        row claiming BuiltInKind.Passport would carry the passport capture wiring and the
+        declaration's own PassportPath column behind a name that is not the seeded passport.
+    */
+    INSERT INTO dbo.DocumentTypes (Name, Description, IsMandatory, BuiltInKind, IsActive, SortOrder)
+    VALUES (@Name, @Description, @IsMandatory, NULL, @IsActive, @SortOrder);
+
+    SET @NewId = SCOPE_IDENTITY();
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_DocumentType_Update
+    @Id int,
+    @Name nvarchar(120),
+    @Description nvarchar(300) = NULL,
+    @IsMandatory bit,
+    @IsActive bit,
+    @SortOrder int
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- BuiltInKind is left alone deliberately: see usp_DocumentType_Insert.
+    UPDATE dbo.DocumentTypes
+    SET Name = @Name,
+        Description = @Description,
+        IsMandatory = @IsMandatory,
+        IsActive = @IsActive,
+        SortOrder = @SortOrder
+    WHERE Id = @Id;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_DocumentType_Delete
+    @Id int
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    /*
+        Refused in three cases, each with a message the screen shows as it stands.
+
+        A built-in is the name over code written for that document; deleting the row would leave
+        the capture wiring and the declaration's own columns with nothing describing them.
+
+        A type anything has been filed against cannot go either -- the foreign keys are Restrict,
+        so the DELETE would fail anyway, with an error naming a constraint rather than the reason.
+        Switching the type to Inactive is the move: it disappears from My Register and from the
+        declarations, and what people have already uploaded stays readable.
+    */
+    IF EXISTS (SELECT 1 FROM dbo.DocumentTypes WHERE Id = @Id AND BuiltInKind IS NOT NULL)
+    BEGIN
+        THROW 51600, 'This is a built-in document type and cannot be deleted. Set it to Inactive to stop asking for it.', 1;
+    END
+
+    IF EXISTS (SELECT 1 FROM dbo.MemberDocuments WHERE DocumentTypeId = @Id)
+    BEGIN
+        THROW 51601, 'People have already uploaded documents of this type. Set it to Inactive instead -- deleting it would take their files with it.', 1;
+    END
+
+    IF EXISTS (SELECT 1 FROM dbo.InsiderDeclarationDocuments WHERE DocumentTypeId = @Id)
+    BEGIN
+        THROW 51602, 'Declarations have already been submitted with this document type. Set it to Inactive instead.', 1;
+    END
+
+    DELETE FROM dbo.DocumentTypes WHERE Id = @Id;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_InsiderDeclarationDocument_Insert
+    @InsiderDeclarationId int,
+    @DocumentTypeId int,
+    @FilePath nvarchar(260) = NULL,
+    @OriginalFileName nvarchar(260) = NULL,
+    @DocumentNumber nvarchar(100) = NULL,
+    @ExpiryDate datetime2 = NULL,
+    @NewId int OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO dbo.InsiderDeclarationDocuments
+        (InsiderDeclarationId, DocumentTypeId, FilePath, OriginalFileName, DocumentNumber, ExpiryDate)
+    VALUES
+        (@InsiderDeclarationId, @DocumentTypeId, @FilePath, @OriginalFileName, @DocumentNumber, @ExpiryDate);
+
+    SET @NewId = SCOPE_IDENTITY();
+END
+GO
+
+/*
+    Clears a declaration's added-type attachments so the save can write them again, the way the
+    relatives and NIN holder grids are saved. Call it inside the same transaction as the header
+    update: on its own it empties the list.
+*/
+CREATE OR ALTER PROCEDURE dbo.usp_InsiderDeclarationDocument_DeleteForDeclaration
+    @InsiderDeclarationId int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM dbo.InsiderDeclarationDocuments WHERE InsiderDeclarationId = @InsiderDeclarationId;
 END
 GO
 

@@ -17,7 +17,7 @@ namespace CGTOOL.Web.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -756,6 +756,47 @@ namespace CGTOOL.Web.Data.Migrations
                     b.ToTable("Departments");
                 });
 
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.DocumentType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BuiltInKind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsMandatory")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BuiltInKind")
+                        .IsUnique()
+                        .HasFilter("[BuiltInKind] IS NOT NULL");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("DocumentTypes");
+                });
+
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.FamilyMember", b =>
                 {
                     b.Property<int>("Id")
@@ -1016,6 +1057,44 @@ namespace CGTOOL.Web.Data.Migrations
                     b.ToTable("InsiderDeclarations");
                 });
 
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.InsiderDeclarationDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DocumentNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("DocumentTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FilePath")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<int>("InsiderDeclarationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OriginalFileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentTypeId");
+
+                    b.HasIndex("InsiderDeclarationId");
+
+                    b.ToTable("InsiderDeclarationDocuments");
+                });
+
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.InsiderDeclarationNinHolder", b =>
                 {
                     b.Property<int>("Id")
@@ -1228,6 +1307,9 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int?>("DocumentTypeId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("ExpiryDate")
                         .HasColumnType("datetime2");
 
@@ -1264,6 +1346,8 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DocumentTypeId");
 
                     b.HasIndex("MemberId");
 
@@ -2431,6 +2515,25 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Navigation("Member");
                 });
 
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.InsiderDeclarationDocument", b =>
+                {
+                    b.HasOne("CGTOOL.Web.Data.Governance.DocumentType", "DocumentType")
+                        .WithMany()
+                        .HasForeignKey("DocumentTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CGTOOL.Web.Data.Governance.InsiderDeclaration", "InsiderDeclaration")
+                        .WithMany()
+                        .HasForeignKey("InsiderDeclarationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DocumentType");
+
+                    b.Navigation("InsiderDeclaration");
+                });
+
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.InsiderDeclarationNinHolder", b =>
                 {
                     b.HasOne("CGTOOL.Web.Data.Governance.InsiderDeclaration", "InsiderDeclaration")
@@ -2487,11 +2590,18 @@ namespace CGTOOL.Web.Data.Migrations
 
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.MemberDocument", b =>
                 {
+                    b.HasOne("CGTOOL.Web.Data.Governance.DocumentType", "DocumentType")
+                        .WithMany()
+                        .HasForeignKey("DocumentTypeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CGTOOL.Web.Data.Governance.Member", "Member")
                         .WithMany()
                         .HasForeignKey("MemberId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("DocumentType");
 
                     b.Navigation("Member");
                 });

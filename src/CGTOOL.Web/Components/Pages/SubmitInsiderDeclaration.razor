@@ -240,11 +240,13 @@
                 <h2 class="cg-section-heading">Identity documents</h2>
                 <div class="cg-doc-cards">
 
+                    @if (ShowDocument(MemberDocumentKind.EmiratesId))
+                    {
                     @* Emirates ID *@
                     <div class="cg-doc-card @(IsExpiredOn(_emiratesIdExpiryDate) ? "is-expired" : "")">
                         <div class="cg-doc-card-head">
-                            <span class="cg-doc-card-name">Emirates ID</span>
-                            <span class="cg-pill cg-pill-required">Required</span>
+                            <span class="cg-doc-card-name">@DocumentName(MemberDocumentKind.EmiratesId, "Emirates ID")</span>
+                            <span class="cg-pill @(RequiredDocument(MemberDocumentKind.EmiratesId) ? "cg-pill-required" : "")">@RequirementLabel(MemberDocumentKind.EmiratesId)</span>
                             <span class="cg-pill cg-pill-status @(HasEmiratesId ? "cg-pill-done" : "")">@(HasEmiratesId ? "Uploaded" : "Not uploaded")</span>
                         </div>
                         <div class="cg-doc-card-source">
@@ -304,11 +306,14 @@
                         }
                     </div>
 
+                    }
+                    @if (ShowDocument(MemberDocumentKind.Passport))
+                    {
                     @* Passport *@
                     <div class="cg-doc-card @(IsExpiredOn(_passportExpiryDate) ? "is-expired" : "")">
                         <div class="cg-doc-card-head">
-                            <span class="cg-doc-card-name">Passport</span>
-                            <span class="cg-pill cg-pill-required">Required</span>
+                            <span class="cg-doc-card-name">@DocumentName(MemberDocumentKind.Passport, "Passport")</span>
+                            <span class="cg-pill @(RequiredDocument(MemberDocumentKind.Passport) ? "cg-pill-required" : "")">@RequirementLabel(MemberDocumentKind.Passport)</span>
                             <span class="cg-pill cg-pill-status @(HasPassport ? "cg-pill-done" : "")">@(HasPassport ? "Uploaded" : "Not uploaded")</span>
                         </div>
                         <div class="cg-doc-card-source">
@@ -368,11 +373,14 @@
                         }
                     </div>
 
+                    }
+                    @if (ShowDocument(MemberDocumentKind.TradeLicence))
+                    {
                     @* Trade licence *@
                     <div class="cg-doc-card @(IsExpiredOn(_tradeLicenceExpiryDate) ? "is-expired" : "")">
                         <div class="cg-doc-card-head">
-                            <span class="cg-doc-card-name">Trade licence</span>
-                            <span class="cg-pill">Optional</span>
+                            <span class="cg-doc-card-name">@DocumentName(MemberDocumentKind.TradeLicence, "Trade licence")</span>
+                            <span class="cg-pill @(RequiredDocument(MemberDocumentKind.TradeLicence) ? "cg-pill-required" : "")">@RequirementLabel(MemberDocumentKind.TradeLicence)</span>
                             <span class="cg-pill cg-pill-status @(HasTradeLicence ? "cg-pill-done" : "")">@(HasTradeLicence ? "Uploaded" : "None added")</span>
                         </div>
                         <div class="cg-doc-card-source">
@@ -436,11 +444,14 @@
                         }
                     </div>
 
+                    }
+                    @if (ShowDocument(MemberDocumentKind.Other))
+                    {
                     @* Other documents *@
                     <div class="cg-doc-card">
                         <div class="cg-doc-card-head">
-                            <span class="cg-doc-card-name">Other documents</span>
-                            <span class="cg-pill">Optional</span>
+                            <span class="cg-doc-card-name">@DocumentName(MemberDocumentKind.Other, "Other documents")</span>
+                            <span class="cg-pill @(RequiredDocument(MemberDocumentKind.Other) ? "cg-pill-required" : "")">@RequirementLabel(MemberDocumentKind.Other)</span>
                             <span class="cg-pill cg-pill-status @(HasOtherDocument ? "cg-pill-done" : "")">@(HasOtherDocument ? "Uploaded" : "None added")</span>
                         </div>
                         <div class="cg-dropzone">
@@ -457,6 +468,50 @@
                             }
                         </div>
                     </div>
+                    }
+
+                    @* Documents an administrator added in the Document Centre. The three above have columns of
+                       their own on the declaration and fields specific to them; these take a file, a reference
+                       and an expiry date, and are stored as rows against the declaration. Nothing is read off
+                       them -- there is no trained model for a document invented this afternoon. *@
+                    @foreach (var type in AddedDocumentTypes)
+                    {
+                        var added = AddedDocumentFor(type.Id);
+                        <div class="cg-doc-card @(IsExpiredOn(added.ExpiryDate) ? "is-expired" : "")">
+                            <div class="cg-doc-card-head">
+                                <span class="cg-doc-card-name">@type.Name</span>
+                                <span class="cg-pill @(type.IsMandatory ? "cg-pill-required" : "")">@(type.IsMandatory ? "Required" : "Optional")</span>
+                                <span class="cg-pill cg-pill-status @(string.IsNullOrWhiteSpace(added.FilePath) ? "" : "cg-pill-done")">@(string.IsNullOrWhiteSpace(added.FilePath) ? "Not uploaded" : "Uploaded")</span>
+                            </div>
+                            <div class="cg-doc-card-source">
+                                <span>@(string.IsNullOrWhiteSpace(type.Description) ? "JPG, PNG or PDF, up to 1 MB" : type.Description)</span>
+                                <span class="cg-doc-card-actions">
+                                    @if (!string.IsNullOrWhiteSpace(added.FilePath))
+                                    {
+                                        <a class="cg-doc-chip" href="@added.FilePath" target="_blank" rel="noopener">View</a>
+                                    }
+                                    <InputFile OnChange="e => OnAddedDocumentSelectedAsync(type, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploadingType(type.Id)" />
+                                </span>
+                            </div>
+                            @if (IsUploadingType(type.Id))
+                            {
+                                <CgProgressBar Label="Uploading…" Percent="TypeUploadProgress(type.Id)" />
+                            }
+                            <div class="cg-doc-card-fields">
+                                <label class="cg-field">
+                                    <span>Reference number</span>
+                                    <input class="cg-input" @bind="added.DocumentNumber" maxlength="100" />
+                                </label>
+                                <label class="cg-field">
+                                    <span>Expiry date</span>
+                                    <UaeDateInput CssClass="@(IsExpiredOn(added.ExpiryDate) ? "cg-input-invalid" : null)"
+                                                  Value="added.ExpiryDate"
+                                                  ValueChanged="d => added.ExpiryDate = d" />
+                                </label>
+                            </div>
+                        </div>
+                    }
+
                 </div>
 
                 <h2 class="cg-section-heading">Do you or any of your relatives hold shares in DI PJSC?</h2>

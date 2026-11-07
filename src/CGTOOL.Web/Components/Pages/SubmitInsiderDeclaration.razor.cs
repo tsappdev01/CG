@@ -184,6 +184,15 @@ public partial class SubmitInsiderDeclaration
             return;
         }
 
+        // Which documents this declaration asks for, and whether each is required. Loaded before
+        // the edit branch so both paths have it -- the pills and the step's completeness rule read
+        // it, and an empty list would show a person a document-free step.
+        _documentTypes.Clear();
+        _documentTypes.AddRange(await db.DocumentTypes.AsNoTracking()
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.SortOrder).ThenBy(t => t.Name)
+            .ToListAsync());
+
         if (Id is { } editId)
         {
             await LoadForEditAsync(editId);
@@ -383,6 +392,11 @@ public partial class SubmitInsiderDeclaration
         _tradeLicenceExpiryDate = declaration.TradeLicenceExpiryDate;
 
         _otherDocumentPath = declaration.OtherDocumentPath;
+
+        _addedDocuments.Clear();
+        _addedDocuments.AddRange(await db.InsiderDeclarationDocuments.AsNoTracking()
+            .Where(d => d.InsiderDeclarationId == declaration.Id)
+            .ToListAsync());
 
         _relatives.Clear();
         _relatives.AddRange(declaration.Relatives.Select(r => new RelativeRow
@@ -798,6 +812,74 @@ public partial class SubmitInsiderDeclaration
 
     private DateTime? _draftSavedAtUtc;
 
+    /// <summary>What the Document Centre is asking for, active rows only. The Required/Optional
+    /// pills and the step's own completeness rule read this: they were hardcoded, which meant the
+    /// declaration could ask for a passport that My Register did not, and neither could be changed
+    /// without a redeploy.</summary>
+    private readonly List<DocumentType> _documentTypes = [];
+
+    /// <summary>This declaration's attachments against types an administrator added. The three
+    /// built-in documents keep their own columns on the declaration -- see
+    /// InsiderDeclarationDocument for why.</summary>
+    private readonly List<InsiderDeclarationDocument> _addedDocuments = [];
+
+    private readonly HashSet<int> _uploadingTypeIds = [];
+    private readonly Dictionary<int, int> _typeUploadProgress = [];
+
+    private DocumentType? TypeFor(MemberDocumentKind kind) =>
+        _documentTypes.FirstOrDefault(t => t.BuiltInKind == kind);
+
+    /// <summary>Whether to show a built-in document's card at all. Only active types are loaded, so
+    /// a document switched off in the Document Centre simply is not here.</summary>
+    private bool ShowDocument(MemberDocumentKind kind) => TypeFor(kind) is not null;
+
+    private bool RequiredDocument(MemberDocumentKind kind) => TypeFor(kind)?.IsMandatory == true;
+
+    /// <summary>The configured name, falling back to the built-in one for a type that has been
+    /// switched off -- the fallback is only reached by text that names the document in an error or
+    /// a toast, not by a card, since a switched-off card is not drawn.</summary>
+    private string DocumentName(MemberDocumentKind kind, string fallback) => TypeFor(kind)?.Name ?? fallback;
+
+    private string RequirementLabel(MemberDocumentKind kind) => RequiredDocument(kind) ? "Required" : "Optional";
+
+    private IEnumerable<DocumentType> AddedDocumentTypes =>
+        _documentTypes.Where(t => t.BuiltInKind is null);
+
+    private InsiderDeclarationDocument AddedDocumentFor(int documentTypeId)
+    {
+        var existing = _addedDocuments.FirstOrDefault(d => d.DocumentTypeId == documentTypeId);
+        if (existing is not null) return existing;
+
+        // Created on first sight rather than on upload: the row backs the number and expiry fields
+        // too, which a person may fill in before attaching anything.
+        var row = new InsiderDeclarationDocument { DocumentTypeId = documentTypeId };
+        _addedDocuments.Add(row);
+        return row;
+    }
+
+    private bool IsUploadingType(int documentTypeId) => _uploadingTypeIds.Contains(documentTypeId);
+
+    private int TypeUploadProgress(int documentTypeId) =>
+        _typeUploadProgress.TryGetValue(documentTypeId, out var percent) ? percent : 0;
+
+    private Task OnAddedDocumentSelectedAsync(DocumentType type, InputFileChangeEventArgs e)
+    {
+        var row = AddedDocumentFor(type.Id);
+        return UploadIdDocumentAsync(e, $"type-{type.Id}",
+            path => { row.FilePath = path; row.OriginalFileName = e.File.Name; },
+            () => _uploadingTypeIds.Remove(type.Id),
+            () => _uploadingTypeIds.Add(type.Id),
+            percent => _typeUploadProgress[type.Id] = percent,
+            onSavedAsync: null);
+    }
+
+    /// <summary>Every added type marked Required has a file against it. Numbers and expiry dates
+    /// are not demanded: the Document Centre says a document is wanted, not which of its fields
+    /// someone three months from now will consider mandatory.</summary>
+    private bool AddedDocumentsComplete =>
+        AddedDocumentTypes.Where(t => t.IsMandatory)
+            .All(t => !string.IsNullOrWhiteSpace(AddedDocumentFor(t.Id).FilePath));
+
     private bool HasEmiratesId => !string.IsNullOrWhiteSpace(_emiratesIdPath);
     private bool HasPassport => !string.IsNullOrWhiteSpace(_passportPath);
     private bool HasTradeLicence => !string.IsNullOrWhiteSpace(_tradeLicencePath);
@@ -807,12 +889,25 @@ public partial class SubmitInsiderDeclaration
     /// the shareholding question answerable. Read rather than enforced -- the Proceed button does
     /// the enforcing, with a message saying which part is missing.</summary>
     private bool StepIsComplete =>
-        HasEmiratesId && HasPassport
-        && !string.IsNullOrWhiteSpace(_emiratesIdNumber)
-        && !string.IsNullOrWhiteSpace(_emiratesIdNameOnCard) && _emiratesIdExpiryDate is not null
-        && !string.IsNullOrWhiteSpace(_passportNumber) && _passportExpiryDate is not null
-        && !string.IsNullOrWhiteSpace(_passportIssuingCountry)
+        EmiratesIdComplete && PassportComplete && AddedDocumentsComplete
         && ExpiredDocuments().Count == 0;
+
+    /// <summary>Nothing is asked of a document the Document Centre has made optional or switched
+    /// off. Its fields are still there to fill in if someone attaches one -- optional means it need
+    /// not be supplied, not that what is supplied goes unrecorded.</summary>
+    private bool EmiratesIdComplete =>
+        !RequiredDocument(MemberDocumentKind.EmiratesId)
+        || (HasEmiratesId
+            && !string.IsNullOrWhiteSpace(_emiratesIdNumber)
+            && !string.IsNullOrWhiteSpace(_emiratesIdNameOnCard)
+            && _emiratesIdExpiryDate is not null);
+
+    private bool PassportComplete =>
+        !RequiredDocument(MemberDocumentKind.Passport)
+        || (HasPassport
+            && !string.IsNullOrWhiteSpace(_passportNumber)
+            && _passportExpiryDate is not null
+            && !string.IsNullOrWhiteSpace(_passportIssuingCountry));
 
     private int WorkspaceLoadedCount => _loadedFromWorkspace.Count;
 
@@ -1290,7 +1385,7 @@ public partial class SubmitInsiderDeclaration
     {
         if (string.IsNullOrWhiteSpace(_emiratesIdPath))
         {
-            Toasts.ShowError("Upload your Emirates ID.");
+            Toasts.ShowError($"Upload your {DocumentName(MemberDocumentKind.EmiratesId, "Emirates ID")}.");
             return;
         }
         if (string.IsNullOrWhiteSpace(_emiratesIdNumber) || string.IsNullOrWhiteSpace(_emiratesIdNameOnCard) || _emiratesIdExpiryDate is null)
@@ -1301,7 +1396,7 @@ public partial class SubmitInsiderDeclaration
 
         if (string.IsNullOrWhiteSpace(_passportPath))
         {
-            Toasts.ShowError("Upload your passport.");
+            Toasts.ShowError($"Upload your {DocumentName(MemberDocumentKind.Passport, "passport")}.");
             return;
         }
         if (string.IsNullOrWhiteSpace(_passportNumber) || _passportExpiryDate is null || string.IsNullOrWhiteSpace(_passportIssuingCountry))
@@ -1442,6 +1537,7 @@ public partial class SubmitInsiderDeclaration
                 await Writer.UpdateAsync(declaration);
                 await Writer.DeleteRelativesAsync(_editingDeclarationId);
                 await Writer.DeleteNinHoldersAsync(_editingDeclarationId);
+                await Writer.DeleteDocumentsAsync(_editingDeclarationId);
                 declarationId = _editingDeclarationId;
             }
             else
@@ -1477,6 +1573,22 @@ public partial class SubmitInsiderDeclaration
                         Additional = string.IsNullOrWhiteSpace(h.Additional) ? null : h.Additional.Trim(),
                     });
                 }
+            }
+
+            // Written the way the grids above are: cleared and rewritten inside the same
+            // transaction, so a save can remove an attachment as well as add one. Rows with
+            // nothing in them are skipped -- a card someone opened and left alone should not
+            // leave an empty attachment behind.
+            foreach (var added in _addedDocuments)
+            {
+                if (string.IsNullOrWhiteSpace(added.FilePath)
+                    && string.IsNullOrWhiteSpace(added.DocumentNumber)
+                    && added.ExpiryDate is null)
+                {
+                    continue;
+                }
+
+                await Writer.InsertDocumentAsync(declarationId, added);
             }
 
             await tx.CommitAsync();

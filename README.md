@@ -43,7 +43,8 @@ first time it is a no-op that also repairs a site someone has changed by hand. S
 `ensureSite` variable to `false` if you would rather CI never touched IIS configuration, and run
 it yourself from the agent's work folder instead.
 
-It creates the `cg.dipark.com` site and app pool at `C:\Websites\CG_DIP`, sets the pool to **No
+It creates the `DIP CGS` site and app pool at `C:\Websites\CGDIP`, answering for
+`cg.dipark.com`, sets the pool to **No
 Managed Code** (the runtime is in the app, not in IIS), turns off timed recycling (each recycle
 drops every open SignalR circuit mid-session), binds HTTPS if a matching certificate is already
 installed, and grants the pool identity write access to `wwwroot\uploads` and the data-protection

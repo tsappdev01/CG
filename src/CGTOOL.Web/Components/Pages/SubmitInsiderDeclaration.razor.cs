@@ -82,6 +82,28 @@ public partial class SubmitInsiderDeclaration
     private static string HolderValue(ShareEntryRow row) =>
         row.IsSelf ? "self" : ((int)row.Relationship).ToString();
 
+    /// <summary>The name this holder is listed under in the shareholding grid above, or null when
+    /// they are not listed there. Drives whether the transactions table shows the name as text or
+    /// offers a box to type it in: a name that was fetched is not one to re-type, and an editable
+    /// copy of it is just somewhere for the two to drift apart.</summary>
+    private string? ListedHolderName(ShareEntryRow row)
+    {
+        if (row.IsSelf) return _effectiveMember?.FullName;
+
+        var listed = _relatives.FirstOrDefault(r => !r.IsSelf && r.Relationship == row.Relationship);
+        return string.IsNullOrWhiteSpace(listed?.RelativeName) ? null : listed!.RelativeName;
+    }
+
+    /// <summary>The NIN this holder is listed under above, for the same reason as the name: it is
+    /// fetched, not typed, so it is read back from its source at save time.</summary>
+    private string? ListedHolderNin(ShareEntryRow row)
+    {
+        if (row.IsSelf) return string.IsNullOrWhiteSpace(_ninNumber) ? null : _ninNumber;
+
+        var listed = _relatives.FirstOrDefault(r => !r.IsSelf && r.Relationship == row.Relationship);
+        return string.IsNullOrWhiteSpace(listed?.NinNumber) ? null : listed!.NinNumber;
+    }
+
     /// <summary>Chooses the holder and brings their name and NIN with them.
     ///
     /// Everyone here has already been listed in the shareholding grid above, with a name and a NIN
@@ -1692,15 +1714,16 @@ public partial class SubmitInsiderDeclaration
                     }
                 }
 
-                if (!entry.IsSelf && string.IsNullOrWhiteSpace(entry.HolderName))
+                if (!entry.IsSelf && string.IsNullOrWhiteSpace(ListedHolderName(entry) ?? entry.HolderName))
                 {
-                    Toasts.ShowError("Enter the name of every share holder listed.");
+                    Toasts.ShowError($"{ShareHolderLabel(entry)} has no name. Add them to the shareholding list above, or type the name on the transaction row.");
                     return;
                 }
 
                 // The NIN is not typed on this table -- it comes from the shareholding grid above
                 // -- so the message points at where it can actually be corrected.
-                if (string.IsNullOrWhiteSpace(entry.HolderNin) || Nin.IsInvalidEntry(entry.HolderNin))
+                var resolvedNin = ListedHolderNin(entry) ?? entry.HolderNin;
+                if (string.IsNullOrWhiteSpace(resolvedNin) || Nin.IsInvalidEntry(resolvedNin))
                 {
                     Toasts.ShowError(entry.IsSelf
                         ? "Your own NIN is missing or invalid. Correct it in question 1."
@@ -1910,10 +1933,15 @@ public partial class SubmitInsiderDeclaration
                 {
                     IsSelf = entry.IsSelf,
                     Relationship = entry.Relationship,
-                    HolderName = entry.IsSelf || string.IsNullOrWhiteSpace(entry.HolderName)
+                    // Resolved here rather than trusted from the row: the name was fetched from
+                    // the shareholding grid, and that grid may have been edited since. The
+                    // declarant's own name is not stored -- it is on the declaration already.
+                    HolderName = entry.IsSelf
                         ? null
-                        : entry.HolderName.Trim(),
-                    HolderNin = string.IsNullOrWhiteSpace(entry.HolderNin) ? null : entry.HolderNin.Trim(),
+                        : (ListedHolderName(entry) ?? entry.HolderName) is { Length: > 0 } name
+                            ? name.Trim()
+                            : null,
+                    HolderNin = (ListedHolderNin(entry) ?? entry.HolderNin) is { Length: > 0 } nin ? nin.Trim() : null,
                     EntryKind = entry.EntryKind,
                     // A balance has no day and no price, whatever was typed before the row's kind
                     // was changed to one.

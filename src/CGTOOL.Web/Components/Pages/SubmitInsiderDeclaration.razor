@@ -661,9 +661,12 @@
                                             </select>
                                         </td>
                                         <td>
-                                            @if (entry.IsSelf)
+                                            @if (ListedHolderName(entry) is { } listedName)
                                             {
-                                                <span class="cg-subtitle">@_effectiveMember!.FullName</span>
+                                                @* Fetched from the list above, so shown rather than offered for
+                                                   editing -- an editable copy is just somewhere for the two to
+                                                   drift apart. Change it above and it changes here. *@
+                                                <span>@listedName</span>
                                             }
                                             else
                                             {

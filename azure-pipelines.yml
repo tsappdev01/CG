@@ -43,11 +43,18 @@ steps:
       packageType: 'sdk'
       useGlobalJson: true
 
-  - script: dotnet restore "$(projectPath)"
+  - script: dotnet restore "$(projectPath)" --runtime win-x64
     displayName: 'Restore'
 
-  - script: dotnet publish "$(projectPath)" --configuration $(buildConfiguration) --no-restore --output "$(publishPath)"
-    displayName: 'Publish'
+  # Self-contained, matching the publish profile the site was first deployed with. It carries its
+  # own .NET 10 runtime AND its own aspnetcorev2_inprocess.dll, so UATWEB01 needs nothing
+  # installed -- it has 6, 8 and 9 but no 10, and a framework-dependent build there cannot start.
+  # The cost is size: roughly 130MB per deploy instead of 30, which matters on a disk already at
+  # 95%. The gain is that a runtime upgrade is a redeploy rather than a server change.
+  - script: >-
+      dotnet publish "$(projectPath)" --configuration $(buildConfiguration) --no-restore
+      --self-contained --runtime win-x64 --output "$(publishPath)"
+    displayName: 'Publish (self-contained)'
 
   # Before the deploy, not by hand beforehand: the script that creates the site lives in this
   # repository, and the only copy of this repository on UATWEB01 is the one the agent checks out

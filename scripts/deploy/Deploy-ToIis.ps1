@@ -26,6 +26,7 @@ param(
     [Parameter(Mandatory)] [string] $PublishPath,
     [Parameter(Mandatory)] [string] $SitePath,
     [Parameter(Mandatory)] [string] $AppPoolName,
+    [int] $RequiredRuntimeMajor = 10,
     [switch] $OverwriteAppSettings
 )
 
@@ -37,6 +38,38 @@ if (-not (Test-Path "IIS:\AppPools\$AppPoolName")) {
     throw "App pool '$AppPoolName' does not exist. Run scripts/deploy/New-CgDiparkSite.ps1 on this server first."
 }
 if (-not (Test-Path $SitePath)) { New-Item -ItemType Directory -Path $SitePath -Force | Out-Null }
+
+# Before anything is stopped or overwritten. dotnet publish here is framework-dependent, so the
+# matching ASP.NET Core runtime has to be on the server -- and if it is not, this mirror replaces
+# a working site with one that cannot start. That is exactly what happened the first time: the
+# site had been published self-contained by hand, carrying its own runtime, and /MIR removed it.
+# Failing here leaves the running site untouched.
+# A self-contained publish brings its own runtime, so nothing needs to be installed on the
+# server and this check does not apply. Detected from the output rather than from a flag: the
+# two cannot then disagree. System.Private.CoreLib.dll is only ever in a self-contained build.
+$isSelfContained = Test-Path (Join-Path $PublishPath 'System.Private.CoreLib.dll')
+
+$dotnet = Join-Path $env:ProgramFiles 'dotnet\dotnet.exe'
+if ($isSelfContained) {
+    Write-Host "Self-contained publish -- the app carries its own runtime, nothing required on the server."
+}
+elseif (Test-Path $dotnet) {
+    $runtimes = & $dotnet --list-runtimes 2>$null
+    $hasRuntime = $runtimes | Where-Object { $_ -match "^Microsoft\.AspNetCore\.App $RequiredRuntimeMajor\." }
+    if (-not $hasRuntime) {
+        $found = ($runtimes | Where-Object { $_ -match '^Microsoft\.AspNetCore\.App' } |
+                  ForEach-Object { ($_ -split ' ')[1] }) -join ', '
+        throw ("This build needs the ASP.NET Core $RequiredRuntimeMajor runtime and the server does not have it. " +
+               "Found: $found. Install the .NET $RequiredRuntimeMajor.0 HOSTING BUNDLE (not the SDK, not the " +
+               "standalone runtime -- the bundle also carries the ASP.NET Core Module IIS needs) from " +
+               "https://dotnet.microsoft.com/download/dotnet/$RequiredRuntimeMajor.0, then run iisreset. " +
+               "Nothing has been changed; the site is still running whatever it was running.")
+    }
+    Write-Host "ASP.NET Core $RequiredRuntimeMajor runtime present."
+}
+else {
+    Write-Warning "No dotnet host at $dotnet, so the runtime could not be checked before deploying."
+}
 
 $excludeDirs  = @((Join-Path $SitePath 'wwwroot\uploads'))
 $excludeFiles = @()

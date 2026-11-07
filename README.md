@@ -60,9 +60,12 @@ key ring. It is re-runnable.
 
 Three things it cannot do for you:
 
-1. **The .NET 10 Hosting Bundle** -- not the SDK and not the runtime, the Hosting Bundle, which
-   carries the ASP.NET Core Module IIS needs to hand requests to the app. Without it the site
-   answers 500.19 or 500.31. Install it, then `iisreset`.
+1. **Nothing, for the runtime.** The publish is self-contained (`--self-contained --runtime
+   win-x64`), so the app carries its own .NET 10 and its own `aspnetcorev2_inprocess.dll`.
+   UATWEB01 has 6, 8 and 9 installed but no 10, and a framework-dependent build there fails with
+   "You must install or update .NET to run this application". Switching to framework-dependent
+   would mean installing the .NET 10 Hosting Bundle on the server first -- not the SDK, the
+   Hosting Bundle, which also carries the ASP.NET Core Module IIS needs.
 2. **DNS** for `cg.dipark.com`, pointing at this server.
 3. **The certificate**, if one was not installed when the script ran. Install it and re-run.
 4. **The values in the site's own `appsettings.json`** -- the connection string, the Entra

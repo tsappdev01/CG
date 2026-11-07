@@ -1322,20 +1322,6 @@ namespace CGTOOL.Web.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("AccountStatus")
-                        .HasColumnType("int");
-
-                    b.Property<string>("City")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Country")
-                        .HasMaxLength(80)
-                        .HasColumnType("nvarchar(80)");
-
-                    b.Property<DateTime?>("DateOfBirth")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("EmailAddress")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -1344,18 +1330,12 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<int?>("Gender")
-                        .HasColumnType("int");
-
                     b.Property<string>("InvestorNumber")
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
 
                     b.Property<int?>("InvestorType")
                         .HasColumnType("int");
-
-                    b.Property<DateTime?>("LastUpdatedDate")
-                        .HasColumnType("datetime2");
 
                     b.Property<int>("MemberId")
                         .HasColumnType("int");
@@ -1367,17 +1347,6 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<string>("Nationality")
                         .HasMaxLength(80)
                         .HasColumnType("nvarchar(80)");
-
-                    b.Property<string>("PoBox")
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<DateTime?>("RegistrationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ResidentialAddress")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
 
                     b.HasKey("Id");
 

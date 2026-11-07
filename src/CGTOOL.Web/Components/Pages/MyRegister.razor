@@ -50,6 +50,13 @@
             @if (_dfmOpen)
             {
                 <div class="cg-accordion-body">
+                    @* Top right, away from Save: one button writes what is on screen and the other
+                       throws it away, and they should not sit side by side at the foot of a form. *@
+                    <div class="cg-actions cg-actions-end">
+                        <button type="button" class="cg-action-btn cg-critical" disabled="@(_dfm.IsEmpty || _savingDfm)"
+                                @onclick="() => _confirmClearDfm = true">Clear DFM Information</button>
+                    </div>
+
                     <h3 class="cg-section-heading">Investor identification</h3>
                     <div class="cg-form-grid">
                         <label class="cg-field">
@@ -80,9 +87,9 @@
 
                     <h3 class="cg-section-heading">Personal details</h3>
                     <div class="cg-form-grid">
-                        <label class="cg-field cg-field-wide">
+                        <label class="cg-field">
                             <span>Full Name</span>
-                            <input class="cg-input" @bind="_dfm.FullName" maxlength="200" placeholder="As it appears on the trading account" />
+                            <input class="cg-input" @bind="_dfm.FullName" maxlength="200" placeholder="As on the trading account" />
                         </label>
                         <label class="cg-field">
                             <span>Nationality</span>
@@ -93,18 +100,6 @@
                                     <option value="@country">@country</option>
                                 }
                             </select>
-                        </label>
-                        <label class="cg-field">
-                            <span>Gender</span>
-                            <select class="cg-input" @bind="_dfm.Gender">
-                                <option value="">—</option>
-                                <option value="@DfmGender.Male">Male</option>
-                                <option value="@DfmGender.Female">Female</option>
-                            </select>
-                        </label>
-                        <label class="cg-field">
-                            <span>Date of Birth</span>
-                            <UaeDateInput Value="_dfm.DateOfBirth" ValueChanged="d => _dfm.DateOfBirth = d" />
                         </label>
                     </div>
 
@@ -117,55 +112,6 @@
                         <label class="cg-field">
                             <span>Email Address</span>
                             <input class="cg-input" type="email" @bind="_dfm.EmailAddress" maxlength="200" />
-                        </label>
-                    </div>
-
-                    <h3 class="cg-section-heading">Address</h3>
-                    <div class="cg-form-grid">
-                        <label class="cg-field cg-field-wide">
-                            <span>Residential Address</span>
-                            <input class="cg-input" @bind="_dfm.ResidentialAddress" maxlength="300" />
-                        </label>
-                        <label class="cg-field">
-                            <span>City</span>
-                            <input class="cg-input" @bind="_dfm.City" maxlength="100" />
-                        </label>
-                        <label class="cg-field">
-                            <span>Country</span>
-                            <select class="cg-input" @bind="_dfm.Country">
-                                <option value="">—</option>
-                                @foreach (var country in Countries.All)
-                                {
-                                    <option value="@country">@country</option>
-                                }
-                            </select>
-                        </label>
-                        <label class="cg-field">
-                            <span>PO Box</span>
-                            <input class="cg-input" @bind="_dfm.PoBox" maxlength="40" />
-                        </label>
-                    </div>
-
-                    <h3 class="cg-section-heading">Account information</h3>
-                    <div class="cg-form-grid">
-                        <label class="cg-field">
-                            <span>Account Status</span>
-                            <select class="cg-input" @bind="_dfm.AccountStatus">
-                                <option value="">—</option>
-                                <option value="@DfmAccountStatus.Active">Active</option>
-                                <option value="@DfmAccountStatus.Inactive">Inactive</option>
-                                <option value="@DfmAccountStatus.Suspended">Suspended</option>
-                                <option value="@DfmAccountStatus.Closed">Closed</option>
-                            </select>
-                        </label>
-                        <label class="cg-field">
-                            <span>Registration Date</span>
-                            <UaeDateInput Value="_dfm.RegistrationDate" ValueChanged="d => _dfm.RegistrationDate = d" />
-                        </label>
-                        <label class="cg-field">
-                            <span>Last Updated Date</span>
-                            <UaeDateInput Value="_dfm.LastUpdatedDate" ValueChanged="d => _dfm.LastUpdatedDate = d" />
-                            <span class="cg-hint">As the DFM states it, not when you saved this.</span>
                         </label>
                     </div>
 
@@ -940,6 +886,32 @@
 
 @* Delete asks first. The record is gone from the screen afterwards but not from the record: the
    audit entry carries every field it held, which is what the warning promises. *@
+@if (_confirmClearDfm)
+{
+    <div class="cg-modal-backdrop" @onclick="() => _confirmClearDfm = false"></div>
+    <div class="cg-modal cg-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="cg-clear-dfm-title">
+        <div class="cg-modal-head">
+            <div>
+                <h2 id="cg-clear-dfm-title">Clear your DFM information?</h2>
+            </div>
+            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="() => _confirmClearDfm = false">×</button>
+        </div>
+
+        <div class="cg-modal-body">
+            <p>Every field in this section is emptied and the record is removed.</p>
+            <p class="cg-hint">
+                Declarations you have already submitted keep the investor number they were submitted
+                with. A new one will stop filling it in for you.
+            </p>
+        </div>
+
+        <div class="cg-modal-foot">
+            <button type="button" class="cg-action-btn" @onclick="() => _confirmClearDfm = false">Cancel</button>
+            <button type="button" class="cg-action-btn cg-critical" disabled="@_savingDfm" @onclick="ClearDfmAsync">Clear</button>
+        </div>
+    </div>
+}
+
 @if (_pendingDeleteDocument is { } pendingDocument)
 {
     <div class="cg-modal-backdrop" @onclick="CancelRemoveDocument"></div>

@@ -2809,6 +2809,10 @@ button.cg-doc-chip:disabled { cursor: default; opacity: 0.6; text-decoration: no
 /* A field whose value has a fixed, short shape -- a NIN is exactly ten characters. A cg-input
    fills whatever holds it, which on a wide form gave ten characters a 900px box and made an
    empty field look like a mistake. Sized in ch so it follows the font rather than a guess at it. */
+/* Actions that belong at the end of their row rather than the start -- a destructive one put
+   deliberately away from the Save it undoes. */
+.cg-actions-end { justify-content: flex-end; }
+
 .cg-input-short {
     width: 16ch;
     min-width: 16ch;

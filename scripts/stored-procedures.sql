@@ -2248,17 +2248,8 @@ CREATE OR ALTER PROCEDURE dbo.usp_MemberDfmProfile_Save
     @InvestorType int = NULL,
     @FullName nvarchar(200) = NULL,
     @Nationality nvarchar(80) = NULL,
-    @Gender int = NULL,
-    @DateOfBirth datetime2 = NULL,
     @MobileNumber nvarchar(40) = NULL,
     @EmailAddress nvarchar(200) = NULL,
-    @ResidentialAddress nvarchar(300) = NULL,
-    @City nvarchar(100) = NULL,
-    @Country nvarchar(80) = NULL,
-    @PoBox nvarchar(40) = NULL,
-    @AccountStatus int = NULL,
-    @RegistrationDate datetime2 = NULL,
-    @LastUpdatedDate datetime2 = NULL,
     @NewId int OUTPUT
 AS
 BEGIN
@@ -2269,33 +2260,36 @@ BEGIN
         InvestorType = @InvestorType,
         FullName = @FullName,
         Nationality = @Nationality,
-        Gender = @Gender,
-        DateOfBirth = @DateOfBirth,
         MobileNumber = @MobileNumber,
         EmailAddress = @EmailAddress,
-        ResidentialAddress = @ResidentialAddress,
-        City = @City,
-        Country = @Country,
-        PoBox = @PoBox,
-        AccountStatus = @AccountStatus,
-        RegistrationDate = @RegistrationDate,
-        LastUpdatedDate = @LastUpdatedDate,
         @NewId = Id
     WHERE MemberId = @MemberId;
 
     IF @@ROWCOUNT = 0
     BEGIN
         INSERT INTO dbo.MemberDfmProfiles
-            (MemberId, InvestorNumber, InvestorType, FullName, Nationality, Gender, DateOfBirth,
-             MobileNumber, EmailAddress, ResidentialAddress, City, Country, PoBox,
-             AccountStatus, RegistrationDate, LastUpdatedDate)
+            (MemberId, InvestorNumber, InvestorType, FullName, Nationality,
+             MobileNumber, EmailAddress)
         VALUES
-            (@MemberId, @InvestorNumber, @InvestorType, @FullName, @Nationality, @Gender, @DateOfBirth,
-             @MobileNumber, @EmailAddress, @ResidentialAddress, @City, @Country, @PoBox,
-             @AccountStatus, @RegistrationDate, @LastUpdatedDate);
+            (@MemberId, @InvestorNumber, @InvestorType, @FullName, @Nationality,
+             @MobileNumber, @EmailAddress);
 
         SET @NewId = SCOPE_IDENTITY();
     END
+END
+GO
+
+/*
+    Clears a member's DFM record by removing the row, rather than blanking every column. An empty
+    row and no row say the same thing to every reader here, and a delete cannot leave one field
+    behind because somebody added a column and forgot this list.
+*/
+CREATE OR ALTER PROCEDURE dbo.usp_MemberDfmProfile_Delete
+    @MemberId int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM dbo.MemberDfmProfiles WHERE MemberId = @MemberId;
 END
 GO
 

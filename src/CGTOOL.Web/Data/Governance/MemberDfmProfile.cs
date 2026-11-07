@@ -12,20 +12,6 @@ public enum DfmInvestorType
     InternationalInvestor,
 }
 
-public enum DfmGender
-{
-    Male,
-    Female,
-}
-
-public enum DfmAccountStatus
-{
-    Active,
-    Inactive,
-    Suspended,
-    Closed,
-}
-
 /// <summary>The member's investor record as the DFM holds it: their investor number, who the
 /// exchange thinks they are, and how to reach them. One row per member.
 ///
@@ -36,7 +22,9 @@ public enum DfmAccountStatus
 ///
 /// It deliberately holds no Emirates ID or passport number, and no bank or tax details. The
 /// identity documents are in My Documents, where they are read off the document itself rather than
-/// typed twice; bank and tax details are not this application's business.</summary>
+/// typed twice; bank and tax details are not this application's business. Nor the address, the
+/// account status or the dates the exchange keeps -- asked for once and taken back out, because
+/// nothing here reads them.</summary>
 public class MemberDfmProfile
 {
     public int Id { get; set; }
@@ -63,10 +51,6 @@ public class MemberDfmProfile
     [MaxLength(80)]
     public string? Nationality { get; set; }
 
-    public DfmGender? Gender { get; set; }
-
-    public DateTime? DateOfBirth { get; set; }
-
     // ---- contact details ----
 
     [MaxLength(40)]
@@ -75,30 +59,6 @@ public class MemberDfmProfile
     [MaxLength(200)]
     public string? EmailAddress { get; set; }
 
-    // ---- address ----
-
-    [MaxLength(300)]
-    public string? ResidentialAddress { get; set; }
-
-    [MaxLength(100)]
-    public string? City { get; set; }
-
-    [MaxLength(80)]
-    public string? Country { get; set; }
-
-    [MaxLength(40)]
-    public string? PoBox { get; set; }
-
-    // ---- account information ----
-
-    public DfmAccountStatus? AccountStatus { get; set; }
-
-    public DateTime? RegistrationDate { get; set; }
-
-    /// <summary>When the DFM record was last updated, as the DFM states it -- not when this row was
-    /// saved. The two are different facts and only one of them is the exchange's.</summary>
-    public DateTime? LastUpdatedDate { get; set; }
-
     /// <summary>Nothing filled in yet. Used to decide whether the section opens with a prompt or a
     /// form, and to show "none on file" in the accordion count.</summary>
     public bool IsEmpty =>
@@ -106,15 +66,6 @@ public class MemberDfmProfile
         && InvestorType is null
         && string.IsNullOrWhiteSpace(FullName)
         && string.IsNullOrWhiteSpace(Nationality)
-        && Gender is null
-        && DateOfBirth is null
         && string.IsNullOrWhiteSpace(MobileNumber)
-        && string.IsNullOrWhiteSpace(EmailAddress)
-        && string.IsNullOrWhiteSpace(ResidentialAddress)
-        && string.IsNullOrWhiteSpace(City)
-        && string.IsNullOrWhiteSpace(Country)
-        && string.IsNullOrWhiteSpace(PoBox)
-        && AccountStatus is null
-        && RegistrationDate is null
-        && LastUpdatedDate is null;
+        && string.IsNullOrWhiteSpace(EmailAddress);
 }

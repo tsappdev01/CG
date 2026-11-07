@@ -203,6 +203,7 @@ public partial class MyRegister : ComponentBase
     // whichever one the member came for. Adding to a section opens it.
     private bool _dfmOpen;
     private bool _savingDfm;
+    private bool _confirmClearDfm;
 
     /// <summary>The member's DFM record. Never null: an empty instance stands in until there is a
     /// row, so the form binds to something from the first render rather than having to be guarded
@@ -767,10 +768,6 @@ public partial class MyRegister : ComponentBase
             _dfm.Nationality = Blank(_dfm.Nationality);
             _dfm.MobileNumber = Blank(_dfm.MobileNumber);
             _dfm.EmailAddress = Blank(_dfm.EmailAddress);
-            _dfm.ResidentialAddress = Blank(_dfm.ResidentialAddress);
-            _dfm.City = Blank(_dfm.City);
-            _dfm.Country = Blank(_dfm.Country);
-            _dfm.PoBox = Blank(_dfm.PoBox);
 
             _dfm.Id = await DfmWriter.SaveAsync(_dfm);
 
@@ -788,23 +785,40 @@ public partial class MyRegister : ComponentBase
         static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
+    /// <summary>Empties the section. The row is removed rather than blanked: an empty row and no
+    /// row say the same thing to everything that reads this, and a delete cannot leave a field
+    /// behind because someone added a column and forgot a list.</summary>
+    private async Task ClearDfmAsync()
+    {
+        if (_effectiveMember is null || _savingDfm) return;
+
+        _savingDfm = true;
+        try
+        {
+            await DfmWriter.DeleteAsync(_effectiveMember.Id);
+
+            var actorName = await CurrentActorNameAsync();
+            await AuditLog.LogAsync(actorName, AuditAction.Delete, nameof(MemberDfmProfile),
+                _dfm.Id.ToString(), $"Cleared DFM information. Was: {DfmSnapshot()}");
+
+            _dfm = new MemberDfmProfile { MemberId = _effectiveMember.Id };
+            _confirmClearDfm = false;
+            Toasts.ShowSuccess("DFM information cleared.");
+        }
+        finally
+        {
+            _savingDfm = false;
+        }
+    }
+
     private string DfmSnapshot() => string.Join("; ",
     [
         $"Investor number: {Show(_dfm.InvestorNumber)}",
         $"Investor type: {(_dfm.InvestorType is { } t ? DfmInvestorTypes.First(o => o.Value == t).Label : "none")}",
         $"Full name: {Show(_dfm.FullName)}",
         $"Nationality: {Show(_dfm.Nationality)}",
-        $"Gender: {_dfm.Gender?.ToString() ?? "none"}",
-        $"Date of birth: {Show(Day(_dfm.DateOfBirth))}",
         $"Mobile: {Show(_dfm.MobileNumber)}",
         $"Email: {Show(_dfm.EmailAddress)}",
-        $"Address: {Show(_dfm.ResidentialAddress)}",
-        $"City: {Show(_dfm.City)}",
-        $"Country: {Show(_dfm.Country)}",
-        $"PO Box: {Show(_dfm.PoBox)}",
-        $"Account status: {_dfm.AccountStatus?.ToString() ?? "none"}",
-        $"Registered: {Show(Day(_dfm.RegistrationDate))}",
-        $"DFM last updated: {Show(Day(_dfm.LastUpdatedDate))}",
     ]);
 
     private async Task SaveDocumentAsync(MemberDocument document)

@@ -442,10 +442,37 @@ quarter belongs on another declaration.
 changed after they were typed: what was held when the period opened was not bought at a price
 during it.
 
-**Where it appears**: the capture step, the review step, the declaration PDF, and the Insider Detail
-report as a sub-table per declarant. Not the Insider Trading report -- that one reads the DFM's own
-uploaded movements and matches them against declared NINs, which is the exchange's view rather than
-the declarant's. Comparing the two would be a worthwhile report and is not this one.
+**Where it appears**: the capture step, the review step, the declaration PDF, the Insider Detail
+report as a sub-table per declarant, and the **Declared vs Actual** report.
+
+Not the Insider Trading report -- that one reads the DFM's own uploaded movements and matches them
+against declared NINs, which is the exchange's view rather than the declarant's. Putting declared
+transactions in it would make it two reports in one.
+
+### Declared vs Actual (`/reports/insider-reconciliation`)
+
+The compliance question neither of the other two answers: whether what someone declared agrees with
+what the exchange recorded. One line per (quarter, investor number) taken from the union of both
+sides -- not from the declarations alone, because a movement nobody declared has no declaration to
+hang off and is the finding worth having.
+
+| Outcome | Means |
+| --- | --- |
+| Agrees | Declared and recorded, net quantities match |
+| Not declared | The DFM recorded movement, the declaration did not mention it |
+| Not seen at the DFM | Declared, and the DFM file shows nothing -- either the upload for that period is missing or it did not happen as stated |
+| Quantities differ | Both have movement and the nets disagree |
+
+Matched on the NIN and nothing else. A name can be spelt two ways and a person can declare for a
+relative, but the investor number is the same string on both sides -- which is why the declaration
+asks for it for every holder.
+
+Quantities only. The declaration carries a rate per transaction and the DFM upload carries no price
+at all, so there is nothing to compare a rate against; a value column would be the declarant's own
+figure printed twice. Drafts are excluded: holding a half-typed sentence against the exchange's
+record would raise a finding about nothing.
+
+Opens on **Exceptions only**, because a reviewer is looking for the lines that disagree.
 
 ## The Document Center
 

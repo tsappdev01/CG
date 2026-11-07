@@ -502,7 +502,9 @@ public partial class DeclarationsSetupPage
         };
         run.Id = await RunWriter.InsertAsync(run);
 
-        var (sentCount, failedCount) = await DeclarationCycleReminderHostedService.SendNotificationAsync(db, EmailSender, RunWriter, AuditLog, run, _setup, actor);
+        var (sentCount, failedCount) = await DeclarationCycleReminderHostedService.SendNotificationAsync(
+            db, EmailSender, RunWriter, AuditLog, run, _setup, actor,
+            logoUrl: DeclarationCycleReminderHostedService.LogoUrl(Config));
         await RunWriter.MarkSentAsync(run.Id, DateTime.UtcNow, sentCount + failedCount);
 
         Toasts.ShowSuccess(failedCount == 0
@@ -704,7 +706,11 @@ public partial class DeclarationsSetupPage
         _previewBody = DeclarationCycleReminderHostedService.ApplyPlaceholders(
             _setup.EmailBody ?? string.Empty,
             _previewTo,
-            LocalDateToUtc(_dueDate));
+            LocalDateToUtc(_dueDate),
+            // Site-relative on purpose: the preview then shows the logo THIS build serves, not the
+            // one still sitting on the deployed site, which is the whole point of previewing before
+            // a release.
+            "/images/di-logo.jpg");
 
         _showPreview = true;
     }

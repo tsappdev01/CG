@@ -6,7 +6,7 @@ namespace CGTOOL.Web.Data.Governance;
 /// sends the remaining reminder emails for each already-sent DeclarationCycleRun on the weekday and
 /// time configured on its DeclarationCycleSetup -- read in UAE Standard Time -- until ReminderCount
 /// is reached.</summary>
-public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFactory, ILogger<DeclarationCycleReminderHostedService> logger) : BackgroundService
+public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFactory, ILogger<DeclarationCycleReminderHostedService> logger, IConfiguration config) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -19,8 +19,8 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
                 var emailSender = scope.ServiceProvider.GetRequiredService<IActivityEmailSender>();
                 var runWriter = scope.ServiceProvider.GetRequiredService<IDeclarationCycleRunWriter>();
                 var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogger>();
-                await ProcessDueScheduledSendsAsync(db, emailSender, runWriter, auditLog, stoppingToken);
-                await RunOnceAsync(db, emailSender, runWriter, auditLog, stoppingToken);
+                await ProcessDueScheduledSendsAsync(db, emailSender, runWriter, auditLog, stoppingToken, LogoUrl(config));
+                await RunOnceAsync(db, emailSender, runWriter, auditLog, stoppingToken, LogoUrl(config));
             }
             catch (Exception ex)
             {
@@ -44,7 +44,7 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
     }
 
     /// <summary>Fires any scheduled-but-not-yet-sent run (Sent = false) whose target SentAtUtc has arrived.</summary>
-    public static async Task ProcessDueScheduledSendsAsync(ApplicationDbContext db, IActivityEmailSender emailSender, IDeclarationCycleRunWriter runWriter, IAuditLogger auditLog, CancellationToken ct = default)
+    public static async Task ProcessDueScheduledSendsAsync(ApplicationDbContext db, IActivityEmailSender emailSender, IDeclarationCycleRunWriter runWriter, IAuditLogger auditLog, CancellationToken ct = default, string? logoUrl = null)
     {
         var dueRuns = await db.DeclarationCycleRuns
             .Include(r => r.DeclarationCycleSetup)
@@ -55,12 +55,12 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
         {
             if (run.DeclarationCycleSetup is null) continue;
 
-            var (sentCount, failedCount) = await SendNotificationAsync(db, emailSender, runWriter, auditLog, run, run.DeclarationCycleSetup, "System", ct);
+            var (sentCount, failedCount) = await SendNotificationAsync(db, emailSender, runWriter, auditLog, run, run.DeclarationCycleSetup, "System", ct, logoUrl);
             await runWriter.MarkSentAsync(run.Id, DateTime.UtcNow, sentCount + failedCount);
         }
     }
 
-    public static async Task RunOnceAsync(ApplicationDbContext db, IActivityEmailSender emailSender, IDeclarationCycleRunWriter runWriter, IAuditLogger auditLog, CancellationToken ct = default)
+    public static async Task RunOnceAsync(ApplicationDbContext db, IActivityEmailSender emailSender, IDeclarationCycleRunWriter runWriter, IAuditLogger auditLog, CancellationToken ct = default, string? logoUrl = null)
     {
         var runs = await db.DeclarationCycleRuns
             .Include(r => r.DeclarationCycleSetup)
@@ -78,7 +78,7 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
             var reminderNumber = run.RemindersSent + 1;
             foreach (var (memberId, email, fullName, _) in recipients)
             {
-                var body = ApplyPlaceholders(setup.EmailBody, fullName, run.DueDateUtc);
+                var body = ApplyPlaceholders(setup.EmailBody, fullName, run.DueDateUtc, logoUrl ?? LogoUrl(null));
                 try
                 {
                     await emailSender.SendAsync(email, $"Reminder: {setup.EmailSubject}", body, ct);
@@ -114,7 +114,7 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
 
     /// <summary>Shared by "Send Now"/schedule-firing: resolves recipients, sends the notification, and
     /// records a per-recipient row (name/email/entity/sent-on) plus an audit-log entry for each.</summary>
-    public static async Task<(int SentCount, int FailedCount)> SendNotificationAsync(ApplicationDbContext db, IActivityEmailSender emailSender, IDeclarationCycleRunWriter runWriter, IAuditLogger auditLog, DeclarationCycleRun run, DeclarationCycleSetup setup, string actorName, CancellationToken ct = default)
+    public static async Task<(int SentCount, int FailedCount)> SendNotificationAsync(ApplicationDbContext db, IActivityEmailSender emailSender, IDeclarationCycleRunWriter runWriter, IAuditLogger auditLog, DeclarationCycleRun run, DeclarationCycleSetup setup, string actorName, CancellationToken ct = default, string? logoUrl = null)
     {
         var recipients = await ResolveRecipientsAsync(db, run.CompanyId, ct);
         var sentCount = 0;
@@ -122,7 +122,7 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
 
         foreach (var (memberId, email, fullName, companyName) in recipients)
         {
-            var body = ApplyPlaceholders(setup.EmailBody, fullName, run.DueDateUtc);
+            var body = ApplyPlaceholders(setup.EmailBody, fullName, run.DueDateUtc, logoUrl ?? LogoUrl(null));
             var success = true;
             try
             {
@@ -217,6 +217,18 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
         return await query.Select(m => new ValueTuple<int, string, string, string?>(m.Id, m.Email!, m.FullName, m.Company!.Name)).ToListAsync(ct);
     }
 
-    public static string ApplyPlaceholders(string template, string fullName, DateTime dueDateUtc) =>
-        template.Replace("{FullName}", fullName).Replace("{DueDate}", dueDateUtc.ToLocalDisplay("dd/MM/yyyy"));
+    /// <summary>The address the logo is fetched from when a template uses {LogoUrl}. A reminder is
+    /// read in a mail client, which is not this app, so the tag needs an absolute URL. Overridable
+    /// with Branding:PublicBaseUrl for a deployment on another host.</summary>
+    public static string LogoUrl(IConfiguration? config) =>
+        ((config?["Branding:PublicBaseUrl"] is { Length: > 0 } url ? url : "https://cg.dubaiinvestments.com")
+            .TrimEnd('/')) + "/images/di-logo.jpg";
+
+    /// <param name="logoUrl">What {LogoUrl} becomes. The sending paths pass the absolute address;
+    /// the setup screen's preview passes a site-relative one, so that preview shows the logo this
+    /// build is actually serving rather than whatever the deployed site still has.</param>
+    public static string ApplyPlaceholders(string template, string fullName, DateTime dueDateUtc, string logoUrl = "") =>
+        template.Replace("{FullName}", fullName)
+                .Replace("{DueDate}", dueDateUtc.ToLocalDisplay("dd/MM/yyyy"))
+                .Replace("{LogoUrl}", logoUrl);
 }

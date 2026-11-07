@@ -569,7 +569,12 @@
         else if (_step == Step.Done)
         {
             <div class="cg-empty-state">
-                <p><b>Your Related Party &amp; COI declaration was @(_hadExistingRow ? "updated" : "submitted") successfully</b> on @_submittedAtUtc!.Value.ToString("dd MMM yyyy HH:mm") UTC.</p>
+                @* The declarant's own clock, not the server's. It said "19:47 UTC" to someone who
+                   had pressed Submit at 23:47, which reads as the wrong time rather than the same
+                   time somewhere else -- and this line is the receipt for when they filed.
+                   Converted explicitly to UAE time rather than to the machine's local time, so it
+                   stays right if the site is ever hosted somewhere else. *@
+                <p><b>Your Related Party &amp; COI declaration was @(_hadExistingRow ? "updated" : "submitted") successfully</b> on @UaeTime.FromUtc(_submittedAtUtc!.Value).ToString("dd MMM yyyy HH:mm") GST.</p>
                 <p><a href="/my-declarations">Return to Declarations</a></p>
             </div>
         }

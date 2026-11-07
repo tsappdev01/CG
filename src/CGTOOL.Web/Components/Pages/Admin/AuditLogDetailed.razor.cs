@@ -276,12 +276,14 @@ public partial class AuditLogDetailed
             csv.AppendLine(string.Join(',', new[]
             {
                 EventRef(e), e.Sequence?.ToString() ?? string.Empty,
-                e.OccurredAtUtc.ToString("O"), e.ActorDisplayName, e.ActingOnBehalfOf ?? string.Empty,
+                // The same clock the screen shows. An export whose timestamps are four hours off
+                // the page they were exported from is a reconciliation nobody asked for.
+                e.OccurredAtUtc.ToLocalDisplay("yyyy-MM-dd HH:mm:ss"), e.ActorDisplayName, e.ActingOnBehalfOf ?? string.Empty,
                 e.Action.ToString(), AreaOf(e).ToString(), RiskOf(e).ToString(),
                 e.EntityType, e.EntityId ?? string.Empty, e.Details ?? string.Empty, e.Justification ?? string.Empty,
                 e.IpAddress ?? string.Empty, e.UserAgent ?? string.Empty,
                 review?.Outcome.ToString() ?? (AwaitingReview(e) ? "Awaiting" : "Not required"),
-                review?.ReviewerName ?? string.Empty, review?.ReviewedAtUtc.ToString("O") ?? string.Empty,
+                review?.ReviewerName ?? string.Empty, review?.ReviewedAtUtc.ToLocalDisplay("yyyy-MM-dd HH:mm:ss") ?? string.Empty,
                 review?.Comment ?? string.Empty,
                 e.PreviousHash ?? string.Empty, e.RecordHash ?? string.Empty,
             }.Select(Csv)));

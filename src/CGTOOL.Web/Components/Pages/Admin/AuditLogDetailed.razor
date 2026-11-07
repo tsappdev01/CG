@@ -235,7 +235,7 @@
                     <h3>When · who</h3>
                     <dl class="cg-audit-dl">
                         <div><dt>Timestamp (local)</dt><dd>@sel.OccurredAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm:ss")</dd></div>
-                        <div><dt>Timestamp (UTC)</dt><dd class="mono">@sel.OccurredAtUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")</dd></div>
+                        <div><dt>Timestamp</dt><dd class="mono">@sel.OccurredAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm:ss") GST</dd></div>
                         <div><dt>Actor</dt><dd>@sel.ActorDisplayName</dd></div>
                         <div><dt>Acting on behalf of</dt><dd>@(sel.ActingOnBehalfOf ?? "— (acting as self)")</dd></div>
                         <div><dt>Area</dt><dd>@AreaOf(sel)</dd></div>

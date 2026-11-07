@@ -182,9 +182,47 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// <summary>Brings across what the member already has on file in My Workspace, so the same
     /// passport is not scanned twice a year. A copy, not a reference: see
     /// RelatedPartyCoiDeclarationDocument.</summary>
+    /// <summary>Runs once per visit to the documents step, and only into slots nothing has filled
+    /// -- so a document attached here, or carried over from a previous declaration, is never
+    /// replaced by what happens to be on file. Silent: arriving at a step to be told nothing
+    /// happened is noise, and the cards say what they hold.</summary>
+    private bool _workspaceDocumentsLoaded;
+
+    private async Task AutoLoadWorkspaceDocumentsAsync()
+    {
+        if (_workspaceDocumentsLoaded || _effectiveMember is null) return;
+        _workspaceDocumentsLoaded = true;
+
+        try
+        {
+            var filled = await FillDocumentsFromWorkspaceAsync();
+            if (filled > 0) await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception)
+        {
+            // Started without being awaited, so a failure here would otherwise go nowhere and the
+            // member would see "Not attached" against a document they can see on their own
+            // workspace page -- which is the thing this exists to prevent. The button is still
+            // there, and saying so is more use than saying nothing.
+            _workspaceDocumentsLoaded = false;
+            Toasts.ShowError("Your documents could not be read from My Workspace just now. Use Load from My Workspace to try again.");
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    /// <summary>The button: says what it found, including when it found nothing.</summary>
     private async Task PullDocumentsFromWorkspaceAsync()
     {
-        if (_effectiveMember is null) return;
+        var filled = await FillDocumentsFromWorkspaceAsync();
+
+        Toasts.ShowSuccess(filled == 0
+            ? "Nothing on your My Workspace file matches what this declaration still needs."
+            : $"{filled} document(s) brought across from My Workspace. Check them before continuing.");
+    }
+
+    private async Task<int> FillDocumentsFromWorkspaceAsync()
+    {
+        if (_effectiveMember is null) return 0;
 
         await using var db = await DbFactory.CreateDbContextAsync();
         var onFile = await db.MemberDocuments.AsNoTracking()
@@ -212,9 +250,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
             filled++;
         }
 
-        Toasts.ShowSuccess(filled == 0
-            ? "Nothing on your My Workspace file matches what this declaration asks for."
-            : $"{filled} document(s) brought across from My Workspace. Check them before continuing.");
+        return filled;
     }
 
     [Parameter] public int? Id { get; set; }
@@ -1357,6 +1393,18 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// section that is not filled in. Reaching Review goes through the same confirmation the single
     /// long form used.</summary>
     private void GoToStep(Step target)
+    {
+        GoToStepCore(target);
+
+        // Arriving at the documents step brings across what the member already keeps on file,
+        // without being asked. The Insider declaration has always done this; here the same
+        // documents sat in My Workspace behind a button, and a step that says "Not attached" about
+        // a document the person can see on their own workspace page reads as the form not knowing
+        // about it.
+        if (_step == Step.Documents) _ = AutoLoadWorkspaceDocumentsAsync();
+    }
+
+    private void GoToStepCore(Step target)
     {
         var (from, to) = (IndexOfStep(_step), IndexOfStep(target));
         if (to < 0 || from < 0 || to == from) return;

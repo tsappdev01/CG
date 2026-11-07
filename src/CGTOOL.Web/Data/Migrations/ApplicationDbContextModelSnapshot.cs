@@ -1203,9 +1203,6 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<int>("EntryKind")
                         .HasColumnType("int");
 
-                    b.Property<int>("HolderKind")
-                        .HasColumnType("int");
-
                     b.Property<string>("HolderName")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -1217,12 +1214,18 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<int>("InsiderDeclarationId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("IsSelf")
+                        .HasColumnType("bit");
+
                     b.Property<long>("NumberOfShares")
                         .HasColumnType("bigint");
 
                     b.Property<decimal?>("Rate")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("Relationship")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("TransactionDate")
                         .HasColumnType("datetime2");
@@ -2714,7 +2717,7 @@ namespace CGTOOL.Web.Data.Migrations
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.InsiderDeclarationShareEntry", b =>
                 {
                     b.HasOne("CGTOOL.Web.Data.Governance.InsiderDeclaration", "InsiderDeclaration")
-                        .WithMany()
+                        .WithMany("ShareEntries")
                         .HasForeignKey("InsiderDeclarationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -3034,6 +3037,8 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Navigation("NinHolders");
 
                     b.Navigation("Relatives");
+
+                    b.Navigation("ShareEntries");
                 });
 
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.Member", b =>

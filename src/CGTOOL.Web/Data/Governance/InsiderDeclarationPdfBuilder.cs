@@ -79,11 +79,11 @@ public static class InsiderDeclarationPdfBuilder
                 ["Held By", "Name", "NIN", "Entry", "Date", "No. of Shares", "Rate"],
                 [0.11, 0.21, 0.14, 0.20, 0.12, 0.11, 0.11],
                 d.ShareEntries
-                    .OrderBy(e => e.HolderKind).ThenBy(e => e.EntryKind).ThenBy(e => e.TransactionDate)
+                    .OrderByDescending(e => e.IsSelf).ThenBy(e => e.Relationship).ThenBy(e => e.EntryKind).ThenBy(e => e.TransactionDate)
                     .Select(e => new[]
                     {
-                        HolderLabel(e.HolderKind),
-                        e.HolderKind == ShareHolderKind.Self ? member.FullName : e.HolderName ?? "",
+                        e.IsSelf ? "Self" : RelationshipLabel(e.Relationship),
+                        e.IsSelf ? member.FullName : e.HolderName ?? "",
                         e.HolderNin ?? "",
                         EntryLabel(e.EntryKind),
                         e.TransactionDate is { } on ? on.ToString("dd/MM/yyyy") : "\u2014",
@@ -99,13 +99,6 @@ public static class InsiderDeclarationPdfBuilder
         document.Save(ms);
         return ms.ToArray();
     }
-
-    private static string HolderLabel(ShareHolderKind kind) => kind switch
-    {
-        ShareHolderKind.Self => "Self",
-        ShareHolderKind.Spouse => "Spouse",
-        _ => "Relative",
-    };
 
     /// <summary>Shorter than the form's own row labels, which are a sentence each and would wrap
     /// every row of a seven-column table.</summary>

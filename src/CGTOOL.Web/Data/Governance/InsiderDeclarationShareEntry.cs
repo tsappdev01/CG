@@ -2,15 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CGTOOL.Web.Data.Governance;
 
-/// <summary>Whose shares a line is about. The form the wording comes from has three columns --
-/// Self, Spouse, Relatives -- and a line belongs to exactly one of them.</summary>
-public enum ShareHolderKind
-{
-    Self,
-    Spouse,
-    Relative,
-}
-
 /// <summary>What a line records. The form's rows in order: what was held when the period opened,
 /// each purchase and each sale during it, and what was held when it closed.</summary>
 public enum ShareEntryKind
@@ -38,10 +29,16 @@ public class InsiderDeclarationShareEntry
     public int InsiderDeclarationId { get; set; }
     public InsiderDeclaration? InsiderDeclaration { get; set; }
 
-    public ShareHolderKind HolderKind { get; set; }
+    /// <summary>The declarant's own line. Kept as a flag rather than a value of Relationship,
+    /// exactly as InsiderDeclarationRelative does it, so the two grids sort and read alike.</summary>
+    public bool IsSelf { get; set; }
 
-    /// <summary>Who, for a spouse or a relative. Left null for Self, whose name is the
-    /// declarant's and is already on the declaration.</summary>
+    /// <summary>Which relative, when it is not the declarant. The same list the shareholding grid
+    /// above offers -- a holder who appears in one and not the other would be a different person
+    /// to each of them.</summary>
+    public RelativeRelationship Relationship { get; set; }
+
+    /// <summary>Who, for anyone but the declarant, whose name is already on the declaration.</summary>
     [MaxLength(200)]
     public string? HolderName { get; set; }
 

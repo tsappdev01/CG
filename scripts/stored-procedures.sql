@@ -2437,7 +2437,8 @@ GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_InsiderDeclarationShareEntry_Insert
     @InsiderDeclarationId int,
-    @HolderKind int,
+    @IsSelf bit,
+    @Relationship int,
     @HolderName nvarchar(200) = NULL,
     @HolderNin nvarchar(40) = NULL,
     @EntryKind int,
@@ -2450,9 +2451,9 @@ BEGIN
     SET NOCOUNT ON;
 
     INSERT INTO dbo.InsiderDeclarationShareEntries
-        (InsiderDeclarationId, HolderKind, HolderName, HolderNin, EntryKind, TransactionDate, NumberOfShares, Rate)
+        (InsiderDeclarationId, IsSelf, Relationship, HolderName, HolderNin, EntryKind, TransactionDate, NumberOfShares, Rate)
     VALUES
-        (@InsiderDeclarationId, @HolderKind, @HolderName, @HolderNin, @EntryKind, @TransactionDate, @NumberOfShares, @Rate);
+        (@InsiderDeclarationId, @IsSelf, @Relationship, @HolderName, @HolderNin, @EntryKind, @TransactionDate, @NumberOfShares, @Rate);
 
     SET @NewId = SCOPE_IDENTITY();
 END

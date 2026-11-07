@@ -42,7 +42,8 @@ public partial class SubmitInsiderDeclaration
 
     private class ShareEntryRow
     {
-        public ShareHolderKind HolderKind { get; set; } = ShareHolderKind.Self;
+        public bool IsSelf { get; set; } = true;
+        public RelativeRelationship Relationship { get; set; } = RelativeRelationship.Spouse;
         public string HolderName { get; set; } = string.Empty;
         public string HolderNin { get; set; } = string.Empty;
         public ShareEntryKind EntryKind { get; set; } = ShareEntryKind.OpeningBalance;
@@ -63,13 +64,6 @@ public partial class SubmitInsiderDeclaration
         && _effectiveMember?.DeclarationType is MemberDeclarationType.EmployeeDiPjsc
                                              or MemberDeclarationType.EmployeeOther;
 
-    private static readonly (ShareHolderKind Value, string Label)[] ShareHolderKinds =
-    [
-        (ShareHolderKind.Self, "Self"),
-        (ShareHolderKind.Spouse, "Spouse"),
-        (ShareHolderKind.Relative, "Relative"),
-    ];
-
     /// <summary>The printed form's row labels, in its order.</summary>
     private static readonly (ShareEntryKind Value, string Label)[] ShareEntryKinds =
     [
@@ -79,8 +73,43 @@ public partial class SubmitInsiderDeclaration
         (ShareEntryKind.ClosingBalance, "Held at the end of the period"),
     ];
 
-    private static string ShareHolderLabel(ShareHolderKind kind) =>
-        ShareHolderKinds.First(k => k.Value == kind).Label;
+    private static string ShareHolderLabel(ShareEntryRow row) =>
+        row.IsSelf ? "Self" : RelationshipLabel(row.Relationship);
+
+    /// <summary>What the "Share held by" picker binds to: "self", or the relationship's own
+    /// number. One control for both rather than a checkbox beside a dropdown, because the list
+    /// the shareholding grid shows above is a single list with Self at the top of it.</summary>
+    private static string HolderValue(ShareEntryRow row) =>
+        row.IsSelf ? "self" : ((int)row.Relationship).ToString();
+
+    /// <summary>Chooses the holder and brings their name and NIN with them.
+    ///
+    /// Everyone here has already been listed in the shareholding grid above, with a name and a NIN
+    /// typed once. Asking again per transaction is asking someone to copy their spouse's investor
+    /// number four times and get it right every time.</summary>
+    private void SetShareEntryHolder(ShareEntryRow row, object? value)
+    {
+        var raw = value?.ToString();
+        if (string.IsNullOrWhiteSpace(raw)) return;
+
+        if (raw == "self")
+        {
+            row.IsSelf = true;
+            row.HolderName = string.Empty;
+            row.HolderNin = _ninNumber;
+            return;
+        }
+
+        if (!int.TryParse(raw, out var relationship)) return;
+
+        row.IsSelf = false;
+        row.Relationship = (RelativeRelationship)relationship;
+
+        // The matching row from the shareholding grid, when that holder was listed there.
+        var listed = _relatives.FirstOrDefault(r => !r.IsSelf && r.Relationship == row.Relationship);
+        row.HolderName = listed?.RelativeName ?? string.Empty;
+        row.HolderNin = listed?.NinNumber ?? string.Empty;
+    }
 
     private static string ShareEntryLabel(ShareEntryKind kind) =>
         ShareEntryKinds.First(k => k.Value == kind).Label;
@@ -92,7 +121,7 @@ public partial class SubmitInsiderDeclaration
     {
         // Seeded with the declarant, which is whose line it usually is, and with their own number
         // so the commonest row needs nothing typed into it but a quantity.
-        HolderKind = ShareHolderKind.Self,
+        IsSelf = true,
         HolderNin = _ninNumber,
     });
 
@@ -523,11 +552,12 @@ public partial class SubmitInsiderDeclaration
         _shareEntries.Clear();
         _shareEntries.AddRange((await db.InsiderDeclarationShareEntries.AsNoTracking()
             .Where(e => e.InsiderDeclarationId == declaration.Id)
-            .OrderBy(e => e.HolderKind).ThenBy(e => e.EntryKind).ThenBy(e => e.Id)
+            .OrderByDescending(e => e.IsSelf).ThenBy(e => e.Relationship).ThenBy(e => e.EntryKind).ThenBy(e => e.Id)
             .ToListAsync())
             .Select(e => new ShareEntryRow
             {
-                HolderKind = e.HolderKind,
+                IsSelf = e.IsSelf,
+                Relationship = e.Relationship,
                 HolderName = e.HolderName ?? string.Empty,
                 HolderNin = e.HolderNin ?? string.Empty,
                 EntryKind = e.EntryKind,
@@ -1662,17 +1692,19 @@ public partial class SubmitInsiderDeclaration
                     }
                 }
 
-                if (entry.HolderKind != ShareHolderKind.Self && string.IsNullOrWhiteSpace(entry.HolderName))
+                if (!entry.IsSelf && string.IsNullOrWhiteSpace(entry.HolderName))
                 {
                     Toasts.ShowError("Enter the name of every share holder listed.");
                     return;
                 }
 
-                if (Nin.IsInvalidEntry(entry.HolderNin))
+                // The NIN is not typed on this table -- it comes from the shareholding grid above
+                // -- so the message points at where it can actually be corrected.
+                if (string.IsNullOrWhiteSpace(entry.HolderNin) || Nin.IsInvalidEntry(entry.HolderNin))
                 {
-                    Toasts.ShowError(Nin.ErrorFor(entry.HolderKind == ShareHolderKind.Self
-                        ? "your own share transaction row"
-                        : entry.HolderName));
+                    Toasts.ShowError(entry.IsSelf
+                        ? "Your own NIN is missing or invalid. Correct it in question 1."
+                        : $"{ShareHolderLabel(entry)} has no valid NIN. Add them to the shareholding list above with their NIN, then choose them here again.");
                     return;
                 }
             }
@@ -1876,8 +1908,9 @@ public partial class SubmitInsiderDeclaration
 
                 await Writer.InsertShareEntryAsync(declarationId, new InsiderDeclarationShareEntry
                 {
-                    HolderKind = entry.HolderKind,
-                    HolderName = entry.HolderKind == ShareHolderKind.Self || string.IsNullOrWhiteSpace(entry.HolderName)
+                    IsSelf = entry.IsSelf,
+                    Relationship = entry.Relationship,
+                    HolderName = entry.IsSelf || string.IsNullOrWhiteSpace(entry.HolderName)
                         ? null
                         : entry.HolderName.Trim(),
                     HolderNin = string.IsNullOrWhiteSpace(entry.HolderNin) ? null : entry.HolderNin.Trim(),

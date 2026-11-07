@@ -632,8 +632,7 @@
                             <thead>
                                 <tr>
                                     <th scope="col">Share held by</th>
-                                    <th scope="col">Name</th>
-                                    <th scope="col">NIN</th>
+                                    <th scope="col">Name of share holder</th>
                                     <th scope="col">Entry</th>
                                     <th scope="col">Date</th>
                                     <th scope="col">No. of shares</th>
@@ -645,16 +644,24 @@
                                 @foreach (var entry in _shareEntries)
                                 {
                                     <tr class="cg-data-row">
+                                        @* The same list the shareholding grid above offers, Self included, so a
+                                           holder is the same person to both. Choosing one brings their name and
+                                           NIN with them -- the NIN is not shown or typed here, because it was
+                                           already entered once above and copying it per transaction is how it
+                                           ends up wrong. *@
                                         <td>
-                                            <select class="cg-input" @bind="entry.HolderKind">
-                                                @foreach (var kind in ShareHolderKinds)
+                                            <select class="cg-input" value="@HolderValue(entry)"
+                                                    aria-label="Share held by"
+                                                    @onchange="e => SetShareEntryHolder(entry, e.Value)">
+                                                <option value="self">Self</option>
+                                                @foreach (var opt in RelativeOptions)
                                                 {
-                                                    <option value="@kind.Value">@kind.Label</option>
+                                                    <option value="@((int)opt.Value)">@opt.Label</option>
                                                 }
                                             </select>
                                         </td>
                                         <td>
-                                            @if (entry.HolderKind == ShareHolderKind.Self)
+                                            @if (entry.IsSelf)
                                             {
                                                 <span class="cg-subtitle">@_effectiveMember!.FullName</span>
                                             }
@@ -662,11 +669,6 @@
                                             {
                                                 <input class="cg-input" @bind="entry.HolderName" maxlength="200" placeholder="Name of share holder" />
                                             }
-                                        </td>
-                                        <td>
-                                            <input class="cg-input cg-input-short@(Nin.IsInvalidEntry(entry.HolderNin) ? " cg-input-invalid" : "")"
-                                                   @bind="entry.HolderNin" @bind:event="oninput"
-                                                   maxlength="@Nin.Length" minlength="@Nin.Length" placeholder="10 characters" />
                                         </td>
                                         <td>
                                             <select class="cg-input" @bind="entry.EntryKind">
@@ -711,7 +713,7 @@
 
                                 @if (_shareEntries.Count == 0)
                                 {
-                                    <tr><td colspan="8">
+                                    <tr><td colspan="7">
                                         <div class="cg-empty-state">
                                             <h3>Nothing recorded yet</h3>
                                             <p>Use <b>+ Add entry</b> below for each purchase and sale in this period.</p>
@@ -803,7 +805,7 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Share held by</th><th>Name</th><th>NIN</th><th>Entry</th>
+                                    <th>Share held by</th><th>Name of share holder</th><th>Entry</th>
                                     <th>Date</th><th>No. of shares</th><th>Rate</th>
                                 </tr>
                             </thead>
@@ -811,9 +813,8 @@
                                 @foreach (var entry in _shareEntries)
                                 {
                                     <tr class="cg-data-row">
-                                        <td>@ShareHolderLabel(entry.HolderKind)</td>
-                                        <td>@(entry.HolderKind == ShareHolderKind.Self ? _effectiveMember!.FullName : entry.HolderName)</td>
-                                        <td class="mono">@(string.IsNullOrWhiteSpace(entry.HolderNin) ? "—" : entry.HolderNin)</td>
+                                        <td>@ShareHolderLabel(entry)</td>
+                                        <td>@(entry.IsSelf ? _effectiveMember!.FullName : entry.HolderName)</td>
                                         <td>@ShareEntryLabel(entry.EntryKind)</td>
                                         <td class="mono">@(entry.TransactionDate is { } d ? d.ToString("dd/MM/yyyy") : "—")</td>
                                         <td class="mono">@entry.NumberOfShares.ToString("N0")</td>

@@ -124,9 +124,9 @@ public partial class InsiderReconciliationReport
                     var nin = entry.HolderNin?.Trim();
                     if (string.IsNullOrWhiteSpace(nin)) continue;
 
-                    var holder = entry.HolderKind == ShareHolderKind.Self
+                    var holder = entry.IsSelf
                         ? declarant
-                        : entry.HolderName ?? $"{entry.HolderKind} of {declarant}";
+                        : entry.HolderName ?? $"{entry.Relationship} of {declarant}";
 
                     declared.TryGetValue(nin, out var running);
 

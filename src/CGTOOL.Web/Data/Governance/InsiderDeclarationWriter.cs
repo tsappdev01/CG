@@ -91,7 +91,8 @@ public class InsiderDeclarationWriter(IStoredProcedureExecutor sp) : IInsiderDec
     public Task<int> InsertShareEntryAsync(int insiderDeclarationId, InsiderDeclarationShareEntry entry) => sp.InsertAsync(
         "dbo.usp_InsiderDeclarationShareEntry_Insert",
         new SqlParameter("@InsiderDeclarationId", insiderDeclarationId),
-        new SqlParameter("@HolderKind", (int)entry.HolderKind),
+        new SqlParameter("@IsSelf", entry.IsSelf),
+        new SqlParameter("@Relationship", (int)entry.Relationship),
         new SqlParameter("@HolderName", (object?)entry.HolderName ?? DBNull.Value),
         new SqlParameter("@HolderNin", (object?)entry.HolderNin ?? DBNull.Value),
         new SqlParameter("@EntryKind", (int)entry.EntryKind),

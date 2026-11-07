@@ -144,16 +144,11 @@ public partial class InsiderDetailReport
             [new("Held by", 12), new("Name", 24), new("NIN", 16), new("Entry", 18),
              new("Date", 12), new("Shares", 9, Numeric: true), new("Rate", 9, Numeric: true)],
             [.. d.ShareEntries
-                .OrderBy(e => e.HolderKind).ThenBy(e => e.EntryKind).ThenBy(e => e.TransactionDate)
+                .OrderByDescending(e => e.IsSelf).ThenBy(e => e.Relationship).ThenBy(e => e.EntryKind).ThenBy(e => e.TransactionDate)
                 .Select(e => new[]
                 {
-                    e.HolderKind switch
-                    {
-                        ShareHolderKind.Self => "Self",
-                        ShareHolderKind.Spouse => "Spouse",
-                        _ => "Relative",
-                    },
-                    e.HolderKind == ShareHolderKind.Self ? declarantName : e.HolderName ?? "—",
+                    e.IsSelf ? "Self" : RelationshipLabel(e.Relationship),
+                    e.IsSelf ? declarantName : e.HolderName ?? "—",
                     e.HolderNin ?? "—",
                     e.EntryKind switch
                     {

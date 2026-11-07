@@ -2258,6 +2258,10 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasMaxLength(260)
                         .HasColumnType("nvarchar(260)");
 
+                    b.Property<string>("FilePath")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<int>("RecordCount")
                         .HasColumnType("int");
 

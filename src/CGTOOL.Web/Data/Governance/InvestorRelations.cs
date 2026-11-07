@@ -17,6 +17,13 @@ public class ShareholderRegisterUpload
     [Required, MaxLength(260)]
     public string FileName { get; set; } = string.Empty;
 
+    /// <summary>Where the uploaded workbook itself was kept, under wwwroot. The parsed rows are
+    /// what the register is read from, but a reconciliation argues with the source: "the register
+    /// says 81,809,074" is answered by opening the file that figure came out of, not by the row it
+    /// was parsed into. Null for uploads made before the file was retained.</summary>
+    [MaxLength(300)]
+    public string? FilePath { get; set; }
+
     public int RecordCount { get; set; }
 
     public DateTime UploadedAtUtc { get; set; } = DateTime.UtcNow;

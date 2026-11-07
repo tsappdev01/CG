@@ -1567,13 +1567,15 @@ CREATE OR ALTER PROCEDURE dbo.usp_ShareholderRegisterUpload_Insert
     @FileName nvarchar(260),
     @RecordCount int,
     @UploadedByName nvarchar(160),
+    -- Defaulted, so the procedure still answers a caller that predates the kept file.
+    @FilePath nvarchar(300) = NULL,
     @NewId int OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.ShareholderRegisterUploads (AsOnDate, FileName, RecordCount, UploadedAtUtc, UploadedByName)
-    VALUES (@AsOnDate, @FileName, @RecordCount, SYSUTCDATETIME(), @UploadedByName);
+    INSERT INTO dbo.ShareholderRegisterUploads (AsOnDate, FileName, FilePath, RecordCount, UploadedAtUtc, UploadedByName)
+    VALUES (@AsOnDate, @FileName, @FilePath, @RecordCount, SYSUTCDATETIME(), @UploadedByName);
 
     SET @NewId = SCOPE_IDENTITY();
 END

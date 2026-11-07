@@ -196,6 +196,13 @@
                 <InputFile OnChange="OnFileSelectedAsync" accept=".xlsx" disabled="@(_reading || _uploading)" />
             </label>
 
+            @* The parser reads columns by name, so a file from the market parses whatever order it
+               arrives in. Someone building one by hand has no such luck: they find out what the
+               headers must be by uploading and being told the header row could not be found. *@
+            <div class="cg-actions">
+                <button type="button" class="cg-action-btn" @onclick="DownloadTradingTemplateAsync">Download blank template</button>
+            </div>
+
             @if (_reading)
             {
                 <p class="cg-subtitle">Reading file… @_readProgress%</p>

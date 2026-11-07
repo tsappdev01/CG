@@ -8,6 +8,8 @@
 @inject ToastService Toasts
 @inject IJSRuntime JS
 @inject Branding Branding
+@inject IWebHostEnvironment Env
+@inject ILogger<ShareholderRegisterPage> Logger
 
 <PageTitle>Share Register</PageTitle>
 
@@ -152,6 +154,13 @@
                 <InputFile OnChange="OnFileSelectedAsync" accept=".xlsx" disabled="@(_reading || _uploading)" />
             </label>
 
+            @* The parser reads columns by name, so a file from the market parses whatever order it
+               arrives in. Someone building one by hand has no such luck: they find out what the
+               headers must be by uploading and being told the header row could not be found. *@
+            <div class="cg-actions">
+                <button type="button" class="cg-action-btn" @onclick="DownloadRegisterTemplateAsync">Download blank template</button>
+            </div>
+
             @if (_reading)
             {
                 <p class="cg-subtitle">Reading file… @_readProgress%</p>
@@ -184,7 +193,18 @@
                         {
                             <tr class="cg-data-row">
                                 <td class="mono">@u.AsOnDate.ToString("dd/MM/yyyy")</td>
-                                <td>@u.FileName</td>
+                                <td>
+                                    @* Linked when the file was kept. Older uploads predate that and
+                                       show the name alone, which is what is known about them. *@
+                                    @if (u.FilePath is { Length: > 0 } kept)
+                                    {
+                                        <a href="@kept" target="_blank" rel="noopener">@u.FileName</a>
+                                    }
+                                    else
+                                    {
+                                        @u.FileName
+                                    }
+                                </td>
                                 <td class="mono">@u.RecordCount.ToString("N0")</td>
                                 <td class="mono">@u.UploadedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm")</td>
                                 <td>@u.UploadedByName</td>

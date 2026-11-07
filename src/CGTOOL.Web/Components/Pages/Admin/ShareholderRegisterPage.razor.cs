@@ -225,6 +225,7 @@ public partial class ShareholderRegisterPage
         _parseError = null;
         _parsedRecords = null;
         _parsedFileName = null;
+        _parsedBytes = null;
 
         var file = e.File;
         if (!file.Name.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
@@ -263,6 +264,10 @@ public partial class ShareholderRegisterPage
             _parsedSkipped = result.SkippedRows;
             _parsedFileName = file.Name;
 
+            // Held until the upload is confirmed, not written now: a file read and then abandoned
+            // at the preview should leave nothing behind.
+            _parsedBytes = memory.ToArray();
+
             if (_parsedRecords.Count == 0)
             {
                 _parseError = "No usable rows were found in this file -- check that it has a Serial No./NIN header row and at least one data row.";
@@ -288,7 +293,8 @@ public partial class ShareholderRegisterPage
         try
         {
             var actor = await CurrentActorAsync();
-            var uploadId = await Writer.InsertUploadAsync(_uploadAsOnDate, _parsedFileName, _parsedRecords.Count, actor);
+            var filePath = await KeepUploadedFileAsync();
+            var uploadId = await Writer.InsertUploadAsync(_uploadAsOnDate, _parsedFileName, filePath, _parsedRecords.Count, actor);
             _saveProgress = 40;
             StateHasChanged();
 
@@ -314,6 +320,51 @@ public partial class ShareholderRegisterPage
         {
             _uploading = false;
             _saveProgress = 0;
+        }
+    }
+
+    /// <summary>A blank workbook with the headers this upload is read by, so a file built by hand
+    /// starts from the right column names rather than discovering them through a failed upload.</summary>
+    private async Task DownloadRegisterTemplateAsync()
+    {
+        var bytes = InvestorRelationsTemplates.ShareRegister();
+        await JS.InvokeVoidAsync("downloadFileFromBase64", "Share-Register-template.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Convert.ToBase64String(bytes));
+    }
+
+    private byte[]? _parsedBytes;
+
+    /// <summary>Files the uploaded workbook itself alongside the rows parsed out of it.
+    ///
+    /// A register is read from the parsed rows, but a reconciliation argues with the source: a
+    /// figure that looks wrong is settled by opening the file it came out of, and "we uploaded it
+    /// in September" is not a file. Kept under its own as-on date so the folder reads as the
+    /// upload history does.
+    ///
+    /// Returns null, rather than failing the upload, if the file cannot be written. The rows are
+    /// the register; the copy is evidence, and losing the evidence is not a reason to lose the
+    /// register with it -- the audit entry says it happened.</summary>
+    private async Task<string?> KeepUploadedFileAsync()
+    {
+        if (_parsedBytes is null || _parsedFileName is null) return null;
+
+        try
+        {
+            var directory = Path.Combine(Env.WebRootPath, "uploads", "investor-relations", "share-register");
+            Directory.CreateDirectory(directory);
+
+            // The member's own file name is not used on disk: it comes from their machine and two
+            // uploads a month apart are both called "SHARE REGISTERED.xlsx". The original name is
+            // on the history row beside the link.
+            var fileName = $"{_uploadAsOnDate:yyyy-MM-dd}-{Guid.NewGuid():N}.xlsx";
+            await File.WriteAllBytesAsync(Path.Combine(directory, fileName), _parsedBytes);
+
+            return $"/uploads/investor-relations/share-register/{fileName}";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Keeping the uploaded Share Register file failed; the rows were still saved.");
+            return null;
         }
     }
 }

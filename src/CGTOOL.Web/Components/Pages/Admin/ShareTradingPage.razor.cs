@@ -384,4 +384,13 @@ public partial class ShareTradingPage
             _saveProgress = 0;
         }
     }
+
+    /// <summary>A blank workbook with the headers this upload is read by, so a file built by hand
+    /// starts from the right column names rather than discovering them through a failed upload.</summary>
+    private async Task DownloadTradingTemplateAsync()
+    {
+        var bytes = InvestorRelationsTemplates.ShareTrading();
+        await JS.InvokeVoidAsync("downloadFileFromBase64", "Shares-Trading-template.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Convert.ToBase64String(bytes));
+    }
 }

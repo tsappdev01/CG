@@ -671,4 +671,43 @@ public partial class DeclarationsSetupPage
         var state = await AuthState.GetAuthenticationStateAsync();
         return state.User.Identity?.Name ?? "unknown";
     }
+
+    // ---- e-mail preview -------------------------------------------------------------------
+
+    /// <summary>Whether the preview panel beside the form is showing.</summary>
+    private bool _showPreview;
+
+    /// <summary>The template with its placeholders filled in, ready for the preview iframe.</summary>
+    private string _previewBody = string.Empty;
+
+    /// <summary>Who the preview is addressed to -- the signed-in administrator, because a preview
+    /// of a reminder is most useful read as the person who would receive it.</summary>
+    private string _previewTo = string.Empty;
+
+    /// <summary>The sender as it will appear. The app does not choose it: Database Mail on the SQL
+    /// Server does, from the profile named in Smtp:SqlDbMailProfile, so this says which profile
+    /// rather than inventing an address. Smtp:FromAddress, if set, is shown instead -- it is for
+    /// display only and changes nothing about where the mail actually comes from.</summary>
+    private string PreviewFrom =>
+        Config["Smtp:FromAddress"] is { Length: > 0 } from
+            ? from
+            : $"(whatever the Database Mail profile \"{Config["Smtp:SqlDbMailProfile"]}\" sends as)";
+
+    private async Task ShowPreviewAsync()
+    {
+        if (_setup is null) return;
+
+        _previewTo = await CurrentActorAsync();
+
+        // Through the same method the reminder service uses, so the preview cannot drift from what
+        // actually gets sent. The due date is the one entered on the Send Notification tab.
+        _previewBody = DeclarationCycleReminderHostedService.ApplyPlaceholders(
+            _setup.EmailBody ?? string.Empty,
+            _previewTo,
+            LocalDateToUtc(_dueDate));
+
+        _showPreview = true;
+    }
+
+    private void ClosePreview() => _showPreview = false;
 }

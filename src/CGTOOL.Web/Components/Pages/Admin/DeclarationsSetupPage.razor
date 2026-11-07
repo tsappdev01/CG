@@ -12,6 +12,7 @@
 @inject ToastService Toasts
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject IConfiguration Config
 
 <PageTitle>@PageHeading</PageTitle>
 
@@ -64,6 +65,7 @@
 
         @if (_activeTab == "template")
         {
+            <div class="cg-template-split @(_showPreview ? "has-preview" : "")">
             <EditForm Model="_setup" OnValidSubmit="SaveAsync" class="cg-member-form cg-member-page">
                 <DataAnnotationsValidator />
 
@@ -121,8 +123,40 @@
 
                 <div class="cg-actions">
                     <button type="submit" class="cg-action-btn cg-good">Save</button>
+                    @* Previews what is in the box right now, saved or not, so the template can be
+                       checked before it is committed. *@
+                    <button type="button" class="cg-action-btn" @onclick="ShowPreviewAsync">Preview email</button>
                 </div>
             </EditForm>
+
+            @if (_showPreview && _setup is not null)
+            {
+                <aside class="cg-mail-preview" aria-label="Email preview">
+                    <div class="cg-mail-preview-head">
+                        <h3>Preview</h3>
+                        <button type="button" class="cg-modal-close" aria-label="Close preview" @onclick="ClosePreview">&times;</button>
+                    </div>
+
+                    <dl class="cg-mail-envelope">
+                        <dt>From</dt><dd>@PreviewFrom</dd>
+                        <dt>To</dt><dd>@_previewTo</dd>
+                        <dt>Subject</dt><dd>@_setup.EmailSubject</dd>
+                    </dl>
+
+                    @* An iframe, not @((MarkupString)...): the template carries its own <body>
+                       styling and full-width tables, and rendering it inline would let that loose
+                       on the admin page. sandbox="" also stops anything in an admin-authored
+                       template running script against this page. *@
+                    <iframe class="cg-mail-preview-frame" title="Email body" sandbox="" srcdoc="@_previewBody"></iframe>
+
+                    <p class="cg-subtitle cg-mail-preview-note">
+                        Placeholders are filled the same way the reminder service fills them, with your
+                        name and the due date from the Send Notification tab. The sender is set by
+                        Database Mail on the SQL Server, not by this app.
+                    </p>
+                </aside>
+            }
+            </div>
         }
         else if (_activeTab == "send")
         {

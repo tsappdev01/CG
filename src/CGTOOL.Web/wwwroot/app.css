@@ -4005,3 +4005,48 @@ button.cg-appbar-user {
     margin: 12px 28px 0; padding: 9px 12px; font-size: 13px; font-weight: 650;
     color: #991B1B; background: #FDECEC; border-left: 3px solid #DC2626; border-radius: 3px;
 }
+
+/* ---- Declaration Notifications: the e-mail preview beside the template ---------------------
+   The setup card is a fixed reading width, which leaves the right of a wide screen empty. The
+   preview goes there rather than into a modal, so the template and what it produces are on
+   screen together and an edit can be checked without opening and closing anything. Below
+   1200px there is no room for two columns and it drops underneath instead. */
+.cg-template-split { display: block; }
+/* 660px, not less: the template is a fixed 600px table, which is the e-mail convention, and a
+   narrower column clips the body rather than reflowing it. 660 leaves room for the frame's own
+   scrollbar too. */
+.cg-template-split.has-preview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 660px); gap: 22px; align-items: start; }
+
+.cg-mail-preview {
+    background: var(--cg-surface);
+    border: 1px solid var(--cg-line);
+    border-radius: 10px;
+    overflow: hidden;
+    position: sticky;
+    top: 16px;
+}
+.cg-mail-preview-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--cg-line); background: var(--cg-surface-sunken);
+}
+.cg-mail-preview-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
+
+/* The envelope, so the preview reads as a received message rather than as loose HTML. */
+.cg-mail-envelope {
+    display: grid; grid-template-columns: 72px minmax(0, 1fr);
+    gap: 4px 12px; margin: 0; padding: 14px 16px;
+    border-bottom: 1px solid var(--cg-line); font-size: 13px;
+}
+.cg-mail-envelope dt { color: var(--cg-ink-muted); font-weight: 600; }
+.cg-mail-envelope dd { margin: 0; color: var(--cg-ink); overflow-wrap: anywhere; }
+
+/* Fixed height with its own scrollbar: the body is a whole HTML document and letting it set the
+   height would push the form's own controls off screen. */
+.cg-mail-preview-frame { display: block; width: 100%; height: 560px; border: 0; background: #f2f2f2; }
+
+.cg-mail-preview-note { margin: 0; padding: 12px 16px; border-top: 1px solid var(--cg-line); font-size: 12px; }
+
+@media (max-width: 1359.98px) {
+    .cg-template-split.has-preview { grid-template-columns: minmax(0, 1fr); }
+    .cg-mail-preview { position: static; }
+}

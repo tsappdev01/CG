@@ -767,6 +767,25 @@
                     <div class="cg-toast cg-toast-success" style="margin-bottom:12px;">Declaration saved</div>
                 }
                 <h2>@(_loadedAsSubmittedEdit ? "Are you sure you want to proceed for editing your declaration?" : "Are you sure you want to submit below declaration form?")</h2>
+                @{ var reviewPeriod = PeriodRange(); }
+                <h2 class="cg-section-heading">Declarant</h2>
+                <div class="cg-table-wrap">
+                    <table>
+                        <tbody>
+                            <tr><th>Name</th><td>@_effectiveMember!.FullName</td></tr>
+                            <tr><th>Entity</th><td>@(_effectiveMember.Company?.Name ?? "—")</td></tr>
+                            <tr><th>Declaration type</th><td>@MemberDeclarationTypes.Label(_effectiveMember.DeclarationType, Branding.ParentHoldingCompany)</td></tr>
+                            <tr><th>Period</th><td class="mono">@PeriodLabel() — @reviewPeriod.From.ToString("dd/MM/yyyy") to @reviewPeriod.To.ToString("dd/MM/yyyy")</td></tr>
+                            <tr><th>DFM National Investor No. (NIN)</th><td class="mono">@(_hasNin && !string.IsNullOrWhiteSpace(_ninNumber) ? _ninNumber : "—")</td></tr>
+                            @if (Impersonation.ActingMemberId is not null)
+                            {
+                                <tr><th>Submitted</th><td>On behalf of @_effectiveMember.FullName</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2 class="cg-section-heading">Declared</h2>
                 <div class="cg-table-wrap">
                     <table>
                         <tbody>
@@ -847,6 +866,36 @@
                         </table>
                     </div>
                 }
+
+                @* What is attached. The review listed every answer and none of the evidence, so the
+                   last thing someone saw before signing did not mention the documents they had
+                   just uploaded -- or, worse, had not. *@
+                <h2 class="cg-section-heading">Documents attached</h2>
+                <div class="cg-table-wrap">
+                    <table>
+                        <thead><tr><th>Document</th><th>Number</th><th>Expiry</th><th>Attached</th></tr></thead>
+                        <tbody>
+                            @foreach (var line in ReviewDocuments())
+                            {
+                                <tr class="cg-data-row">
+                                    <td>@line.Name</td>
+                                    <td class="mono">@line.Number</td>
+                                    <td class="mono">@line.Expiry</td>
+                                    <td>
+                                        @if (line.Attached)
+                                        {
+                                            <span class="cg-pill cg-pill-done">Yes</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="cg-pill @(line.Required ? "cg-pill-required" : "")">@(line.Required ? "Missing" : "Not attached")</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
 
                 <p class="cg-subtitle">Please review carefully. You can still edit this declaration from Declarations until the due date (<b class="mono">@_run!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</b>).</p>
 

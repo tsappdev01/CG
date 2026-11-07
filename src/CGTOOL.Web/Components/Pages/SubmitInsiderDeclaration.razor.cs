@@ -925,6 +925,48 @@ public partial class SubmitInsiderDeclaration
 
     /// <summary>Documents on this screen whose expiry date has passed. The trade licence counts only
     /// when one is attached -- it is optional, and a member with no licence has nothing to expire.</summary>
+    private sealed record ReviewDocumentLine(string Name, string Number, string Expiry, bool Attached, bool Required);
+
+    /// <summary>What the review page lists under "Documents attached": every document this
+    /// declaration asks for, whether it is there, and the number and expiry it carries.
+    ///
+    /// Built from the same Document Center rule the cards are, so a document switched off is not
+    /// listed as missing from a form that never asked for it.</summary>
+    private List<ReviewDocumentLine> ReviewDocuments()
+    {
+        var lines = new List<ReviewDocumentLine>();
+
+        void BuiltIn(MemberDocumentKind kind, string fallback, string? path, string? number, DateTime? expiry)
+        {
+            if (!ShowDocument(kind)) return;
+
+            lines.Add(new ReviewDocumentLine(
+                DocumentName(kind, fallback),
+                string.IsNullOrWhiteSpace(number) ? "—" : number,
+                expiry is { } on ? on.ToString("dd/MM/yyyy") : "—",
+                !string.IsNullOrWhiteSpace(path),
+                RequiredDocument(kind)));
+        }
+
+        BuiltIn(MemberDocumentKind.EmiratesId, "Emirates ID", _emiratesIdPath, _emiratesIdNumber, _emiratesIdExpiryDate);
+        BuiltIn(MemberDocumentKind.Passport, "Passport", _passportPath, _passportNumber, _passportExpiryDate);
+        BuiltIn(MemberDocumentKind.TradeLicence, "Trade licence", _tradeLicencePath, _tradeLicenceNumber, _tradeLicenceExpiryDate);
+        BuiltIn(MemberDocumentKind.Other, "Other documents", _otherDocumentPath, null, null);
+
+        foreach (var type in AddedDocumentTypes)
+        {
+            var added = AddedDocumentFor(type.Id);
+            lines.Add(new ReviewDocumentLine(
+                type.Name,
+                string.IsNullOrWhiteSpace(added.DocumentNumber) ? "—" : added.DocumentNumber,
+                added.ExpiryDate is { } on ? on.ToString("dd/MM/yyyy") : "—",
+                !string.IsNullOrWhiteSpace(added.FilePath),
+                type.RequirementFor(Scope) == DocumentRequirement.Required));
+        }
+
+        return lines;
+    }
+
     private List<string> ExpiredDocuments()
     {
         var today = DateTime.UtcNow.Date;

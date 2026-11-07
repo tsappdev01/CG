@@ -42,7 +42,7 @@ internal class DeclarationPdfWriter(
     /// <summary>Where content starts under the header band. 16 rather than 24: the band already
     /// carries its own breathing room, and eight points at the top of every page is eight points
     /// not available at the bottom, where a row gets pushed onto a sheet of its own.</summary>
-    private const double ContentTop = HeaderHeight + 16;
+    private const double ContentTop = HeaderHeight + 14;
 
     private readonly XFont _title = new("DejaVu Sans", 15, XFontStyleEx.Bold);
     private readonly XFont _subtitle = new("DejaVu Sans", 9.5, XFontStyleEx.Regular);
@@ -143,13 +143,23 @@ internal class DeclarationPdfWriter(
     /// <summary>What the report was filtered to, printed under the figures. A printed report that
     /// does not say what it excluded is not evidence of anything -- the reader cannot tell an empty
     /// result from a filter that hid everything.</summary>
+    /// <summary>What the report was filtered to, carried in the footer beside the timestamp rather
+    /// than drawn into the body.
+    ///
+    /// For a document of one sheet per person it is provenance, like the generated time: it
+    /// belongs to every page, not to the top of the first one, where it was pushing the first
+    /// declarant onto a sheet of their own and leaving a page holding a single line of text.</summary>
+    private string? _filterNote;
+
+    public void FilterNote(string text) => _filterNote = string.IsNullOrWhiteSpace(text) ? null : text;
+
     public void FilterStatement(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
 
-        EnsureSpace(20);
-        _gfx.DrawString(text, _footer, new XSolidBrush(Muted), Margin, _y + 8);
-        _y += 18;
+        EnsureSpace(16);
+        _gfx.DrawString(text, _footer, new XSolidBrush(Muted), Margin, _y + 7);
+        _y += 14;
     }
 
     /// <summary>A run of ordinary prose -- the sentence a declaration makes about itself, which a
@@ -532,10 +542,12 @@ internal class DeclarationPdfWriter(
             // A page that belongs to someone is numbered within their sheets, up in the header. A
             // document-wide count underneath it would be a second page number saying something
             // else, which is how a printed set gets collated wrongly.
+            var sheet = paging.ContainsKey(i)
+                ? $"Generated {DateTime.Now:dd MMM yyyy HH:mm}    Sheet {i + 1} of {total}"
+                : $"Generated {DateTime.Now:dd MMM yyyy HH:mm}    Page {i + 1} of {total}";
+
             gfx.DrawString(
-                paging.ContainsKey(i)
-                    ? $"Generated {DateTime.Now:dd MMM yyyy HH:mm}    Sheet {i + 1} of {total}"
-                    : $"Generated {DateTime.Now:dd MMM yyyy HH:mm}    Page {i + 1} of {total}",
+                _filterNote is { Length: > 0 } filters ? $"{sheet}    {filters}" : sheet,
                 _footer, new XSolidBrush(Muted), Margin, height - FooterHeight + 32);
         }
     }

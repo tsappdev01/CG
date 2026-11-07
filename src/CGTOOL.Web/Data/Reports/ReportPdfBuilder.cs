@@ -36,14 +36,28 @@ public static class ReportPdfBuilder
 
         writer.NewPage();
 
-        if (report.Subtitle is { Length: > 0 } subtitle)
+        // A detail report's pages are each about one person, and the figures above them are about
+        // the set: how many declared, how many hold a NIN. On screen that is a useful summary at
+        // the top of a list. On a sheet handed to someone about one declarant it is a count of
+        // other people, and it was costing the first of them room on their own page.
+        if (!report.IsDetail)
         {
-            if (report.SubtitleTone == ReportTone.Warning) writer.WarningParagraph(subtitle);
-            else writer.Paragraph(subtitle);
+            if (report.Subtitle is { Length: > 0 } subtitle)
+            {
+                if (report.SubtitleTone == ReportTone.Warning) writer.WarningParagraph(subtitle);
+                else writer.Paragraph(subtitle);
+            }
+
+            writer.StatBand([.. report.Stats.Select(s => (s.Label, s.Value, s.Sub))]);
         }
 
-        writer.StatBand([.. report.Stats.Select(s => (s.Label, s.Value, s.Sub))]);
-        writer.FilterStatement($"Filters: {(report.FilterStatement is { Length: > 0 } f ? f : "none")}");
+        // The filters stay on both kinds -- a sheet that does not say what it was filtered to
+        // cannot be checked against anything -- but in different places. A table's filters head the
+        // table. A detail report's go in the footer of every sheet, so the first declarant starts
+        // at the top of page one rather than behind a line of preamble.
+        var filters = $"Filters: {(report.FilterStatement is { Length: > 0 } f ? f : "none")}";
+        if (report.IsDetail) writer.FilterNote(filters);
+        else writer.FilterStatement(filters);
 
         if (report.IsDetail)
         {
@@ -54,7 +68,9 @@ public static class ReportPdfBuilder
                 // harder to read than a short page. The exception is the first one, which joins
                 // the cover when it fits -- a filter narrowed to a single declarant produced three
                 // sheets, one of them a line of figures and the other two half empty.
-                if (!first || Height(writer, record) > writer.Remaining) writer.NewPage();
+                // The first one starts on the page already open; the rest each start a new one.
+                if (!first) writer.NewPage();
+                else if (Height(writer, record) > writer.Remaining) writer.NewPage();
                 first = false;
 
                 writer.BeginRecord(record.Title);

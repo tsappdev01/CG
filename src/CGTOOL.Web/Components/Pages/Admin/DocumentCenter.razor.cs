@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Components;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using CGTOOL.Web.Data;
@@ -12,23 +11,32 @@ namespace CGTOOL.Web.Components.Pages.Admin;
 /// declaration -- two lists that could disagree with each other and neither changeable without a
 /// redeploy. Both now render from this table.
 ///
-/// Edits save as they are made, like the nav menu in Settings, rather than collecting into a Save
-/// button. There are a handful of rows and each change is one field; a dirty-state machine over
-/// that would be more to get wrong than it saves.</summary>
+/// Laid out like Job Titles and the other Control Panel lists: the row reads as text, Status is the
+/// toggle, and everything else is behind Edit. It began as editable inputs sitting in the table,
+/// which saved a click and looked like nothing else in the application.
+///
+/// No search box or pager, unlike Job Titles. That list runs to 461 rows; this one is the four
+/// built-in documents plus whatever has been added, and a filter bar over five rows is furniture.</summary>
 public partial class DocumentCenter
 {
     private List<DocumentType>? _types;
 
     /// <summary>How many documents exist of each type, for the "On file" column and to explain why
-    /// Remove is refused. Only added types can be counted this way -- the built-ins' documents are
-    /// identified by Kind and carry no DocumentTypeId, so they are counted separately.</summary>
+    /// Remove is refused. Only added types can be counted on the type id -- the built-ins'
+    /// documents are identified by Kind and carry none, so they are counted separately.</summary>
     private Dictionary<int, int> _uploadCounts = [];
 
-    private bool _adding;
     private bool _saving;
-    private string _newName = string.Empty;
-    private string? _newDescription;
-    private bool _newMandatory;
+
+    /// <summary>The row being edited, or a blank one with Id 0 when adding. The form fields are
+    /// held separately so cancelling leaves the list untouched -- binding straight to the row
+    /// would rewrite the table as the person typed, and leave the edits behind on Cancel.</summary>
+    private DocumentType? _editing;
+    private string _formName = string.Empty;
+    private string? _formDescription;
+    private bool _formMandatory;
+
+    private DocumentType? _pendingJustify;
     private DocumentType? _pendingDelete;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -50,7 +58,7 @@ public partial class DocumentCenter
         _uploadCounts = addedCounts.ToDictionary(c => c.TypeId, c => c.Count);
 
         // The built-ins' documents predate this table and are keyed by Kind, so their count has to
-        // come the other way round. Without this the three best-known rows would all read "0".
+        // come the other way round. Without this the three best-known rows would all read "none".
         var builtInCounts = await db.MemberDocuments
             .Where(d => d.DocumentTypeId == null)
             .GroupBy(d => d.Kind)
@@ -65,95 +73,33 @@ public partial class DocumentCenter
     }
 
     private string UploadCount(int typeId) =>
-        _uploadCounts.TryGetValue(typeId, out var count) && count > 0 ? $"{count} on file" : "none";
+        _uploadCounts.TryGetValue(typeId, out var count) && count > 0 ? count.ToString() : "0";
 
-    private async Task RenameAsync(DocumentType type, string? value)
-    {
-        var name = (value ?? string.Empty).Trim();
-        if (name.Length == 0)
-        {
-            Toasts.ShowError("A document needs a name.");
-            await LoadAsync();
-            return;
-        }
-
-        if (name == type.Name) return;
-
-        var previous = type.Name;
-        type.Name = name;
-        await SaveAsync(type, AuditAction.Update, $"Renamed document type '{previous}' to '{name}'.");
-    }
-
-    private async Task RedescribeAsync(DocumentType type, string? value)
-    {
-        var description = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-        if (description == type.Description) return;
-
-        type.Description = description;
-        await SaveAsync(type, AuditAction.Update, $"Changed what is asked for under '{type.Name}'.");
-    }
-
-    /// <summary>Takes the raw select value rather than a bool because the comparison cannot live
-    /// in the markup: a string literal inside a Razor attribute ends the attribute.</summary>
-    private async Task SetMandatoryAsync(DocumentType type, object? value)
-    {
-        var mandatory = value?.ToString() == "required";
-        if (mandatory == type.IsMandatory) return;
-
-        type.IsMandatory = mandatory;
-        await SaveAsync(type, AuditAction.Update,
-            $"'{type.Name}' is now {(mandatory ? "Required" : "Optional")}.");
-    }
-
-    private async Task SetActiveAsync(DocumentType type, object? value)
-    {
-        var active = value?.ToString() == "active";
-        if (active == type.IsActive) return;
-
-        type.IsActive = active;
-        await SaveAsync(type, active ? AuditAction.Reactivate : AuditAction.Deactivate,
-            $"'{type.Name}' is now {(active ? "Active" : "Inactive")}.");
-    }
-
-    private async Task SaveAsync(DocumentType type, AuditAction action, string message)
-    {
-        try
-        {
-            await DocumentTypeWriter.UpdateAsync(type);
-        }
-        catch (SqlException ex)
-        {
-            // The unique index on Name is the one a person can trip from here, by renaming a
-            // document to one that already exists. Say which rule was broken rather than letting a
-            // constraint name reach the screen.
-            Toasts.ShowError(ex.Number is 2601 or 2627
-                ? "Another document already has that name."
-                : ex.Message);
-            await LoadAsync();
-            return;
-        }
-
-        var state = await AuthState.GetAuthenticationStateAsync();
-        await AuditLog.LogAsync(
-            state.User.Identity?.Name ?? "unknown",
-            action, nameof(DocumentType), type.Id.ToString(), message);
-
-        Toasts.ShowSuccess(message);
-    }
+    // ---------- add and edit ----------
 
     private void StartAdd()
     {
-        _newName = string.Empty;
-        _newDescription = null;
-        _newMandatory = false;
-        _adding = true;
+        _editing = new DocumentType();
+        _formName = string.Empty;
+        _formDescription = null;
+        _formMandatory = false;
     }
 
-    private void CancelAdd() => _adding = false;
-
-    private async Task AddAsync()
+    private void Edit(DocumentType type)
     {
-        var name = _newName.Trim();
+        _editing = type;
+        _formName = type.Name;
+        _formDescription = type.Description;
+        _formMandatory = type.IsMandatory;
+    }
+
+    private void CancelEdit() => _editing = null;
+
+    private async Task SaveEditAsync()
+    {
+        if (_editing is null) return;
+
+        var name = _formName.Trim();
         if (name.Length == 0)
         {
             Toasts.ShowError("A document needs a name.");
@@ -163,38 +109,72 @@ public partial class DocumentCenter
         _saving = true;
         try
         {
-            // Last in the list rather than wherever the name sorts: a new document is the one thing
-            // on the screen whose place the person who added it already has in mind.
-            var sortOrder = (_types?.Count > 0 ? _types.Max(t => t.SortOrder) : 0) + 10;
+            var description = string.IsNullOrWhiteSpace(_formDescription) ? null : _formDescription.Trim();
+            var adding = _editing.Id == 0;
 
-            var type = new DocumentType
+            if (adding)
             {
-                Name = name,
-                Description = string.IsNullOrWhiteSpace(_newDescription) ? null : _newDescription.Trim(),
-                IsMandatory = _newMandatory,
-                IsActive = true,
-                SortOrder = sortOrder,
-            };
+                // Last in the list rather than wherever the name sorts: a new document is the one
+                // thing on the screen whose place the person who added it already has in mind.
+                var sortOrder = (_types?.Count > 0 ? _types.Max(t => t.SortOrder) : 0) + 10;
 
-            int newId;
-            try
-            {
-                newId = await DocumentTypeWriter.InsertAsync(type);
-            }
-            catch (SqlException ex) when (ex.Number is 2601 or 2627)
-            {
-                Toasts.ShowError("Another document already has that name.");
+                var type = new DocumentType
+                {
+                    Name = name,
+                    Description = description,
+                    IsMandatory = _formMandatory,
+                    IsActive = true,
+                    SortOrder = sortOrder,
+                };
+
+                int newId;
+                try
+                {
+                    newId = await DocumentTypeWriter.InsertAsync(type);
+                }
+                catch (SqlException ex) when (ex.Number is 2601 or 2627)
+                {
+                    Toasts.ShowError("Another document already has that name.");
+                    return;
+                }
+
+                await LogAsync(AuditAction.Create, newId,
+                    $"Added document type '{name}' ({(_formMandatory ? "Required" : "Optional")}).");
+
+                _editing = null;
+                Toasts.ShowSuccess($"'{name}' added. People will see it on My Workspace and on their declarations.");
+                await LoadAsync();
                 return;
             }
 
-            var state = await AuthState.GetAuthenticationStateAsync();
-            await AuditLog.LogAsync(
-                state.User.Identity?.Name ?? "unknown",
-                AuditAction.Create, nameof(DocumentType), newId.ToString(),
-                $"Added document type '{name}' ({(_newMandatory ? "Required" : "Optional")}).");
+            var previousName = _editing.Name;
+            _editing.Name = name;
+            _editing.Description = description;
+            _editing.IsMandatory = _formMandatory;
 
-            _adding = false;
-            Toasts.ShowSuccess($"'{name}' added. People will see it on My Workspace and on their declarations.");
+            try
+            {
+                await DocumentTypeWriter.UpdateAsync(_editing);
+            }
+            catch (SqlException ex)
+            {
+                // The unique index on Name is the one a person can trip from here, by renaming a
+                // document to one that already exists. Say which rule was broken rather than
+                // letting a constraint name reach the screen, and put the list back the way the
+                // database still has it.
+                Toasts.ShowError(ex.Number is 2601 or 2627
+                    ? "Another document already has that name."
+                    : ex.Message);
+                await LoadAsync();
+                return;
+            }
+
+            await LogAsync(AuditAction.Update, _editing.Id, previousName == name
+                ? $"Updated document type '{name}' ({(_formMandatory ? "Required" : "Optional")})."
+                : $"Renamed document type '{previousName}' to '{name}' ({(_formMandatory ? "Required" : "Optional")}).");
+
+            _editing = null;
+            Toasts.ShowSuccess($"'{name}' saved.");
             await LoadAsync();
         }
         finally
@@ -202,6 +182,40 @@ public partial class DocumentCenter
             _saving = false;
         }
     }
+
+    // ---------- active / inactive ----------
+
+    /// <summary>Justified like deactivating a job title. Switching a document off changes what
+    /// everyone in the organisation is asked for on their next declaration, which is the kind of
+    /// change the audit log should be able to answer "why" about.</summary>
+    private async Task ToggleActiveAsync(string justification)
+    {
+        if (_pendingJustify is null) return;
+
+        var type = _pendingJustify;
+        _pendingJustify = null;
+
+        type.IsActive = !type.IsActive;
+
+        try
+        {
+            await DocumentTypeWriter.UpdateAsync(type);
+        }
+        catch (SqlException ex)
+        {
+            Toasts.ShowError(ex.Message);
+            await LoadAsync();
+            return;
+        }
+
+        await LogAsync(type.IsActive ? AuditAction.Reactivate : AuditAction.Deactivate, type.Id,
+            $"'{type.Name}' is now {(type.IsActive ? "Active" : "Inactive")}.",
+            justification);
+
+        Toasts.ShowSuccess($"'{type.Name}' is now {(type.IsActive ? "Active" : "Inactive")}.");
+    }
+
+    // ---------- remove ----------
 
     private async Task DeleteAsync()
     {
@@ -223,11 +237,7 @@ public partial class DocumentCenter
                 return;
             }
 
-            var state = await AuthState.GetAuthenticationStateAsync();
-            await AuditLog.LogAsync(
-                state.User.Identity?.Name ?? "unknown",
-                AuditAction.Delete, nameof(DocumentType), type.Id.ToString(),
-                $"Removed document type '{type.Name}'.");
+            await LogAsync(AuditAction.Delete, type.Id, $"Removed document type '{type.Name}'.");
 
             _pendingDelete = null;
             Toasts.ShowSuccess($"'{type.Name}' removed.");
@@ -237,5 +247,14 @@ public partial class DocumentCenter
         {
             _saving = false;
         }
+    }
+
+    private async Task LogAsync(AuditAction action, int id, string details, string? justification = null)
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        await AuditLog.LogAsync(
+            state.User.Identity?.Name ?? "unknown",
+            action, nameof(DocumentType), id.ToString(), details,
+            justification: justification);
     }
 }

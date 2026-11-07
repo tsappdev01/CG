@@ -19,114 +19,117 @@
     }
     else
     {
-        <section class="cg-card">
-            <div class="cg-card-head">
-                <div>
-                    <span class="cg-card-title">User Documents</span>
-                    <span class="cg-subtitle">
-                        Shown on My Workspace and on the declaration forms. Required means a person
-                        cannot complete a declaration without one; Inactive stops it being asked for
-                        at all, without losing what has already been uploaded.
-                    </span>
-                </div>
-                <button type="button" class="cg-action-btn cg-good" @onclick="StartAdd">+ Add document</button>
-            </div>
+        <div class="cg-actions">
+            <button type="button" class="cg-action-btn cg-good" @onclick="StartAdd">+ Add document</button>
+        </div>
 
-            <div class="cg-table-wrap">
-                <table class="cg-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">Document name</th>
-                            <th scope="col">Requirement</th>
-                            <th scope="col">Status</th>
-                            <th scope="col">On file</th>
-                            <th scope="col"></th>
+        <p class="cg-subtitle">
+            Shown on My Workspace and on the declaration forms. <b>Required</b> means a person cannot
+            complete a declaration without one. Switching a document off stops it being asked for,
+            without losing anything already uploaded against it.
+        </p>
+
+        <div class="cg-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Requirement</th>
+                        <th scope="col">On file</th>
+                        <th scope="col">Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var type in _types)
+                    {
+                        <tr class="cg-data-row">
+                            <td>
+                                @type.Name
+                                @if (type.IsBuiltIn)
+                                {
+                                    <span class="cg-pill" title="Read automatically. Can be renamed or switched off, but not removed.">Built-in</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(type.Description))
+                                {
+                                    <p class="cg-subtitle">@type.Description</p>
+                                }
+                            </td>
+                            <td>
+                                <span class="cg-pill @(type.IsMandatory ? "cg-pill-required" : "")">@(type.IsMandatory ? "Required" : "Optional")</span>
+                            </td>
+                            <td class="mono">@UploadCount(type.Id)</td>
+                            <td><ToggleSwitch Value="type.IsActive" ValueChanged="() => _pendingJustify = type" /></td>
+                            <td>
+                                <button type="button" class="cg-action-btn" @onclick="() => Edit(type)">Edit</button>
+                                @if (!type.IsBuiltIn)
+                                {
+                                    <button type="button" class="cg-action-btn cg-critical" @onclick="() => _pendingDelete = type">Remove</button>
+                                }
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var type in _types)
-                        {
-                            <tr class="@(type.IsActive ? "" : "cg-row-muted")">
-                                <td>
-                                    <input class="cg-input" maxlength="120" value="@type.Name"
-                                           aria-label="@($"Name of {type.Name}")"
-                                           @onchange="e => RenameAsync(type, (string?)e.Value)" />
-                                    <input class="cg-input cg-input-subtle" maxlength="300" value="@type.Description"
-                                           placeholder="What is wanted (optional)"
-                                           aria-label="@($"Description of {type.Name}")"
-                                           @onchange="e => RedescribeAsync(type, (string?)e.Value)" />
-                                </td>
-                                <td>
-                                    <select class="cg-input" value="@(type.IsMandatory ? "required" : "optional")"
-                                            aria-label="@($"Requirement for {type.Name}")"
-                                            @onchange="e => SetMandatoryAsync(type, e.Value)">
-                                        <option value="required">Required</option>
-                                        <option value="optional">Optional</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <select class="cg-input" value="@(type.IsActive ? "active" : "inactive")"
-                                            aria-label="@($"Status of {type.Name}")"
-                                            @onchange="e => SetActiveAsync(type, e.Value)">
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <span class="cg-result-count">@UploadCount(type.Id)</span>
-                                </td>
-                                <td>
-                                    @if (type.IsBuiltIn)
-                                    {
-                                        @* Built-ins are the name over code written for that document -- the
-                                           capture wiring and the declaration's own columns. Renaming and
-                                           switching off are the whole of what can safely be done to them. *@
-                                        <span class="cg-pill" title="Read automatically. Can be renamed or switched off, but not removed.">Built-in</span>
-                                    }
-                                    else
-                                    {
-                                        <button type="button" class="cg-action-btn cg-critical"
-                                                @onclick="() => _pendingDelete = type">Remove</button>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+                    }
 
-            <p class="cg-subtitle">
-                Only Emirates ID, passport and trade licence are read automatically — those three have
-                a trained model behind them. A document added here takes a file, a number and an expiry
-                date, typed in.
-            </p>
-        </section>
+                    @if (_types.Count == 0)
+                    {
+                        <tr><td colspan="5">
+                            <div class="cg-empty-state">
+                                <h3>No documents configured</h3>
+                                <p>Use <b>+ Add document</b> above. Nothing will be asked for on My Workspace or on a declaration until there is something here.</p>
+                            </div>
+                        </td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <p class="cg-subtitle">
+            Only Emirates ID, passport and trade licence are read automatically — those three have a
+            trained model behind them. A document added here takes a file, a reference number and an
+            expiry date, typed in.
+        </p>
+
+        @if (_pendingJustify is not null)
+        {
+            <JustificationPrompt Show="true"
+                                 Label="@($"Why are you {(_pendingJustify.IsActive ? "switching off" : "switching on")} {_pendingJustify.Name}?")"
+                                 Toasts="Toasts"
+                                 OnConfirm="ToggleActiveAsync"
+                                 OnCancel="() => _pendingJustify = null" />
+        }
     }
 </div>
 
-@if (_adding)
+@if (_editing is not null)
 {
     <div class="cg-print-overlay">
         <div class="cg-confirm-modal">
-            <h3>Add a document</h3>
+            <h3>@(_editing.Id == 0 ? "Add a document" : $"Edit “{_editing.Name}”")</h3>
             <label class="cg-field">
                 <span>Document name <span class="cg-required" aria-hidden="true">*</span></span>
-                <input class="cg-input" maxlength="120" @bind="_newName" @bind:event="oninput" aria-required="true" />
+                <input class="cg-input" maxlength="120" @bind="_formName" @bind:event="oninput" aria-required="true" />
             </label>
             <label class="cg-field">
                 <span>What is wanted</span>
-                <input class="cg-input" maxlength="300" @bind="_newDescription" placeholder="Optional" />
+                <input class="cg-input" maxlength="300" @bind="_formDescription" placeholder="Optional — the line shown under the name" />
             </label>
             <label class="cg-field">
                 <span>Requirement</span>
-                <select class="cg-input" @bind="_newMandatory">
+                <select class="cg-input" @bind="_formMandatory">
                     <option value="false">Optional</option>
                     <option value="true">Required</option>
                 </select>
             </label>
+            @if (_editing.IsBuiltIn)
+            {
+                <p class="cg-subtitle">
+                    This document is read automatically, so it cannot be removed and its capture
+                    stays as it is. The name, the line under it and whether it is required are yours.
+                </p>
+            }
             <div class="cg-actions">
-                <button type="button" class="cg-action-btn" @onclick="CancelAdd">Cancel</button>
-                <button type="button" class="cg-action-btn cg-good" disabled="@_saving" @onclick="AddAsync">Add</button>
+                <button type="button" class="cg-action-btn" @onclick="CancelEdit">Cancel</button>
+                <button type="button" class="cg-action-btn cg-good" disabled="@_saving" @onclick="SaveEditAsync">Save</button>
             </div>
         </div>
     </div>
@@ -139,7 +142,7 @@
             <h3>Remove “@_pendingDelete.Name”?</h3>
             <p class="cg-confirm-detail">
                 It stops being asked for and is gone from the list. If anyone has already uploaded one,
-                this is refused — set it to Inactive instead, which keeps their files readable.
+                this is refused — switch it off instead, which keeps their files readable.
             </p>
             <div class="cg-actions">
                 <button type="button" class="cg-action-btn" @onclick="() => _pendingDelete = null">Cancel</button>

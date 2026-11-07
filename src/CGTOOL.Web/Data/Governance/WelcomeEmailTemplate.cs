@@ -9,7 +9,7 @@ internal static class WelcomeEmailTemplate
     public const string Subject = "Corporate Governance – Insider Declaration and Related Party & COI Submission Required";
 
     // Body text follows the confirmed Corporate Affairs template as closely as HTML formatting allows.
-    public static string BuildHtml(Member member, string logoTag) => $$"""
+    public static string BuildHtml(Member member, string logoTag, string parentHoldingCompany) => $$"""
         <!DOCTYPE html>
         <html>
         <body style="margin:0;padding:0;background-color:#EEF0F3;font-family:Segoe UI,Arial,sans-serif;">
@@ -27,7 +27,7 @@ internal static class WelcomeEmailTemplate
                     <td style="padding:32px;color:#1B2430;font-size:14px;line-height:1.6;">
                       <p>Dear {{member.FullName}},</p>
                       <p>
-                        In line with DI's updated Corporate Governance Framework, you are required to submit your
+                        In line with {{parentHoldingCompany}}'s updated Corporate Governance Framework, you are required to submit your
                         Insider Declaration and Related Party &amp; COI.
                       </p>
                       <p>

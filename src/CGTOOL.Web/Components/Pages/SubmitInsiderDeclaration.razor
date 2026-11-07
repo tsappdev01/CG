@@ -26,7 +26,7 @@
                        Detail="Recording your declaration and preparing your PDF copy. Please do not close this page." />
 
     <p><a href="/my-declarations">← Back to Declarations</a></p>
-    <h1 data-icon="doc">Declaration of Transactions in DI Shares by Insiders</h1>
+    <h1 data-icon="doc">Declaration of Transactions in @Branding.ParentHoldingCompany Shares by Insiders</h1>
     <p class="cg-subtitle">Employee Name: <b>@_effectiveMember?.FullName</b></p>
     @if (Impersonation.ActingMemberId is not null)
     {
@@ -528,7 +528,7 @@
                             @onclick="() => ChooseHoldsSharesAsync(true)">
                         <span class="cg-choice-dot" aria-hidden="true"></span>
                         <span class="cg-choice-text">
-                            <span class="cg-choice-title">I / my relatives hold shares in DI</span>
+                            <span class="cg-choice-title">I / my relatives hold shares in @Branding.ParentHoldingCompany</span>
                             <span class="cg-choice-sub">You will list the holdings below.</span>
                         </span>
                     </button>
@@ -537,7 +537,7 @@
                             @onclick="() => ChooseHoldsSharesAsync(false)">
                         <span class="cg-choice-dot" aria-hidden="true"></span>
                         <span class="cg-choice-text">
-                            <span class="cg-choice-title">Neither I / my relatives hold shares in DI</span>
+                            <span class="cg-choice-title">Neither I / my relatives hold shares in @Branding.ParentHoldingCompany</span>
                             <span class="cg-choice-sub">You will go straight to review.</span>
                         </span>
                     </button>
@@ -603,7 +603,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <p class="cg-hint">The relatives marked as holding DI shares in My Workspace are loaded here for you — enter the shares each one holds.</p>
+                    <p class="cg-hint">The relatives marked as holding @Branding.ParentHoldingCompany shares in My Workspace are loaded here for you — enter the shares each one holds.</p>
                     <div class="cg-actions">
                         <button type="button" class="cg-action-btn" @onclick="AddRelativeAsync">+ Add shareholder</button>
                         @if (!_relatives.Any(r => r.IsSelf))

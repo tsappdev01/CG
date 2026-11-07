@@ -8,12 +8,13 @@
 @inject ToastService Toasts
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject Branding Branding
 
 <PageTitle>Companies</PageTitle>
 
 <div class="cg-shell cg-shell-full">
     <h1 data-icon="building">Companies</h1>
-    <p class="cg-subtitle">Control Panel — legal entities within the DI Group that Users belong to.</p>
+    <p class="cg-subtitle">Control Panel — legal entities within the @Branding.ParentHoldingCompany Group that Users belong to.</p>
 
     @if (_companies is null)
     {

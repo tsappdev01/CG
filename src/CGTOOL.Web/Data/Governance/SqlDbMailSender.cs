@@ -66,14 +66,15 @@ public class SqlDbMailActivityEmailSender(SqlDbMailSender mail) : IActivityEmail
         mail.SendAsync(toEmail, subject, body, ct, ccEmails);
 }
 
-public class SqlDbMailMemberWelcomeEmailSender(SqlDbMailSender mail) : IMemberWelcomeEmailSender
+public class SqlDbMailMemberWelcomeEmailSender(SqlDbMailSender mail, Branding branding) : IMemberWelcomeEmailSender
 {
     public async Task<bool> SendWelcomeEmailAsync(Member member, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(member.Email)) return false;
 
-        const string logoTag = "<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"DIP Holding PLC\" height=\"48\" style=\"display:block;\" />";
-        var html = WelcomeEmailTemplate.BuildHtml(member, logoTag);
+        var company = branding.ParentHoldingCompany;
+        var logoTag = $"<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"{company}\" height=\"48\" style=\"display:block;\" />";
+        var html = WelcomeEmailTemplate.BuildHtml(member, logoTag, company);
         await mail.SendAsync(member.Email, WelcomeEmailTemplate.Subject, html, ct);
         return true;
     }

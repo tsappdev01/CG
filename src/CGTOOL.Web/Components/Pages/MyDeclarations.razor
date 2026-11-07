@@ -9,6 +9,7 @@
 @inject ToastService Toasts
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject Branding Branding
 
 <PageTitle>Declarations</PageTitle>
 
@@ -190,7 +191,7 @@
                                     <tr><th>Due date</th><td>@_printDeclaration.DeclarationCycleRun!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</td></tr>
                                     <tr><th>Holds a NIN</th><td>@(_printDeclaration.HasNin ? $"Yes ({_printDeclaration.NinNumber})" : "No")</td></tr>
                                     <tr><th>Relatives have a NIN</th><td>@(_printDeclaration.RelativesHaveNin ? "Yes" : "No")</td></tr>
-                                    <tr><th>Holds shares in DI (self or relatives)</th><td>@(_printDeclaration.HoldsShares ? "Yes" : "No")</td></tr>
+                                    <tr><th>Holds shares in @Branding.ParentHoldingCompany (self or relatives)</th><td>@(_printDeclaration.HoldsShares ? "Yes" : "No")</td></tr>
                                     <tr><th>Emirates ID</th><td>@(string.IsNullOrEmpty(_printDeclaration.EmiratesIdPath) ? "—" : $"{_printDeclaration.EmiratesIdNumber} — {_printDeclaration.EmiratesIdNameOnCard}, expires {_printDeclaration.EmiratesIdExpiryDate:dd/MM/yyyy}")</td></tr>
                                     <tr><th>Passport</th><td>@(string.IsNullOrEmpty(_printDeclaration.PassportPath) ? "—" : $"{_printDeclaration.PassportNumber} ({_printDeclaration.PassportIssuingCountry}), expires {_printDeclaration.PassportExpiryDate:dd/MM/yyyy}")</td></tr>
                                     @if (!string.IsNullOrEmpty(_printDeclaration.TradeLicencePath))

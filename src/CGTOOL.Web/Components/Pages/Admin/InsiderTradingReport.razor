@@ -1,12 +1,13 @@
 @page "/reports/insider-trading"
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
+@inject Branding Branding
 
 <PageTitle>Insider Trading Report</PageTitle>
 
 <div class="cg-shell cg-shell-full">
     <h1 data-icon="report">Insider trading report</h1>
-    <p class="cg-subtitle">DI share movements over a date range, matched against the National Investor Numbers declared by insiders.</p>
+    <p class="cg-subtitle">@Branding.ParentHoldingCompany share movements over a date range, matched against the National Investor Numbers declared by insiders.</p>
 
     @if (_records is null)
     {

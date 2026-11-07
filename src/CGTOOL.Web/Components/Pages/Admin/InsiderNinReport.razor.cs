@@ -72,13 +72,13 @@ public partial class InsiderNinReport
         return new ReportDocument
         {
             Title = "NIN Report of Submissions",
-            Subtitle = "Each declarant's National Investor Number and declared DI shareholding.",
+            Subtitle = $"Each declarant's National Investor Number and declared {Branding.ParentHoldingCompany} shareholding.",
             PreparedBy = _preparedBy,
             Stats =
             [
                 new("Declarants", rows.Count.ToString(), "notified"),
                 new("Holding a NIN", rows.Count(r => r.Declaration is { HasNin: true }).ToString(), "declared"),
-                new("Holding DI shares", rows.Count(r => r.Declaration is { HoldsShares: true }).ToString(), "declared"),
+                new($"Holding {Branding.ParentHoldingCompany} shares", rows.Count(r => r.Declaration is { HoldsShares: true }).ToString(), "declared"),
                 new("Shares declared", rows.Sum(r => r.Declaration?.NumberOfSharesHeld ?? 0).ToString("N0"), "in total"),
             ],
             FilterStatement = FilterStatement(),

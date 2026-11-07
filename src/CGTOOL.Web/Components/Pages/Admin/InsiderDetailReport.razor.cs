@@ -117,7 +117,7 @@ public partial class InsiderDetailReport
                 Documents(d),
 
                 new ReportSubTable(
-                    "Relatives holding DI shares",
+                    $"Relatives holding {Branding.ParentHoldingCompany} shares",
                     [new("Name", 36), new("Relationship", 22), new("NIN", 24), new("Shares", 18, Numeric: true)],
                     [.. d.Relatives.Select(r => new[]
                     {

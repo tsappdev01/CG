@@ -1370,7 +1370,7 @@ public partial class SubmitInsiderDeclaration
 
         if (relatives.Count == 0)
         {
-            Toasts.ShowError("No relatives are marked as holding DI shares in My Workspace. Add the rows here, or mark them there so they load next time.");
+            Toasts.ShowError($"No relatives are marked as holding {Branding.ParentHoldingCompany} shares in My Workspace. Add the rows here, or mark them there so they load next time.");
             return;
         }
 
@@ -1398,7 +1398,7 @@ public partial class SubmitInsiderDeclaration
         if (added == 0) return;
 
         await LogGridChangeAsync($"Loaded {added} relative(s) into the shareholding grid from My Workspace.");
-        Toasts.ShowSuccess($"Loaded {added} relative(s) who hold DI shares from My Workspace. Enter the shares each of them holds.");
+        Toasts.ShowSuccess($"Loaded {added} relative(s) who hold {Branding.ParentHoldingCompany} shares from My Workspace. Enter the shares each of them holds.");
     }
 
     /// <summary>Shareholding rows the register has never heard of -- the same question the relatives'
@@ -2009,7 +2009,7 @@ public partial class SubmitInsiderDeclaration
                             .Include(x => x.ShareEntries)
                             .FirstAsync(x => x.Id == declarationId);
                         var logoPath = Path.Combine(Env.WebRootPath, "images", "di-logo.jpg");
-                        var pdfBytes = InsiderDeclarationPdfBuilder.Build(declaration, _effectiveMember, _run, File.Exists(logoPath) ? logoPath : null);
+                        var pdfBytes = InsiderDeclarationPdfBuilder.Build(declaration, _effectiveMember, _run, File.Exists(logoPath) ? logoPath : null, Branding.ParentHoldingCompany);
                         var attachmentFilename = $"InsiderTradingDeclaration_Q{_run.PeriodQuarter}_{_run.PeriodYear}.pdf";
                         await SqlMail.SendWithFileAttachmentAsync(_effectiveMember.Email, confirmSubject, confirmBody, pdfBytes, attachmentFilename, ccEmails: confirmCc);
                     }
@@ -2048,7 +2048,7 @@ public partial class SubmitInsiderDeclaration
         {
             $"NIN: {(_hasNin ? $"Yes ({_ninNumber})" : "No")}",
             $"Relatives have NIN: {(_relativesHaveNin ? "Yes" : "No")}",
-            $"Holds shares in DI (self or relatives): {(_holdsSharesInDI ? "Yes" : "No")}",
+            $"Holds shares in {Branding.ParentHoldingCompany} (self or relatives): {(_holdsSharesInDI ? "Yes" : "No")}",
         };
 
         if (_relativesHaveNin)

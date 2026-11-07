@@ -156,14 +156,14 @@
                         <input type="checkbox" @bind="_editing.InsiderTradingAccess" />
                         <span class="cg-choice-body">
                             <span class="cg-choice-title">Insider Trading</span>
-                            <span class="cg-choice-desc">Declares their own and their relatives' dealings in DI shares each quarter.</span>
+                            <span class="cg-choice-desc">Declares their own and their relatives' dealings in @Branding.ParentHoldingCompany shares each quarter.</span>
                         </span>
                     </label>
                     <label class="cg-choice @(_editing.ConflictOfInterestAccess ? "on" : "")">
                         <input type="checkbox" @bind="_editing.ConflictOfInterestAccess" />
                         <span class="cg-choice-body">
                             <span class="cg-choice-title">Conflict of Interest</span>
-                            <span class="cg-choice-desc">Declares interests that could conflict with their duties to DI.</span>
+                            <span class="cg-choice-desc">Declares interests that could conflict with their duties to @Branding.ParentHoldingCompany.</span>
                         </span>
                     </label>
                     <label class="cg-choice @(_editing.RelatedPartyRegisterAccess ? "on" : "")">

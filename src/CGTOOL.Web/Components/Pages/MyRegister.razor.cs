@@ -394,7 +394,7 @@ public partial class MyRegister : ComponentBase
 
     /// <summary>The audit trail records what actually changed, field by field, rather than "updated
     /// X": a reviewer reading the trail needs to see the old value as well as the new one.</summary>
-    private static List<string> DiffOf(FamilyMember before, FamilyMember after)
+    private List<string> DiffOf(FamilyMember before, FamilyMember after)
     {
         var changes = new List<string>();
 
@@ -413,7 +413,7 @@ public partial class MyRegister : ComponentBase
         Cmp("Nationality", before.Nationality, after.Nationality);
         Cmp("Occupation / Business", before.Occupation, after.Occupation);
         Cmp("Holdings", DescribeHoldings(before), DescribeHoldings(after));
-        Cmp("Holds DI shares", YesNo(before.HoldsDiShares), YesNo(after.HoldsDiShares));
+        Cmp($"Holds {Branding.ParentHoldingCompany} shares", YesNo(before.HoldsDiShares), YesNo(after.HoldsDiShares));
         Cmp("Emirates ID No", before.EmiratesIdNumber, after.EmiratesIdNumber);
         Cmp("Emirates ID Expiry", Day(before.EmiratesIdExpiryDate), Day(after.EmiratesIdExpiryDate));
         Cmp("Passport No", before.PassportNumber, after.PassportNumber);
@@ -451,7 +451,7 @@ public partial class MyRegister : ComponentBase
     /// the only place it still exists, so anything left out of here is gone. The document paths are
     /// included because the uploaded files are deliberately left on disk -- a deletion that also
     /// destroyed the evidence would not be much of a record.</summary>
-    private static string SnapshotOf(FamilyMember f) => string.Join("; ",
+    private string SnapshotOf(FamilyMember f) => string.Join("; ",
     [
         $"Name: {Show(f.Name)}",
         $"Relation: {RelationshipLabel(f.Relationship)}",
@@ -459,7 +459,7 @@ public partial class MyRegister : ComponentBase
         $"Nationality: {Show(f.Nationality)}",
         $"Occupation / Business: {Show(f.Occupation)}",
         $"Holdings: {Show(DescribeHoldings(f))}",
-        $"Holds DI shares: {YesNo(f.HoldsDiShares)}",
+        $"Holds {Branding.ParentHoldingCompany} shares: {YesNo(f.HoldsDiShares)}",
         $"Emirates ID No: {Show(f.EmiratesIdNumber)}",
         $"Emirates ID Expiry: {Show(Day(f.EmiratesIdExpiryDate))}",
         $"Passport No: {Show(f.PassportNumber)}",

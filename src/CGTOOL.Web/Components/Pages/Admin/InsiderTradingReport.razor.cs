@@ -107,7 +107,7 @@ public partial class InsiderTradingReport
         return new ReportDocument
         {
             Title = "Insider Trading Report",
-            Subtitle = "DI share movements over the period, matched against declared insider National Investor Numbers.",
+            Subtitle = $"{Branding.ParentHoldingCompany} share movements over the period, matched against declared insider National Investor Numbers.",
             PreparedBy = _preparedBy,
             Stats =
             [

@@ -1,12 +1,13 @@
 @page "/reports/insider-nin"
 @attribute [Authorize(Roles = GovernanceRoles.Administrator)]
 @rendermode InteractiveServer
+@inject Branding Branding
 
 <PageTitle>NIN Report of Submissions</PageTitle>
 
 <div class="cg-shell cg-shell-full">
     <h1 data-icon="report">NIN report of submissions</h1>
-    <p class="cg-subtitle">Every declarant's National Investor Number and DI shareholding, as declared for the period.</p>
+    <p class="cg-subtitle">Every declarant's National Investor Number and @Branding.ParentHoldingCompany shareholding, as declared for the period.</p>
 
     @if (_rows is null)
     {

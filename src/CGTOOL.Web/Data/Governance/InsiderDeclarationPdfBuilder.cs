@@ -10,7 +10,10 @@ namespace CGTOOL.Web.Data.Governance;
 /// the returned bytes to a shared folder first and references that path via @file_attachments.</summary>
 public static class InsiderDeclarationPdfBuilder
 {
-    public static byte[] Build(InsiderDeclaration d, Member member, DeclarationCycleRun run, string? logoFilePath)
+    /// <param name="parentHoldingCompany">From Branding. Passed in rather than read here: this is
+    /// a static builder with no configuration of its own, and the alternative is the company's name
+    /// written into a PDF that nobody opens until an auditor does.</param>
+    public static byte[] Build(InsiderDeclaration d, Member member, DeclarationCycleRun run, string? logoFilePath, string parentHoldingCompany)
     {
         using var document = new PdfDocument();
         var logo = logoFilePath is not null && File.Exists(logoFilePath) ? XImage.FromFile(logoFilePath) : null;
@@ -36,7 +39,7 @@ public static class InsiderDeclarationPdfBuilder
         [
             ("Holds a NIN", d.HasNin ? $"Yes ({d.NinNumber})" : "No"),
             ("Relatives have a NIN", d.RelativesHaveNin ? "Yes" : "No"),
-            ("Holds shares in DI (self or relatives)", d.HoldsShares ? "Yes" : "No"),
+            ($"Holds shares in {parentHoldingCompany} (self or relatives)", d.HoldsShares ? "Yes" : "No"),
             ("Emirates ID", string.IsNullOrEmpty(d.EmiratesIdPath) ? "—" : $"{d.EmiratesIdNumber} — {d.EmiratesIdNameOnCard}, expires {d.EmiratesIdExpiryDate:dd MMM yyyy}"),
             ("Passport", string.IsNullOrEmpty(d.PassportPath) ? "—" : $"{d.PassportNumber} ({d.PassportIssuingCountry}), expires {d.PassportExpiryDate:dd MMM yyyy}"),
             .. string.IsNullOrEmpty(d.TradeLicencePath)

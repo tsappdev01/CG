@@ -11,7 +11,7 @@
 
 <div class="cg-shell cg-shell-full">
     <h1 data-icon="folder">Document Center</h1>
-    <p class="cg-subtitle">Control Panel — the documents people are asked to keep on file, and what each declaration asks of them.</p>
+    <p class="cg-subtitle">Control Panel — documents on file, and what each declaration asks for.</p>
 
     @if (_types is null)
     {
@@ -41,9 +41,8 @@
             </div>
 
             <p class="cg-subtitle">
-                The documents this application knows about. <b>Inactive</b> withdraws one everywhere at
-                once, without losing what has already been uploaded against it. What each declaration
-                asks for is set on its own tab.
+                <b>Inactive</b> withdraws a document everywhere, keeping what is already uploaded.
+                What each declaration asks for is set on its own tab.
             </p>
 
             <div class="cg-table-wrap">
@@ -92,7 +91,7 @@
                             <tr><td colspan="6">
                                 <div class="cg-empty-state">
                                     <h3>No documents configured</h3>
-                                    <p>Use <b>+ Add document</b> above. Nothing will be asked for on My Workspace or on a declaration until there is something here.</p>
+                                    <p>Use <b>+ Add document</b> above.</p>
                                 </div>
                             </td></tr>
                         }
@@ -101,9 +100,8 @@
             </div>
 
             <p class="cg-subtitle">
-                Only Emirates ID, passport and trade licence are read automatically — those three have a
-                trained model behind them. A document added here takes a file, a reference number and an
-                expiry date, typed in.
+                Only Emirates ID, passport and trade licence are read automatically. Anything added
+                here is typed in.
             </p>
         }
         else
@@ -111,10 +109,8 @@
             var declaration = _tab == Tab.Insider ? DeclarationType.InsiderTrading : DeclarationType.ConflictOfInterest;
 
             <p class="cg-subtitle">
-                What the <b>@DeclarationLabel(declaration)</b> asks for. <b>Required</b> blocks submission
-                until the document is attached; <b>Optional</b> offers it without insisting;
-                <b>Not requested</b> leaves it off this form altogether. Each declaration is set on its
-                own, so the two need not agree.
+                <b>Required</b> blocks submission until attached. <b>Optional</b> offers it.
+                <b>Not requested</b> leaves it off this form.
             </p>
 
             <div class="cg-table-wrap">
@@ -163,7 +159,7 @@
                             <tr><td colspan="4">
                                 <div class="cg-empty-state">
                                     <h3>Nothing to ask for</h3>
-                                    <p>Every document is Inactive. Switch one on under <b>User Documents</b> before setting what this declaration asks of it.</p>
+                                    <p>Every document is Inactive. Switch one on under <b>User Documents</b> first.</p>
                                 </div>
                             </td></tr>
                         }
@@ -174,8 +170,8 @@
             @if (_types.Any(t => !t.IsActive))
             {
                 <p class="cg-subtitle">
-                    @_types.Count(t => !t.IsActive) document(s) are Inactive and not listed here. An inactive
-                    document is withdrawn from every declaration whatever this tab says.
+                    @_types.Count(t => !t.IsActive) Inactive document(s) are not listed — an inactive
+                    document is withdrawn from every declaration.
                 </p>
             }
         }
@@ -198,7 +194,7 @@
         <div class="cg-modal-head">
             <div>
                 <h2 id="cg-doctype-title">@(_editing.Id == 0 ? "Add a document" : $"Edit “{_editing.Name}”")</h2>
-                <p class="cg-subtitle">Shown on My Workspace and on the declaration forms.</p>
+                <p class="cg-subtitle">Shown on My Workspace and the declaration forms.</p>
             </div>
             <button type="button" class="cg-modal-close" aria-label="Close" @onclick="CancelEdit">×</button>
         </div>
@@ -214,17 +210,11 @@
             </label>
             @if (_editing.Id == 0)
             {
-                <p class="cg-hint">
-                    A new document starts as <b>Optional</b> on both declarations. Set what each one
-                    actually asks of it on its own tab.
-                </p>
+                <p class="cg-hint">Starts <b>Optional</b> on both declarations. Set each on its own tab.</p>
             }
             else if (_editing.IsBuiltIn)
             {
-                <p class="cg-hint">
-                    This document is read automatically, so it cannot be removed and its capture stays
-                    as it is. The name and the line under it are yours.
-                </p>
+                <p class="cg-hint">Read automatically, so it cannot be removed. The name and description are yours.</p>
             }
         </div>
 
@@ -248,10 +238,7 @@
 
         <div class="cg-modal-body">
             <p>It stops being asked for on every declaration and is gone from the list.</p>
-            <p class="cg-hint">
-                If anyone has already uploaded one, this is refused — switch it off instead, which
-                keeps their files readable.
-            </p>
+            <p class="cg-hint">Refused if anyone has uploaded one — switch it off instead.</p>
         </div>
 
         <div class="cg-modal-foot">

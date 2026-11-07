@@ -46,16 +46,23 @@ public static class ReportPdfBuilder
 
         if (report.IsDetail)
         {
+            var first = true;
             foreach (var record in report.Records)
             {
-                // Each person starts a page of their own, as the legacy detail report did. A
-                // record split across a page break is harder to read than a short page.
-                writer.NewPage();
-                writer.SectionHeading(record.Title);
-                if (record.Subtitle is { Length: > 0 } sub) writer.Paragraph(sub);
+                // Each person starts a page of their own: a record split across a page break is
+                // harder to read than a short page. The exception is the first one, which joins
+                // the cover when it fits -- a filter narrowed to a single declarant produced three
+                // sheets, one of them a line of figures and the other two half empty.
+                if (!first || Height(writer, record) > writer.Remaining) writer.NewPage();
+                first = false;
 
+                writer.BeginRecord(record.Title);
+                writer.RecordHeading(record.Title, record.Subtitle);
+
+                // Two columns: these are short answers, and one column of them ran a third of the
+                // way down a landscape page that was twice as wide as it needed to be.
                 if (record.Facts.Count > 0)
-                    writer.KeyValueTable([.. record.Facts.Select(f => (f.Label, f.Value))]);
+                    writer.KeyValueTable([.. record.Facts.Select(f => (f.Label, f.Value))], columns: 2);
 
                 foreach (var table in record.Tables)
                 {
@@ -78,6 +85,30 @@ public static class ReportPdfBuilder
         using var stream = new MemoryStream();
         document.Save(stream, false);
         return stream.ToArray();
+    }
+
+    /// <summary>How tall a record will be, measured before anything is drawn, so the decision to
+    /// break a page is made with the answer in hand rather than discovered halfway down one.
+    ///
+    /// It mirrors the drawing below it step for step. The heights themselves come from the writer,
+    /// which measures with the same fonts and wrapping it draws with -- a second opinion about how
+    /// tall a row is would be a page break predicted in the wrong place.</summary>
+    private static double Height(DeclarationPdfWriter writer, ReportRecord record)
+    {
+        var height = writer.MeasureSectionHeading();
+
+        if (record.Facts.Count > 0)
+            height += writer.MeasureKeyValueTable([.. record.Facts.Select(f => (f.Label, f.Value))], columns: 2);
+
+        foreach (var table in record.Tables)
+        {
+            height += writer.MeasureSectionHeading();
+            height += table.Rows.Count == 0
+                ? writer.MeasureParagraph(table.EmptyNote ?? "None.")
+                : writer.MeasureDataTable([.. table.Columns.Select(c => c.Header)], Fractions(table.Columns), [.. table.Rows]);
+        }
+
+        return height;
     }
 
     /// <summary>Column widths normalised rather than trusted: a definition whose fractions sum to

@@ -37,6 +37,11 @@ internal class DeclarationPdfWriter(
     private const double HeaderHeight = 82;
     private const double FooterHeight = 46;
 
+    /// <summary>Where content starts under the header band. 16 rather than 24: the band already
+    /// carries its own breathing room, and eight points at the top of every page is eight points
+    /// not available at the bottom, where a row gets pushed onto a sheet of its own.</summary>
+    private const double ContentTop = HeaderHeight + 16;
+
     private readonly XFont _title = new("DejaVu Sans", 15, XFontStyleEx.Bold);
     private readonly XFont _subtitle = new("DejaVu Sans", 9.5, XFontStyleEx.Regular);
     private readonly XFont _sectionHeading = new("DejaVu Sans", 11.5, XFontStyleEx.Bold);
@@ -68,7 +73,8 @@ internal class DeclarationPdfWriter(
         _pageHeight = page.Height.Point;
         _contentWidth = _pageWidth - (2 * Margin);
         _gfx = XGraphics.FromPdfPage(page);
-        _y = HeaderHeight + 24;
+        _y = ContentTop;
+        TagCurrentPage();
     }
 
     public void CloseCurrentPage() => _gfx?.Dispose();
@@ -90,13 +96,13 @@ internal class DeclarationPdfWriter(
     {
         // Room for the heading AND the start of what it heads: a heading alone at the foot of a page,
         // with its section beginning on the next one, is worse than a slightly short page.
-        EnsureSpace(76);
-        if (_y > HeaderHeight + 24) _y += 12;
+        EnsureSpace(64);
+        if (_y > ContentTop) _y += 6;
 
         _gfx.DrawString(text, _sectionHeading, new XSolidBrush(Navy), Margin, _y + 10);
+        _y += 13;
+        _gfx.DrawLine(new XPen(Brand, 1.5), Margin, _y + 8, Margin + 60, _y + 8);
         _y += 14;
-        _gfx.DrawLine(new XPen(Brand, 1.5), Margin, _y + 10, Margin + 60, _y + 10);
-        _y += 20;
     }
 
     /// <summary>The band of headline figures a report opens with -- the same four the screen shows,
@@ -192,52 +198,201 @@ internal class DeclarationPdfWriter(
         _y += 10;
     }
 
-    public void KeyValueTable((string Label, string Value)[] rows)
+    /// <summary>How wide each half of a key/value block is. One column is the default and what a
+    /// declaration PDF uses; two is for the landscape report sheets, where a single column of ten
+    /// facts runs a third of the way down a page that is twice as wide as it needs to be.</summary>
+    private (double Block, double Label, double Gutter) KeyValueLayout(int columns)
     {
-        const double labelWidth = 180;
-        var valueWidth = _contentWidth - labelWidth;
+        const double gutter = 24;
+        var block = columns <= 1 ? _contentWidth : (_contentWidth - gutter) / 2;
+        return (block, columns <= 1 ? 180 : Math.Min(150, block * 0.42), gutter);
+    }
 
-        foreach (var (label, value) in rows)
+    /// <summary>One row's height, in the one place both drawing and measuring read it from. Two
+    /// copies of this arithmetic is a page break that happens where it was not predicted.</summary>
+    private double KeyValueRowHeight(string label, string value, double labelWidth, double valueWidth)
+    {
+        var labelLines = WrapText(label, _label, labelWidth - 8).Count;
+        var valueLines = WrapText(value, _value, valueWidth - 8).Count;
+        return Math.Max(17, (Math.Max(labelLines, valueLines) * 12) + 5);
+    }
+
+    public void KeyValueTable((string Label, string Value)[] rows, int columns = 1)
+    {
+        var (block, labelWidth, gutter) = KeyValueLayout(columns);
+        var valueWidth = block - labelWidth;
+        var perRow = Math.Max(1, columns);
+
+        for (var i = 0; i < rows.Length; i += perRow)
         {
-            // The label wraps to its own column like the value does. Drawn on one line, a label
-            // wider than 180 points ran straight over the value beside it -- the declaration's
-            // "I / my relatives hold shares in <the parent company>?" came out overlapping its own answer.
-            var labelLines = WrapText(label, _label, labelWidth - 8);
-            var lines = WrapText(value, _value, valueWidth - 8);
-            var rowHeight = Math.Max(18, (Math.Max(labelLines.Count, lines.Count) * 12) + 6);
+            var pair = rows.Skip(i).Take(perRow).ToArray();
+            var rowHeight = pair.Max(p => KeyValueRowHeight(p.Label, p.Value, labelWidth, valueWidth));
             EnsureSpace(rowHeight);
 
-            var ly = _y + 12;
-            foreach (var line in labelLines)
+            for (var c = 0; c < pair.Length; c++)
             {
-                _gfx.DrawString(line, _label, new XSolidBrush(TextDark), Margin, ly);
-                ly += 12;
+                var left = Margin + (c * (block + gutter));
+
+                // The label wraps to its own column like the value does. Drawn on one line, a
+                // label wider than its column ran straight over the value beside it -- the
+                // declaration's "I / my relatives hold shares in <the parent company>?" came out
+                // overlapping its own answer.
+                var ly = _y + 12;
+                foreach (var line in WrapText(pair[c].Label, _label, labelWidth - 8))
+                {
+                    _gfx.DrawString(line, _label, new XSolidBrush(TextDark), left, ly);
+                    ly += 12;
+                }
+
+                var ty = _y + 12;
+                foreach (var line in WrapText(pair[c].Value, _value, valueWidth - 8))
+                {
+                    _gfx.DrawString(line, _value, new XSolidBrush(TextDark), left + labelWidth, ty);
+                    ty += 12;
+                }
             }
 
-            var ty = _y + 12;
-            foreach (var line in lines)
-            {
-                _gfx.DrawString(line, _value, new XSolidBrush(TextDark), Margin + labelWidth, ty);
-                ty += 12;
-            }
             _y += rowHeight;
             _gfx.DrawLine(new XPen(BorderGrey, 0.5), Margin, _y, Margin + _contentWidth, _y);
         }
     }
 
+    // ---------- measuring, for deciding where a page break belongs before drawing one ----------
+
+    /// <summary>What is left on this page below the cursor and above the footer band.</summary>
+    public double Remaining => _pageHeight - FooterHeight - _y;
+
+    // ---------- whose pages these are ----------
+
+    private readonly Dictionary<int, string> _pageRecord = [];
+    private string? _recordTitle;
+
+    /// <summary>Everything from here belongs to this person, including any page a long table
+    /// starts on its own. Their name is repeated at the top of each of those pages with "Page 1 of
+    /// 2" beside it, counted within their own sheets rather than the whole document: someone
+    /// reading one declarant's pages wants to know they have all of them, and "page 7 of 31"
+    /// answers a question nobody asked.</summary>
+    public void BeginRecord(string title)
+    {
+        _recordTitle = title;
+        TagCurrentPage();
+    }
+
+    private void TagCurrentPage()
+    {
+        if (_recordTitle is { Length: > 0 } title && document.PageCount > 0)
+        {
+            _pageRecord[document.PageCount - 1] = title;
+        }
+    }
+
+    /// <summary>Each page's place among its own record's pages, worked out from runs of pages
+    /// carrying the same name.</summary>
+    private Dictionary<int, (string Title, int Index, int Count)> RecordPaging(int total)
+    {
+        var paging = new Dictionary<int, (string, int, int)>();
+
+        var i = 0;
+        while (i < total)
+        {
+            if (!_pageRecord.TryGetValue(i, out var title)) { i++; continue; }
+
+            var end = i;
+            while (end < total && _pageRecord.TryGetValue(end, out var t) && t == title) end++;
+
+            for (var k = i; k < end; k++) paging[k] = (title, k - i + 1, end - i);
+            i = end;
+        }
+
+        return paging;
+    }
+
+    /// <summary>Drawn from the right margin leftwards, cut rather than allowed to run back into
+    /// the document title beside it.</summary>
+    private static void DrawRightAligned(XGraphics gfx, string text, XFont font, XBrush brush,
+        double right, double y, double maxWidth)
+    {
+        var shown = text;
+        while (shown.Length > 4 && gfx.MeasureString(shown, font).Width > maxWidth)
+        {
+            shown = shown[..(shown.Length - 2)] + "…";
+        }
+
+        gfx.DrawString(shown, font, brush, right - gfx.MeasureString(shown, font).Width, y);
+    }
+
+    /// <summary>A record's name with its line of context beside it rather than under it. The name
+    /// is repeated in the header band on every one of this record's pages, so a title block that
+    /// takes three lines to say what the band already says costs a sheet it has not earned.</summary>
+    public void RecordHeading(string title, string? context)
+    {
+        EnsureSpace(64);
+        if (_y > ContentTop) _y += 6;
+
+        _gfx.DrawString(title, _sectionHeading, new XSolidBrush(Navy), Margin, _y + 10);
+
+        if (context is { Length: > 0 })
+        {
+            var titleWidth = _gfx.MeasureString(title, _sectionHeading).Width;
+            _gfx.DrawString(context, _value, new XSolidBrush(Muted), Margin + titleWidth + 14, _y + 10);
+        }
+
+        _y += 13;
+        _gfx.DrawLine(new XPen(Brand, 1.5), Margin, _y + 8, Margin + 60, _y + 8);
+        _y += 14;
+    }
+
+    /// <summary>A heading's height as <see cref="SectionHeading"/> draws it, including the 6
+    /// points it adds when something is already above it -- which, inside a record, there is.</summary>
+    public double MeasureSectionHeading() => 33;
+
+    public double MeasureParagraph(string text) =>
+        (WrapText(text, _value, _contentWidth).Count * 13) + 4;
+
+    public double MeasureKeyValueTable((string Label, string Value)[] rows, int columns = 1)
+    {
+        var (block, labelWidth, _) = KeyValueLayout(columns);
+        var valueWidth = block - labelWidth;
+        var perRow = Math.Max(1, columns);
+
+        var total = 0.0;
+        for (var i = 0; i < rows.Length; i += perRow)
+        {
+            total += rows.Skip(i).Take(perRow)
+                .Max(p => KeyValueRowHeight(p.Label, p.Value, labelWidth, valueWidth));
+        }
+        return total;
+    }
+
+    public double MeasureDataTable(string[] headers, double[] columnFractions, IReadOnlyList<string[]> rows)
+    {
+        var columnWidths = columnFractions.Select(f => f * _contentWidth).ToArray();
+        var total = HeaderRowHeight(headers, columnWidths);
+
+        foreach (var row in rows)
+        {
+            total += DataRowHeight(row, columnWidths);
+        }
+
+        return total;
+    }
+
     public void DataTable(string[] headers, double[] columnFractions, IEnumerable<string[]> rows)
     {
         var columnWidths = columnFractions.Select(f => f * _contentWidth).ToArray();
+        var table = rows as IReadOnlyList<string[]> ?? [.. rows];
 
-        EnsureSpace(22);
+        // Room for the header AND its first row. Asking only for the header's own height let a
+        // navy bar sit alone at the foot of a page with everything it labels on the next one.
+        EnsureSpace(HeaderRowHeight(headers, columnWidths)
+            + (table.Count > 0 ? DataRowHeight(table[0], columnWidths) : 0));
         DrawTableHeaderRow(headers, columnWidths);
 
         var rowIndex = 0;
-        foreach (var row in rows)
+        foreach (var row in table)
         {
             var wrapped = row.Select((cell, i) => WrapText(cell, _tableCell, columnWidths[i] - 8)).ToArray();
-            var lineCount = wrapped.Max(w => w.Count);
-            var rowHeight = Math.Max(16, (lineCount * 11) + 6);
+            var rowHeight = DataRowHeight(row, columnWidths);
 
             if (_y + rowHeight > _pageHeight - FooterHeight)
             {
@@ -273,7 +428,7 @@ internal class DeclarationPdfWriter(
     private void DrawTableHeaderRow(string[] headers, double[] columnWidths)
     {
         var wrapped = headers.Select((h, i) => WrapText(h, _tableHeader, columnWidths[i] - 8)).ToArray();
-        var headerRowHeight = Math.Max(20, (wrapped.Max(w => w.Count) * 11) + 9);
+        var headerRowHeight = HeaderRowHeight(headers, columnWidths);
 
         _gfx.DrawRectangle(new XSolidBrush(Navy), Margin, _y, _contentWidth, headerRowHeight);
         var x = Margin;
@@ -289,6 +444,14 @@ internal class DeclarationPdfWriter(
         }
         _y += headerRowHeight;
     }
+
+    private double DataRowHeight(string[] row, double[] columnWidths) => Math.Max(15,
+        (row.Select((cell, i) => WrapText(cell, _tableCell, columnWidths[Math.Min(i, columnWidths.Length - 1)] - 8).Count)
+            .DefaultIfEmpty(1).Max() * 11) + 6);
+
+    private double HeaderRowHeight(string[] headers, double[] columnWidths) => Math.Max(19,
+        (headers.Select((h, i) => WrapText(h, _tableHeader, columnWidths[Math.Min(i, columnWidths.Length - 1)] - 8).Count)
+            .DefaultIfEmpty(1).Max() * 11) + 9);
 
     private List<string> WrapText(string text, XFont font, double maxWidth)
     {
@@ -321,6 +484,8 @@ internal class DeclarationPdfWriter(
     public void FinishAllPages()
     {
         var total = document.PageCount;
+        var paging = RecordPaging(total);
+
         for (var i = 0; i < total; i++)
         {
             var page = document.Pages[i];
@@ -347,12 +512,28 @@ internal class DeclarationPdfWriter(
                 gfx.DrawString(documentTitle, _subtitle, XBrushes.White, Margin, 52);
             }
 
+            // Whose sheet this is, repeated at the top of every one of their pages, so a page
+            // separated from the one before it still says who it belongs to.
+            if (paging.TryGetValue(i, out var record))
+            {
+                var room = (width - Margin) - (Margin + 300);
+                DrawRightAligned(gfx, record.Title, _sectionHeading, XBrushes.White, width - Margin, 34, room);
+                DrawRightAligned(gfx, $"Page {record.Index} of {record.Count}", _subtitle,
+                    new XSolidBrush(BrandOnDark), width - Margin, 52, room);
+            }
+
             gfx.DrawRectangle(new XSolidBrush(LightGrey), 0, height - FooterHeight, width, FooterHeight);
             gfx.DrawString(
                 footerNote,
                 _footer, new XSolidBrush(Muted), Margin, height - FooterHeight + 18);
+
+            // A page that belongs to someone is numbered within their sheets, up in the header. A
+            // document-wide count underneath it would be a second page number saying something
+            // else, which is how a printed set gets collated wrongly.
             gfx.DrawString(
-                $"Generated {DateTime.Now:dd MMM yyyy HH:mm}    Page {i + 1} of {total}",
+                paging.ContainsKey(i)
+                    ? $"Generated {DateTime.Now:dd MMM yyyy HH:mm}    Sheet {i + 1} of {total}"
+                    : $"Generated {DateTime.Now:dd MMM yyyy HH:mm}    Page {i + 1} of {total}",
                 _footer, new XSolidBrush(Muted), Margin, height - FooterHeight + 32);
         }
     }

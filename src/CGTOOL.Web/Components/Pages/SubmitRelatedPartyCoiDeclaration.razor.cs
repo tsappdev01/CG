@@ -1405,20 +1405,23 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
     private void OnSignatureChanged(bool hasSignature) => _hasSignature = hasSignature;
 
-    /// <summary>Writes newly drawn ink to a file and returns its path; returns the signature already
-    /// on file when nothing new was drawn, so re-submitting an edit keeps what was signed.</summary>
+    /// <summary>Writes the signature the pad holds -- newly drawn ink, or an image the member
+    /// uploaded -- to a file and returns its path; returns the signature already on file when
+    /// neither, so re-submitting an edit keeps what was signed.</summary>
     private async Task<string?> SaveSignatureAsync()
     {
         if (_signaturePad is null) return _signaturePath;
 
-        var png = await _signaturePad.ReadPngAsync();
-        if (string.IsNullOrEmpty(png)) return _signaturePath;
+        var signature = await _signaturePad.ReadAsync();
+        if (signature is null) return _signaturePath;
 
         var directory = Path.Combine(Env.WebRootPath, "uploads", "declarations", "coi");
         Directory.CreateDirectory(directory);
 
-        var fileName = $"{Guid.NewGuid():N}.png";
-        await File.WriteAllBytesAsync(Path.Combine(directory, fileName), Convert.FromBase64String(png));
+        // The file keeps the format it came in as: re-encoding someone's scanned signature to
+        // make every file a PNG would lose quality for nothing.
+        var fileName = $"{Guid.NewGuid():N}{signature.Extension}";
+        await File.WriteAllBytesAsync(Path.Combine(directory, fileName), signature.Bytes);
 
         // The old one is left alone. A signature is evidence of what was signed and when, and an
         // edited declaration's previous version may still be referred to.

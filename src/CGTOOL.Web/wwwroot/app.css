@@ -3532,6 +3532,11 @@ button.cg-appbar-user {
    body around it -- weight is what marks it, not scale. */
 .cg-undertaking { margin: 0 0 14px; font-size: 14px; font-weight: 650; line-height: 1.55; color: var(--cg-ink); }
 
+/* Uploading a signature instead of drawing one. Under the pad rather than beside it: drawing is
+   the first offer, and this is the way out for anyone without a stylus. */
+.cg-signature-upload { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+.cg-signature-upload > span { font-size: 12px; color: var(--cg-ink-muted); }
+
 /* ---------- Profile picker ---------- */
 .cg-profile-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .cg-profile-form { margin: 0; }

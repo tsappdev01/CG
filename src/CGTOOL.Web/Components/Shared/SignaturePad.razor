@@ -5,7 +5,11 @@
    signing, and it is what the PDF carries. *@
 <div class="cg-signature">
     <div class="cg-signature-frame">
-        @if (ExistingSignaturePath is { Length: > 0 } existing && !_redrawing)
+        @if (_uploadedPreview is { Length: > 0 } uploaded)
+        {
+            <img class="cg-signature-existing" src="@uploaded" alt="Uploaded signature" />
+        }
+        else if (ExistingSignaturePath is { Length: > 0 } existing && !_redrawing)
         {
             <img class="cg-signature-existing" src="@existing" alt="Signature on file" />
         }
@@ -21,21 +25,53 @@
     </div>
 
     <div class="cg-signature-actions">
-        @if (ExistingSignaturePath is { Length: > 0 } && !_redrawing)
+        @if (_uploadedPreview is { Length: > 0 })
+        {
+            <span class="cg-subtitle">@_uploadedFileName</span>
+            <button type="button" class="cg-action-btn" @onclick="DiscardUploadAsync">Remove</button>
+        }
+        else if (ExistingSignaturePath is { Length: > 0 } && !_redrawing)
         {
             <span class="cg-subtitle">Signed@(SignedAtUtc is { } at ? $" {at.ToLocalDisplay("dd MMM yyyy HH:mm")}" : "").</span>
             <button type="button" class="cg-action-btn" @onclick="StartRedrawAsync">Sign again</button>
         }
         else
         {
-            <span class="cg-subtitle">Draw your signature in the box.</span>
+            <span class="cg-subtitle">Draw your signature in the box, or upload one.</span>
             <button type="button" class="cg-action-btn" disabled="@(!_hasInk)" @onclick="UndoAsync">Undo</button>
             <button type="button" class="cg-action-btn" disabled="@(!_hasInk)" @onclick="ClearAsync">Clear</button>
         }
     </div>
+
+    @* Some people sign on paper and scan it, and some have a signature file their organisation
+       already holds. Drawing with a mouse is the worst of the three for anyone without a stylus. *@
+    @if (!ReadOnly && _uploadedPreview is null or { Length: 0 })
+    {
+        <label class="cg-signature-upload">
+            <span>Upload a signature image (JPG, GIF or PNG, up to @MaxUploadKb KB)</span>
+            <InputFile OnChange="OnUploadAsync" accept=".jpg,.jpeg,.gif,.png" />
+        </label>
+    }
+
+    @if (_uploadError is { Length: > 0 } error)
+    {
+        <span class="cg-field-error">@error</span>
+    }
 </div>
 
 @code {
+    /// <summary>A signature image the member chose rather than drew, and what to call it. Held in
+    /// memory until the declaration is saved, like the ink is: a file picked and then abandoned
+    /// should leave nothing behind on the server.</summary>
+    public sealed record SignatureImage(byte[] Bytes, string Extension);
+
+    private const int MaxUploadKb = 512;
+
+    private SignatureImage? _uploaded;
+    private string? _uploadedPreview;
+    private string? _uploadedFileName;
+    private string? _uploadError;
+
     private readonly string _canvasId = $"cg-signature-{Guid.NewGuid():N}";
     private DotNetObjectReference<SignaturePad>? _self;
     private bool _hasInk;
@@ -54,14 +90,72 @@
 
     /// <summary>True when this pad holds something to save -- newly drawn ink, or a signature
     /// already on file that the member has not replaced.</summary>
-    public bool HasSignature => _hasInk || (!_redrawing && !string.IsNullOrEmpty(ExistingSignaturePath));
+    public bool HasSignature => _uploaded is not null || _hasInk || (!_redrawing && !string.IsNullOrEmpty(ExistingSignaturePath));
 
-    /// <summary>The drawn ink as base64 PNG, or null when nothing new was drawn -- in which case the
-    /// signature already on file stands.</summary>
-    public async Task<string?> ReadPngAsync()
+    /// <summary>What this pad has to save: an uploaded image, or newly drawn ink as a PNG. Null
+    /// when neither -- in which case the signature already on file stands.</summary>
+    public async Task<SignatureImage?> ReadAsync()
     {
+        if (_uploaded is not null) return _uploaded;
         if (!_started || !_hasInk) return null;
-        return await JS.InvokeAsync<string?>("cgSignaturePad.toPng", _canvasId);
+
+        var png = await JS.InvokeAsync<string?>("cgSignaturePad.toPng", _canvasId);
+        return string.IsNullOrEmpty(png) ? null : new SignatureImage(Convert.FromBase64String(png), ".png");
+    }
+
+    private async Task OnUploadAsync(InputFileChangeEventArgs e)
+    {
+        _uploadError = null;
+        var file = e.File;
+
+        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (extension is not (".jpg" or ".jpeg" or ".gif" or ".png"))
+        {
+            _uploadError = "Choose a JPG, GIF or PNG image.";
+            return;
+        }
+
+        if (file.Size > MaxUploadKb * 1024)
+        {
+            _uploadError = $"That image is {file.Size / 1024} KB. The limit is {MaxUploadKb} KB.";
+            return;
+        }
+
+        // Read through a bounded stream rather than trusting the reported size: the size comes
+        // from the browser, and the limit is the thing actually being enforced.
+        using var buffer = new MemoryStream();
+        await using (var stream = file.OpenReadStream(MaxUploadKb * 1024))
+        {
+            await stream.CopyToAsync(buffer);
+        }
+
+        var bytes = buffer.ToArray();
+        var mediaType = extension switch
+        {
+            ".gif" => "image/gif",
+            ".png" => "image/png",
+            _ => "image/jpeg",
+        };
+
+        _uploaded = new SignatureImage(bytes, extension);
+        _uploadedPreview = $"data:{mediaType};base64,{Convert.ToBase64String(bytes)}";
+        _uploadedFileName = file.Name;
+
+        // An uploaded signature replaces whatever is in the pad, so the two cannot both be
+        // "the signature" when the declaration is saved.
+        _hasInk = false;
+        _started = false;
+        await OnChanged.InvokeAsync(HasSignature);
+    }
+
+    private async Task DiscardUploadAsync()
+    {
+        _uploaded = null;
+        _uploadedPreview = null;
+        _uploadedFileName = null;
+        _uploadError = null;
+        _redrawing = ExistingSignaturePath is { Length: > 0 };
+        await OnChanged.InvokeAsync(HasSignature);
     }
 
     [JSInvokable]
@@ -76,7 +170,8 @@
     {
         // Started on whichever render first puts the canvas in the DOM -- not necessarily the first,
         // since a signature on file is shown in its place until "Sign again".
-        var wantsPad = string.IsNullOrEmpty(ExistingSignaturePath) || _redrawing;
+        var wantsPad = _uploadedPreview is null or { Length: 0 }
+            && (string.IsNullOrEmpty(ExistingSignaturePath) || _redrawing);
         if (!wantsPad || _started) return;
 
         _self ??= DotNetObjectReference.Create(this);

@@ -2401,6 +2401,69 @@ button.cg-doc-chip:disabled { cursor: default; opacity: 0.6; text-decoration: no
 .cg-col-relname { min-width: 190px; }
 .cg-captured-grid { margin-top: 12px; }
 
+/* A document panel once it holds a file: the fields it read on the left, the document itself on
+   the right. The fields used to run the full width of the card, which on a desk monitor made an
+   Emirates ID number a 700px input -- and left nowhere to put the thing the numbers came off, so
+   checking one against the other meant opening the file in another tab.
+
+   The preview column is capped rather than proportional: past about 460px a passport scan gains
+   nothing, and the fields are what the person is actually correcting. */
+.cg-doc-panel-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 560px);
+    gap: 24px;
+    align-items: start;
+    margin-top: 12px;
+}
+
+/* The fields stop at a width that suits what goes in them. An Emirates ID number is twenty
+   characters and a date is ten; left to fill the column they became 600px inputs holding a third
+   of their own width, which is how the panel looked before the split and is half of what was
+   wrong with it. The slack sits between the fields and the preview as space, rather than inside
+   the inputs. */
+.cg-doc-panel-split .cg-form-grid { max-width: 680px; }
+
+@media (max-width: 1100px) {
+    .cg-doc-panel-split { grid-template-columns: minmax(0, 1fr); }
+}
+
+.cg-doc-preview {
+    border: 1px solid var(--cg-line);
+    border-radius: 10px;
+    background: var(--cg-surface-sunken, var(--cg-bg));
+    overflow: hidden;
+}
+.cg-doc-preview-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--cg-line);
+    font-size: 12px;
+    color: var(--cg-ink-muted);
+}
+.cg-doc-preview-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cg-doc-preview-note { padding: 14px; margin: 0; }
+
+/* A fixed height rather than an aspect ratio: an Emirates ID is landscape, a passport page is
+   portrait and a trade licence is A4, and a box that changes shape per document makes the panel
+   jump as files are swapped. */
+.cg-doc-preview-frame {
+    display: block;
+    width: 100%;
+    height: 320px;
+    border: 0;
+    background: #FFFFFF;
+}
+.cg-doc-preview-image {
+    display: block;
+    width: 100%;
+    height: 320px;
+    object-fit: contain;
+    background: #FFFFFF;
+}
+
 /* A relative's holdings: one row per company, the remove button aligned with the inputs. */
 .cg-holding-row {
     display: grid;

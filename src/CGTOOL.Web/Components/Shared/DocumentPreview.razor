@@ -1,0 +1,44 @@
+@* The uploaded document, shown beside the fields that were read off it, so a number can be checked
+   against the thing it came from without opening another tab.
+
+   Rendered by file type rather than hopefully: a browser handed a type it cannot display either
+   downloads it or shows an empty box, and an empty box beside a filled-in form reads as a bug. *@
+@if (!string.IsNullOrWhiteSpace(FilePath))
+{
+    <aside class="cg-doc-preview">
+        <div class="cg-doc-preview-head">
+            <span class="cg-doc-preview-name" title="@DisplayName">@DisplayName</span>
+            <a class="cg-doc-chip" href="@FilePath" target="_blank" rel="noopener">Open</a>
+        </div>
+        @if (IsPdf)
+        {
+            @* toolbar=0 drops the viewer's own chrome, which in a 460px column is most of the box. *@
+            <iframe class="cg-doc-preview-frame" src="@(FilePath + "#toolbar=0&navpanes=0&view=FitH")"
+                    title="@($"Preview of {DisplayName}")"></iframe>
+        }
+        else if (IsImage)
+        {
+            <img class="cg-doc-preview-image" src="@FilePath" alt="@($"Preview of {DisplayName}")" />
+        }
+        else
+        {
+            <p class="cg-subtitle cg-doc-preview-note">No preview for this kind of file — use <b>Open</b>.</p>
+        }
+    </aside>
+}
+
+@code {
+    [Parameter] public string? FilePath { get; set; }
+
+    /// <summary>The name the person uploaded, when there is one. The stored path is named after the
+    /// row id, so showing it would tell them nothing.</summary>
+    [Parameter] public string? OriginalFileName { get; set; }
+
+    private string DisplayName =>
+        string.IsNullOrWhiteSpace(OriginalFileName) ? "Attached document" : OriginalFileName!;
+
+    private string Extension => System.IO.Path.GetExtension(FilePath ?? string.Empty).ToLowerInvariant();
+
+    private bool IsPdf => Extension == ".pdf";
+    private bool IsImage => Extension is ".png" or ".jpg" or ".jpeg";
+}

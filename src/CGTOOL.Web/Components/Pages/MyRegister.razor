@@ -83,6 +83,8 @@
 
                         @if (doc is not null && !string.IsNullOrEmpty(doc.FilePath))
                         {
+                        <div class="cg-doc-panel-split">
+                        <div>
                             <div class="cg-form-grid cg-captured-grid">
                                 <label class="cg-field">
                                     <span>@(kind == MemberDocumentKind.TradeLicence ? "Trade License No" : kind == MemberDocumentKind.Passport ? "Passport No" : "Emirates ID No")</span>
@@ -133,6 +135,9 @@
                                 <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveDocumentAsync(doc)">Save</button>
                                 <button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveDocument(doc)">Remove</button>
                             </div>
+                        </div>
+                        <DocumentPreview FilePath="@doc.FilePath" OriginalFileName="@doc.OriginalFileName" />
+                        </div>
                         }
                     </div>
                 }
@@ -171,6 +176,8 @@
 
                         @if (added is not null && !string.IsNullOrEmpty(added.FilePath))
                         {
+                        <div class="cg-doc-panel-split">
+                        <div>
                             <div class="cg-form-grid cg-captured-grid">
                                 <label class="cg-field">
                                     <span>Reference No</span>
@@ -191,6 +198,9 @@
                                 <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveDocumentAsync(added)">Save</button>
                                 <button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveDocument(added)">Remove</button>
                             </div>
+                        </div>
+                        <DocumentPreview FilePath="@added.FilePath" OriginalFileName="@added.OriginalFileName" />
+                        </div>
                         }
                     </div>
                 }

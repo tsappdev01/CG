@@ -934,8 +934,12 @@
                 <div class="cg-actions">
                     <button type="button" class="cg-action-btn" disabled="@_submitting" @onclick="() => _step = Step.Capture2">← Back to edit</button>
                     <CgBusyButton CssClass="cg-good" Disabled="@(!_agreeConfirmed)"
-                                  BusyLabel="@(_hadExistingRow ? "Saving…" : "Submitting…")" OnClick="SubmitAsync">
-                        @(_hadExistingRow ? "Save changes" : "Confirm & Submit")
+                                  BusyLabel="Submitting…" OnClick="SubmitAsync">
+                        @* One name for one action. "Save changes" was shown whenever a row already
+                           existed, a draft included -- but this button does not save anything: it
+                           files the declaration, sends the confirmation and makes it count as
+                           submitted. A button that says save and submits is the wrong way round. *@
+                        Submit
                     </CgBusyButton>
                 </div>
             </div>

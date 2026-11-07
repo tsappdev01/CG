@@ -21,6 +21,7 @@
 @inject Microsoft.AspNetCore.DataProtection.IDataProtector UaePassStateProtector
 @inject IDocumentIntelligenceService DocIntel
 @inject IJSRuntime JS
+@inject Branding Branding
 
 <PageTitle>Related Party & COI Declaration</PageTitle>
 
@@ -306,7 +307,7 @@
                             and the Board member's personal, business or other interests. All conflict of interest are not necessarily prohibited or harmful to DI.
                             However, full disclosure of all actual and potential conflicts is necessary, and the interested Board member(s) shall be recused from
                             participating in discussions and voting on the matter. Board members must recognize that conflict of interest, even when in fact it
-                            may not exist, can be damaging to them and to DI PJSC and accordingly, must be avoided.
+                            may not exist, can be damaging to them and to @Branding.ParentHoldingCompany and accordingly, must be avoided.
                         </p>
                     </div>
                 }
@@ -318,7 +319,7 @@
                             Investments PJSC and its Group Companies (DI) and the individual's personal, business or other interests. All conflicts of interest
                             are not necessarily prohibited or harmful to DI. However, full disclosure of all actual and potential conflicts is necessary, and the
                             interested individual shall be recused from participating in decision making on the matter. An employee must recognize that conflict
-                            of interest, even when in fact it may not exist, can be damaging to them and to DI PJSC and accordingly, must be avoided.
+                            of interest, even when in fact it may not exist, can be damaging to them and to @Branding.ParentHoldingCompany and accordingly, must be avoided.
                         </p>
                     </div>
                     <p class="cg-subtitle">

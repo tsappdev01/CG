@@ -54,7 +54,7 @@ SET @Body = CAST(N'<!DOCTYPE html>
                and that file is already flattened onto this exact navy. -->
           <tr>
             <td style="background-color:#002850; padding:22px 32px;">
-              <img src="{LogoUrl}" alt="DIP Holding PLC" height="38" style="display:block; border:0; outline:none; text-decoration:none;" />
+              <img src="{LogoUrl}" alt="{ParentHoldingCompany}" height="38" style="display:block; border:0; outline:none; text-decoration:none;" />
             </td>
           </tr>
           <!-- The gold rule, as on the report PDFs. font-size and line-height have to be set to the
@@ -100,15 +100,15 @@ SET @Body = CAST(N'<!DOCTYPE html>
 
               <p style="margin:20px 0 0 0; font-size:15px; color:#16202E; line-height:1.6;">
                 Thank you.
-              </p>
 ' AS nvarchar(max));
-SET @Body = @Body + N'            </td>
+SET @Body = @Body + N'              </p>
+            </td>
           </tr>
 
           <tr>
             <td style="background-color:#f7f9fc; padding:20px 32px; border-top:1px solid #e6ebf2;">
               <p style="margin:0; font-size:11px; color:#94A3B8; line-height:1.6;">
-                This is an automated notification from the DIP Holding PLC Corporate Governance Tool.
+                This is an automated notification from the {ParentHoldingCompany} Corporate Governance Tool.
                 Please do not reply to this email. The information contained in this message may be
                 CONFIDENTIAL and is intended only for the named recipient. If you are not the intended
                 recipient, please notify the sender and delete this message.
@@ -154,7 +154,7 @@ SET @Body = CAST(N'<!DOCTYPE html>
                and that file is already flattened onto this exact navy. -->
           <tr>
             <td style="background-color:#002850; padding:22px 32px;">
-              <img src="{LogoUrl}" alt="DIP Holding PLC" height="38" style="display:block; border:0; outline:none; text-decoration:none;" />
+              <img src="{LogoUrl}" alt="{ParentHoldingCompany}" height="38" style="display:block; border:0; outline:none; text-decoration:none;" />
             </td>
           </tr>
           <!-- The gold rule, as on the report PDFs. font-size and line-height have to be set to the
@@ -208,7 +208,7 @@ SET @Body = @Body + N'            </td>
           <tr>
             <td style="background-color:#f7f9fc; padding:20px 32px; border-top:1px solid #e6ebf2;">
               <p style="margin:0; font-size:11px; color:#94A3B8; line-height:1.6;">
-                This is an automated notification from the DIP Holding PLC Corporate Governance Tool.
+                This is an automated notification from the {ParentHoldingCompany} Corporate Governance Tool.
                 Please do not reply to this email. The information contained in this message may be
                 CONFIDENTIAL and is intended only for the named recipient. If you are not the intended
                 recipient, please notify the sender and delete this message.
@@ -254,7 +254,7 @@ SET @Body = CAST(N'<!DOCTYPE html>
                and that file is already flattened onto this exact navy. -->
           <tr>
             <td style="background-color:#002850; padding:22px 32px;">
-              <img src="{LogoUrl}" alt="DIP Holding PLC" height="38" style="display:block; border:0; outline:none; text-decoration:none;" />
+              <img src="{LogoUrl}" alt="{ParentHoldingCompany}" height="38" style="display:block; border:0; outline:none; text-decoration:none;" />
             </td>
           </tr>
           <!-- The gold rule, as on the report PDFs. font-size and line-height have to be set to the
@@ -298,9 +298,9 @@ SET @Body = CAST(N'<!DOCTYPE html>
                 Should you have any queries on this matter, please contact the Corporate Affairs Office.
               </p>
 
-              <p style="margin:20px 0 0 0; font-size:15px; color:#16202E; line-height:1.6;">
 ' AS nvarchar(max));
-SET @Body = @Body + N'                Thank you.
+SET @Body = @Body + N'              <p style="margin:20px 0 0 0; font-size:15px; color:#16202E; line-height:1.6;">
+                Thank you.
               </p>
             </td>
           </tr>
@@ -308,7 +308,7 @@ SET @Body = @Body + N'                Thank you.
           <tr>
             <td style="background-color:#f7f9fc; padding:20px 32px; border-top:1px solid #e6ebf2;">
               <p style="margin:0; font-size:11px; color:#94A3B8; line-height:1.6;">
-                This is an automated notification from the DIP Holding PLC Corporate Governance Tool.
+                This is an automated notification from the {ParentHoldingCompany} Corporate Governance Tool.
                 Please do not reply to this email. The information contained in this message may be
                 CONFIDENTIAL and is intended only for the named recipient. If you are not the intended
                 recipient, please notify the sender and delete this message.
@@ -354,7 +354,7 @@ SET @Body = CAST(N'<!DOCTYPE html>
                and that file is already flattened onto this exact navy. -->
           <tr>
             <td style="background-color:#002850; padding:22px 32px;">
-              <img src="{LogoUrl}" alt="DIP Holding PLC" height="38" style="display:block; border:0; outline:none; text-decoration:none;" />
+              <img src="{LogoUrl}" alt="{ParentHoldingCompany}" height="38" style="display:block; border:0; outline:none; text-decoration:none;" />
             </td>
           </tr>
           <!-- The gold rule, as on the report PDFs. font-size and line-height have to be set to the
@@ -408,7 +408,7 @@ SET @Body = @Body + N'              </p>
           <tr>
             <td style="background-color:#f7f9fc; padding:20px 32px; border-top:1px solid #e6ebf2;">
               <p style="margin:0; font-size:11px; color:#94A3B8; line-height:1.6;">
-                This is an automated notification from the DIP Holding PLC Corporate Governance Tool.
+                This is an automated notification from the {ParentHoldingCompany} Corporate Governance Tool.
                 Please do not reply to this email. The information contained in this message may be
                 CONFIDENTIAL and is intended only for the named recipient. If you are not the intended
                 recipient, please notify the sender and delete this message.

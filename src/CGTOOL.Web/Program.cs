@@ -224,6 +224,9 @@ var graphConfigured = !string.IsNullOrWhiteSpace(azureAdSection["ClientSecret"])
 // IWebHostEnvironment and the file system.
 builder.Services.AddSingleton<ProfilePictureResolver>();
 
+// The organisation's own names, from the Branding section. Singleton: it only reads configuration.
+builder.Services.AddSingleton<Branding>();
+
 if (graphConfigured)
 {
     builder.Services.AddSingleton<IDirectoryEmployeeProvider, GraphDirectoryEmployeeProvider>();

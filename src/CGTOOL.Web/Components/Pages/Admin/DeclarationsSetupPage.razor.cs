@@ -736,7 +736,8 @@ public partial class DeclarationsSetupPage
             // Empty on purpose: {LogoUrl} and {BaseUrl} then come out site-relative, so the preview
             // shows what THIS build serves rather than what is still on the deployed site, which is
             // the whole point of previewing before a release.
-            baseUrl: "");
+            baseUrl: "",
+            parentHoldingCompany: Branding.ParentHoldingCompany);
 
         _showPreview = true;
     }

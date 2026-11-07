@@ -11,6 +11,7 @@ namespace CGTOOL.Web.Components.Pages.Admin;
 public partial class RelatedPartyMaster
 {
     [Inject] private AuthenticationStateProvider AuthState { get; set; } = default!;
+    [Inject] private Branding Branding { get; set; } = default!;
 
     /// <summary>Where a row came from. The master is a union of four standing lists, and which one a
     /// row came from decides what its Type column means and which of the other columns it can fill --
@@ -153,7 +154,7 @@ public partial class RelatedPartyMaster
             {
                 Source = MasterSource.User,
                 Name = m.FullName,
-                Type = MemberDeclarationTypes.Label(m.DeclarationType),
+                Type = MemberDeclarationTypes.Label(m.DeclarationType, Branding.ParentHoldingCompany),
                 EntityName = m.Company?.Name,
                 EntityCompanyId = m.CompanyId,
                 Department = m.Department?.Name,

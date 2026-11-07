@@ -201,7 +201,7 @@ internal class DeclarationPdfWriter(
         {
             // The label wraps to its own column like the value does. Drawn on one line, a label
             // wider than 180 points ran straight over the value beside it -- the declaration's
-            // "I / my relatives hold shares in DI PJSC?" came out overlapping its own answer.
+            // "I / my relatives hold shares in <the parent company>?" came out overlapping its own answer.
             var labelLines = WrapText(label, _label, labelWidth - 8);
             var lines = WrapText(value, _value, valueWidth - 8);
             var rowHeight = Math.Max(18, (Math.Max(labelLines.Count, lines.Count) * 12) + 6);

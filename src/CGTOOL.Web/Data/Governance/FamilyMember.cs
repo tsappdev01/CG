@@ -45,7 +45,7 @@ public class FamilyMember
     /// record, which could only ever describe one.</summary>
     public List<FamilyMemberHolding> Holdings { get; set; } = [];
 
-    /// <summary>Whether this relative holds shares in Dubai Investments PJSC. Kept on the register
+    /// <summary>Whether this relative holds shares in the parent holding company. Kept on the register
     /// rather than asked afresh each quarter: it is a fact about the person that rarely changes,
     /// and it is what decides who the Insider Trading declaration's shareholding grid starts with.</summary>
     public bool HoldsDiShares { get; set; }

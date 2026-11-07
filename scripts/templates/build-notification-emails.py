@@ -75,7 +75,7 @@ SHELL = """<!DOCTYPE html>
                and that file is already flattened onto this exact navy. -->
           <tr>
             <td style="background-color:{navy}; padding:22px 32px;">
-              <img src="{{LogoUrl}}" alt="DIP Holding PLC" height="38" style="display:block; border:0; outline:none; text-decoration:none;" />
+              <img src="{{LogoUrl}}" alt="{{ParentHoldingCompany}}" height="38" style="display:block; border:0; outline:none; text-decoration:none;" />
             </td>
           </tr>
           <!-- The gold rule, as on the report PDFs. font-size and line-height have to be set to the
@@ -128,7 +128,7 @@ SHELL = """<!DOCTYPE html>
           <tr>
             <td style="background-color:#f7f9fc; padding:20px 32px; border-top:1px solid {line};">
               <p style="margin:0; font-size:11px; color:{faint}; line-height:1.6;">
-                This is an automated notification from the DIP Holding PLC Corporate Governance Tool.
+                This is an automated notification from the {{ParentHoldingCompany}} Corporate Governance Tool.
                 Please do not reply to this email. The information contained in this message may be
                 CONFIDENTIAL and is intended only for the named recipient. If you are not the intended
                 recipient, please notify the sender and delete this message.

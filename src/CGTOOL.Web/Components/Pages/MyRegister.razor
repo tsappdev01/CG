@@ -4,6 +4,7 @@
 @page "/my-workspace"
 @attribute [Authorize]
 @rendermode InteractiveServer
+@inject Branding Branding
 
 <PageTitle>My Workspace</PageTitle>
 
@@ -635,7 +636,7 @@
                     </div>
                 </div>
                 <div class="cg-field cg-field-wide">
-                    <span>Have shares in Dubai Investments PJSC?</span>
+                    <span>Have shares in @Branding.ParentHoldingCompany?</span>
                     <label class="cg-switch">
                         <input type="checkbox" @bind="_relativeForm.HoldsDiShares" />
                         <span class="cg-switch-track" aria-hidden="true"></span>

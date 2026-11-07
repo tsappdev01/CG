@@ -292,6 +292,36 @@ PDFsharp has no GDI to fall back on for font resolution on .NET
 (`PdfFontResolver`, registered once via `GlobalFontSettings.FontResolver` in
 `Program.cs`).
 
+## The parent holding company's name is a setting
+
+```json
+"Branding": {
+  "ParentHoldingCompany": "DIP Holding PLC",
+  "PublicBaseUrl": ""
+}
+```
+
+It appears on the forms ("do you or any of your relatives hold shares in X"), in the COI
+attestation ("can be damaging to them and to X"), on the reports, in the declaration-type labels
+("Employee - X") and in every scheduled notification. It used to be written into each of those
+places by hand, as "DI PJSC" in some and "Dubai Investments PJSC" in others, so a rename was a hunt
+through the markup -- and the one that got missed would be the one in a PDF nobody opens until an
+auditor does.
+
+Read through the `Branding` service, which falls back to `DIP Holding PLC` when the setting is
+absent or blank. An installation with no `Branding` section keeps working and shows that name,
+rather than printing a gap where the company should be.
+
+**In emails it is a placeholder, `{ParentHoldingCompany}`**, resolved when the message is sent
+rather than written into the stored template. Renaming the company in `appsettings.json` renames it
+in the next email out, with no need to re-run `scripts/update-notification-templates.sql` against
+four stored bodies.
+
+**`CompanyLookups:GroupNames` is deliberately untouched.** It still offers "Dubai Investments PJSC"
+because it is not a label -- it is the set of values stored in `Company.Group`, and changing the
+string there would orphan every company row already carrying it. Renaming that is a data migration,
+not a setting.
+
 ## Configure document auto-capture (Azure AI Document Intelligence)
 
 One Azure AI Document Intelligence resource serves every auto-capture in the

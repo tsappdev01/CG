@@ -14,6 +14,7 @@
 @inject ToastService Toasts
 @inject IWebHostEnvironment Env
 @inject IDocumentIntelligenceService DocIntel
+@inject Branding Branding
 
 <PageTitle>Insider Trading Declaration</PageTitle>
 
@@ -514,10 +515,10 @@
 
                 </div>
 
-                <h2 class="cg-section-heading">Do you or any of your relatives hold shares in DI PJSC?</h2>
+                <h2 class="cg-section-heading">Do you or any of your relatives hold shares in @Branding.ParentHoldingCompany?</h2>
                 <p class="cg-subtitle">Relatives: father, mother, brother, sister, children, spouse, father-in-law, mother-in-law, stepchildren.</p>
 
-                <div class="cg-choice-cards" role="radiogroup" aria-label="Do you or any of your relatives hold shares in DI PJSC?">
+                <div class="cg-choice-cards" role="radiogroup" aria-label="@($"Do you or any of your relatives hold shares in {Branding.ParentHoldingCompany}?")">
                     <button type="button" role="radio" aria-checked="@_holdsSharesInDI"
                             class="cg-choice-card @(_holdsSharesInDI ? "is-picked" : "")"
                             @onclick="() => ChooseHoldsSharesAsync(true)">
@@ -653,7 +654,7 @@
                         <tbody>
                             <tr><th>Holds a NIN</th><td>@(_hasNin ? $"Yes ({_ninNumber})" : "No — I do not have a National Investor Number (NIN) from Dubai Financial Market (DFM).")</td></tr>
                             <tr><th>Relatives have a NIN</th><td>@(_relativesHaveNin ? "Yes" : "No")</td></tr>
-                            <tr><th>Holds shares in DI PJSC (self or relatives)</th><td>@(_holdsSharesInDI ? "Yes" : "Neither I, my spouse, nor my relatives hold shares in DI PJSC.")</td></tr>
+                            <tr><th>Holds shares in @Branding.ParentHoldingCompany (self or relatives)</th><td>@(_holdsSharesInDI ? "Yes" : $"Neither I, my spouse, nor my relatives hold shares in {Branding.ParentHoldingCompany}.")</td></tr>
                         </tbody>
                     </table>
                 </div>

@@ -19,6 +19,8 @@ public partial class InsiderDetailReport
     [Inject] private IDbContextFactory<ApplicationDbContext> DbFactory { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthState { get; set; } = default!;
 
+    [Inject] private Branding Branding { get; set; } = default!;
+
     private List<DeclarationSubmissionRow<InsiderDeclaration>>? _rows;
     private List<Company>? _companies;
     private string _preparedBy = "unknown";
@@ -78,7 +80,7 @@ public partial class InsiderDetailReport
         };
     }
 
-    private static ReportRecord Record(DeclarationSubmissionRow<InsiderDeclaration> row)
+    private ReportRecord Record(DeclarationSubmissionRow<InsiderDeclaration> row)
     {
         var d = row.Declaration!;
 
@@ -91,7 +93,7 @@ public partial class InsiderDetailReport
                 new("Department", row.DepartmentName ?? "—"),
                 new("User Has NIN?", d.HasNin ? "Yes" : "No"),
                 new("Relatives Have NIN?", d.RelativesHaveNin ? "Yes" : "No"),
-                new("I / my relatives hold shares in DI PJSC?", d.HoldsShares || d.RelativesHoldShares ? "Yes" : "No"),
+                new($"I / my relatives hold shares in {Branding.ParentHoldingCompany}?", d.HoldsShares || d.RelativesHoldShares ? "Yes" : "No"),
                 new("Own NIN", d.HasNin && d.NinNumber is { Length: > 0 } ? d.NinNumber : "—"),
                 new("Shares held", d.HoldsShares ? (d.NumberOfSharesHeld ?? 0).ToString("N0") : "—"),
                 new("Submitted by", d.SubmittedOnBehalfOf is { Length: > 0 }
@@ -125,7 +127,7 @@ public partial class InsiderDetailReport
                         r.NumberOfShares.ToString(),
                     })],
                     d.RelativesHoldShares ? "Declared that relatives hold shares, but none were listed."
-                                          : "Declared that no relatives hold shares in DI PJSC."),
+                                          : $"Declared that no relatives hold shares in {Branding.ParentHoldingCompany}."),
             ]);
     }
 

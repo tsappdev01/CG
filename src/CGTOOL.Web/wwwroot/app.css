@@ -2809,9 +2809,16 @@ button.cg-doc-chip:disabled { cursor: default; opacity: 0.6; text-decoration: no
 /* A field whose value has a fixed, short shape -- a NIN is exactly ten characters. A cg-input
    fills whatever holds it, which on a wide form gave ten characters a 900px box and made an
    empty field look like a mistake. Sized in ch so it follows the font rather than a guess at it. */
-/* Actions that belong at the end of their row rather than the start -- a destructive one put
-   deliberately away from the Save it undoes. */
-.cg-actions-end { justify-content: flex-end; }
+/* The DFM section's own button rows.
+
+   .cg-actions has no rule in this stylesheet at all -- the only one is in Dashboard's scoped
+   sheet, which does not reach here -- so a row of buttons using it on My Workspace is a plain
+   block: no gap, no alignment, and Save sitting against the field above it. Rather than giving
+   .cg-actions global styling and changing every page that has been living with it, these two say
+   what this section needs. */
+.cg-dfm-actions { display: flex; gap: 10px; align-items: center; }
+.cg-dfm-actions-end { justify-content: flex-end; margin-bottom: 18px; }
+.cg-dfm-actions-save { margin-top: 22px; }
 
 .cg-input-short {
     width: 16ch;

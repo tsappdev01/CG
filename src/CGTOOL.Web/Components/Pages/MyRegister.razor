@@ -52,7 +52,7 @@
                 <div class="cg-accordion-body">
                     @* Top right, away from Save: one button writes what is on screen and the other
                        throws it away, and they should not sit side by side at the foot of a form. *@
-                    <div class="cg-actions cg-actions-end">
+                    <div class="cg-dfm-actions cg-dfm-actions-end">
                         <button type="button" class="cg-action-btn cg-critical" disabled="@(_dfm.IsEmpty || _savingDfm)"
                                 @onclick="() => _confirmClearDfm = true">Clear DFM Information</button>
                     </div>
@@ -115,7 +115,7 @@
                         </label>
                     </div>
 
-                    <div class="cg-actions">
+                    <div class="cg-dfm-actions cg-dfm-actions-save">
                         <button type="button" class="cg-action-btn cg-good" disabled="@_savingDfm" @onclick="SaveDfmAsync">Save</button>
                     </div>
                 </div>

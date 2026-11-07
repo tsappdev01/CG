@@ -111,7 +111,7 @@
                 {
                     <label class="cg-field">
                         <span>NIN Number</span>
-                        <input class="cg-input@(NinFieldClass(_ninNumber))" @bind="_ninNumber" @bind:event="oninput"
+                        <input class="cg-input cg-input-short@(NinFieldClass(_ninNumber))" @bind="_ninNumber" @bind:event="oninput"
                                maxlength="@Nin.Length" minlength="@Nin.Length" placeholder="10 letters or digits" />
                         @if (Nin.IsInvalidEntry(_ninNumber))
                         {
@@ -159,7 +159,7 @@
                                         </td>
                                         <td><input class="cg-input" @bind="h.NameOfShareHolder" maxlength="120" /></td>
                                         <td>
-                                            <input class="cg-input@(NinFieldClass(h.NinNumber))" @bind="h.NinNumber" @bind:event="oninput"
+                                            <input class="cg-input cg-input-short@(NinFieldClass(h.NinNumber))" @bind="h.NinNumber" @bind:event="oninput"
                                                    maxlength="@Nin.Length" minlength="@Nin.Length" placeholder="10 characters" />
                                             @if (Nin.IsInvalidEntry(h.NinNumber))
                                             {
@@ -581,7 +581,7 @@
                                             }
                                         </td>
                                         <td>
-                                            <input class="cg-input@(NinFieldClass(r.NinNumber))" @bind="r.NinNumber" @bind:event="oninput"
+                                            <input class="cg-input cg-input-short@(NinFieldClass(r.NinNumber))" @bind="r.NinNumber" @bind:event="oninput"
                                                    maxlength="@Nin.Length" minlength="@Nin.Length" placeholder="10 characters" />
                                             @if (Nin.IsInvalidEntry(r.NinNumber))
                                             {

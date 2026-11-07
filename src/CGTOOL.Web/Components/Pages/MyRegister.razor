@@ -35,6 +35,147 @@
     }
     else
     {
+        @* The DFM record, first: it is who the exchange thinks this person is, and the investor
+           number on it is the one every declaration asks them to repeat. *@
+        <section class="cg-card cg-accordion @(_dfmOpen ? "is-open" : "")">
+            <button type="button" class="cg-accordion-head" aria-expanded="@_dfmOpen" @onclick="() => _dfmOpen = !_dfmOpen">
+                <span class="cg-accordion-chevron" aria-hidden="true"></span>
+                <span class="cg-accordion-titles">
+                    <span class="cg-card-title">My DFM Information</span>
+                    <span class="cg-subtitle">Your investor record as the DFM holds it.</span>
+                </span>
+                <span class="cg-accordion-count">@(_dfm.IsEmpty ? "—" : "On file")</span>
+            </button>
+
+            @if (_dfmOpen)
+            {
+                <div class="cg-accordion-body">
+                    <h3 class="cg-section-heading">Investor identification</h3>
+                    <div class="cg-form-grid">
+                        <label class="cg-field">
+                            <span>DFM Investor Number (NIN)</span>
+                            <input class="cg-input cg-input-short@(Nin.IsInvalidEntry(_dfm.InvestorNumber) ? " cg-input-invalid" : Nin.IsComplete(_dfm.InvestorNumber) ? " cg-input-valid" : "")"
+                                   placeholder="10 letters or digits" @bind="_dfm.InvestorNumber" @bind:event="oninput"
+                                   maxlength="@Nin.Length" minlength="@Nin.Length" />
+                            @if (Nin.IsInvalidEntry(_dfm.InvestorNumber))
+                            {
+                                <span class="cg-field-error">@Nin.Hint</span>
+                            }
+                            else if (Nin.IsComplete(_dfm.InvestorNumber))
+                            {
+                                <span class="cg-field-ok" role="status">&#10003; Complete</span>
+                            }
+                        </label>
+                        <label class="cg-field">
+                            <span>Investor Type</span>
+                            <select class="cg-input" @bind="_dfm.InvestorType">
+                                <option value="">—</option>
+                                @foreach (var option in DfmInvestorTypes)
+                                {
+                                    <option value="@option.Value">@option.Label</option>
+                                }
+                            </select>
+                        </label>
+                    </div>
+
+                    <h3 class="cg-section-heading">Personal details</h3>
+                    <div class="cg-form-grid">
+                        <label class="cg-field cg-field-wide">
+                            <span>Full Name</span>
+                            <input class="cg-input" @bind="_dfm.FullName" maxlength="200" placeholder="As it appears on the trading account" />
+                        </label>
+                        <label class="cg-field">
+                            <span>Nationality</span>
+                            <select class="cg-input" @bind="_dfm.Nationality">
+                                <option value="">—</option>
+                                @foreach (var country in Countries.All)
+                                {
+                                    <option value="@country">@country</option>
+                                }
+                            </select>
+                        </label>
+                        <label class="cg-field">
+                            <span>Gender</span>
+                            <select class="cg-input" @bind="_dfm.Gender">
+                                <option value="">—</option>
+                                <option value="@DfmGender.Male">Male</option>
+                                <option value="@DfmGender.Female">Female</option>
+                            </select>
+                        </label>
+                        <label class="cg-field">
+                            <span>Date of Birth</span>
+                            <UaeDateInput Value="_dfm.DateOfBirth" ValueChanged="d => _dfm.DateOfBirth = d" />
+                        </label>
+                    </div>
+
+                    <h3 class="cg-section-heading">Contact details</h3>
+                    <div class="cg-form-grid">
+                        <label class="cg-field">
+                            <span>Mobile Number</span>
+                            <input class="cg-input" @bind="_dfm.MobileNumber" maxlength="40" placeholder="+971 50 000 0000" />
+                        </label>
+                        <label class="cg-field">
+                            <span>Email Address</span>
+                            <input class="cg-input" type="email" @bind="_dfm.EmailAddress" maxlength="200" />
+                        </label>
+                    </div>
+
+                    <h3 class="cg-section-heading">Address</h3>
+                    <div class="cg-form-grid">
+                        <label class="cg-field cg-field-wide">
+                            <span>Residential Address</span>
+                            <input class="cg-input" @bind="_dfm.ResidentialAddress" maxlength="300" />
+                        </label>
+                        <label class="cg-field">
+                            <span>City</span>
+                            <input class="cg-input" @bind="_dfm.City" maxlength="100" />
+                        </label>
+                        <label class="cg-field">
+                            <span>Country</span>
+                            <select class="cg-input" @bind="_dfm.Country">
+                                <option value="">—</option>
+                                @foreach (var country in Countries.All)
+                                {
+                                    <option value="@country">@country</option>
+                                }
+                            </select>
+                        </label>
+                        <label class="cg-field">
+                            <span>PO Box</span>
+                            <input class="cg-input" @bind="_dfm.PoBox" maxlength="40" />
+                        </label>
+                    </div>
+
+                    <h3 class="cg-section-heading">Account information</h3>
+                    <div class="cg-form-grid">
+                        <label class="cg-field">
+                            <span>Account Status</span>
+                            <select class="cg-input" @bind="_dfm.AccountStatus">
+                                <option value="">—</option>
+                                <option value="@DfmAccountStatus.Active">Active</option>
+                                <option value="@DfmAccountStatus.Inactive">Inactive</option>
+                                <option value="@DfmAccountStatus.Suspended">Suspended</option>
+                                <option value="@DfmAccountStatus.Closed">Closed</option>
+                            </select>
+                        </label>
+                        <label class="cg-field">
+                            <span>Registration Date</span>
+                            <UaeDateInput Value="_dfm.RegistrationDate" ValueChanged="d => _dfm.RegistrationDate = d" />
+                        </label>
+                        <label class="cg-field">
+                            <span>Last Updated Date</span>
+                            <UaeDateInput Value="_dfm.LastUpdatedDate" ValueChanged="d => _dfm.LastUpdatedDate = d" />
+                            <span class="cg-hint">As the DFM states it, not when you saved this.</span>
+                        </label>
+                    </div>
+
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn cg-good" disabled="@_savingDfm" @onclick="SaveDfmAsync">Save</button>
+                    </div>
+                </div>
+            }
+        </section>
+
         @* The member's own documents, above the registers: the Emirates ID, passport and trade
            licence a declaration asks for every quarter, uploaded once and read for what they say. *@
         <section class="cg-card cg-accordion @(_documentsOpen ? "is-open" : "")">
@@ -512,7 +653,7 @@
                 </label>
                 <label class="cg-field">
                     <span>NIN Number</span>
-                    <input class="cg-input@(Nin.IsInvalidEntry(_relativeForm.NinNumber) ? " cg-input-invalid" : Nin.IsComplete(_relativeForm.NinNumber) ? " cg-input-valid" : "")"
+                    <input class="cg-input cg-input-short@(Nin.IsInvalidEntry(_relativeForm.NinNumber) ? " cg-input-invalid" : Nin.IsComplete(_relativeForm.NinNumber) ? " cg-input-valid" : "")"
                            placeholder="10 letters or digits" @bind="_relativeForm.NinNumber" @bind:event="oninput"
                            maxlength="@Nin.Length" minlength="@Nin.Length" />
                     @if (Nin.IsInvalidEntry(_relativeForm.NinNumber))

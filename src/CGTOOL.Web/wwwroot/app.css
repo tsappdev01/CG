@@ -2777,6 +2777,14 @@ button.cg-doc-chip:disabled { cursor: default; opacity: 0.6; text-decoration: no
     width: auto;
     min-width: 170px;
 }
+
+/* A field whose value has a fixed, short shape -- a NIN is exactly ten characters. A cg-input
+   fills whatever holds it, which on a wide form gave ten characters a 900px box and made an
+   empty field look like a mistake. Sized in ch so it follows the font rather than a guess at it. */
+.cg-input-short {
+    width: 16ch;
+    min-width: 16ch;
+}
 .cg-field-ok {
     display: block;
     margin-top: 4px;

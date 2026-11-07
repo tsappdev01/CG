@@ -44,6 +44,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<OwnedCompany> OwnedCompanies => Set<OwnedCompany>();
     public DbSet<MemberDocument> MemberDocuments => Set<MemberDocument>();
+    public DbSet<MemberDfmProfile> MemberDfmProfiles => Set<MemberDfmProfile>();
     public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
     public DbSet<DocumentTypeRequirement> DocumentTypeRequirements => Set<DocumentTypeRequirement>();
     public DbSet<InsiderDeclarationDocument> InsiderDeclarationDocuments => Set<InsiderDeclarationDocument>();
@@ -62,6 +63,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<NavMenuItemOrder>()
             .HasIndex(n => n.ItemKey)
+            .IsUnique();
+
+        // One DFM record per member. A second would leave the form with nothing to say which of
+        // them is the investor number the declarations should agree with.
+        builder.Entity<MemberDfmProfile>()
+            .HasIndex(p => p.MemberId)
             .IsUnique();
 
         // Two document types with the same name would be indistinguishable on every screen that

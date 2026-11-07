@@ -168,6 +168,7 @@ builder.Services.AddScoped<IDeclarationReminderLogWriter, DeclarationReminderLog
 builder.Services.AddScoped<IFamilyMemberWriter, FamilyMemberWriter>();
 builder.Services.AddScoped<IOwnedCompanyWriter, OwnedCompanyWriter>();
 builder.Services.AddScoped<IMemberDocumentWriter, MemberDocumentWriter>();
+builder.Services.AddScoped<IMemberDfmProfileWriter, MemberDfmProfileWriter>();
 builder.Services.AddScoped<IDocumentTypeWriter, DocumentTypeWriter>();
 builder.Services.AddScoped<IFamilyMemberHoldingWriter, FamilyMemberHoldingWriter>();
 

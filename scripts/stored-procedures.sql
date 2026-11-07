@@ -89,6 +89,7 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR COL_LENGTH('dbo.MemberDocuments', 'DocumentTypeId') IS NULL
     OR OBJECT_ID('dbo.DocumentTypeRequirements', 'U') IS NULL
     OR OBJECT_ID('dbo.RelatedPartyCoiDeclarationDocuments', 'U') IS NULL
+    OR OBJECT_ID('dbo.MemberDfmProfiles', 'U') IS NULL
 BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
@@ -2232,6 +2233,69 @@ AS
 BEGIN
     SET NOCOUNT ON;
     DELETE FROM dbo.FamilyMemberHoldings WHERE Id = @Id;
+END
+GO
+
+/*
+    One DFM record per member, inserted or updated. The screen is a form the member fills in, not a
+    record they create, so whether a row exists yet is not theirs to think about.
+
+    Returns the row's id either way, so the caller can hold on to it without reading back.
+*/
+CREATE OR ALTER PROCEDURE dbo.usp_MemberDfmProfile_Save
+    @MemberId int,
+    @InvestorNumber nvarchar(40) = NULL,
+    @InvestorType int = NULL,
+    @FullName nvarchar(200) = NULL,
+    @Nationality nvarchar(80) = NULL,
+    @Gender int = NULL,
+    @DateOfBirth datetime2 = NULL,
+    @MobileNumber nvarchar(40) = NULL,
+    @EmailAddress nvarchar(200) = NULL,
+    @ResidentialAddress nvarchar(300) = NULL,
+    @City nvarchar(100) = NULL,
+    @Country nvarchar(80) = NULL,
+    @PoBox nvarchar(40) = NULL,
+    @AccountStatus int = NULL,
+    @RegistrationDate datetime2 = NULL,
+    @LastUpdatedDate datetime2 = NULL,
+    @NewId int OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.MemberDfmProfiles
+    SET InvestorNumber = @InvestorNumber,
+        InvestorType = @InvestorType,
+        FullName = @FullName,
+        Nationality = @Nationality,
+        Gender = @Gender,
+        DateOfBirth = @DateOfBirth,
+        MobileNumber = @MobileNumber,
+        EmailAddress = @EmailAddress,
+        ResidentialAddress = @ResidentialAddress,
+        City = @City,
+        Country = @Country,
+        PoBox = @PoBox,
+        AccountStatus = @AccountStatus,
+        RegistrationDate = @RegistrationDate,
+        LastUpdatedDate = @LastUpdatedDate,
+        @NewId = Id
+    WHERE MemberId = @MemberId;
+
+    IF @@ROWCOUNT = 0
+    BEGIN
+        INSERT INTO dbo.MemberDfmProfiles
+            (MemberId, InvestorNumber, InvestorType, FullName, Nationality, Gender, DateOfBirth,
+             MobileNumber, EmailAddress, ResidentialAddress, City, Country, PoBox,
+             AccountStatus, RegistrationDate, LastUpdatedDate)
+        VALUES
+            (@MemberId, @InvestorNumber, @InvestorType, @FullName, @Nationality, @Gender, @DateOfBirth,
+             @MobileNumber, @EmailAddress, @ResidentialAddress, @City, @Country, @PoBox,
+             @AccountStatus, @RegistrationDate, @LastUpdatedDate);
+
+        SET @NewId = SCOPE_IDENTITY();
+    END
 END
 GO
 

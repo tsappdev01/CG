@@ -19,6 +19,7 @@ public partial class MyRegister : ComponentBase
     [Inject] private IFamilyMemberWriter FamilyMemberWriter { get; set; } = default!;
     [Inject] private IOwnedCompanyWriter CompanyWriter { get; set; } = default!;
     [Inject] private IMemberDocumentWriter DocumentWriter { get; set; } = default!;
+    [Inject] private IMemberDfmProfileWriter DfmWriter { get; set; } = default!;
     [Inject] private IFamilyMemberHoldingWriter HoldingWriter { get; set; } = default!;
     [Inject] private IAuditLogger AuditLog { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthState { get; set; } = default!;
@@ -113,6 +114,14 @@ public partial class MyRegister : ComponentBase
             .OrderBy(d => d.Kind).ThenBy(d => d.Id)
             .ToListAsync());
 
+        _dfm = await db.MemberDfmProfiles.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.MemberId == _effectiveMember.Id)
+            ?? new MemberDfmProfile { MemberId = _effectiveMember.Id };
+
+        // The row may predate an impersonation switch, so the member id is set either way rather
+        // than trusted from what came back.
+        _dfm.MemberId = _effectiveMember.Id;
+
         // Which documents are being asked for, from the Document Centre. Only the active ones are
         // loaded: an inactive type is not shown, and nothing already filed against it is lost --
         // it simply stops being asked for.
@@ -192,6 +201,22 @@ public partial class MyRegister : ComponentBase
     // on screen after a cancel, and would leave nothing to diff against.
     // Collapsed on arrival: the page is three registers, and opening all of them at once buries
     // whichever one the member came for. Adding to a section opens it.
+    private bool _dfmOpen;
+    private bool _savingDfm;
+
+    /// <summary>The member's DFM record. Never null: an empty instance stands in until there is a
+    /// row, so the form binds to something from the first render rather than having to be guarded
+    /// field by field.</summary>
+    private MemberDfmProfile _dfm = new();
+
+    private static readonly (DfmInvestorType Value, string Label)[] DfmInvestorTypes =
+    [
+        (DfmInvestorType.Individual, "Individual"),
+        (DfmInvestorType.UaeNational, "UAE National"),
+        (DfmInvestorType.UaeResident, "UAE Resident"),
+        (DfmInvestorType.InternationalInvestor, "International Investor"),
+    ];
+
     private bool _documentsOpen;
     private bool _relativesOpen;
     private bool _companiesOpen;
@@ -719,6 +744,68 @@ public partial class MyRegister : ComponentBase
                + $"Expiry: {Show(Day(id.DateOfExpiration))}; Issued: {Show(Day(id.DateOfIssue))}; "
                + $"Date of birth: {Show(Day(id.DateOfBirth))}.";
     }
+
+    /// <summary>Saves the DFM record. The investor number is the one rule worth enforcing here:
+    /// it is the NIN the declarations ask for, so a number that will be rejected there should be
+    /// rejected here rather than three months later.</summary>
+    private async Task SaveDfmAsync()
+    {
+        if (_effectiveMember is null || _savingDfm) return;
+
+        if (Nin.IsInvalidEntry(_dfm.InvestorNumber))
+        {
+            Toasts.ShowError(Nin.ErrorFor("your DFM investor number"));
+            return;
+        }
+
+        _savingDfm = true;
+        try
+        {
+            _dfm.MemberId = _effectiveMember.Id;
+            _dfm.InvestorNumber = Blank(_dfm.InvestorNumber);
+            _dfm.FullName = Blank(_dfm.FullName);
+            _dfm.Nationality = Blank(_dfm.Nationality);
+            _dfm.MobileNumber = Blank(_dfm.MobileNumber);
+            _dfm.EmailAddress = Blank(_dfm.EmailAddress);
+            _dfm.ResidentialAddress = Blank(_dfm.ResidentialAddress);
+            _dfm.City = Blank(_dfm.City);
+            _dfm.Country = Blank(_dfm.Country);
+            _dfm.PoBox = Blank(_dfm.PoBox);
+
+            _dfm.Id = await DfmWriter.SaveAsync(_dfm);
+
+            var actorName = await CurrentActorNameAsync();
+            await AuditLog.LogAsync(actorName, AuditAction.Update, nameof(MemberDfmProfile),
+                _dfm.Id.ToString(), DfmSnapshot());
+
+            Toasts.ShowSuccess("DFM information saved.");
+        }
+        finally
+        {
+            _savingDfm = false;
+        }
+
+        static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private string DfmSnapshot() => string.Join("; ",
+    [
+        $"Investor number: {Show(_dfm.InvestorNumber)}",
+        $"Investor type: {(_dfm.InvestorType is { } t ? DfmInvestorTypes.First(o => o.Value == t).Label : "none")}",
+        $"Full name: {Show(_dfm.FullName)}",
+        $"Nationality: {Show(_dfm.Nationality)}",
+        $"Gender: {_dfm.Gender?.ToString() ?? "none"}",
+        $"Date of birth: {Show(Day(_dfm.DateOfBirth))}",
+        $"Mobile: {Show(_dfm.MobileNumber)}",
+        $"Email: {Show(_dfm.EmailAddress)}",
+        $"Address: {Show(_dfm.ResidentialAddress)}",
+        $"City: {Show(_dfm.City)}",
+        $"Country: {Show(_dfm.Country)}",
+        $"PO Box: {Show(_dfm.PoBox)}",
+        $"Account status: {_dfm.AccountStatus?.ToString() ?? "none"}",
+        $"Registered: {Show(Day(_dfm.RegistrationDate))}",
+        $"DFM last updated: {Show(Day(_dfm.LastUpdatedDate))}",
+    ]);
 
     private async Task SaveDocumentAsync(MemberDocument document)
     {

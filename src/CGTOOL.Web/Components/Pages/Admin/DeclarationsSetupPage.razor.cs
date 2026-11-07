@@ -504,7 +504,7 @@ public partial class DeclarationsSetupPage
 
         var (sentCount, failedCount) = await DeclarationCycleReminderHostedService.SendNotificationAsync(
             db, EmailSender, RunWriter, AuditLog, run, _setup, actor,
-            logoUrl: DeclarationCycleReminderHostedService.LogoUrl(Config));
+            baseUrl: DeclarationCycleReminderHostedService.BaseUrl(Config));
         await RunWriter.MarkSentAsync(run.Id, DateTime.UtcNow, sentCount + failedCount);
 
         Toasts.ShowSuccess(failedCount == 0
@@ -707,10 +707,10 @@ public partial class DeclarationsSetupPage
             _setup.EmailBody ?? string.Empty,
             _previewTo,
             LocalDateToUtc(_dueDate),
-            // Site-relative on purpose: the preview then shows the logo THIS build serves, not the
-            // one still sitting on the deployed site, which is the whole point of previewing before
-            // a release.
-            "/images/di-logo.jpg");
+            // Empty on purpose: {LogoUrl} and {BaseUrl} then come out site-relative, so the preview
+            // shows what THIS build serves rather than what is still on the deployed site, which is
+            // the whole point of previewing before a release.
+            baseUrl: "");
 
         _showPreview = true;
     }

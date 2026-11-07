@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blackout Period</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f2f4f7; font-family:Calibri, Arial, sans-serif;">
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f2f4f7; padding:24px 0;">
+    <tr>
+      <td align="center">
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:4px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+
+          <!-- Masthead. di-logo.jpg, not either PNG: e-mail clients are unreliable with PNG alpha,
+               and that file is already flattened onto this exact navy. -->
+          <tr>
+            <td style="background-color:#002850; padding:22px 32px;">
+              <img src="{LogoUrl}" alt="DIP Holding PLC" height="38" style="display:block; border:0; outline:none; text-decoration:none;" />
+            </td>
+          </tr>
+          <!-- The gold rule, as on the report PDFs. font-size and line-height have to be set to the
+               height as well: a cell holding only &nbsp; collapses to nothing in Outlook. -->
+          <tr>
+            <td height="3" style="background-color:#C79A3C; height:3px; font-size:3px; line-height:3px;">&nbsp;</td>
+          </tr>
+
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px 0; font-size:15px; color:#16202E; line-height:1.6;">
+                Dear {FullName},
+              </p>
+
+              <p style="margin:0 0 16px 0; font-size:15px; color:#16202E; line-height:1.6;">
+                A blackout period is now in effect. Until <strong>{DueDate}</strong> you may not deal in the company&rsquo;s securities, either directly or through a related party. This applies to you and to the related parties recorded against you in the Corporate Governance Tool.
+              </p>
+
+              <p style="margin:0 0 28px 0; font-size:15px; color:#16202E; line-height:1.6;">
+                You can review your register using the button below:
+              </p>
+
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="border-radius:4px; background-color:#C8952E;">
+                    <a href="{BaseUrl}/my-register"
+                       target="_blank"
+                       style="display:inline-block; padding:12px 28px; font-size:14px; font-weight:bold; color:#0D2B57; text-decoration:none; border-radius:4px;">
+                      Review My Register
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:28px 0 0 0; font-size:13px; color:#64748B; line-height:1.6;">
+                If the button above does not work, copy and paste this link into your browser:<br>
+                <a href="{BaseUrl}/my-register" style="color:#1A4F86;">{BaseUrl}/my-register</a>
+              </p>
+
+              <p style="margin:24px 0 0 0; font-size:15px; color:#16202E; line-height:1.6;">
+                Should you have any queries on this matter, please contact the Corporate Affairs Office.
+              </p>
+
+              <p style="margin:20px 0 0 0; font-size:15px; color:#16202E; line-height:1.6;">
+                Thank you.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:#f7f9fc; padding:20px 32px; border-top:1px solid #e6ebf2;">
+              <p style="margin:0; font-size:11px; color:#94A3B8; line-height:1.6;">
+                This is an automated notification from the DIP Holding PLC Corporate Governance Tool.
+                Please do not reply to this email. The information contained in this message may be
+                CONFIDENTIAL and is intended only for the named recipient. If you are not the intended
+                recipient, please notify the sender and delete this message.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

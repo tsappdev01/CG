@@ -95,6 +95,11 @@ try {
     $code = $LASTEXITCODE
     if ($code -ge 8) { throw "robocopy failed with exit code $code." }
     Write-Host "robocopy exit code $code (under 8 = success)."
+
+    # Clear it. The PowerShell task reads $LASTEXITCODE when the script ends, and robocopy leaves
+    # a non-zero code there on SUCCESS -- 1 for "files were copied", 2 for "extras found", 3 for
+    # both. Left as it is, a deploy that worked is reported as "PowerShell exited with code 1".
+    $global:LASTEXITCODE = 0
 }
 finally {
     # finally, not after the copy: a failed copy that left the pool stopped would take the site
@@ -104,3 +109,6 @@ finally {
 }
 
 Write-Host "Deployed."
+
+# Explicit, so the task cannot inherit an exit code from anything above.
+exit 0

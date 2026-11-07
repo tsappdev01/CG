@@ -2768,6 +2768,15 @@ button.cg-doc-chip:disabled { cursor: default; opacity: 0.6; text-decoration: no
    it. Only fields with a fixed shape get this -- a NIN is ten characters or it is not one, so the
    tick is a fact rather than praise. Fields that simply hold free text stay unmarked. */
 .cg-input-valid { border-color: var(--cg-good); background: var(--cg-good-tint); }
+
+/* The Required / Optional / Not requested picker in the Document Center. Sized to its longest
+   option rather than stretched to the column: a cg-input fills whatever holds it, which turned a
+   three-word choice into a 400px bar and made the declaration tabs look nothing like the list they
+   sit beside. */
+.cg-requirement-select {
+    width: auto;
+    min-width: 170px;
+}
 .cg-field-ok {
     display: block;
     margin-top: 4px;

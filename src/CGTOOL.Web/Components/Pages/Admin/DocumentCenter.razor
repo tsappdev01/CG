@@ -121,8 +121,9 @@
                 <table>
                     <thead>
                         <tr>
-                            <th scope="col">Document</th>
+                            <th scope="col">Name</th>
                             <th scope="col">On this declaration</th>
+                            <th scope="col">On file</th>
                             <th scope="col">Read automatically</th>
                         </tr>
                     </thead>
@@ -132,6 +133,10 @@
                             <tr class="cg-data-row">
                                 <td>
                                     @type.Name
+                                    @if (type.IsBuiltIn)
+                                    {
+                                        <span class="cg-pill" title="Read automatically. Can be renamed or switched off, but not removed.">Built-in</span>
+                                    }
                                     @if (!string.IsNullOrWhiteSpace(type.Description))
                                     {
                                         <p class="cg-subtitle">@type.Description</p>
@@ -146,6 +151,7 @@
                                         <option value="2">Required</option>
                                     </select>
                                 </td>
+                                <td class="mono">@UploadCount(type.Id)</td>
                                 <td class="cg-subtitle">
                                     @(type.IsBuiltIn && type.BuiltInKind != MemberDocumentKind.Other ? "Yes" : "No — typed in")
                                 </td>
@@ -154,7 +160,7 @@
 
                         @if (!_types.Any(t => t.IsActive))
                         {
-                            <tr><td colspan="3">
+                            <tr><td colspan="4">
                                 <div class="cg-empty-state">
                                     <h3>Nothing to ask for</h3>
                                     <p>Every document is Inactive. Switch one on under <b>User Documents</b> before setting what this declaration asks of it.</p>
@@ -187,9 +193,17 @@
 
 @if (_editing is not null)
 {
-    <div class="cg-print-overlay">
-        <div class="cg-confirm-modal">
-            <h3>@(_editing.Id == 0 ? "Add a document" : $"Edit “{_editing.Name}”")</h3>
+    <div class="cg-modal-backdrop" @onclick="CancelEdit"></div>
+    <div class="cg-modal cg-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cg-doctype-title">
+        <div class="cg-modal-head">
+            <div>
+                <h2 id="cg-doctype-title">@(_editing.Id == 0 ? "Add a document" : $"Edit “{_editing.Name}”")</h2>
+                <p class="cg-subtitle">Shown on My Workspace and on the declaration forms.</p>
+            </div>
+            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="CancelEdit">×</button>
+        </div>
+
+        <div class="cg-modal-body">
             <label class="cg-field">
                 <span>Document name <span class="cg-required" aria-hidden="true">*</span></span>
                 <input class="cg-input" maxlength="120" @bind="_formName" @bind:event="oninput" aria-required="true" />
@@ -200,40 +214,49 @@
             </label>
             @if (_editing.Id == 0)
             {
-                <p class="cg-subtitle">
+                <p class="cg-hint">
                     A new document starts as <b>Optional</b> on both declarations. Set what each one
                     actually asks of it on its own tab.
                 </p>
             }
             else if (_editing.IsBuiltIn)
             {
-                <p class="cg-subtitle">
+                <p class="cg-hint">
                     This document is read automatically, so it cannot be removed and its capture stays
                     as it is. The name and the line under it are yours.
                 </p>
             }
-            <div class="cg-actions">
-                <button type="button" class="cg-action-btn" @onclick="CancelEdit">Cancel</button>
-                <button type="button" class="cg-action-btn cg-good" disabled="@_saving" @onclick="SaveEditAsync">Save</button>
-            </div>
+        </div>
+
+        <div class="cg-modal-foot">
+            <button type="button" class="cg-action-btn" @onclick="CancelEdit">Cancel</button>
+            <button type="button" class="cg-action-btn cg-good" disabled="@_saving" @onclick="SaveEditAsync">Save</button>
         </div>
     </div>
 }
 
 @if (_pendingDelete is not null)
 {
-    <div class="cg-print-overlay">
-        <div class="cg-confirm-modal">
-            <h3>Remove “@_pendingDelete.Name”?</h3>
-            <p class="cg-confirm-detail">
-                It stops being asked for on every declaration and is gone from the list. If anyone has
-                already uploaded one, this is refused — switch it off instead, which keeps their files
-                readable.
-            </p>
-            <div class="cg-actions">
-                <button type="button" class="cg-action-btn" @onclick="() => _pendingDelete = null">Cancel</button>
-                <button type="button" class="cg-action-btn cg-critical" disabled="@_saving" @onclick="DeleteAsync">Remove</button>
+    <div class="cg-modal-backdrop" @onclick="() => _pendingDelete = null"></div>
+    <div class="cg-modal cg-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="cg-doctype-del-title">
+        <div class="cg-modal-head">
+            <div>
+                <h2 id="cg-doctype-del-title">Remove “@_pendingDelete.Name”?</h2>
             </div>
+            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="() => _pendingDelete = null">×</button>
+        </div>
+
+        <div class="cg-modal-body">
+            <p>It stops being asked for on every declaration and is gone from the list.</p>
+            <p class="cg-hint">
+                If anyone has already uploaded one, this is refused — switch it off instead, which
+                keeps their files readable.
+            </p>
+        </div>
+
+        <div class="cg-modal-foot">
+            <button type="button" class="cg-action-btn" @onclick="() => _pendingDelete = null">Cancel</button>
+            <button type="button" class="cg-action-btn cg-critical" disabled="@_saving" @onclick="DeleteAsync">Remove</button>
         </div>
     </div>
 }

@@ -1,0 +1,71 @@
+# Build validation. Proves a change compiles before it reaches main, where azure-pipelines.yml
+# picks it up and deploys it to UATWEB01 without anyone else looking.
+#
+# Build only: restore and compile. It does not publish, does not touch IIS, and does not go near
+# the site -- so it is safe to run on a branch that is still being worked on. The deploy pipeline
+# remains the only thing that writes to the server.
+#
+# It shares the Default pool with the deploy pipeline because that is the only self-hosted agent
+# here. A queued build therefore delays a deploy and the other way round; with one agent that is
+# unavoidable, and a build takes well under a minute once the SDK is cached.
+
+trigger:
+  branches:
+    include:
+      - claude/*
+    exclude:
+      - main
+
+# Also on a pull request into main, which is the moment it matters most: the deploy pipeline has
+# pr: none, so without this nothing checks a change before it is merged and deployed.
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  name: Default
+
+variables:
+  projectPath: 'src/CGTOOL.Web/CGTOOL.Web.csproj'
+  buildConfiguration: 'Release'
+
+steps:
+  - task: UseDotNet@2
+    displayName: 'Install the SDK global.json asks for'
+    inputs:
+      packageType: 'sdk'
+      useGlobalJson: true
+
+  - script: dotnet restore "$(projectPath)"
+    displayName: 'Restore'
+
+  # Release, matching the deploy, because a Debug build can compile where a Release one does not --
+  # anything behind #if DEBUG, and analyzers that only run in Release.
+  - script: dotnet build "$(projectPath)" --configuration $(buildConfiguration) --no-restore
+    displayName: 'Build'
+
+  # The generated e-mail templates and the SQL that loads them are produced by a script. If someone
+  # edits the HTML or the SQL by hand, regenerating here makes the working tree dirty and this
+  # fails -- which is the only way that drift gets noticed before an e-mail goes out looking wrong.
+  - task: PowerShell@2
+    displayName: 'Check the generated templates are up to date'
+    inputs:
+      targetType: 'inline'
+      pwsh: false
+      script: |
+        $python = Get-Command python -ErrorAction SilentlyContinue
+        if (-not $python) { $python = Get-Command python3 -ErrorAction SilentlyContinue }
+        if (-not $python) {
+            Write-Host "##vso[task.logissue type=warning]Python not on the agent; skipping the generated-file check."
+            exit 0
+        }
+        & $python.Source scripts/templates/build-notification-emails.py
+        $changed = & git status --porcelain -- scripts/templates scripts/update-notification-templates.sql
+        if ($changed) {
+            Write-Host "##vso[task.logissue type=error]These are generated and no longer match build-notification-emails.py:"
+            $changed | ForEach-Object { Write-Host "  $_" }
+            Write-Host "Run scripts/templates/build-notification-emails.py and commit the result."
+            exit 1
+        }
+        Write-Host "Generated templates match their generator."

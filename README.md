@@ -31,6 +31,14 @@ present `dotnet build` stops with MSB1011 rather than choosing one.
 
 ## Deployment
 
+Two pipelines, and the split matters: a push to `main` deploys itself to UATWEB01 with nobody
+looking, so a change needs to have been proven somewhere first.
+
+`azure-pipelines-ci.yml` is build validation. It runs on `claude/*` branches and on pull requests
+into `main`, restores and compiles in Release, and checks that the generated e-mail templates
+still match their generator. It does not publish and does not touch IIS, so it is safe on a branch
+that is still being worked on.
+
 `azure-pipelines.yml` builds `main` and deploys it to IIS on UATWEB01. It runs on the **Default**
 pool, whose agent is a service on UATWEB01 itself, so the publish output is copied straight into
 place rather than crossing the network as an artifact.

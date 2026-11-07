@@ -786,9 +786,35 @@ public partial class SubmitInsiderDeclaration
         var today = DateTime.UtcNow.Date;
         var expired = new List<string>();
 
-        if (IsExpired(_emiratesIdExpiryDate)) expired.Add("Emirates ID");
-        if (IsExpired(_passportExpiryDate)) expired.Add("passport");
-        if (!string.IsNullOrWhiteSpace(_tradeLicencePath) && IsExpired(_tradeLicenceExpiryDate)) expired.Add("trade licence");
+        // Only documents this declaration actually asks for. A draft keeps the dates it was saved
+        // with, so a passport switched off in the Document Center afterwards would otherwise go on
+        // blocking submission over the expiry of a document no longer on the form -- and with no
+        // card drawn, nowhere to fix it.
+        if (ShowDocument(MemberDocumentKind.EmiratesId) && IsExpired(_emiratesIdExpiryDate))
+        {
+            expired.Add(DocumentName(MemberDocumentKind.EmiratesId, "Emirates ID"));
+        }
+
+        if (ShowDocument(MemberDocumentKind.Passport) && IsExpired(_passportExpiryDate))
+        {
+            expired.Add(DocumentName(MemberDocumentKind.Passport, "passport"));
+        }
+
+        if (ShowDocument(MemberDocumentKind.TradeLicence)
+            && !string.IsNullOrWhiteSpace(_tradeLicencePath)
+            && IsExpired(_tradeLicenceExpiryDate))
+        {
+            expired.Add(DocumentName(MemberDocumentKind.TradeLicence, "trade licence"));
+        }
+
+        foreach (var type in AddedDocumentTypes)
+        {
+            var added = AddedDocumentFor(type.Id);
+            if (!string.IsNullOrWhiteSpace(added.FilePath) && IsExpired(added.ExpiryDate))
+            {
+                expired.Add(type.Name);
+            }
+        }
 
         return expired;
 
@@ -955,7 +981,9 @@ public partial class SubmitInsiderDeclaration
         // Workspace. OfferDocumentPullAsync says so by name instead.
         _expiredInWorkspace = documents.Where(d => IsExpiredOn(d.ExpiryDate)).ToList();
 
-        return documents.Where(d => !IsExpiredOn(d.ExpiryDate)).Where(d => d.Kind switch
+        // ShowDocument as well as the empty check: offering to bring a passport across when this
+        // declaration does not ask for one fills fields behind a card that is not drawn.
+        return documents.Where(d => !IsExpiredOn(d.ExpiryDate)).Where(d => ShowDocument(d.Kind) && d.Kind switch
         {
             MemberDocumentKind.EmiratesId => string.IsNullOrWhiteSpace(_emiratesIdPath),
             MemberDocumentKind.Passport => string.IsNullOrWhiteSpace(_passportPath),
@@ -1395,25 +1423,53 @@ public partial class SubmitInsiderDeclaration
     // clicked.
     private async Task GoToReviewAsync()
     {
-        if (string.IsNullOrWhiteSpace(_emiratesIdPath))
+        // Each document is demanded only if THIS declaration asks for it. These checks used to be
+        // unconditional, which was the whole bug: the Document Center could switch the passport
+        // off, the card would disappear from the step, the footer would read "All required details
+        // complete" -- and Continue to review would still refuse, naming a document that was not
+        // on the form. StepIsComplete and this gate have to read the same rule, or the screen says
+        // one thing and the button does another.
+        if (RequiredDocument(MemberDocumentKind.EmiratesId))
         {
-            Toasts.ShowError($"Upload your {DocumentName(MemberDocumentKind.EmiratesId, "Emirates ID")}.");
-            return;
-        }
-        if (string.IsNullOrWhiteSpace(_emiratesIdNumber) || string.IsNullOrWhiteSpace(_emiratesIdNameOnCard) || _emiratesIdExpiryDate is null)
-        {
-            Toasts.ShowError("Enter the Emirates ID number, name on card, and expiry date.");
-            return;
+            if (string.IsNullOrWhiteSpace(_emiratesIdPath))
+            {
+                Toasts.ShowError($"Upload your {DocumentName(MemberDocumentKind.EmiratesId, "Emirates ID")}.");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(_emiratesIdNumber) || string.IsNullOrWhiteSpace(_emiratesIdNameOnCard) || _emiratesIdExpiryDate is null)
+            {
+                Toasts.ShowError("Enter the Emirates ID number, name on card, and expiry date.");
+                return;
+            }
         }
 
-        if (string.IsNullOrWhiteSpace(_passportPath))
+        if (RequiredDocument(MemberDocumentKind.Passport))
         {
-            Toasts.ShowError($"Upload your {DocumentName(MemberDocumentKind.Passport, "passport")}.");
-            return;
+            if (string.IsNullOrWhiteSpace(_passportPath))
+            {
+                Toasts.ShowError($"Upload your {DocumentName(MemberDocumentKind.Passport, "passport")}.");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(_passportNumber) || _passportExpiryDate is null || string.IsNullOrWhiteSpace(_passportIssuingCountry))
+            {
+                Toasts.ShowError("Enter the passport number, expiry date, and issuing country.");
+                return;
+            }
         }
-        if (string.IsNullOrWhiteSpace(_passportNumber) || _passportExpiryDate is null || string.IsNullOrWhiteSpace(_passportIssuingCountry))
+
+        // The types an administrator added, which had no gate here at all -- marking one Required
+        // showed a card and nothing more.
+        var missingAdded = AddedDocumentTypes
+            .Where(t => t.RequirementFor(Scope) == DocumentRequirement.Required)
+            .Where(t => string.IsNullOrWhiteSpace(AddedDocumentFor(t.Id).FilePath))
+            .Select(t => t.Name)
+            .ToList();
+
+        if (missingAdded.Count > 0)
         {
-            Toasts.ShowError("Enter the passport number, expiry date, and issuing country.");
+            Toasts.ShowError(missingAdded.Count == 1
+                ? $"Upload your {missingAdded[0]}."
+                : $"Upload these before continuing: {string.Join(", ", missingAdded)}.");
             return;
         }
 

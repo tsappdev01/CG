@@ -222,6 +222,19 @@
                     <ConfirmPrompt Show="true" Message="@_confirmMessage" Detail="@_confirmDetail" ConfirmLabel="Send" OnConfirm="ConfirmSendNowAsync" OnCancel="CancelSendConfirm" />
                 }
 
+                @* Only one period of a type is open at a time. Opening the next one closes the
+                   one before it, and says so before it does. *@
+                @if (_pendingCloseRun is not null)
+                {
+                    <ConfirmPrompt Show="true"
+                                   Message="@($"Q{_pendingCloseRun.PeriodQuarter} {_pendingCloseRun.PeriodYear} is still open for {EntityLabel(_pendingCloseRun.CompanyId)}. Close it and open Q{_periodQuarter} {_periodYear}?")"
+                                   Detail="@($"Two periods cannot be open at once. Closing Q{_pendingCloseRun.PeriodQuarter} {_pendingCloseRun.PeriodYear} ends it now, {_pendingCloseRun.DueDateUtc.ToLocalDisplay():dd MMM yyyy} being what it was due — anyone who has not submitted stays outstanding against it and can no longer submit or edit.")"
+                                   ConfirmLabel="@($"Close Q{_pendingCloseRun.PeriodQuarter} {_pendingCloseRun.PeriodYear} and continue")"
+                                   CancelLabel="Leave it open"
+                                   OnConfirm="ConfirmClosePeriodAsync"
+                                   OnCancel="CancelClosePeriod" />
+                }
+
                 <h2>Schedule send</h2>
                 <label class="cg-field">
                     <span>Send on date</span>

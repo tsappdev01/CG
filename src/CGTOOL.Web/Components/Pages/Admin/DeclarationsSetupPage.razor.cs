@@ -427,6 +427,77 @@ public partial class DeclarationsSetupPage
     private DateTime ScheduledSendUtc() =>
         UaeTime.ToUtc(_scheduleSendDate, _setup?.ReminderTimeOfDay ?? new TimeOnly(8, 0));
 
+    /// <summary>An earlier period of this type whose declarants can still submit and edit -- sent,
+    /// not recalled, and not yet past its due date.
+    ///
+    /// Two periods open at once is not a schedule, it is an ambiguity: a declarant with Q2 and Q3
+    /// both open does not know which one the business is asking about, and a report of "outstanding
+    /// declarations" counts the same person twice for two quarters that overlap in nothing but
+    /// having been left open. So opening a quarter asks for the one before it to be closed.
+    ///
+    /// Scope is read the way RunClosing reads it: an "All entities" run on either side overlaps
+    /// everything, because a declarant covered by both would be the one holding two open periods.</summary>
+    private DeclarationCycleRun? OpenEarlierRun(int year, int quarter)
+    {
+        var selected = int.TryParse(_sendCompanyId, out var id) ? id : (int?)null;
+        var opening = PeriodIndex(year, quarter);
+
+        // A scheduled run counts as open even before it fires: it is a period that will be open,
+        // and letting the next one through now is how two end up overlapping next week.
+        return (_runs ?? [])
+            .Where(r => !r.Recalled
+                        && r.DueDateUtc > DateTime.UtcNow
+                        && PeriodIndex(r.PeriodYear, r.PeriodQuarter) < opening
+                        && (r.CompanyId is null || selected is null || r.CompanyId == selected))
+            .OrderByDescending(r => PeriodIndex(r.PeriodYear, r.PeriodQuarter))
+            .FirstOrDefault();
+    }
+
+    private DeclarationCycleRun? _pendingCloseRun;
+    private Action? _afterClose;
+
+    /// <summary>Asks before closing, because closing is not reversible by accident: a declarant
+    /// part-way through Q2 loses the window they were working in. The due date is what every page
+    /// already reads to decide whether a period is open, so closing is moving that to now rather
+    /// than a second flag that seven screens would each have to learn about -- and the audit entry
+    /// keeps the date it was going to be.</summary>
+    private bool PromptToCloseEarlierPeriod(Action continueWith)
+    {
+        if (OpenEarlierRun(_periodYear, _periodQuarter) is not { } open) return false;
+
+        _pendingCloseRun = open;
+        _afterClose = continueWith;
+        return true;
+    }
+
+    private void CancelClosePeriod()
+    {
+        _pendingCloseRun = null;
+        _afterClose = null;
+    }
+
+    private async Task ConfirmClosePeriodAsync()
+    {
+        if (_pendingCloseRun is not { } run) return;
+
+        var wasDue = run.DueDateUtc;
+        var closedAt = DateTime.UtcNow;
+
+        await RunWriter.UpdateDueDateAsync(run.Id, closedAt);
+        run.DueDateUtc = closedAt;
+
+        await AuditLog.LogAsync(await CurrentActorAsync(), AuditAction.Update, nameof(DeclarationCycleRun), run.Id.ToString(),
+            $"Closed Q{run.PeriodQuarter} {run.PeriodYear} for {EntityLabel(run.CompanyId)} "
+            + $"on opening Q{_periodQuarter} {_periodYear}; it was due {wasDue.ToLocalDisplay():yyyy-MM-dd}");
+
+        Toasts.ShowSuccess($"Q{run.PeriodQuarter} {run.PeriodYear} is closed. No further submissions or edits can be made for it.");
+
+        var next = _afterClose;
+        _pendingCloseRun = null;
+        _afterClose = null;
+        next?.Invoke();
+    }
+
     private async Task PrepareSendNowAsync()
     {
         if (_setup is null) return;
@@ -436,6 +507,10 @@ public partial class DeclarationsSetupPage
             Toasts.ShowError(reason);
             return;
         }
+
+        // Asked before anything else: there is no point counting recipients for a period that
+        // cannot be opened until the one before it is shut.
+        if (PromptToCloseEarlierPeriod(() => _ = PrepareSendNowAsync())) return;
 
         var companyId = int.TryParse(_sendCompanyId, out var id) ? id : (int?)null;
         _pendingCompanyId = companyId;
@@ -538,6 +613,9 @@ public partial class DeclarationsSetupPage
             Toasts.ShowError("Due date must be on or after the scheduled send date.");
             return;
         }
+
+        // A scheduled send is still opening a period, only later, so it asks the same question.
+        if (PromptToCloseEarlierPeriod(() => _ = PrepareScheduleSendAsync())) return;
 
         var companyId = int.TryParse(_sendCompanyId, out var id) ? id : (int?)null;
         _pendingCompanyId = companyId;

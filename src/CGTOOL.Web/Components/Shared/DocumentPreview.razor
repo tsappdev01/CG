@@ -8,17 +8,17 @@
     <aside class="cg-doc-preview">
         <div class="cg-doc-preview-head">
             <span class="cg-doc-preview-name" title="@DisplayName">@DisplayName</span>
-            <a class="cg-doc-chip" href="@FilePath" target="_blank" rel="noopener">Open</a>
+            <a class="cg-doc-chip" href="@Source" target="_blank" rel="noopener">Open</a>
         </div>
         @if (IsPdf)
         {
             @* toolbar=0 drops the viewer's own chrome, which in a 460px column is most of the box. *@
-            <iframe class="cg-doc-preview-frame" src="@(FilePath + "#toolbar=0&navpanes=0&view=FitH")"
+            <iframe class="cg-doc-preview-frame" src="@(Source + "#toolbar=0&navpanes=0&view=FitH")"
                     title="@($"Preview of {DisplayName}")"></iframe>
         }
         else if (IsImage)
         {
-            <img class="cg-doc-preview-image" src="@FilePath" alt="@($"Preview of {DisplayName}")" />
+            <img class="cg-doc-preview-image" src="@Source" alt="@($"Preview of {DisplayName}")" />
         }
         else
         {
@@ -33,6 +33,21 @@
     /// <summary>The name the person uploaded, when there is one. The stored path is named after the
     /// row id, so showing it would tell them nothing.</summary>
     [Parameter] public string? OriginalFileName { get; set; }
+
+    /// <summary>When this version of the document was stored.
+    ///
+    /// A document is written to a path named after its row -- "41-emiratesid.pdf" -- so replacing
+    /// it reuses the same address, and the browser answers from its cache. The fields beside the
+    /// preview showed the new card while the preview showed the old one, which is the worst way
+    /// round: the picture is there to check the fields against.</summary>
+    [Parameter] public DateTime? Version { get; set; }
+
+    /// <summary>The path with the version on it, so a replaced file is a different address. The
+    /// query goes before the fragment -- a PDF viewer's "#toolbar=0" is not part of the URL the
+    /// server is asked for, and anything after it would not reach the cache key.</summary>
+    private string Source => Version is { } at
+        ? $"{FilePath}?v={at.Ticks}"
+        : FilePath ?? string.Empty;
 
     private string DisplayName =>
         string.IsNullOrWhiteSpace(OriginalFileName) ? "Attached document" : OriginalFileName!;

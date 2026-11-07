@@ -465,7 +465,7 @@
                                         <button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveDeclarationDocument(row)">Remove</button>
                                     </div>
                                 </div>
-                                <DocumentPreview FilePath="@row.FilePath" OriginalFileName="@row.OriginalFileName" />
+                                <DocumentPreview FilePath="@row.FilePath" OriginalFileName="@row.OriginalFileName" Version="@DocumentVersion(row.DocumentTypeId)" />
                             </div>
                             }
                         </div>

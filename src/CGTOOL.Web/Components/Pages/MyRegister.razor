@@ -159,7 +159,7 @@
                                 <InputFile OnChange="e => OnMemberDocumentSelectedAsync(kind, doc, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploadingDocument(kind)" />
                                 @if (IsUploadingDocument(kind))
                                 {
-                                    <span class="cg-doc-upload-state">Reading…</span>
+                                    <span class="cg-doc-upload-state">@UploadPhase(kind)</span>
                                     <progress class="cg-doc-progress"></progress>
                                 }
                                 else if (doc is not null && !string.IsNullOrEmpty(doc.FilePath))
@@ -224,7 +224,7 @@
                                 <button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveDocument(doc)">Remove</button>
                             </div>
                         </div>
-                        <DocumentPreview FilePath="@doc.FilePath" OriginalFileName="@doc.OriginalFileName" />
+                        <DocumentPreview FilePath="@doc.FilePath" OriginalFileName="@doc.OriginalFileName" Version="@doc.UploadedAtUtc" />
                         </div>
                         }
                     </div>
@@ -252,7 +252,7 @@
                                 <InputFile OnChange="e => OnMemberDocumentSelectedAsync(MemberDocumentKind.Other, added, e, type.Id)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploadingType(type.Id)" />
                                 @if (IsUploadingType(type.Id))
                                 {
-                                    <span class="cg-doc-upload-state">Uploading…</span>
+                                    <span class="cg-doc-upload-state">@UploadPhase(MemberDocumentKind.Other, type.Id)</span>
                                     <progress class="cg-doc-progress"></progress>
                                 }
                                 else if (added is not null && !string.IsNullOrEmpty(added.FilePath))
@@ -287,7 +287,7 @@
                                 <button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveDocument(added)">Remove</button>
                             </div>
                         </div>
-                        <DocumentPreview FilePath="@added.FilePath" OriginalFileName="@added.OriginalFileName" />
+                        <DocumentPreview FilePath="@added.FilePath" OriginalFileName="@added.OriginalFileName" Version="@added.UploadedAtUtc" />
                         </div>
                         }
                     </div>
@@ -310,7 +310,7 @@
                                 <InputFile OnChange="e => OnMemberDocumentSelectedAsync(MemberDocumentKind.Other, null, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploadingDocument(MemberDocumentKind.Other)" />
                                 @if (IsUploadingDocument(MemberDocumentKind.Other))
                                 {
-                                    <span class="cg-doc-upload-state">Reading…</span>
+                                    <span class="cg-doc-upload-state">@UploadPhase(MemberDocumentKind.Other)</span>
                                     <progress class="cg-doc-progress"></progress>
                                 }
                                 else

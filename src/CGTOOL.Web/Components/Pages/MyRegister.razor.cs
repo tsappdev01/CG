@@ -608,6 +608,35 @@ public partial class MyRegister : ComponentBase
 
     private bool IsUploadingDocument(MemberDocumentKind kind) => _uploadingKinds.Contains(kind);
 
+    /// <summary>What the upload is doing right now.
+    ///
+    /// It said "Reading…" from the moment the row was written until everything was finished, which
+    /// covered the slowest part of the job -- the capture service reading the card -- under a word
+    /// that had already stopped being true. A progress bar that does not change is indistinguishable
+    /// from one that has stopped.
+    ///
+    /// The browser-to-server read is not reported, and not because it is quick. Re-rendering during
+    /// it replaces the InputFile element the stream is being served through and kills the read.</summary>
+    private readonly Dictionary<MemberDocumentKind, string> _kindPhase = [];
+    private readonly Dictionary<int, string> _typePhase = [];
+
+    private string UploadPhase(MemberDocumentKind kind, int? documentTypeId = null) =>
+        documentTypeId is { } id
+            ? _typePhase.GetValueOrDefault(id, "Working…")
+            : _kindPhase.GetValueOrDefault(kind, "Working…");
+
+    /// <summary>Sets the phase and lets the browser paint it before the next step begins. Without
+    /// the yield the label would be set and overwritten inside one render, and the person would see
+    /// only the last of them.</summary>
+    private async Task SetUploadPhaseAsync(MemberDocumentKind kind, int? documentTypeId, string phase)
+    {
+        if (documentTypeId is { } id) _typePhase[id] = phase;
+        else _kindPhase[kind] = phase;
+
+        StateHasChanged();
+        await Task.Yield();
+    }
+
     private bool IsUploadingType(int documentTypeId) => _uploadingTypeIds.Contains(documentTypeId);
 
     /// <summary>A document whose expiry has passed. The declaration refuses to be submitted on one,
@@ -649,7 +678,7 @@ public partial class MyRegister : ComponentBase
 
         if (documentTypeId is { } uploadingType) _uploadingTypeIds.Add(uploadingType);
         else _uploadingKinds.Add(kind);
-        StateHasChanged();
+        await SetUploadPhaseAsync(kind, documentTypeId, "Saving the file…");
         try
         {
             // A new Other document gets its row now, so the stored file has an id to be named after;
@@ -680,7 +709,15 @@ public partial class MyRegister : ComponentBase
             document.OriginalFileName = e.File.Name;
             document.UploadedAtUtc = DateTime.UtcNow;
 
+            // Named for what it is: the capture service is a round trip to Azure and is most of
+            // the wait on a photographed card.
+            if (DocIntel.IsConfigured && kind != MemberDocumentKind.Other)
+            {
+                await SetUploadPhaseAsync(kind, documentTypeId, "Reading the details off it…");
+            }
+
             var captured = await CaptureDocumentAsync(document, filePath);
+            await SetUploadPhaseAsync(kind, documentTypeId, "Finishing…");
 
             await DocumentWriter.UpdateAsync(document);
 
@@ -699,8 +736,16 @@ public partial class MyRegister : ComponentBase
         }
         finally
         {
-            if (documentTypeId is { } finishedType) _uploadingTypeIds.Remove(finishedType);
-            else _uploadingKinds.Remove(kind);
+            if (documentTypeId is { } finishedType)
+            {
+                _uploadingTypeIds.Remove(finishedType);
+                _typePhase.Remove(finishedType);
+            }
+            else
+            {
+                _uploadingKinds.Remove(kind);
+                _kindPhase.Remove(kind);
+            }
             if (File.Exists(temporaryFile)) File.Delete(temporaryFile);
         }
     }

@@ -42,6 +42,14 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private readonly HashSet<int> _uploadingTypeIds = [];
     private readonly Dictionary<int, int> _documentUploadProgress = [];
 
+    /// <summary>When each attached document was last written in this session, so the preview can
+    /// ask for the new file rather than be handed the cached old one. Empty for a document
+    /// attached before this page was opened, which the browser has not cached either.</summary>
+    private readonly Dictionary<int, DateTime> _documentWrittenAt = [];
+
+    private DateTime? DocumentVersion(int documentTypeId) =>
+        _documentWrittenAt.TryGetValue(documentTypeId, out var at) ? at : null;
+
     private const long MaxDeclarationDocumentBytes = 10 * 1024 * 1024;
 
     /// <summary>Active documents this declaration asks for, in the Document Center's order.</summary>
@@ -146,6 +154,12 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
             row.FilePath = $"/uploads/coi-declaration-documents/{fileName}";
             row.OriginalFileName = file.Name;
+
+            // The file is written to a path named after the member and the document type, so
+            // replacing it reuses the same address and the browser shows the copy it already has.
+            // Noting when it was written gives the preview a different address to ask for.
+            _documentWrittenAt[type.Id] = DateTime.UtcNow;
+
             Toasts.ShowSuccess($"{type.Name} attached.");
         }
         catch (Exception ex)

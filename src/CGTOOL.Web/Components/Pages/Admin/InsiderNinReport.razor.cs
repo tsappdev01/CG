@@ -109,6 +109,15 @@ public partial class InsiderNinReport
                     (r.Declaration?.NumberOfSharesHeld ?? 0).ToString(),
                 })
             ],
+            // The insider detail sheet, not a NIN page of its own: this report shows the
+            // declarant's own number, and what someone asks next is whose relatives hold which --
+            // which is a section of that sheet.
+            RowLinks =
+            [
+                .. rows.Select(r => r.Submitted
+                    ? ReportLinks.Declarant(ReportLinks.InsiderDetail, r.MemberName, r.Year, r.Quarter)
+                    : null)
+            ],
         };
     }
 

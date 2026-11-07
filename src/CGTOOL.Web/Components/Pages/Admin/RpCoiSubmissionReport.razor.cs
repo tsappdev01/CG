@@ -106,6 +106,12 @@ public partial class RpCoiSubmissionReport
                     ModifiedBy(r.Declaration),
                 })
             ],
+            RowLinks =
+            [
+                .. rows.Select(r => r.Submitted
+                    ? ReportLinks.Declarant(ReportLinks.RpCoiDetail, r.MemberName, r.Year, r.Quarter)
+                    : null)
+            ],
         };
     }
 

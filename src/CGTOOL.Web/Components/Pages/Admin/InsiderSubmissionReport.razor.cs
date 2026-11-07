@@ -178,7 +178,7 @@ public partial class InsiderSubmissionReport
     /// Nothing for someone who has not submitted: there is no sheet behind them, and a link to an
     /// empty report is worse than no link.</summary>
     private static string? DetailLink(Row r) => r.Submitted
-        ? $"/reports/insider-submission-detail?name={Uri.EscapeDataString(r.MemberName)}&year={r.Year}&quarter={r.Quarter}"
+        ? ReportLinks.Declarant(ReportLinks.InsiderDetail, r.MemberName, r.Year, r.Quarter)
         : null;
 
     /// <summary>When the declaration was last touched: the edit if there has been one, otherwise

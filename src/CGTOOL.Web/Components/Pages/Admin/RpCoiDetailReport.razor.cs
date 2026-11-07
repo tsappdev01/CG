@@ -27,6 +27,16 @@ public partial class RpCoiDetailReport
     private int _quarterFilter;
     private int _companyFilter;
 
+    /// <summary>Set by the "View details" link on the RP &amp; COI submission report, the same way
+    /// InsiderDetailReport takes them: arriving here lands on the person and the period that was
+    /// being looked at. They are ordinary filters once set -- shown in the boxes, free to be
+    /// changed or cleared.</summary>
+    [SupplyParameterFromQuery(Name = "name")] private string? NameQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "year")] private int? YearQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "quarter")] private int? QuarterQuery { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         var state = await AuthState.GetAuthenticationStateAsync();
@@ -38,6 +48,11 @@ public partial class RpCoiDetailReport
 
         var newest = _rows.OrderByDescending(r => r.Year).ThenByDescending(r => r.Quarter).FirstOrDefault();
         if (newest is not null) { _yearFilter = newest.Year; _quarterFilter = newest.Quarter; }
+
+        // After the default, so a link that names a period wins over the newest one.
+        if (!string.IsNullOrWhiteSpace(NameQuery)) _search = NameQuery.Trim();
+        if (YearQuery is > 0) _yearFilter = YearQuery.Value;
+        if (QuarterQuery is > 0 and <= 4) _quarterFilter = QuarterQuery.Value;
     }
 
     private List<int> Years() => [.. (_rows ?? []).Select(r => r.Year).Distinct().OrderByDescending(y => y)];

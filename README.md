@@ -305,7 +305,8 @@ Two places use it:
 | Where | Document | Model | Fills |
 | --- | --- | --- | --- |
 | Insider Trading declaration wizard (`SubmitInsiderDeclaration.razor`) | Emirates ID / passport | `prebuilt-idDocument` | Document number, name, expiry |
-| My Workspace — relatives and My Companies (`MyWorkspace.razor`) | Trade licence | `prebuilt-layout` | Trade License No, Expiry, Legal Name |
+| My Workspace — My Documents (`MyRegister.razor`) | Emirates ID / passport | `prebuilt-idDocument` | Number, name, expiry, date of birth, issue date, nationality |
+| My Workspace — My Documents, relatives and My Companies (`MyRegister.razor`) | Trade licence | `prebuilt-layout` | Trade License No, Expiry, Legal Name |
 
 ### The two settings
 

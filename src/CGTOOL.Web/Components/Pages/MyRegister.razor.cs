@@ -626,7 +626,13 @@ public partial class MyRegister : ComponentBase
                 $"Uploaded {KindTitle(document)}: {e.File.Name}. {captured}");
 
             _addingOtherDocument = false;
-            Toasts.ShowSuccess($"{KindTitle(document)} uploaded.");
+
+            // What the capture made of it goes on the screen, not only into the audit line. Without
+            // this an upload that read nothing looks exactly like one that read everything -- the
+            // file attaches, the toast says "uploaded", and the fields are empty with no reason
+            // given. The commonest reason is that document capture is not configured at all, which
+            // is a sentence the person can act on rather than a puzzle.
+            Toasts.ShowSuccess($"{KindTitle(document)} uploaded. {captured}");
         }
         finally
         {

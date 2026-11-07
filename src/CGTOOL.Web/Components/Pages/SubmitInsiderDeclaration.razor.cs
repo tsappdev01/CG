@@ -1251,7 +1251,13 @@ public partial class SubmitInsiderDeclaration
     /// <summary>The member's My Workspace documents that this screen has a place for and that have
     /// not been supplied here yet. Other documents are left out: this screen's "Other" slot is one
     /// file, and there is no telling which of a member's several would be the one meant.</summary>
-    private async Task<List<MemberDocument>> PullableDocumentsAsync()
+    /// <param name="refresh">What the button means as against what the step opening means. Opening
+    /// the step fills blanks only, so a document carried over from last quarter, or one just
+    /// uploaded here, is never quietly replaced. Pressing "Reload from My Workspace" is someone
+    /// saying the register has the better copy, so it offers those too -- otherwise the button
+    /// does nothing at all for the member whose documents are already on the form, which is most
+    /// of them, and answers a request to reload by saying there is nothing to load.</param>
+    private async Task<List<MemberDocument>> PullableDocumentsAsync(bool refresh = false)
     {
         if (_effectiveMember is null) return [];
 
@@ -1276,7 +1282,10 @@ public partial class SubmitInsiderDeclaration
         // form's business when this form never asks for one.
         _expiredInWorkspace = documents.Where(d => AskedForHere(d) && IsExpiredOn(d.ExpiryDate)).ToList();
 
-        return documents.Where(d => !IsExpiredOn(d.ExpiryDate)).Where(StillNeededHere).ToList();
+        return documents
+            .Where(d => !IsExpiredOn(d.ExpiryDate))
+            .Where(d => refresh ? AskedForHere(d) : StillNeededHere(d))
+            .ToList();
     }
 
     /// <summary>Whether this declaration has a card for the document at all. The Document Centre
@@ -1354,7 +1363,7 @@ public partial class SubmitInsiderDeclaration
 
     private async Task OfferDocumentPullAsync()
     {
-        _pullableDocuments = await PullableDocumentsAsync();
+        _pullableDocuments = await PullableDocumentsAsync(refresh: true);
 
         if (_pullableDocuments.Count == 0)
         {

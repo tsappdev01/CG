@@ -223,7 +223,7 @@
                 {
                     <ConfirmPrompt Show="true"
                                    Message="Load these from My Documents?"
-                                   Detail="@($"{string.Join(", ", _pullableDocuments.Select(DocumentPullLabel))} — the file and the details it holds. This declaration keeps its own copy, so changing the document in My Workspace later will not change what you declared here.")"
+                                   Detail="@($"{string.Join(", ", _pullableDocuments.Select(DocumentPullLabel))} — the file and the details it holds. Anything already on this declaration is replaced with the copy in My Workspace. After that this declaration keeps its own copy, so changing the document in My Workspace later will not change what you declared here.")"
                                    ConfirmLabel="Load them"
                                    CancelLabel="Not now"
                                    OnConfirm="AcceptDocumentPullAsync"

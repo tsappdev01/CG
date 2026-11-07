@@ -2824,6 +2824,13 @@ button.cg-doc-chip:disabled { cursor: default; opacity: 0.6; text-decoration: no
     width: 16ch;
     min-width: 16ch;
 }
+
+/* The share transactions table squeezed its two widest columns into the narrowest space it had:
+   "Held at the beginning of the period" rendered as "Hel", and a date as "10,". A truncated value
+   is not a shorter one -- it is one the person cannot check. These hold their content, and the
+   table scrolls inside .cg-table-wrap when the window cannot take it. */
+.cg-input-kind { min-width: 17ch; }
+.cg-share-date { min-width: 13ch; }
 .cg-field-ok {
     display: block;
     margin-top: 4px;

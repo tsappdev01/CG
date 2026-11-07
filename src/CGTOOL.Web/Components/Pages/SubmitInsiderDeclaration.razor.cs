@@ -67,10 +67,14 @@ public partial class SubmitInsiderDeclaration
     /// <summary>The printed form's row labels, in its order.</summary>
     private static readonly (ShareEntryKind Value, string Label)[] ShareEntryKinds =
     [
-        (ShareEntryKind.OpeningBalance, "Held at the beginning of the period"),
-        (ShareEntryKind.Purchase, "Purchase during the period"),
-        (ShareEntryKind.Sale, "Sale during the period"),
-        (ShareEntryKind.ClosingBalance, "Held at the end of the period"),
+        // Short, because these sit in a table column beside five others. The period they refer to
+        // is named in full above the table, so repeating "during the period" on every row of a
+        // table that is entirely about one period bought nothing and cost the column its width:
+        // "Held at the beginning of the period" rendered as "Hel".
+        (ShareEntryKind.OpeningBalance, "Held at start"),
+        (ShareEntryKind.Purchase, "Purchase"),
+        (ShareEntryKind.Sale, "Sale"),
+        (ShareEntryKind.ClosingBalance, "Held at end"),
     ];
 
     private static string ShareHolderLabel(ShareEntryRow row) =>
@@ -143,6 +147,16 @@ public partial class SubmitInsiderDeclaration
 
     private static string ShareEntryLabel(ShareEntryKind kind) =>
         ShareEntryKinds.First(k => k.Value == kind).Label;
+
+    /// <summary>The same thing said inside a sentence, where a column heading's shorthand reads
+    /// like a mistake: "the held at start for Spouse has no number of shares".</summary>
+    private static string ShareEntryPhrase(ShareEntryKind kind) => kind switch
+    {
+        ShareEntryKind.OpeningBalance => "holding at the start of the period",
+        ShareEntryKind.Purchase => "purchase",
+        ShareEntryKind.Sale => "sale",
+        _ => "holding at the end of the period",
+    };
 
     private static bool IsTransactionKind(ShareEntryKind kind) =>
         kind is ShareEntryKind.Purchase or ShareEntryKind.Sale;
@@ -1876,7 +1890,7 @@ public partial class SubmitInsiderDeclaration
                 {
                     if (entry.TransactionDate is null)
                     {
-                        Toasts.ShowError($"Enter the date of each {ShareEntryLabel(entry.EntryKind).ToLowerInvariant()}.");
+                        Toasts.ShowError($"Enter the date of each {ShareEntryPhrase(entry.EntryKind)}.");
                         return;
                     }
 
@@ -1887,12 +1901,14 @@ public partial class SubmitInsiderDeclaration
                     }
                 }
 
-                // Nothing filled in at all. Said here rather than quietly dropped at submission:
-                // a row that disappears without a word reads as the form losing work.
-                if (entry.NumberOfShares == 0 && entry.Rate is null && entry.TransactionDate is null)
+                // Only a transaction. Zero is a real answer to a balance -- someone who held
+                // nothing at the start of the period and bought during it says so with a zero --
+                // and refusing it would make them delete a row that is telling the truth. A
+                // purchase or sale of no shares is not a purchase or a sale.
+                if (IsTransactionKind(entry.EntryKind) && entry.NumberOfShares == 0)
                 {
-                    Toasts.ShowError($"The {ShareEntryLabel(entry.EntryKind).ToLowerInvariant()} row for {ShareHolderLabel(entry)} is empty. "
-                        + "Enter the number of shares, or remove the row.");
+                    Toasts.ShowError($"The {ShareEntryPhrase(entry.EntryKind)} for {ShareHolderLabel(entry)} "
+                        + "has no number of shares. Enter it, or remove the row.");
                     return;
                 }
 
@@ -2131,13 +2147,10 @@ public partial class SubmitInsiderDeclaration
             // leave an empty attachment behind.
             foreach (var entry in _shareEntries)
             {
-                // On a submission, a row someone added and left alone is not a declaration of
-                // nothing, and is dropped. On a draft it is kept, however empty: the member added
-                // the row and chose who it is for, pressed Save as draft, and watched the rows
-                // disappear on the way back. A draft is the half-finished state -- refusing to
-                // store half-finished work is the one thing it must not do. Proceeding to the
-                // review rejects an empty row by name before it can be submitted.
-                if (!isDraft && entry.NumberOfShares == 0 && entry.Rate is null && entry.TransactionDate is null) continue;
+                // Every row is written, exactly as it stands. Dropping the ones that looked
+                // empty is what made Save as draft lose work, and a zero is not emptiness anyway
+                // -- "held none at the start of the period" is a declaration, and the review step
+                // is where a row that says nothing useful is turned back.
 
                 await Writer.InsertShareEntryAsync(declarationId, new InsiderDeclarationShareEntry
                 {

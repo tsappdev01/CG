@@ -687,7 +687,7 @@
                                             }
                                         </td>
                                         <td>
-                                            <select class="cg-input" @bind="entry.EntryKind">
+                                            <select class="cg-input cg-input-kind" @bind="entry.EntryKind">
                                                 @foreach (var kind in ShareEntryKinds)
                                                 {
                                                     <option value="@kind.Value">@kind.Label</option>
@@ -697,7 +697,7 @@
                                         <td>
                                             @if (IsTransactionKind(entry.EntryKind))
                                             {
-                                                <UaeDateInput CssClass="@(IsOutsidePeriod(entry.TransactionDate) ? "cg-input-invalid" : null)"
+                                                <UaeDateInput CssClass="@($"cg-share-date{(IsOutsidePeriod(entry.TransactionDate) ? " cg-input-invalid" : "")}")"
                                                               Value="entry.TransactionDate"
                                                               ValueChanged="d => entry.TransactionDate = d" />
                                                 @if (IsOutsidePeriod(entry.TransactionDate))

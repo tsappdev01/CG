@@ -124,7 +124,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         // The declaration owns its share lines the way it owns its grids.
         builder.Entity<InsiderDeclarationShareEntry>()
             .HasOne(e => e.InsiderDeclaration)
-            .WithMany()
+            .WithMany(d => d.ShareEntries)
             .HasForeignKey(e => e.InsiderDeclarationId)
             .OnDelete(DeleteBehavior.Cascade);
 

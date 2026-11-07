@@ -416,6 +416,37 @@ If a key is ever pasted into a chat, an email or a ticket, rotate it: the Azure
 resource carries two keys precisely so one can be regenerated while the other
 keeps the app running.
 
+## Share transactions on the Insider Declaration
+
+The printed declaration form carries a table the application did not ask for: what was held when
+the period opened, every purchase and every sale during it with a date and a rate, and what was
+held when it closed -- for the declarant, their spouse and their relatives. The form captured one
+number of shares, no rate and no dates, so the thing the declaration exists to record was being
+kept on paper beside it.
+
+`InsiderDeclarationShareEntry` is a flat list rather than the paper form's six columns of Self /
+Spouse / Relatives against fixed rows. The paper allows three dated purchases and three dated sales
+and footnotes that more go on an appended sheet; a list has no limit, carries each holder's own name
+and NIN instead of a column heading, and is what the PDF and the reports read back.
+
+**Who is asked.** Employees -- `EmployeeDiPjsc` or `EmployeeOther` -- who have a DFM investor number
+in My Workspace. A board member or a corporate declarant reports through other arrangements, and
+someone with no investor number has no holding the table could describe.
+
+**Dates are checked against the declaration's own quarter**, as they are typed and again at Continue
+to review. The message names the quarter the way people say it -- "Q1 2026 (Jan - Mar)" -- because
+that is what someone can check a date against; two timestamps are not. A transaction in another
+quarter belongs on another declaration.
+
+`Rate` and `TransactionDate` are null on a balance, and are cleared on save if the row's kind was
+changed after they were typed: what was held when the period opened was not bought at a price
+during it.
+
+**Where it appears**: the capture step, the review step, the declaration PDF, and the Insider Detail
+report as a sub-table per declarant. Not the Insider Trading report -- that one reads the DFM's own
+uploaded movements and matches them against declared NINs, which is the exchange's view rather than
+the declarant's. Comparing the two would be a worthwhile report and is not this one.
+
 ## The Document Center
 
 Admin Panel > Document Center is the list of documents people are asked to keep on file: a name,

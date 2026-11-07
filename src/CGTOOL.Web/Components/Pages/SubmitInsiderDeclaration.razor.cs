@@ -1964,6 +1964,7 @@ public partial class SubmitInsiderDeclaration
                             .AsNoTracking()
                             .Include(x => x.Relatives)
                             .Include(x => x.NinHolders)
+                            .Include(x => x.ShareEntries)
                             .FirstAsync(x => x.Id == declarationId);
                         var logoPath = Path.Combine(Env.WebRootPath, "images", "di-logo.jpg");
                         var pdfBytes = InsiderDeclarationPdfBuilder.Build(declaration, _effectiveMember, _run, File.Exists(logoPath) ? logoPath : null);

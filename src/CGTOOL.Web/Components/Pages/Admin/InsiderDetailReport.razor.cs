@@ -128,8 +128,45 @@ public partial class InsiderDetailReport
                     })],
                     d.RelativesHoldShares ? "Declared that relatives hold shares, but none were listed."
                                           : $"Declared that no relatives hold shares in {Branding.ParentHoldingCompany}."),
+
+                ShareTransactions(d, row.MemberName),
             ]);
     }
+
+    /// <summary>What was declared bought and sold during the period, and what was held at each end
+    /// of it -- the share movement table from the printed form.
+    ///
+    /// Sorted the way the form reads rather than by id: the declarant's lines, then the spouse's,
+    /// then the relatives', and within each the opening holding, the transactions in date order,
+    /// then the closing holding. A reviewer is checking a sequence, not a list of rows.</summary>
+    private static ReportSubTable ShareTransactions(InsiderDeclaration d, string declarantName) =>
+        new("Share transactions and holdings",
+            [new("Held by", 12), new("Name", 24), new("NIN", 16), new("Entry", 18),
+             new("Date", 12), new("Shares", 9, Numeric: true), new("Rate", 9, Numeric: true)],
+            [.. d.ShareEntries
+                .OrderBy(e => e.HolderKind).ThenBy(e => e.EntryKind).ThenBy(e => e.TransactionDate)
+                .Select(e => new[]
+                {
+                    e.HolderKind switch
+                    {
+                        ShareHolderKind.Self => "Self",
+                        ShareHolderKind.Spouse => "Spouse",
+                        _ => "Relative",
+                    },
+                    e.HolderKind == ShareHolderKind.Self ? declarantName : e.HolderName ?? "—",
+                    e.HolderNin ?? "—",
+                    e.EntryKind switch
+                    {
+                        ShareEntryKind.OpeningBalance => "Opening holding",
+                        ShareEntryKind.Purchase => "Purchase",
+                        ShareEntryKind.Sale => "Sale",
+                        _ => "Closing holding",
+                    },
+                    e.TransactionDate is { } on ? on.ToString("dd/MM/yyyy") : "—",
+                    e.NumberOfShares.ToString("N0"),
+                    e.Rate is { } rate ? rate.ToString("N4") : "—",
+                })],
+            "No share transactions or holdings were declared for this period.");
 
     /// <summary>What the declarant uploaded as evidence, with the number and expiry they go with.
     /// Ported from the old report, where it lived behind a per-row button and a modal; here it is a

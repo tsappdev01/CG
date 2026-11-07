@@ -69,6 +69,26 @@ public static class InsiderDeclarationPdfBuilder
                 }));
         }
 
+        if (d.ShareEntries.Count > 0)
+        {
+            writer.SectionHeading($"Share Transactions \u2014 Q{run.PeriodQuarter} {run.PeriodYear}");
+            writer.DataTable(
+                ["Held By", "Name", "NIN", "Entry", "Date", "No. of Shares", "Rate"],
+                [0.11, 0.21, 0.14, 0.20, 0.12, 0.11, 0.11],
+                d.ShareEntries
+                    .OrderBy(e => e.HolderKind).ThenBy(e => e.EntryKind).ThenBy(e => e.TransactionDate)
+                    .Select(e => new[]
+                    {
+                        HolderLabel(e.HolderKind),
+                        e.HolderKind == ShareHolderKind.Self ? member.FullName : e.HolderName ?? "",
+                        e.HolderNin ?? "",
+                        EntryLabel(e.EntryKind),
+                        e.TransactionDate is { } on ? on.ToString("dd/MM/yyyy") : "\u2014",
+                        e.NumberOfShares.ToString("N0"),
+                        e.Rate is { } rate ? rate.ToString("N4") : "\u2014",
+                    }));
+        }
+
         writer.CloseCurrentPage();
         writer.FinishAllPages();
 
@@ -76,6 +96,23 @@ public static class InsiderDeclarationPdfBuilder
         document.Save(ms);
         return ms.ToArray();
     }
+
+    private static string HolderLabel(ShareHolderKind kind) => kind switch
+    {
+        ShareHolderKind.Self => "Self",
+        ShareHolderKind.Spouse => "Spouse",
+        _ => "Relative",
+    };
+
+    /// <summary>Shorter than the form's own row labels, which are a sentence each and would wrap
+    /// every row of a seven-column table.</summary>
+    private static string EntryLabel(ShareEntryKind kind) => kind switch
+    {
+        ShareEntryKind.OpeningBalance => "Opening holding",
+        ShareEntryKind.Purchase => "Purchase",
+        ShareEntryKind.Sale => "Sale",
+        _ => "Closing holding",
+    };
 
     private static string RelationshipLabel(RelativeRelationship relationship) => relationship switch
     {

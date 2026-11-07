@@ -112,6 +112,10 @@ public class InsiderDeclaration
     /// <summary>Functional Spec §3.2 grid rows: relatives who hold a National Investor Number,
     /// independent of whether they hold DI shares.</summary>
     public List<InsiderDeclarationNinHolder> NinHolders { get; set; } = [];
+
+    /// <summary>The share movement table: opening holding, each purchase and sale with its date
+    /// and rate, closing holding -- for the declarant, their spouse and their relatives.</summary>
+    public List<InsiderDeclarationShareEntry> ShareEntries { get; set; } = [];
 }
 
 /// <summary>One relative-holds-shares row under Case 3 of an InsiderDeclaration (Functional Spec §4

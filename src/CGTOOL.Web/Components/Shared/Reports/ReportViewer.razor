@@ -289,6 +289,27 @@
 
     private void GoTo(int page) => _page = Math.Clamp(page, 1, PageCount);
 
+    private bool _fitted;
+
+    /// <summary>Every report opens filling the width it has been given, rather than at 100% with
+    /// a band of empty page down each side -- an A4 landscape sheet is 1123px and the content area
+    /// is wider than that on any desk monitor.
+    ///
+    /// Done by zooming rather than by making the sheet fluid. The sheet is the page that prints
+    /// and that the PDF contains, and its pagination is counted against a fixed 1123x794: let it
+    /// reflow to the window and the preview would stop matching the thing it is previewing, with
+    /// page breaks landing somewhere other than where they land on paper.
+    ///
+    /// Once only. Re-fitting on every render would undo a zoom the person had just set.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_fitted || !firstRender) return;
+
+        _fitted = true;
+        await FitWidth();
+        StateHasChanged();
+    }
+
     private void ZoomIn() => _zoom = Math.Min(MaxZoom, Math.Round(_zoom + 0.1, 2));
     private void ZoomOut() => _zoom = Math.Max(MinZoom, Math.Round(_zoom - 0.1, 2));
 

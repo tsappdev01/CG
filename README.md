@@ -385,6 +385,47 @@ If a key is ever pasted into a chat, an email or a ticket, rotate it: the Azure
 resource carries two keys precisely so one can be regenerated while the other
 keeps the app running.
 
+## The Document Center
+
+Admin Panel > Document Center is the list of documents people are asked to keep on file: a name,
+Required or Optional, Active or Inactive. My Workspace and the insider declaration both render
+their document cards from it.
+
+They used to render from two separate hardcoded lists -- a static array of three in My Workspace,
+and a run of literal Required/Optional pills in the declaration. Two lists that could disagree with
+each other, and neither changeable without a rebuild and a redeploy. Adding a visa to the list was
+a developer task.
+
+**Built-in versus added.** The three documents the application reads automatically -- Emirates ID,
+passport, trade licence -- plus the catch-all "Other Documents" row keep their `MemberDocumentKind`
+in `DocumentType.BuiltInKind`. That is what ties a row to the Document Intelligence wiring, to the
+declaration's own `EmiratesIdPath`/`PassportPath`/`TradeLicencePath` columns, and to every report
+that asks for a passport by name. They can be renamed, made optional, or switched off; they cannot
+be deleted, and nothing added can claim a built-in kind -- a second row carrying `BuiltInKind.Passport`
+would be a name with another row's code behind it.
+
+Anything an administrator adds has no kind. It takes a file, a reference number and an expiry date,
+typed in. Nothing is read off it: Document Intelligence is trained per document, so a type invented
+this afternoon has no model to read it with, and appearing to try would just return empty fields.
+
+**Nothing on file was rewritten.** `MemberDocument` gained a nullable `DocumentTypeId` that only
+added types set. Documents against the built-in kinds still carry `Kind` and no type id, so every
+query that sorts by kind kept working. An added type's document stores `Kind = Other` *and* the type
+id; the free-form Other list is the rows where the type id is null.
+
+**Inactive, not deleted.** `usp_DocumentType_Delete` refuses a built-in, and refuses any type that
+a member document or a submitted declaration references -- the foreign keys are `Restrict`, so the
+delete would fail anyway, with an error naming a constraint instead of the reason. Setting a type
+Inactive stops it being asked for on both screens and keeps every file already uploaded against it
+readable.
+
+**The four built-in rows are seeded in the migration**, not by a script in `scripts/`. Their names
+and flags are reference data and nothing touches them again once seeded -- but the rows themselves
+are not optional. A deployment that had migrated and not yet run a seed script would show a person
+no Emirates ID card, no passport card, and a declaration that could be completed without either.
+The seed matches on `BuiltInKind` rather than on name, because by the second run the names may have
+been changed.
+
 ## Enable Change Data Capture (CDC)
 
 `scripts/enable-cdc.sql` turns on SQL Server CDC for every master-data and

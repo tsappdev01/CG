@@ -5,7 +5,7 @@ namespace CGTOOL.Web.Data.Governance;
 /// <summary>A kind of document a person keeps on file: what it is called, whether they must
 /// provide one, and whether it is being asked for at all.
 ///
-/// This is reference data, not code. The list used to be a static array in My Register and a run
+/// This is reference data, not code. The list used to be a static array in My Workspace and a run
 /// of hardcoded "Required"/"Optional" pills in the declaration -- two places that could disagree,
 /// and neither changeable without a rebuild and a redeploy. Adding a visa to the list was a
 /// developer task. Now it is a row.
@@ -33,7 +33,7 @@ public class DocumentType
     [MaxLength(300)]
     public string? Description { get; set; }
 
-    /// <summary>Whether a person has to supply one. Read by My Register, which marks the card, and
+    /// <summary>Whether a person has to supply one. Read by My Workspace, which marks the card, and
     /// by the declaration, which will not let the step be completed without it.</summary>
     public bool IsMandatory { get; set; }
 
@@ -42,7 +42,7 @@ public class DocumentType
     public MemberDocumentKind? BuiltInKind { get; set; }
 
     /// <summary>True for a document type that is being asked for. An inactive one disappears from
-    /// My Register and from the declaration, but is kept, along with everything already uploaded
+    /// My Workspace and from the declaration, but is kept, along with everything already uploaded
     /// against it -- which is why switching off is offered instead of deleting for anything a
     /// person may already have filed.</summary>
     public bool IsActive { get; set; } = true;

@@ -18,8 +18,7 @@ public static class NavMenuCatalog
         new("DeclarationSetup", "Declaration Setup", null),
         new("Reports", "Reports", null),
 
-        new("MyAccount.Profile", "Profile", "MyAccount"),
-        new("MyAccount.Workspace", "My Register", "MyAccount"),
+        new("MyAccount.Workspace", "My Workspace", "MyAccount"),
         new("MyAccount.Declarations", "Declarations", "MyAccount"),
 
         new("AdminPanel.UserManagement", "User Management", "AdminPanel"),

@@ -18,7 +18,7 @@ public partial class RpTransactionsPage
 
     /// <summary>The list the amend form offers. The master is the only source for a new transaction,
     /// but a transaction already raised may name a counter-party that has since left the master --
-    /// removed from My Register, or an entity deactivated. Dropping it from the list would leave the
+    /// removed from My Workspace, or an entity deactivated. Dropping it from the list would leave the
     /// select with nothing matching, so amending the value or the description would silently change
     /// who the transaction was with. It is offered for that transaction alone, and marked.</summary>
     private List<RelatedPartyOption> AmendOptions(RelatedPartyTransaction t) =>

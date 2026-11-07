@@ -141,14 +141,14 @@
                                                 }
                                             </select>
                                         </td>
-                                        <td>@(r.FamilyMemberId is null ? "This declaration only" : "In My Register")</td>
+                                        <td>@(r.FamilyMemberId is null ? "This declaration only" : "In My Workspace")</td>
                                         <td><button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveRelative(r)">Remove</button></td>
                                     </tr>
                                 }
                             </tbody>
                         </table>
                     </div>
-                    <p class="cg-hint">Your relatives from My Register are listed here for you. Editing a name or relationship asks, on the way to the next step, whether to change it in My Register as well; removing one asks whether it should go from there too.</p>
+                    <p class="cg-hint">Your relatives from My Workspace are listed here for you. Editing a name or relationship asks, on the way to the next step, whether to change it in My Workspace as well; removing one asks whether it should go from there too.</p>
                     <div class="cg-actions">
                         <button type="button" class="cg-action-btn" @onclick="AddRelative">+ Add relative</button>
                         @if (_myFamilyMembers.Count > 0)
@@ -172,7 +172,7 @@
         {
             <div class="cg-member-form cg-declaration-form">
                 <h3>Companies in which I own ≥30% of paid-up share capital</h3>
-                <p class="cg-hint">The companies in My Register where your ownership is 30% or more are listed here for you. Switching this section to "nothing to declare" clears them.</p>
+                <p class="cg-hint">The companies in My Workspace where your ownership is 30% or more are listed here for you. Switching this section to "nothing to declare" clears them.</p>
                 @* The declaration's own wording, not a generic "nothing to declare": what the member
                    is answering here is a specific statement about their shareholdings, and it is the
                    statement they are signing. *@
@@ -218,7 +218,7 @@
         {
             <div class="cg-member-form cg-declaration-form">
                 <h3>Companies in which a relative owns ≥30% of its shares</h3>
-                <p class="cg-hint">Built from your relatives in My Register whose own holding is 30% or more. Switching this section to "nothing to declare" clears them.</p>
+                <p class="cg-hint">Built from your relatives in My Workspace whose own holding is 30% or more. Switching this section to "nothing to declare" clears them.</p>
                 <label class="cg-switch cg-nothing-switch">
                     <input type="checkbox" @bind:get="!_nothingRelativeOwned" @bind:set="v => { _nothingRelativeOwned = !v; SetNothingRelativeOwned(); }" />
                     <span class="cg-switch-track" aria-hidden="true"></span>
@@ -258,7 +258,7 @@
         {
             <div class="cg-member-form cg-declaration-form">
                 <h3>Companies in which I serve as board member or senior executive</h3>
-                <p class="cg-hint">The companies in My Register marked "serve as board member or senior executive". Switching this section to "nothing to declare" clears them.</p>
+                <p class="cg-hint">The companies in My Workspace marked "serve as board member or senior executive". Switching this section to "nothing to declare" clears them.</p>
                 <label class="cg-switch cg-nothing-switch">
                     <input type="checkbox" @bind:get="!_nothingBoardRoles" @bind:set="v => { _nothingBoardRoles = !v; SetNothingBoardRoles(); }" />
                     <span class="cg-switch-track" aria-hidden="true"></span>
@@ -471,11 +471,11 @@
     <div class="cg-modal cg-ws-modal" role="dialog" aria-modal="true" aria-labelledby="cg-ws-title">
         <div class="cg-modal-head">
             <div>
-                <h2 id="cg-ws-title">Update My Register?</h2>
+                <h2 id="cg-ws-title">Update My Workspace?</h2>
                 <p class="cg-subtitle">
                     @(workspaceUpdates.Count == 1
-                        ? "You entered this differently here from what My Register holds."
-                        : $"You entered {workspaceUpdates.Count} of these differently here from what My Register holds.")
+                        ? "You entered this differently here from what My Workspace holds."
+                        : $"You entered {workspaceUpdates.Count} of these differently here from what My Workspace holds.")
                 </p>
             </div>
             <button type="button" class="cg-modal-close" aria-label="Close" @onclick="DeclineWorkspaceUpdates">&times;</button>
@@ -501,7 +501,7 @@
 
         <div class="cg-modal-foot">
             <button type="button" class="cg-action-btn" @onclick="DeclineWorkspaceUpdates">Keep to this declaration</button>
-            <button type="button" class="cg-action-btn cg-good" @onclick="ConfirmWorkspaceUpdatesAsync">Update My Register</button>
+            <button type="button" class="cg-action-btn cg-good" @onclick="ConfirmWorkspaceUpdatesAsync">Update My Workspace</button>
         </div>
     </div>
 }
@@ -515,14 +515,14 @@
         <div class="cg-modal-head">
             <div>
                 <h2 id="cg-coi-del-title">Remove @pendingRelative.Name?</h2>
-                <p class="cg-subtitle">@RelationshipLabel(pendingRelative.Relationship) — also recorded in My Register.</p>
+                <p class="cg-subtitle">@RelationshipLabel(pendingRelative.Relationship) — also recorded in My Workspace.</p>
             </div>
             <button type="button" class="cg-modal-close" aria-label="Close" @onclick="CancelRemoveRelative">×</button>
         </div>
 
         <div class="cg-modal-body">
-            <p>Remove them from My Register as well, or only from this declaration?</p>
-            <p class="cg-hint">Removing from My Register deletes the related party and everything recorded against them there — documents, NIN, nature of holding. Removing from this declaration leaves the register untouched, and they will be listed again on your next one.</p>
+            <p>Remove them from My Workspace as well, or only from this declaration?</p>
+            <p class="cg-hint">Removing from My Workspace deletes the related party and everything recorded against them there — documents, NIN, nature of holding. Removing from this declaration leaves the register untouched, and they will be listed again on your next one.</p>
         </div>
 
         <div class="cg-modal-foot">

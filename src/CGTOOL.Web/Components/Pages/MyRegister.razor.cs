@@ -11,7 +11,7 @@ namespace CGTOOL.Web.Components.Pages;
 public partial class MyRegister : ComponentBase
 {
     /// <summary>The folder uploads are filed under. Still "my-workspace" after the page was renamed
-    /// to My Register: the path of every document already on file is stored in the database, so
+    /// to My Workspace: the path of every document already on file is stored in the database, so
     /// renaming the folder would leave every one of them pointing at nothing.</summary>
     private const string UploadFolder = "my-workspace";
 

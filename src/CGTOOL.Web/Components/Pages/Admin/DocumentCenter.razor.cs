@@ -8,7 +8,7 @@ namespace CGTOOL.Web.Components.Pages.Admin;
 
 /// <summary>The list of documents people are asked for, and whether they have to supply one.
 ///
-/// It replaces a static array in My Register and a run of hardcoded Required/Optional pills in the
+/// It replaces a static array in My Workspace and a run of hardcoded Required/Optional pills in the
 /// declaration -- two lists that could disagree with each other and neither changeable without a
 /// redeploy. Both now render from this table.
 ///
@@ -194,7 +194,7 @@ public partial class DocumentCenter
                 $"Added document type '{name}' ({(_newMandatory ? "Required" : "Optional")}).");
 
             _adding = false;
-            Toasts.ShowSuccess($"'{name}' added. People will see it on My Register and on their declarations.");
+            Toasts.ShowSuccess($"'{name}' added. People will see it on My Workspace and on their declarations.");
             await LoadAsync();
         }
         finally

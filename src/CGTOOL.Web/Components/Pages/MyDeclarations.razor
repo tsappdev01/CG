@@ -41,7 +41,7 @@
             <a class="cg-declaration-option @(Option2Enabled ? "" : "disabled")"
                href="@(Option2Enabled ? "/declarations/related-party-coi" : null)">
                 <h2>2. Submit Related Party &amp; COI Declaration</h2>
-                <p>@(Option2Enabled ? $"Due {_coiRun!.DueDateUtc.ToLocalDisplay():dd MMM yyyy}." : (Option1Enabled ? "Insider Declaration is due first." : "Not currently due."))</p>
+                <p>@(Option2Enabled ? $"Due {_coiRun!.DueDateUtc.ToLocalDisplay():dd MMM yyyy}." : "Not currently due.")</p>
             </a>
         </div>
 

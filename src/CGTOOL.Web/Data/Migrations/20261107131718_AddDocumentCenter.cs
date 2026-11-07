@@ -94,7 +94,7 @@ namespace CGTOOL.Web.Data.Migrations
                 Reference data is normally data, maintained by script, and the names and the
                 Required/Optional flags below are exactly that -- an administrator changes them in
                 the Document Centre afterwards and this migration never touches them again. But the
-                rows themselves are not optional: My Register and the declaration render their
+                rows themselves are not optional: My Workspace and the declaration render their
                 document cards from this table, so a deployment that migrated and had not yet run a
                 seed script would show a person no Emirates ID card, no passport card, and a
                 declaration that could be completed without either. Shipping the rows with the

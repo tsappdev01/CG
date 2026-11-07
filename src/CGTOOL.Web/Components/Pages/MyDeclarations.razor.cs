@@ -46,7 +46,14 @@ public partial class MyDeclarations
         && (_effectiveMember.ConflictOfInterestAccess || _effectiveMember.RelatedPartyRegisterAccess)
         && _coiRun is not null;
 
-    private bool Option2Enabled => Option2Available && !Option1Enabled;
+    /// <summary>Each declaration stands on whether it is itself due. It used to also require that
+    /// no insider declaration was outstanding, which made the two a queue: someone with both due
+    /// could not file the COI one until the insider one was done, for no reason in the rules --
+    /// they are separate declarations about separate things, against separate open periods.
+    ///
+    /// So both are open when both are due, and the one that is not due is the one that is
+    /// disabled.</summary>
+    private bool Option2Enabled => Option2Available;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 

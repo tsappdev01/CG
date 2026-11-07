@@ -12,7 +12,7 @@ namespace CGTOOL.Web.Data.Governance;
 /// nobody knows yet what it will be.
 ///
 /// A copy, not a reference to the member's own file. A declaration is evidence of what was
-/// provided on the day it was submitted -- if it pointed at My Register, replacing a document
+/// provided on the day it was submitted -- if it pointed at My Workspace, replacing a document
 /// there would quietly rewrite declarations already signed.</summary>
 public class InsiderDeclarationDocument
 {

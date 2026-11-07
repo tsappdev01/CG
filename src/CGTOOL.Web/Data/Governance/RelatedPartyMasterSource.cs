@@ -14,16 +14,16 @@ public record RelatedPartyOption(string Name, string Group, string? Description)
 /// It used to read the names out of submitted Related Party &amp; COI declarations instead. That had
 /// two consequences worth remembering, because they are why this changed: a deployment with no
 /// submitted declarations had an empty dropdown and nobody could raise a transaction at all, and a
-/// related party maintained in My Register but not yet declared for the current quarter could not be
+/// related party maintained in My Workspace but not yet declared for the current quarter could not be
 /// transacted with. The master has neither problem -- it is reference data, maintained directly, and
 /// does not wait for a declaration cycle.
 ///
-/// Declarations are deliberately NOT a source. A name declared once and never added to My Register
+/// Declarations are deliberately NOT a source. A name declared once and never added to My Workspace
 /// is not on the master, and offering it here would say it is. Where that name is the counter-party
 /// of a transaction already raised, the amend form keeps it selectable for that transaction alone
 /// (see RpTransactionsPage.AmendOptions) so amending something else cannot silently change who it
 /// was with -- but nothing puts it back in the list for new transactions. The fix for a name that
-/// should be there is to add it to My Register.</summary>
+/// should be there is to add it to My Workspace.</summary>
 public static class RelatedPartyMasterSource
 {
     public const string Entities = "Group entities";

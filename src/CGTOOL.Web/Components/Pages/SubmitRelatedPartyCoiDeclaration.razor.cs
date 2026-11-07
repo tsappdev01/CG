@@ -70,8 +70,8 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private readonly List<CompanyRow> _boardRoleCompanies = [];
     private readonly List<ConflictRow> _conflicts = [];
 
-    // My Register (Family Members / Owned Companies) -- the declarant's own reusable reference data,
-    // offered here as "pick from My Register" quick-adds so the same relative/company name and
+    // My Workspace (Family Members / Owned Companies) -- the declarant's own reusable reference data,
+    // offered here as "pick from My Workspace" quick-adds so the same relative/company name and
     // trade license documents don't need retyping/re-uploading every declaration cycle.
     private readonly List<FamilyMember> _myFamilyMembers = [];
     private readonly List<OwnedCompany> _myCompanies = [];
@@ -114,7 +114,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         public string Name { get; set; } = string.Empty;
         public RelativeRelationship Relationship { get; set; } = RelativeRelationship.Father;
 
-        /// <summary>The My Register record this row came from, where it came from one. What makes
+        /// <summary>The My Workspace record this row came from, where it came from one. What makes
         /// an edit here reach the register, and what the delete prompt has to offer to remove.
         /// Null for a row typed straight into the declaration.</summary>
         public int? FamilyMemberId { get; set; }
@@ -350,7 +350,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         foreach (var r in declaration.Relatives)
         {
             // Matched by name: the declaration stores the answer, not a link to the register, and
-            // the link is what lets an edit here reach My Register.
+            // the link is what lets an edit here reach My Workspace.
             var linked = _myFamilyMembers.FirstOrDefault(f =>
                 string.Equals(f.Name.Trim(), r.Name.Trim(), StringComparison.OrdinalIgnoreCase));
 
@@ -466,10 +466,10 @@ public partial class SubmitRelatedPartyCoiDeclaration
             var actorName = state.User.Identity?.Name ?? "unknown";
             await AuditLog.LogAsync(actorName, AuditAction.Delete, nameof(FamilyMember), id.ToString(),
                 $"Deleted related party {familyMember?.Name ?? row.Name} ({RelationshipLabel(row.Relationship)}) "
-                + "from My Register, via the Related Party & COI declaration.",
+                + "from My Workspace, via the Related Party & COI declaration.",
                 actingOnBehalfOf: Impersonation.ActingMemberId is not null ? _effectiveMember.FullName : null);
 
-            Toasts.ShowSuccess("Removed from this declaration and from My Register.");
+            Toasts.ShowSuccess("Removed from this declaration and from My Workspace.");
         }
 
         RemoveRelative(row);
@@ -552,7 +552,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         return WithActivitiesFilled(row);
     }
 
-    // ---------- the three company sections and My Register ----------
+    // ---------- the three company sections and My Workspace ----------
 
     /// <summary>The threshold the two ownership sections are asking about.</summary>
     private const decimal DeclarableOwnershipPercentage = 30m;
@@ -675,7 +675,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private static void AddWorkspaceDocument(CompanyRow row, string? path, string label)
     {
         if (string.IsNullOrEmpty(path)) return;
-        row.Documents.Add(new UploadedFileRow { Path = path, FileName = $"{label} (from My Register)" });
+        row.Documents.Add(new UploadedFileRow { Path = path, FileName = $"{label} (from My Workspace)" });
     }
 
     /// <summary>Answers the rows that were entered before the register held the answer, or saved
@@ -698,7 +698,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         }
     }
 
-    // ---------- Part II corrections, offered back to My Register ----------
+    // ---------- Part II corrections, offered back to My Workspace ----------
 
     /// <summary>One field the declaration now states differently from the register.</summary>
     private sealed record RegisterChange(string Field, string? Before, string? After);
@@ -879,7 +879,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
         var described = string.Join("; ", changes.Select(c => $"{c.Field} {Quote(c.Before)} → {Quote(c.After)}"));
         await AuditLog.LogAsync(actorName, AuditAction.Update, entity, id.ToString(),
-            $"Updated {what} in My Register from the Related Party & COI declaration: {described}.",
+            $"Updated {what} in My Workspace from the Related Party & COI declaration: {described}.",
             actingOnBehalfOf: Impersonation.ActingMemberId is not null ? _effectiveMember?.FullName : null);
     }
 
@@ -894,8 +894,8 @@ public partial class SubmitRelatedPartyCoiDeclaration
         }
 
         Toasts.ShowSuccess(updates.Count == 1
-            ? $"{updates[0].Title} updated in My Register."
-            : $"{updates.Count} records updated in My Register.");
+            ? $"{updates[0].Title} updated in My Workspace."
+            : $"{updates.Count} records updated in My Workspace.");
 
         ResumeAfterWorkspacePrompt();
     }
@@ -948,7 +948,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     }
 
     /// <summary>What the register says the member's interest in this company is. It is recorded once
-    /// in My Register -- on the company for their own, on the holding for a relative's -- so Part II
+    /// in My Workspace -- on the company for their own, on the holding for a relative's -- so Part II
     /// reads it from there rather than asking for the same answer a second time. It stays editable:
     /// the register says how the interest is held, and Part II is where the member says so for this
     /// declaration.</summary>
@@ -1332,7 +1332,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     //
     // The expiry date, license activities and an uploaded document were required too (Functional
     // Spec §5.4/§7.8) and are not any more, on the 27-Sep-2026 instruction naming the four above as
-    // the mandatory set. They are still captured, still pre-filled from My Register, and still shown
+    // the mandatory set. They are still captured, still pre-filled from My Workspace, and still shown
     // on the report -- a row can now be submitted without them.
     /// <summary>On most licences the permitted activities are the business activity said again, so a
     /// blank one is filled from it -- on screen, as the row is built, not silently at submission.

@@ -179,7 +179,7 @@ public class CoiConflictEntry
     public string? NatureOfHolding { get; set; }
 
     /// <summary>What the interest actually is -- supplier, customer, directorship, and so on, as
-    /// recorded against the company in My Register.</summary>
+    /// recorded against the company in My Workspace.</summary>
     [MaxLength(400)]
     public string? NatureOfInterest { get; set; }
 }

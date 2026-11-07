@@ -1950,11 +1950,34 @@ public partial class SubmitInsiderDeclaration
             await LoadAsync();
             return;
         }
+        catch (Exception ex)
+        {
+            // Stay on this step: moving to the review of a declaration that was not written would
+            // show the member their answers one last time and then submit nothing.
+            Toasts.ShowError(SaveFailureMessage(ex));
+            return;
+        }
 
         _justAutoSaved = true;
         _agreeConfirmed = false;
         _step = Step.Review;
     }
+
+    /// <summary>What to tell someone whose save did not go through.
+    ///
+    /// A save that fails takes the whole transaction with it, so nothing was written -- but the
+    /// form is still filled in on screen, and the one thing that must not happen is losing it. So
+    /// these are caught and reported rather than left to kill the circuit, which replaces the page
+    /// with "An unhandled error has occurred" and everything typed into it with nothing.
+    ///
+    /// The database being a version behind the site is the one cause worth naming: it happens on
+    /// every deploy where the stored procedures have not been re-run, it looks exactly like data
+    /// loss from the member's side, and it is fixed in a minute by whoever reads this message.</summary>
+    private static string SaveFailureMessage(Exception ex) => ex is SqlException sql && sql.Number is 201 or 207 or 208 or 2812 or 8144
+        ? "Could not save: the database is a version behind the site -- a stored procedure or column this form needs is missing or out of date. "
+          + "Nothing was lost from this screen. Ask IT to re-run scripts/stored-procedures.sql, then press Save again."
+        : "Could not save: the database refused the change and nothing was written. "
+          + "Nothing was lost from this screen -- try again, and tell IT if it keeps happening.";
 
     // Shared by SubmitAsync, SaveDraftAsync, and GoToReviewAsync's autosave: writes the header + grid
     // rows in one transaction and, on success, flips this page into "editing" mode against whatever
@@ -2120,6 +2143,11 @@ public partial class SubmitInsiderDeclaration
                 await LoadAsync();
                 return;
             }
+            catch (Exception ex)
+            {
+                Toasts.ShowError(SaveFailureMessage(ex));
+                return;
+            }
 
             await AuditLog.LogAsync(actorName, _hadExistingRow ? AuditAction.Update : AuditAction.Create, nameof(InsiderDeclaration), _effectiveMember.Id.ToString(),
                 "Draft saved: " + BuildSummary(), actingOnBehalfOf: isImpersonating ? _effectiveMember.FullName : null);
@@ -2167,6 +2195,11 @@ public partial class SubmitInsiderDeclaration
             {
                 Toasts.ShowError("This Insider Trading declaration was already submitted.");
                 await LoadAsync();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Toasts.ShowError(SaveFailureMessage(ex));
                 return;
             }
 

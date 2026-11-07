@@ -2036,6 +2036,7 @@ public partial class SubmitInsiderDeclaration
         {
             // Stay on this step: moving to the review of a declaration that was not written would
             // show the member their answers one last time and then submit nothing.
+            Logger.LogError(ex, "Saving the Insider Trading declaration failed for member {MemberId}.", _effectiveMember?.Id);
             Toasts.ShowError(SaveFailureMessage(ex));
             return;
         }
@@ -2060,7 +2061,7 @@ public partial class SubmitInsiderDeclaration
     private static string SaveFailureMessage(Exception ex) => ex is SqlException sql && sql.Number is 201 or 207 or 208 or 2812 or 8144
         ? "Could not save: the database is a version behind the site -- a stored procedure or column this form needs is missing or out of date. "
           + "Nothing was lost from this screen. Ask IT to re-run scripts/stored-procedures.sql, then press Save again."
-        : "Could not save: the database refused the change and nothing was written. "
+        : "Could not save: the save did not go through and nothing was written. "
           + "Nothing was lost from this screen -- try again, and tell IT if it keeps happening.";
 
     // Shared by SubmitAsync, SaveDraftAsync, and GoToReviewAsync's autosave: writes the header + grid
@@ -2231,6 +2232,11 @@ public partial class SubmitInsiderDeclaration
             }
             catch (Exception ex)
             {
+                // Logged as well as shown: the member gets a sentence they can act on, and
+                // whoever has to work out why gets the exception. Swallowing it to keep the page
+                // alive and then not writing it down anywhere trades one invisible failure for
+                // another.
+                Logger.LogError(ex, "Saving the Insider Trading declaration failed for member {MemberId}.", _effectiveMember?.Id);
                 Toasts.ShowError(SaveFailureMessage(ex));
                 return;
             }
@@ -2287,6 +2293,7 @@ public partial class SubmitInsiderDeclaration
             catch (Exception ex)
             {
                 _showUndertakings = false;
+                Logger.LogError(ex, "Saving the Insider Trading declaration failed for member {MemberId}.", _effectiveMember?.Id);
                 Toasts.ShowError(SaveFailureMessage(ex));
                 return;
             }

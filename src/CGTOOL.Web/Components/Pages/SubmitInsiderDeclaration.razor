@@ -4,6 +4,7 @@
 @rendermode InteractiveServer
 @using System.Security.Claims
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ILogger<SubmitInsiderDeclaration> Logger
 @inject IInsiderDeclarationWriter Writer
 @inject IFamilyMemberWriter FamilyMemberWriter
 @inject IActivityEmailSender EmailSender

@@ -1638,6 +1638,16 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 await LoadAsync();
                 return;
             }
+            catch (Exception ex)
+            {
+                // Logged as well as shown: the member gets a sentence they can act on, and
+                // whoever has to work out why gets the exception. Swallowing it to keep the page
+                // alive and then not writing it down anywhere trades one invisible failure for
+                // another.
+                Logger.LogError(ex, "Saving the Related Party & COI declaration failed for member {MemberId}.", _effectiveMember?.Id);
+                Toasts.ShowError(SaveFailureMessage(ex));
+                return;
+            }
 
             await AuditLog.LogAsync(actorName, _hadExistingRow ? AuditAction.Update : AuditAction.Create, nameof(RelatedPartyCoiDeclaration), _effectiveMember.Id.ToString(),
                 "Draft saved", actingOnBehalfOf: isImpersonating ? _effectiveMember.FullName : null);
@@ -1681,6 +1691,14 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 await LoadAsync();
                 return;
             }
+            catch (Exception ex)
+            {
+                // Not navigating away: UAE PASS would come back to a declaration that was never
+                // written, and the trip would look like the thing that lost it.
+                Logger.LogError(ex, "Saving the Related Party & COI declaration before UAE PASS failed for member {MemberId}.", _effectiveMember?.Id);
+                Toasts.ShowError(SaveFailureMessage(ex));
+                return;
+            }
 
             var redirectUri = UaePass.ResolveRedirectUri($"{Nav.BaseUri}uaepass/callback");
             var stateToken = UaePassStateProtector.Protect(_editingDeclarationId.ToString());
@@ -1692,6 +1710,22 @@ public partial class SubmitRelatedPartyCoiDeclaration
             _verifyingUaePass = false;
         }
     }
+
+    /// <summary>What to tell someone whose save did not go through.
+    ///
+    /// A save that fails takes the whole transaction with it, so nothing was written -- but the
+    /// form is still filled in on screen, and the one thing that must not happen is losing it. So
+    /// these are caught and reported rather than left to kill the circuit, which replaces the page
+    /// with "An unhandled error has occurred" and everything typed into it with nothing.
+    ///
+    /// The database being a version behind the site is the one cause worth naming: it happens on
+    /// every deploy where the stored procedures have not been re-run, it looks exactly like data
+    /// loss from the member's side, and it is fixed in a minute by whoever reads this message.</summary>
+    private static string SaveFailureMessage(Exception ex) => ex is SqlException sql && sql.Number is 201 or 207 or 208 or 2812 or 8144
+        ? "Could not save: the database is a version behind the site -- a stored procedure or column this form needs is missing or out of date. "
+          + "Nothing was lost from this screen. Ask IT to re-run scripts/stored-procedures.sql, then press Save again."
+        : "Could not save: the save did not go through and nothing was written. "
+          + "Nothing was lost from this screen -- try again, and tell IT if it keeps happening.";
 
     private async Task<int> PersistAsync(bool isDraft, string actorName, bool isImpersonating)
     {
@@ -1851,8 +1885,16 @@ public partial class SubmitRelatedPartyCoiDeclaration
             }
             catch (SqlException ex) when (ex.Number == 50012)
             {
+                _showAttestation = false;
                 Toasts.ShowError("This Related Party & COI declaration was already submitted.");
                 await LoadAsync();
+                return;
+            }
+            catch (Exception ex)
+            {
+                _showAttestation = false;
+                Logger.LogError(ex, "Saving the Related Party & COI declaration failed for member {MemberId}.", _effectiveMember?.Id);
+                Toasts.ShowError(SaveFailureMessage(ex));
                 return;
             }
 

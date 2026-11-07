@@ -4,6 +4,7 @@
 @rendermode InteractiveServer
 @using System.Security.Claims
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ILogger<SubmitRelatedPartyCoiDeclaration> Logger
 @inject IRelatedPartyCoiDeclarationWriter Writer
 @inject IFamilyMemberWriter FamilyMemberWriter
 @inject IOwnedCompanyWriter CompanyWriter

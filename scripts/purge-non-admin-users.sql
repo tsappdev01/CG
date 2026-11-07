@@ -116,12 +116,15 @@ UPDATE Companies SET DelegateAuthorityMemberId  = NULL WHERE DelegateAuthorityMe
 -- keeps that from depending on a subtlety.
 UPDATE Members SET ReportingManagerId = NULL WHERE ReportingManagerId IN (SELECT Id FROM #GoMembers);
 
--- Config rows that carry a MemberId with no foreign key behind it. Nothing blocks the delete,
--- so they are only reported: the id in them stops resolving and the cycle needs re-pointing.
-IF OBJECT_ID('dbo.DeclarationCycleSetups') IS NOT NULL
+-- DeclarationCycleRunRecipients records who a cycle's e-mail went to. It carries MemberId with
+-- no foreign key behind it, so nothing blocks the delete; the row is history of a send, and it
+-- keeps MemberName and Email, so it stays readable once the Member is gone. Reported, not
+-- deleted. (DeclarationCycleSetups has no MemberId at all -- it is Type/schedule/e-mail body.)
+IF OBJECT_ID('dbo.DeclarationCycleRunRecipients') IS NOT NULL
 BEGIN
-    PRINT N'--- DECLARATION CYCLE SETUPS POINTING AT A DELETED MEMBER (re-point these) ---';
-    SELECT Id, MemberId FROM DeclarationCycleSetups WHERE MemberId IN (SELECT Id FROM #GoMembers);
+    PRINT N'--- CYCLE E-MAIL RECIPIENTS NAMING A DELETED MEMBER (kept as history) ---';
+    SELECT Id, DeclarationCycleRunId, MemberId, MemberName, Email
+    FROM   DeclarationCycleRunRecipients WHERE MemberId IN (SELECT Id FROM #GoMembers);
 END;
 
 IF OBJECT_ID('dbo.RelatedPartyTransactions') IS NOT NULL

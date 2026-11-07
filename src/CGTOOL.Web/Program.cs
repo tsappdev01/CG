@@ -224,6 +224,9 @@ var graphConfigured = !string.IsNullOrWhiteSpace(azureAdSection["ClientSecret"])
 // IWebHostEnvironment and the file system.
 builder.Services.AddSingleton<ProfilePictureResolver>();
 
+// What build this is, read once from the assembly the pipeline stamped.
+builder.Services.AddSingleton<BuildVersion>();
+
 // The organisation's own names, from the Branding section. Singleton: it only reads configuration.
 builder.Services.AddSingleton<Branding>();
 

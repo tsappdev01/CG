@@ -119,30 +119,42 @@ BEGIN TRANSACTION;
         DELETE FROM dbo.RelatedPartyTransactions;
     END
 
-    /* Reported the way the before-counts were gathered, and for the same reason: a section that
-       was switched off may be switched off because its tables are not in this database, and a
-       PRINT that reads them anyway would fail on a run that was deliberately not touching them. */
+    /* Counted into variables and then printed, never printed directly: PRINT takes a scalar
+       expression, and a SELECT inside one is Msg 1046 -- a compile error, so the whole batch is
+       rejected before a single row is touched. The counts are gathered the same conditional way
+       the before-counts were, since a section that was switched off may have been switched off
+       because its tables are not in this database. */
+    DECLARE @AfterShareholderRecords int = 0, @AfterShareholderUploads int = 0;
+    DECLARE @AfterTradingRecords     int = 0, @AfterTradingUploads     int = 0;
+    DECLARE @AfterRpDocuments        int = 0, @AfterRpTransactions     int = 0;
+
     PRINT '';
     PRINT '--- after ---';
 
     IF @DeleteShareholderRegister = 1
     BEGIN
-        PRINT 'ShareholderRecords                 : ' + CAST((SELECT COUNT(*) FROM dbo.ShareholderRecords) AS varchar(12));
-        PRINT 'ShareholderRegisterUploads         : ' + CAST((SELECT COUNT(*) FROM dbo.ShareholderRegisterUploads) AS varchar(12));
+        SELECT @AfterShareholderRecords = COUNT(*) FROM dbo.ShareholderRecords;
+        SELECT @AfterShareholderUploads = COUNT(*) FROM dbo.ShareholderRegisterUploads;
+        PRINT 'ShareholderRecords                 : ' + CAST(@AfterShareholderRecords AS varchar(12));
+        PRINT 'ShareholderRegisterUploads         : ' + CAST(@AfterShareholderUploads AS varchar(12));
     END
     ELSE PRINT 'Shareholder register               : skipped';
 
     IF @DeleteShareTrading = 1
     BEGIN
-        PRINT 'ShareTradingRecords                : ' + CAST((SELECT COUNT(*) FROM dbo.ShareTradingRecords) AS varchar(12));
-        PRINT 'ShareTradingUploads                : ' + CAST((SELECT COUNT(*) FROM dbo.ShareTradingUploads) AS varchar(12));
+        SELECT @AfterTradingRecords = COUNT(*) FROM dbo.ShareTradingRecords;
+        SELECT @AfterTradingUploads = COUNT(*) FROM dbo.ShareTradingUploads;
+        PRINT 'ShareTradingRecords                : ' + CAST(@AfterTradingRecords AS varchar(12));
+        PRINT 'ShareTradingUploads                : ' + CAST(@AfterTradingUploads AS varchar(12));
     END
     ELSE PRINT 'Share trading                      : skipped';
 
     IF @DeleteRpTransactions = 1
     BEGIN
-        PRINT 'RelatedPartyTransactionDocuments   : ' + CAST((SELECT COUNT(*) FROM dbo.RelatedPartyTransactionDocuments) AS varchar(12));
-        PRINT 'RelatedPartyTransactions           : ' + CAST((SELECT COUNT(*) FROM dbo.RelatedPartyTransactions) AS varchar(12));
+        SELECT @AfterRpDocuments    = COUNT(*) FROM dbo.RelatedPartyTransactionDocuments;
+        SELECT @AfterRpTransactions = COUNT(*) FROM dbo.RelatedPartyTransactions;
+        PRINT 'RelatedPartyTransactionDocuments   : ' + CAST(@AfterRpDocuments    AS varchar(12));
+        PRINT 'RelatedPartyTransactions           : ' + CAST(@AfterRpTransactions AS varchar(12));
     END
     ELSE PRINT 'Related Party transactions         : skipped';
 

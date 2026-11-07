@@ -234,12 +234,25 @@
     }
 
     .nav-scrollable {
-        /* Never collapse the sidebar for wide screens */
-        display: block;
+        /* Never collapse the sidebar for wide screens.
+
+           A column rather than a block, so the build number can be pushed to the foot of the
+           sidebar by the nav growing into the space above it. The menu itself is unaffected: nav
+           is the only other child, it stretches to the full width as flex items do by default,
+           and its own layout is its own business. */
+        display: flex;
+        flex-direction: column;
 
         /* Allow sidebar to scroll for tall menus */
         height: calc(100vh - 3.5rem);
         overflow-y: auto;
+    }
+
+    /* Takes the slack, so a short menu leaves the build number at the bottom rather than
+       floating it under the last item. flex-shrink 0 keeps a long menu from being squashed into
+       the build number instead of scrolling. */
+    .nav-scrollable > nav {
+        flex: 1 0 auto;
     }
 }
 
@@ -387,4 +400,21 @@
     height: 38px;
     width: auto;
     max-width: 100%;
+}
+
+
+/* The build number, at the foot of the sidebar. Quiet on purpose -- it is there to be read out
+   when something is wrong, not to compete with the menu. Pushed to the bottom by margin-top:auto,
+   which works because the sidebar is a column flex container; the padding-bottom keeps it clear of
+   a phone's home indicator. */
+.cg-nav-build {
+    margin-top: auto;
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+    font-size: 11px;
+    letter-spacing: .02em;
+    color: rgba(255, 255, 255, .45);
+    border-top: 1px solid rgba(255, 255, 255, .08);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

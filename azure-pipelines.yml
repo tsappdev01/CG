@@ -9,6 +9,11 @@
 # would create it lives in this repository and the agent's checkout is the only copy of it on the
 # server. Set the ensureSite variable to false to turn that off.
 
+# The build number, which is also the version shown at the foot of the sidebar. $(Rev:r) is a
+# counter that restarts whenever the rest of the name changes -- with the date in front of it, that
+# means it restarts each day: "07112026 v 1", "07112026 v 2", then "08112026 v 1" tomorrow.
+name: $(Date:ddMMyyyy) v $(Rev:r)
+
 trigger:
   branches:
     include:
@@ -51,9 +56,16 @@ steps:
   # installed -- it has 6, 8 and 9 but no 10, and a framework-dependent build there cannot start.
   # The cost is size: roughly 130MB per deploy instead of 30, which matters on a disk already at
   # 95%. The gain is that a runtime upgrade is a redeploy rather than a server change.
+  #
+  # InformationalVersion carries the build number into the assembly, which is where the site reads
+  # it from to show "Build version: ..." at the foot of the sidebar. Stamped at publish rather than
+  # kept in the csproj, so the number on screen is the one that produced the files on disk and
+  # cannot drift from them. InformationalVersion and not Version: Version must be a valid version
+  # number and "07112026 v 3" is not one.
   - script: >-
       dotnet publish "$(projectPath)" --configuration $(buildConfiguration) --no-restore
       --self-contained --runtime win-x64 --output "$(publishPath)"
+      /p:InformationalVersion="$(Build.BuildNumber)"
     displayName: 'Publish (self-contained)'
 
   # Before the deploy, not by hand beforehand: the script that creates the site lives in this

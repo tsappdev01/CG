@@ -6,6 +6,7 @@
 @inject AuthenticationStateProvider AuthState
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavMenuStateNotifier NavState
+@inject BuildVersion Build
 
 <a class="cg-brand" href="">
     <img src="images/di-logo-en.png" alt="DIP Holding PLC" class="cg-brand-logo" />
@@ -205,6 +206,12 @@
             </NotAuthorized>
         </AuthorizeView>
     </nav>
+
+    @* Sits under the menu rather than in it: it is not somewhere to navigate to, and someone
+       reading out a version number over the phone should find it in the same place every time. *@
+    <div class="cg-nav-build" title="The build this site is running">
+        Build version: @Build.Value
+    </div>
 </div>
 
 @code {

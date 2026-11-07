@@ -3528,6 +3528,10 @@ button.cg-appbar-user {
    the button bar rather than as the thing the button is waiting for. */
 .cg-undertakings-confirm { margin-bottom: 6px; }
 
+/* A statement the declarant is making, as against the explanation above it. Same size as the
+   body around it -- weight is what marks it, not scale. */
+.cg-undertaking { margin: 0 0 14px; font-size: 14px; font-weight: 650; line-height: 1.55; color: var(--cg-ink); }
+
 /* ---------- Profile picker ---------- */
 .cg-profile-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .cg-profile-form { margin: 0; }

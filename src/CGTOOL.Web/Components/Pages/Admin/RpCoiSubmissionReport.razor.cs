@@ -109,7 +109,7 @@ public partial class RpCoiSubmissionReport
             RowLinks =
             [
                 .. rows.Select(r => r.Submitted
-                    ? ReportLinks.Declarant(ReportLinks.RpCoiDetail, r.MemberName, r.Year, r.Quarter)
+                    ? ReportLinks.Declarant(ReportLinks.RpCoiDetail, r.MemberId, r.MemberName, r.Year, r.Quarter)
                     : null)
             ],
         };

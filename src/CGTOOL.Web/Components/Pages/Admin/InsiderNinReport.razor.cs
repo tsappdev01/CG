@@ -115,7 +115,7 @@ public partial class InsiderNinReport
             RowLinks =
             [
                 .. rows.Select(r => r.Submitted
-                    ? ReportLinks.Declarant(ReportLinks.InsiderDetail, r.MemberName, r.Year, r.Quarter)
+                    ? ReportLinks.Declarant(ReportLinks.InsiderDetail, r.MemberId, r.MemberName, r.Year, r.Quarter)
                     : null)
             ],
         };

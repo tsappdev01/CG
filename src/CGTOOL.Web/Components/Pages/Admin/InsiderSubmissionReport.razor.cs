@@ -22,6 +22,10 @@ public partial class InsiderSubmissionReport
     /// rather than only those who have.</summary>
     private sealed class Row
     {
+        /// <summary>Who this row is about. The detail link selects on it: a name is not an
+        /// identity, and "Nayyar Ali Khan" is contained in "Nayyar Ali Khan BOD".</summary>
+        public required int MemberId { get; init; }
+
         public required string MemberName { get; init; }
         public int? CompanyId { get; init; }
         public string? CompanyName { get; init; }
@@ -72,6 +76,7 @@ public partial class InsiderSubmissionReport
 
             return new Row
             {
+                MemberId = r.MemberId,
                 MemberName = r.MemberName,
                 CompanyId = member?.CompanyId,
                 // The name as the recipient list recorded it is the fallback: a member deleted
@@ -178,7 +183,7 @@ public partial class InsiderSubmissionReport
     /// Nothing for someone who has not submitted: there is no sheet behind them, and a link to an
     /// empty report is worse than no link.</summary>
     private static string? DetailLink(Row r) => r.Submitted
-        ? ReportLinks.Declarant(ReportLinks.InsiderDetail, r.MemberName, r.Year, r.Quarter)
+        ? ReportLinks.Declarant(ReportLinks.InsiderDetail, r.MemberId, r.MemberName, r.Year, r.Quarter)
         : null;
 
     /// <summary>When the declaration was last touched: the edit if there has been one, otherwise

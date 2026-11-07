@@ -16,7 +16,13 @@ public static class ReportLinks
 
     /// <summary>One declarant's sheet, on the period the row came from. The period travels with
     /// the name: a report headed "Q1 2026" that opens on the newest quarter has answered a
-    /// different question from the one that was asked.</summary>
-    public static string Declarant(string detailPage, string memberName, int year, int quarter) =>
-        $"{detailPage}?name={Uri.EscapeDataString(memberName)}&year={year}&quarter={quarter}";
+    /// different question from the one that was asked.
+    ///
+    /// The member's id travels too, and is what the sheet is actually selected by. A name is not
+    /// an identity: the detail report searches by "contains", so a link for "Nayyar Ali Khan"
+    /// opened the sheet for "Nayyar Ali Khan BOD" as well -- and showed that one first. The name
+    /// still goes in the search box, so the page says what it is filtered to and can be widened
+    /// from there.</summary>
+    public static string Declarant(string detailPage, int memberId, string memberName, int year, int quarter) =>
+        $"{detailPage}?member={memberId}&name={Uri.EscapeDataString(memberName)}&year={year}&quarter={quarter}";
 }

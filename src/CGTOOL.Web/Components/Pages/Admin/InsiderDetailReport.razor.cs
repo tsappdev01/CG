@@ -36,6 +36,16 @@ public partial class InsiderDetailReport
     /// cleared, because a page that cannot be steered after it opens is a dead end.</summary>
     [SupplyParameterFromQuery(Name = "name")] private string? NameQuery { get; set; }
 
+    /// <summary>Which declarant the link was for. Selected on in preference to the name, because a
+    /// name is not an identity -- the search matches on "contains", so a link for "Nayyar Ali Khan"
+    /// also opened "Nayyar Ali Khan BOD", and showed that one first. Cleared the moment the search
+    /// box is edited: from then on the person is looking for something, not at someone.</summary>
+    [SupplyParameterFromQuery(Name = "member")] private int? MemberQuery { get; set; }
+
+    private int? _memberFilter;
+
+    private void OnSearchChanged() => _memberFilter = null;
+
     [SupplyParameterFromQuery(Name = "year")] private int? YearQuery { get; set; }
 
     [SupplyParameterFromQuery(Name = "quarter")] private int? QuarterQuery { get; set; }
@@ -54,6 +64,7 @@ public partial class InsiderDetailReport
 
         // After the default, so a link that names a period wins over the newest one.
         if (!string.IsNullOrWhiteSpace(NameQuery)) _search = NameQuery.Trim();
+        if (MemberQuery is > 0) _memberFilter = MemberQuery;
         if (YearQuery is > 0) _yearFilter = YearQuery.Value;
         if (QuarterQuery is > 0 and <= 4) _quarterFilter = QuarterQuery.Value;
     }
@@ -69,8 +80,14 @@ public partial class InsiderDetailReport
         if (_yearFilter > 0) rows = rows.Where(r => r.Year == _yearFilter);
         if (_quarterFilter > 0) rows = rows.Where(r => r.Quarter == _quarterFilter);
         if (_companyFilter > 0) rows = rows.Where(r => r.CompanyId == _companyFilter);
-        if (_search.Trim() is { Length: > 0 } term)
+        if (_memberFilter is { } memberId)
+        {
+            rows = rows.Where(r => r.MemberId == memberId);
+        }
+        else if (_search.Trim() is { Length: > 0 } term)
+        {
             rows = rows.Where(r => r.MemberName.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
 
         return [.. rows];
     }
@@ -104,7 +121,10 @@ public partial class InsiderDetailReport
             _companyFilter > 0 ? _companies?.FirstOrDefault(c => c.Id == _companyFilter)?.Name ?? "Unknown entity" : "All entities",
             "Submitted only",
         };
-        if (_search.Trim() is { Length: > 0 } term) parts.Add($"Name contains “{term}”");
+        // Says which it is. "Name contains" against a sheet selected by member would be a filter
+        // statement describing a filter that is not the one applied.
+        if (_memberFilter is not null && _search.Trim() is { Length: > 0 } who) parts.Add($"Declarant “{who}”");
+        else if (_search.Trim() is { Length: > 0 } term) parts.Add($"Name contains “{term}”");
         return string.Join(" · ", parts);
     }
 }

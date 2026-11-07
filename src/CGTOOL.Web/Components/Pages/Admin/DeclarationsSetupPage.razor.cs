@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using Microsoft.JSInterop;
 using CGTOOL.Web.Data;
 using CGTOOL.Web.Data.Governance;
@@ -697,17 +698,40 @@ public partial class DeclarationsSetupPage
             ? from
             : $"(whatever the Database Mail profile \"{Config["Smtp:SqlDbMailProfile"]}\" sends as)";
 
+    /// <summary>The signed-in person's name as a recipient would see it -- from their Member
+    /// record, not from the login. Identity.Name is the sign-in address, so using it for
+    /// {FullName} previewed "Dear nayyar@techsource.ae" where the real send, which reads
+    /// Member.FullName, would say "Dear Nayyar Ali Khan". A preview that does not match what goes
+    /// out is worse than no preview. Falls back to the login name for an account with no linked
+    /// Member, which is what a bootstrap admin has.</summary>
+    private async Task<string> CurrentMemberFullNameAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId is null) return await CurrentActorAsync();
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var fullName = await db.Members
+            .Where(m => m.ApplicationUserId == userId)
+            .Select(m => m.FullName)
+            .FirstOrDefaultAsync();
+
+        return string.IsNullOrWhiteSpace(fullName) ? await CurrentActorAsync() : fullName;
+    }
+
     private async Task ShowPreviewAsync()
     {
         if (_setup is null) return;
 
+        // The envelope's To line is the address; the greeting inside is the name. They are
+        // different things and the preview was using the address for both.
         _previewTo = await CurrentActorAsync();
 
         // Through the same method the reminder service uses, so the preview cannot drift from what
         // actually gets sent. The due date is the one entered on the Send Notification tab.
         _previewBody = DeclarationCycleReminderHostedService.ApplyPlaceholders(
             _setup.EmailBody ?? string.Empty,
-            _previewTo,
+            await CurrentMemberFullNameAsync(),
             LocalDateToUtc(_dueDate),
             // Empty on purpose: {LogoUrl} and {BaseUrl} then come out site-relative, so the preview
             // shows what THIS build serves rather than what is still on the deployed site, which is

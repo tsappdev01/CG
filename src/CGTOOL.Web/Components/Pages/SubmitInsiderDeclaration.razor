@@ -667,10 +667,9 @@
                                             <select class="cg-input" value="@HolderValue(entry)"
                                                     aria-label="Share held by"
                                                     @onchange="e => SetShareEntryHolder(entry, e.Value)">
-                                                <option value="self">Self</option>
-                                                @foreach (var opt in RelativeOptions)
+                                                @foreach (var opt in ShareHolderOptionsFor(entry))
                                                 {
-                                                    <option value="@((int)opt.Value)">@opt.Label</option>
+                                                    <option value="@opt.Value">@opt.Label</option>
                                                 }
                                             </select>
                                         </td>
@@ -742,7 +741,16 @@
                     </div>
 
                     <div class="cg-dfm-actions cg-dfm-actions-save">
-                        <button type="button" class="cg-action-btn cg-good" @onclick="AddShareEntry">+ Add entry</button>
+                        @* Nobody above to attribute a transaction to, so there is nothing a row
+                           could say. The grid above is where that is fixed. *@
+                        @if (ListedShareHolders().Count == 0)
+                        {
+                            <span class="cg-hint">List the shareholders above first — a transaction is recorded against one of them.</span>
+                        }
+                        else
+                        {
+                            <button type="button" class="cg-action-btn cg-good" @onclick="AddShareEntry">+ Add entry</button>
+                        }
                     </div>
                 }
 

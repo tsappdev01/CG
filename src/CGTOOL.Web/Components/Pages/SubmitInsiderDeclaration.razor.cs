@@ -147,13 +147,61 @@ public partial class SubmitInsiderDeclaration
     private static bool IsTransactionKind(ShareEntryKind kind) =>
         kind is ShareEntryKind.Purchase or ShareEntryKind.Sale;
 
-    private void AddShareEntry() => _shareEntries.Add(new ShareEntryRow
+    private void AddShareEntry()
     {
-        // Seeded with the declarant, which is whose line it usually is, and with their own number
-        // so the commonest row needs nothing typed into it but a quantity.
-        IsSelf = true,
-        HolderNin = _ninNumber,
-    });
+        var row = new ShareEntryRow
+        {
+            // Seeded with the declarant, which is whose line it usually is, and with their own
+            // number so the commonest row needs nothing typed into it but a quantity.
+            IsSelf = true,
+            HolderNin = _ninNumber,
+        };
+
+        // Unless the declarant is not one of the shareholders listed above, in which case the row
+        // opens on the first person who is. A row cannot start on someone its own picker does not
+        // offer: the box would read as one person while the row held another.
+        if (!_relatives.Any(r => r.IsSelf) && ListedShareHolders().FirstOrDefault() is { Value: not "self" } first)
+        {
+            SetShareEntryHolder(row, first.Value);
+        }
+
+        _shareEntries.Add(row);
+    }
+
+    /// <summary>Who the shareholding grid above lists, in the order the relationship list is
+    /// written. The transactions table picks from these and no one else: a transaction belongs to
+    /// someone who holds shares, and that is the grid's own question -- offering all nine
+    /// relationships invites a row for a brother who was never declared as holding anything, with
+    /// no name and no NIN to go with him.</summary>
+    private List<(string Value, string Label)> ListedShareHolders()
+    {
+        var options = new List<(string Value, string Label)>();
+
+        if (_relatives.Any(r => r.IsSelf)) options.Add(("self", "Self"));
+
+        var listed = _relatives.Where(r => !r.IsSelf).Select(r => r.Relationship).ToHashSet();
+        options.AddRange(RelativeOptions
+            .Where(opt => listed.Contains(opt.Value))
+            .Select(opt => (((int)opt.Value).ToString(), opt.Label)));
+
+        return options;
+    }
+
+    /// <summary>The same list, with this row's own holder kept on it even if they have since been
+    /// taken off the grid above. Dropping them would leave the box showing the first name on the
+    /// list while the row still held the other one.</summary>
+    private List<(string Value, string Label)> ShareHolderOptionsFor(ShareEntryRow row)
+    {
+        var options = ListedShareHolders();
+        var value = HolderValue(row);
+
+        if (options.All(o => o.Value != value))
+        {
+            options.Insert(0, (value, ShareHolderLabel(row)));
+        }
+
+        return options;
+    }
 
     private void RemoveShareEntry(ShareEntryRow row) => _shareEntries.Remove(row);
 

@@ -60,10 +60,10 @@
                     <h3 class="cg-section-heading">Investor identification</h3>
                     <div class="cg-form-grid">
                         <label class="cg-field">
-                            <span>DFM Investor Number (NIN)</span>
+                            <span>DFM Investor Number (NIN) <b class="cg-req-mark">*</b></span>
                             <input class="cg-input cg-input-short@(Nin.IsInvalidEntry(_dfm.InvestorNumber) ? " cg-input-invalid" : Nin.IsComplete(_dfm.InvestorNumber) ? " cg-input-valid" : "")"
                                    placeholder="10 letters or digits" @bind="_dfm.InvestorNumber" @bind:event="oninput"
-                                   maxlength="@Nin.Length" minlength="@Nin.Length" />
+                                   maxlength="@Nin.Length" minlength="@Nin.Length" aria-required="true" />
                             @if (Nin.IsInvalidEntry(_dfm.InvestorNumber))
                             {
                                 <span class="cg-field-error">@Nin.Hint</span>

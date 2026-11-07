@@ -753,7 +753,16 @@ public partial class MyRegister : ComponentBase
     {
         if (_effectiveMember is null || _savingDfm) return;
 
-        if (Nin.IsInvalidEntry(_dfm.InvestorNumber))
+        // The investor number is the point of the section: everything else here describes the
+        // holder of a number, and the declarations read it. Saving the rest without it would store
+        // a record of nobody in particular.
+        if (string.IsNullOrWhiteSpace(_dfm.InvestorNumber))
+        {
+            Toasts.ShowError("Enter your DFM investor number (NIN).");
+            return;
+        }
+
+        if (!Nin.IsValid(_dfm.InvestorNumber))
         {
             Toasts.ShowError(Nin.ErrorFor("your DFM investor number"));
             return;

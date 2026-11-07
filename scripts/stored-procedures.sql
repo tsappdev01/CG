@@ -84,11 +84,14 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR OBJECT_ID('dbo.DelegationOfAuthorityBands', 'U') IS NULL
     OR COL_LENGTH('dbo.RelatedPartyTransactions', 'GoverningBody') IS NULL
     OR COL_LENGTH('dbo.RelatedPartyTransactionDocuments', 'Kind') IS NULL
+    OR OBJECT_ID('dbo.DocumentTypes', 'U') IS NULL
+    OR OBJECT_ID('dbo.InsiderDeclarationDocuments', 'U') IS NULL
+    OR COL_LENGTH('dbo.MemberDocuments', 'DocumentTypeId') IS NULL
 BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
     RAISERROR(
-        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, CoiCompanyEntries.NatureOfHolding, the NatureOfInterest columns, RelatedPartyCoiDeclarations.SignaturePath, Members.DeclarationType, Companies.EntityType and its authority not-applicable flags, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time, the Delegation of Authority tables, RelatedPartyTransactions.GoverningBody, RelatedPartyTransactionDocuments.Kind). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
+        'Not deploying: database [%s] does not have the columns and tables these procedures write to (checked: FamilyMembers related-party and trade-licence capture columns, OwnedCompanies trade-licence capture columns, MemberDocuments, FamilyMemberHoldings and its trade-licence capture columns, CoiCompanyEntries.NatureOfHolding, the NatureOfInterest columns, RelatedPartyCoiDeclarations.SignaturePath, Members.DeclarationType, Companies.EntityType and its authority not-applicable flags, AuditLogEntries.RecordHash, AuditLogReviews, DeclarationCycleSetups reminder day/time, the Delegation of Authority tables, RelatedPartyTransactions.GoverningBody, RelatedPartyTransactionDocuments.Kind, the Document Center tables and MemberDocuments.DocumentTypeId). Either this is the wrong database (pass -d <database> to sqlcmd, or pick it in SSMS), or its schema is behind the application -- in which case apply the EF Core migrations first, by starting the application once against it or running "dotnet ef database update", and then run this script again. Nothing has been changed.',
         16, 1, @db) WITH NOWAIT;
     SET NOEXEC ON;
 END

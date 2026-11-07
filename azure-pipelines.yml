@@ -5,8 +5,9 @@
 # web site are the same machine, so the publish output is copied straight into place and nothing
 # has to cross the network or be staged as an artifact.
 #
-# The site has to exist first. scripts/deploy/New-CgDiparkSite.ps1 creates it; run that once,
-# elevated, on UATWEB01.
+# The site does not have to exist beforehand: the first deploy creates it, because the script that
+# would create it lives in this repository and the agent's checkout is the only copy of it on the
+# server. Set the ensureSite variable to false to turn that off.
 
 trigger:
   branches:
@@ -25,6 +26,8 @@ variables:
   siteName: 'cg.dipark.com'
   appPoolName: 'cg.dipark.com'
   sitePath: 'C:\Websites\CG_DIP'
+  # Set to false once the site is settled, if you would rather CI never touched IIS configuration.
+  ensureSite: 'true'
 
 steps:
   # useGlobalJson, not a pinned version here: global.json already names the SDK (10.0.402) and two
@@ -40,6 +43,24 @@ steps:
 
   - script: dotnet publish "$(projectPath)" --configuration $(buildConfiguration) --no-restore --output "$(publishPath)"
     displayName: 'Publish'
+
+  # Before the deploy, not by hand beforehand: the script that creates the site lives in this
+  # repository, and the only copy of this repository on UATWEB01 is the one the agent checks out
+  # here -- so telling someone to "run it on the server first" asks them to run a file that is not
+  # there yet. It is guarded throughout and re-runnable, so after the first time it is a no-op
+  # that also repairs a site someone has since changed by hand.
+  - task: PowerShell@2
+    displayName: 'Ensure the IIS site and app pool exist'
+    condition: and(succeeded(), eq(variables['ensureSite'], 'true'))
+    inputs:
+      filePath: 'scripts/deploy/New-CgDiparkSite.ps1'
+      arguments: >-
+        -SiteName "$(siteName)"
+        -AppPoolName "$(appPoolName)"
+        -SitePath "$(sitePath)"
+        -HostName "$(siteName)"
+      failOnStderr: false
+      pwsh: false
 
   - task: PowerShell@2
     displayName: 'Deploy to IIS'

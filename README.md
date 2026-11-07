@@ -35,19 +35,21 @@ present `dotnet build` stops with MSB1011 rather than choosing one.
 pool, whose agent is a service on UATWEB01 itself, so the publish output is copied straight into
 place rather than crossing the network as an artifact.
 
-The site has to exist before the first run. Once, elevated, on UATWEB01:
+The site does not have to exist beforehand. The pipeline runs
+`scripts/deploy/New-CgDiparkSite.ps1` before each deploy, because that script lives in this
+repository and the agent's checkout is the only copy of it on the server -- "run it on the server
+first" would mean running a file that is not there yet. It is guarded throughout, so after the
+first time it is a no-op that also repairs a site someone has changed by hand. Set the
+`ensureSite` variable to `false` if you would rather CI never touched IIS configuration, and run
+it yourself from the agent's work folder instead.
 
-```powershell
-.\scripts\deploy\New-CgDiparkSite.ps1
-```
-
-That creates the `cg.dipark.com` site and app pool at `C:\Websites\CG_DIP`, sets the pool to **No
+It creates the `cg.dipark.com` site and app pool at `C:\Websites\CG_DIP`, sets the pool to **No
 Managed Code** (the runtime is in the app, not in IIS), turns off timed recycling (each recycle
 drops every open SignalR circuit mid-session), binds HTTPS if a matching certificate is already
 installed, and grants the pool identity write access to `wwwroot\uploads` and the data-protection
 key ring. It is re-runnable.
 
-Four things it cannot do for you:
+Three things it cannot do for you:
 
 1. **The .NET 10 Hosting Bundle** -- not the SDK and not the runtime, the Hosting Bundle, which
    carries the ASP.NET Core Module IIS needs to hand requests to the app. Without it the site

@@ -263,6 +263,11 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
     private string _attestationName = string.Empty;
     private bool _attestationConfirmed;
+
+    /// <summary>The attestation window the Proceed button opens. The signature pad lives inside
+    /// it, so it is created when the window opens and read while it is still on screen -- which is
+    /// also when Submit is pressed.</summary>
+    private bool _showAttestation;
     private bool _pendingFormConfirm;
 
     private const long MaxTradeLicenseFileBytes = 10 * 1024 * 1024;
@@ -1603,6 +1608,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         _pendingFormConfirm = false;
         _step = Step.Review;
         _justAutoSaved = false;
+        _showAttestation = false;
     }
 
     private void CancelFormConfirm() => _pendingFormConfirm = false;

@@ -4,6 +4,7 @@
 @rendermode InteractiveServer
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IJSRuntime JS
+@inject Branding Branding
 
 <PageTitle>@PageHeading</PageTitle>
 
@@ -88,7 +89,7 @@
                         <div class="cg-print-header">
                             <img src="images/di-logo.jpg" alt="DIP Holding PLC" />
                             <div>
-                                <h2>Corporate Governance Tool — @PageHeading</h2>
+                                <h2>@Branding.ParentHoldingCompany — @PageHeading</h2>
                                 <p>Range @_from?.ToString("dd/MM/yyyy") to @_to?.ToString("dd/MM/yyyy")</p>
                             </div>
                         </div>

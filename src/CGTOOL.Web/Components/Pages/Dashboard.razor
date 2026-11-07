@@ -9,8 +9,9 @@
 @inject IAuditLogger AuditLog
 @inject ToastService Toasts
 @inject IJSRuntime JS
+@inject Branding Branding
 
-<PageTitle>DIP Holding PLC — Corporate Governance Tool</PageTitle>
+<PageTitle>@Branding.ParentHoldingCompany — Corporate Governance Tool</PageTitle>
 
 <div class="cg-shell">
     <InsiderDeclarationBanner />

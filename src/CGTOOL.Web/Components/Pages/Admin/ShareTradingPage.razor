@@ -7,6 +7,7 @@
 @inject AuthenticationStateProvider AuthState
 @inject ToastService Toasts
 @inject IJSRuntime JS
+@inject Branding Branding
 
 <PageTitle>Shares Trading</PageTitle>
 
@@ -253,7 +254,7 @@
                         <div class="cg-print-header">
                             <img src="images/di-logo.jpg" alt="DIP Holding PLC" />
                             <div>
-                                <h2>Corporate Governance Tool — Shares Trading Transactions as on @(_selectedReportDate?.ToString("dd/MM/yyyy") ?? "—")</h2>
+                                <h2>@Branding.ParentHoldingCompany — Shares Trading Transactions as on @(_selectedReportDate?.ToString("dd/MM/yyyy") ?? "—")</h2>
                                 <PrintFooter />
                             </div>
                         </div>
@@ -301,7 +302,7 @@
                         <div class="cg-print-header">
                             <img src="images/di-logo.jpg" alt="DIP Holding PLC" />
                             <div>
-                                <h2>Corporate Governance Tool — Shares Trading Running Position</h2>
+                                <h2>@Branding.ParentHoldingCompany — Shares Trading Running Position</h2>
                                 <p class="cg-subtitle">From @_positionFrom.ToString("dd/MM/yyyy") to @_positionTo.ToString("dd/MM/yyyy")</p>
                                 <PrintFooter />
                             </div>

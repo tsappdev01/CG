@@ -13,6 +13,7 @@
 @inject IJSRuntime JS
 @inject IEntraDirectorySync EntraSync
 @inject IDirectoryImporter DirectoryImporter
+@inject Branding Branding
 
 <PageTitle>User Management</PageTitle>
 
@@ -355,7 +356,7 @@
                         <div class="cg-print-header">
                             <img src="images/di-logo.jpg" alt="DIP Holding PLC" />
                             <div>
-                                <h2>Corporate Governance Tool — User — @_printSingleRecord.FullName</h2>
+                                <h2>@Branding.ParentHoldingCompany — User — @_printSingleRecord.FullName</h2>
                                 <PrintFooter />
                             </div>
                         </div>

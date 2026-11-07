@@ -18,7 +18,7 @@ public static class SsoAccountRequestEmail
     public static string Recipient(IConfiguration configuration) =>
         configuration["SsoAccountRequests:Recipient"] is { Length: > 0 } configured ? configured : DefaultRecipient;
 
-    public static string BuildHtml(string userEmail, string fullName, string? company, string requestedBy) => $$"""
+    public static string BuildHtml(string userEmail, string fullName, string? company, string requestedBy, string parentHoldingCompany) => $$"""
         <!DOCTYPE html>
         <html>
         <body style="margin:0;padding:0;background-color:#EEF0F3;font-family:Segoe UI,Arial,sans-serif;">
@@ -28,7 +28,7 @@ public static class SsoAccountRequestEmail
                 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;border-radius:6px;overflow:hidden;">
                   <tr>
                     <td style="background-color:#002850;padding:24px 32px;">
-                      <div style="color:#C79A3C;font-size:16px;font-weight:600;">Corporate Governance Tool</div>
+                      <div style="color:#C79A3C;font-size:16px;font-weight:600;">{{parentHoldingCompany}}</div>
                     </td>
                   </tr>
                   <tr>

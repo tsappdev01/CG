@@ -8,6 +8,7 @@
 @inject ToastService Toasts
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject Branding Branding
 
 <PageTitle>Job Titles</PageTitle>
 
@@ -135,7 +136,7 @@
                         <div class="cg-print-header">
                             <img src="images/di-logo.jpg" alt="DIP Holding PLC" />
                             <div>
-                                <h2>Corporate Governance Tool — @(_printSingleRecord is not null ? $"Job Title — {_printSingleRecord.Name}" : "Job Titles")</h2>
+                                <h2>@Branding.ParentHoldingCompany — @(_printSingleRecord is not null ? $"Job Title — {_printSingleRecord.Name}" : "Job Titles")</h2>
                                 <PrintFooter />
                             </div>
                         </div>

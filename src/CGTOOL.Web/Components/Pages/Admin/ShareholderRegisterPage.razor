@@ -7,6 +7,7 @@
 @inject AuthenticationStateProvider AuthState
 @inject ToastService Toasts
 @inject IJSRuntime JS
+@inject Branding Branding
 
 <PageTitle>Share Register</PageTitle>
 
@@ -211,7 +212,7 @@
                         <div class="cg-print-header">
                             <img src="images/di-logo.jpg" alt="DIP Holding PLC" />
                             <div>
-                                <h2>Corporate Governance Tool — Share Register as on @(printUpload?.AsOnDate.ToString("dd/MM/yyyy") ?? "—")</h2>
+                                <h2>@Branding.ParentHoldingCompany — Share Register as on @(printUpload?.AsOnDate.ToString("dd/MM/yyyy") ?? "—")</h2>
                                 <PrintFooter />
                             </div>
                         </div>

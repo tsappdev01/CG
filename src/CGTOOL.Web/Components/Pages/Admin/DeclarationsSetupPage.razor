@@ -374,7 +374,7 @@
                             <div class="cg-print-header">
                                 <img src="images/di-logo.jpg" alt="DIP Holding PLC" />
                                 <div>
-                                    <h2>Corporate Governance Tool — @(_printSingleRecord is not null ? $"{PageHeading} — {_printSingleRecord.SentAtUtc.ToLocalDisplay():dd/MM/yyyy HH:mm}" : PageHeading)</h2>
+                                    <h2>@Branding.ParentHoldingCompany — @(_printSingleRecord is not null ? $"{PageHeading} — {_printSingleRecord.SentAtUtc.ToLocalDisplay():dd/MM/yyyy HH:mm}" : PageHeading)</h2>
                                     <PrintFooter />
                                 </div>
                             </div>

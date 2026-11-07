@@ -509,7 +509,7 @@ public partial class MemberDetail
             await ActivityMail.SendAsync(
                 recipient,
                 SsoAccountRequestEmail.Subject,
-                SsoAccountRequestEmail.BuildHtml(address, _editing.FullName, company, requestedBy));
+                SsoAccountRequestEmail.BuildHtml(address, _editing.FullName, company, requestedBy, Branding.ParentHoldingCompany));
 
             await AuditLog.LogAsync(requestedBy, AuditAction.Create, nameof(Member), _editing.Id.ToString(),
                 $"SSO login requested from {recipient} for {_editing.FullName} ({address})");

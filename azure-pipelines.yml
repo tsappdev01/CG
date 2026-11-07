@@ -23,9 +23,13 @@ variables:
   projectPath: 'src/CGTOOL.Web/CGTOOL.Web.csproj'
   buildConfiguration: 'Release'
   publishPath: '$(Build.ArtifactStagingDirectory)\publish'
-  siteName: 'cg.dipark.com'
-  appPoolName: 'cg.dipark.com'
-  sitePath: 'C:\Websites\CG_DIP'
+  # These match the site as it was actually built in IIS Manager on UATWEB01. The site name and
+  # the host header are separate values because they differ here: the site is called "DIP CGS"
+  # and answers for cg.dipark.com.
+  siteName: 'DIP CGS'
+  appPoolName: 'DIP CGS'
+  siteHostName: 'cg.dipark.com'
+  sitePath: 'C:\Websites\CGDIP'
   # Set to false once the site is settled, if you would rather CI never touched IIS configuration.
   ensureSite: 'true'
 
@@ -58,7 +62,7 @@ steps:
         -SiteName "$(siteName)"
         -AppPoolName "$(appPoolName)"
         -SitePath "$(sitePath)"
-        -HostName "$(siteName)"
+        -HostName "$(siteHostName)"
       failOnStderr: false
       pwsh: false
 

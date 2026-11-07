@@ -26,9 +26,9 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $SiteName    = 'cg.dipark.com',
-    [string] $AppPoolName = 'cg.dipark.com',
-    [string] $SitePath    = 'C:\Websites\CG_DIP',
+    [string] $SiteName    = 'DIP CGS',
+    [string] $AppPoolName = 'DIP CGS',
+    [string] $SitePath    = 'C:\Websites\CGDIP',
     [string] $HostName    = 'cg.dipark.com'
 )
 
@@ -58,8 +58,12 @@ if (-not (Test-Path "IIS:\Sites\$SiteName")) {
 Set-ItemProperty "IIS:\Sites\$SiteName" -Name applicationPool -Value $AppPoolName
 Set-ItemProperty "IIS:\Sites\$SiteName" -Name physicalPath -Value $SitePath
 
+# A wildcard certificate's DnsNameList holds *.dipark.com, not cg.dipark.com, so an exact match
+# alone would report "no certificate" for the very certificate the site is already using.
+$wildcard = '*.' + ($HostName -replace '^[^.]+\.', '')
 $cert = Get-ChildItem Cert:\LocalMachine\My |
-        Where-Object { $_.DnsNameList -contains $HostName -and $_.NotAfter -gt (Get-Date) } |
+        Where-Object { ($_.DnsNameList -contains $HostName -or $_.DnsNameList -contains $wildcard) `
+                       -and $_.NotAfter -gt (Get-Date) } |
         Sort-Object NotAfter -Descending | Select-Object -First 1
 
 if ($cert) {

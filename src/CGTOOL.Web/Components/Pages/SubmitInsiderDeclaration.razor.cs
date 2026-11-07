@@ -94,6 +94,14 @@ public partial class SubmitInsiderDeclaration
         return string.IsNullOrWhiteSpace(listed?.RelativeName) ? null : listed!.RelativeName;
     }
 
+    /// <summary>The declarant's own NIN on a shareholding row. It was given a step earlier -- typed
+    /// there, or carried over from My DFM -- so the grid reads it back rather than asking for the
+    /// same ten characters a second time. A row for someone else keeps what was typed on it.</summary>
+    private string RelativeNin(RelativeRow row) =>
+        row.IsSelf && _hasNin && !string.IsNullOrWhiteSpace(_ninNumber)
+            ? _ninNumber.Trim()
+            : row.NinNumber;
+
     /// <summary>The NIN this holder is listed under above, for the same reason as the name: it is
     /// fetched, not typed, so it is read back from its source at save time.</summary>
     private string? ListedHolderNin(ShareEntryRow row)
@@ -624,8 +632,48 @@ public partial class SubmitInsiderDeclaration
     // submit) so the trail survives even if the declarant never gets past this screen.
     private async Task AddRelativeAsync()
     {
-        _relatives.Add(new RelativeRow());
+        var row = new RelativeRow();
+        FillFromNamedEarlier(row);
+        _relatives.Add(row);
         await LogGridChangeAsync("Added a blank row to the shareholding grid.");
+    }
+
+    /// <summary>The relative of this kind named on the previous screen's relatives' NIN grid.</summary>
+    private NinHolderRow? NamedEarlier(RelativeRelationship relationship) =>
+        !_relativesHaveNin
+            ? null
+            : _ninHolders.FirstOrDefault(h => h.Relationship == relationship
+                && !string.IsNullOrWhiteSpace(h.NameOfShareHolder));
+
+    /// <summary>Brings across the name and NIN already given for this relative a screen earlier.
+    ///
+    /// Someone who named their spouse and their spouse's NIN on the previous screen has said
+    /// everything this grid needs about them; asking for it again is asking them to copy it. Only
+    /// blanks are filled -- a name typed over here is the member's own correction, and overwriting
+    /// it with the earlier one would undo a deliberate edit.</summary>
+    private void FillFromNamedEarlier(RelativeRow row)
+    {
+        if (row.IsSelf) return;
+        if (NamedEarlier(row.Relationship) is not { } holder) return;
+
+        if (string.IsNullOrWhiteSpace(row.RelativeName))
+        {
+            row.RelativeName = holder.NameOfShareHolder.Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(row.NinNumber))
+        {
+            row.NinNumber = holder.NinNumber.Trim();
+        }
+    }
+
+    /// <summary>Picking who the row is for is also the moment their details are known.</summary>
+    private void SetRelativeRelationship(RelativeRow row, object? value)
+    {
+        if (!int.TryParse(value?.ToString(), out var relationship)) return;
+
+        row.Relationship = (RelativeRelationship)relationship;
+        FillFromNamedEarlier(row);
     }
 
     private async Task RemoveRelativeAsync(RelativeRow row)
@@ -1075,6 +1123,10 @@ public partial class SubmitInsiderDeclaration
     /// here, so each card can say where it got its file.</summary>
     private readonly HashSet<MemberDocumentKind> _loadedFromWorkspace = [];
 
+    /// <summary>The same, for the document types an administrator added, which have no
+    /// MemberDocumentKind of their own.</summary>
+    private readonly HashSet<int> _loadedTypesFromWorkspace = [];
+
     private DateTime? _draftSavedAtUtc;
 
     /// <summary>What the Document Centre is asking for, active rows only. The Required/Optional
@@ -1185,7 +1237,7 @@ public partial class SubmitInsiderDeclaration
             && _passportExpiryDate is not null
             && !string.IsNullOrWhiteSpace(_passportIssuingCountry));
 
-    private int WorkspaceLoadedCount => _loadedFromWorkspace.Count;
+    private int WorkspaceLoadedCount => _loadedFromWorkspace.Count + _loadedTypesFromWorkspace.Count;
 
     /// <summary>Applies a typed expiry date, complaining rather than silently clearing what is
     /// there when it cannot be read. Dates are dd/MM/yyyy everywhere: a native date input renders
@@ -1208,27 +1260,63 @@ public partial class SubmitInsiderDeclaration
         // it -- which kills the circuit and takes the page with it.
         await using var db = await DbFactory.CreateDbContextAsync();
 
+        // An added type stores Kind = Other with its DocumentTypeId set, so "not Other" would have
+        // skipped every document the Document Centre added. Only a free-form Other -- no type at
+        // all -- is left out, because this screen has no slot that is certainly the one meant.
         var documents = await db.MemberDocuments.AsNoTracking()
             .Where(d => d.MemberId == _effectiveMember.Id
-                        && d.Kind != MemberDocumentKind.Other
+                        && (d.Kind != MemberDocumentKind.Other || d.DocumentTypeId != null)
                         && d.FilePath != null && d.FilePath != "")
             .ToListAsync();
 
         // An expired document is not offered: bringing it across only to be stopped at Proceed to
         // Submission wastes the member's time and hides the actual problem, which is in My
-        // Workspace. OfferDocumentPullAsync says so by name instead.
-        _expiredInWorkspace = documents.Where(d => IsExpiredOn(d.ExpiryDate)).ToList();
+        // Workspace. OfferDocumentPullAsync says so by name instead. Only documents this
+        // declaration asks for are worth complaining about -- an expired licence is not this
+        // form's business when this form never asks for one.
+        _expiredInWorkspace = documents.Where(d => AskedForHere(d) && IsExpiredOn(d.ExpiryDate)).ToList();
 
-        // ShowDocument as well as the empty check: offering to bring a passport across when this
-        // declaration does not ask for one fills fields behind a card that is not drawn.
-        return documents.Where(d => !IsExpiredOn(d.ExpiryDate)).Where(d => ShowDocument(d.Kind) && d.Kind switch
+        return documents.Where(d => !IsExpiredOn(d.ExpiryDate)).Where(StillNeededHere).ToList();
+    }
+
+    /// <summary>Whether this declaration has a card for the document at all. The Document Centre
+    /// decides, for added types and built-in ones alike: offering to bring a passport across when
+    /// this declaration does not ask for one fills fields behind a card that is not drawn.</summary>
+    private bool AskedForHere(MemberDocument d) =>
+        d.DocumentTypeId is { } typeId
+            ? AddedDocumentTypes.Any(t => t.Id == typeId)
+            : ShowDocument(d.Kind);
+
+    /// <summary>Asked for here, and the slot is still empty. Read without going through
+    /// AddedDocumentFor, which creates the row it cannot find -- a question should not leave
+    /// anything behind.</summary>
+    private bool StillNeededHere(MemberDocument d)
+    {
+        if (!AskedForHere(d)) return false;
+
+        if (d.DocumentTypeId is { } typeId)
+        {
+            return string.IsNullOrWhiteSpace(
+                _addedDocuments.FirstOrDefault(a => a.DocumentTypeId == typeId)?.FilePath);
+        }
+
+        return d.Kind switch
         {
             MemberDocumentKind.EmiratesId => string.IsNullOrWhiteSpace(_emiratesIdPath),
             MemberDocumentKind.Passport => string.IsNullOrWhiteSpace(_passportPath),
             MemberDocumentKind.TradeLicence => string.IsNullOrWhiteSpace(_tradeLicencePath),
             _ => false,
-        }).ToList();
+        };
     }
+
+    /// <summary>What this declaration asks for, by the names the Document Centre gives them, for
+    /// messages that would otherwise recite the three built-in documents whatever is configured.</summary>
+    private List<string> DocumentsAskedForHere() =>
+        _documentTypes
+            .Where(t => t.IsActive && t.RequirementFor(Scope) != DocumentRequirement.NotRequested)
+            .OrderBy(t => t.SortOrder)
+            .Select(t => t.Name)
+            .ToList();
 
     private List<MemberDocument> _expiredInWorkspace = [];
 
@@ -1273,7 +1361,9 @@ public partial class SubmitInsiderDeclaration
             Toasts.ShowError(_expiredInWorkspace.Count > 0
                 ? $"Nothing to load: your {Join(_expiredInWorkspace.Select(DocumentPullLabel).ToList())} in My Workspace "
                   + $"{(_expiredInWorkspace.Count == 1 ? "has" : "have")} expired. Upload a current copy there, then load it in."
-                : "Nothing to load: My Documents has no Emirates ID, passport or trade licence that this declaration still needs.");
+                : DocumentsAskedForHere() is { Count: > 0 } asked
+                    ? $"Nothing to load: My Documents has no {Join(asked)} that this declaration still needs."
+                    : "Nothing to load: this declaration does not ask for any documents.");
             return;
         }
 
@@ -1304,6 +1394,21 @@ public partial class SubmitInsiderDeclaration
             var copied = CopyIntoDeclaration(document);
             if (copied is null) continue;
 
+            // A document type an administrator added carries its id; the three built-in kinds are
+            // identified by Kind alone. Both end up on this screen, so both come across.
+            if (document.DocumentTypeId is { } typeId)
+            {
+                var row = AddedDocumentFor(typeId);
+                row.FilePath = copied;
+                row.OriginalFileName = document.OriginalFileName;
+                if (!string.IsNullOrWhiteSpace(document.DocumentNumber)) row.DocumentNumber = document.DocumentNumber;
+                if (document.ExpiryDate is not null) row.ExpiryDate = document.ExpiryDate;
+
+                _loadedTypesFromWorkspace.Add(typeId);
+                brought.Add(_documentTypes.FirstOrDefault(t => t.Id == typeId)?.Name ?? "document");
+                continue;
+            }
+
             switch (document.Kind)
             {
                 case MemberDocumentKind.EmiratesId:
@@ -1312,7 +1417,7 @@ public partial class SubmitInsiderDeclaration
                     if (!string.IsNullOrWhiteSpace(document.HolderName)) _emiratesIdNameOnCard = document.HolderName;
                     if (document.ExpiryDate is not null) _emiratesIdExpiryDate = document.ExpiryDate;
                     _loadedFromWorkspace.Add(MemberDocumentKind.EmiratesId);
-                    brought.Add("Emirates ID");
+                    brought.Add(DocumentName(MemberDocumentKind.EmiratesId, "Emirates ID"));
                     break;
 
                 case MemberDocumentKind.Passport:
@@ -1321,7 +1426,7 @@ public partial class SubmitInsiderDeclaration
                     if (document.ExpiryDate is not null) _passportExpiryDate = document.ExpiryDate;
                     if (!string.IsNullOrWhiteSpace(document.Nationality)) _passportIssuingCountry = document.Nationality;
                     _loadedFromWorkspace.Add(MemberDocumentKind.Passport);
-                    brought.Add("passport");
+                    brought.Add(DocumentName(MemberDocumentKind.Passport, "passport"));
                     break;
 
                 case MemberDocumentKind.TradeLicence:
@@ -1330,7 +1435,7 @@ public partial class SubmitInsiderDeclaration
                     if (!string.IsNullOrWhiteSpace(document.HolderName)) _tradeLicenceLegalName = document.HolderName;
                     if (document.ExpiryDate is not null) _tradeLicenceExpiryDate = document.ExpiryDate;
                     _loadedFromWorkspace.Add(MemberDocumentKind.TradeLicence);
-                    brought.Add("trade licence");
+                    brought.Add(DocumentName(MemberDocumentKind.TradeLicence, "trade licence"));
                     break;
             }
         }
@@ -1373,12 +1478,15 @@ public partial class SubmitInsiderDeclaration
         return $"/uploads/insider-declarations/{fileName}";
     }
 
-    private static string DocumentPullLabel(MemberDocument d) => d.Kind switch
-    {
-        MemberDocumentKind.EmiratesId => "Emirates ID",
-        MemberDocumentKind.Passport => "Passport",
-        _ => "Trade Licence",
-    };
+    private string DocumentPullLabel(MemberDocument d) =>
+        d.DocumentTypeId is { } typeId
+            ? _documentTypes.FirstOrDefault(t => t.Id == typeId)?.Name ?? "document"
+            : d.Kind switch
+            {
+                MemberDocumentKind.EmiratesId => DocumentName(MemberDocumentKind.EmiratesId, "Emirates ID"),
+                MemberDocumentKind.Passport => DocumentName(MemberDocumentKind.Passport, "Passport"),
+                _ => DocumentName(MemberDocumentKind.TradeLicence, "Trade Licence"),
+            };
 
 
     // ---------- the shareholding grid and My Workspace ----------
@@ -1648,6 +1756,14 @@ public partial class SubmitInsiderDeclaration
     {
         _pendingCapture1Confirm = false;
         _step = Step.Capture2;
+
+        // The relatives' NIN grid was just filled in on the screen behind this one. Rows waiting
+        // here for a name they already gave would be asking twice.
+        foreach (var row in _relatives)
+        {
+            FillFromNamedEarlier(row);
+        }
+
         await AutoLoadDocumentsAsync();
     }
 
@@ -1784,7 +1900,7 @@ public partial class SubmitInsiderDeclaration
                     Toasts.ShowError("Enter the name of share holder for every row (or mark it as yourself).");
                     return;
                 }
-                if (!IsValidNin(r.NinNumber))
+                if (!IsValidNin(RelativeNin(r)))
                 {
                     Toasts.ShowError(Nin.ErrorFor(who));
                     return;
@@ -1896,7 +2012,7 @@ public partial class SubmitInsiderDeclaration
                 {
                     await Writer.InsertRelativeAsync(declarationId, new InsiderDeclarationRelative
                     {
-                        NinNumber = r.NinNumber.Trim(),
+                        NinNumber = RelativeNin(r).Trim(),
                         RelativeName = (r.IsSelf ? _effectiveMember.FullName : r.RelativeName).Trim(),
                         Relationship = r.Relationship,
                         NumberOfShares = r.NumberOfShares,
@@ -2120,7 +2236,7 @@ public partial class SubmitInsiderDeclaration
         if (_holdsSharesInDI)
         {
             parts.AddRange(_relatives.Select(r => r.IsSelf
-                ? $"Shareholder: Self, NIN {r.NinNumber}"
+                ? $"Shareholder: Self, NIN {RelativeNin(r)}"
                 : $"Shareholder: {r.RelativeName} ({RelationshipLabel(r.Relationship)}), NIN {r.NinNumber}"));
         }
 

@@ -489,7 +489,11 @@
                                 <span class="cg-pill cg-pill-status @(string.IsNullOrWhiteSpace(added.FilePath) ? "" : "cg-pill-done")">@(string.IsNullOrWhiteSpace(added.FilePath) ? "Not uploaded" : "Uploaded")</span>
                             </div>
                             <div class="cg-doc-card-source">
-                                <span>@(string.IsNullOrWhiteSpace(type.Description) ? "JPG, PNG or PDF, up to 1 MB" : type.Description)</span>
+                                <span>
+                                    @(_loadedTypesFromWorkspace.Contains(type.Id)
+                                        ? "Loaded from My Workspace"
+                                        : string.IsNullOrWhiteSpace(type.Description) ? "JPG, PNG or PDF, up to 1 MB" : type.Description)
+                                </span>
                                 <span class="cg-doc-card-actions">
                                     @if (!string.IsNullOrWhiteSpace(added.FilePath))
                                     {
@@ -566,10 +570,11 @@
                                             }
                                             else
                                             {
-                                                <select class="cg-input" @bind="r.Relationship">
+                                                <select class="cg-input" value="@((int)r.Relationship)"
+                                                        @onchange="e => SetRelativeRelationship(r, e.Value)">
                                                     @foreach (var opt in RelativeOptions)
                                                     {
-                                                        <option value="@opt.Value">@opt.Label</option>
+                                                        <option value="@((int)opt.Value)">@opt.Label</option>
                                                     }
                                                 </select>
                                             }
@@ -585,15 +590,24 @@
                                             }
                                         </td>
                                         <td>
-                                            <input class="cg-input cg-input-short@(NinFieldClass(r.NinNumber))" @bind="r.NinNumber" @bind:event="oninput"
-                                                   maxlength="@Nin.Length" minlength="@Nin.Length" placeholder="10 characters" />
-                                            @if (Nin.IsInvalidEntry(r.NinNumber))
+                                            @* Your own NIN was given a step earlier, so it is shown
+                                               here rather than asked for again. Change it there. *@
+                                            @if (r.IsSelf && _hasNin && !string.IsNullOrWhiteSpace(_ninNumber))
                                             {
-                                                <span class="cg-field-error">@Nin.Hint</span>
+                                                <span class="mono">@_ninNumber</span>
                                             }
-                                            else if (Nin.IsComplete(r.NinNumber))
+                                            else
                                             {
-                                                <span class="cg-field-ok" role="status">&#10003;</span>
+                                                <input class="cg-input cg-input-short@(NinFieldClass(r.NinNumber))" @bind="r.NinNumber" @bind:event="oninput"
+                                                       maxlength="@Nin.Length" minlength="@Nin.Length" placeholder="10 characters" />
+                                                @if (Nin.IsInvalidEntry(r.NinNumber))
+                                                {
+                                                    <span class="cg-field-error">@Nin.Hint</span>
+                                                }
+                                                else if (Nin.IsComplete(r.NinNumber))
+                                                {
+                                                    <span class="cg-field-ok" role="status">&#10003;</span>
+                                                }
                                             }
                                         </td>
                                         <td><input class="cg-input" @bind="r.Additional" maxlength="400" /></td>
@@ -862,7 +876,7 @@
                                     <tr class="cg-data-row">
                                         <td>@(r.IsSelf ? "Self" : RelationshipLabel(r.Relationship))</td>
                                         <td>@(r.IsSelf ? _effectiveMember!.FullName : r.RelativeName)</td>
-                                        <td>@r.NinNumber</td>
+                                        <td class="mono">@RelativeNin(r)</td>
                                         <td>@r.Additional</td>
                                     </tr>
                                 }

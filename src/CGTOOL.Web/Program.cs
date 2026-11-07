@@ -204,6 +204,7 @@ var graphConfigured = !string.IsNullOrWhiteSpace(azureAdSection["ClientSecret"])
 // Resolves a stored avatar path to one that will load. Singleton: it only reads
 // IWebHostEnvironment and the file system.
 builder.Services.AddSingleton<ProfilePictureResolver>();
+builder.Services.AddSingleton<BrandingImages>();
 
 if (graphConfigured)
 {
@@ -302,6 +303,25 @@ else
 }
 
 app.UseHttpsRedirection();
+
+// Brand images may live outside the app -- see BrandingImages. Mapped onto /images AHEAD of
+// wwwroot so a file in the override folder wins and anything it does not have falls through to
+// the copy that shipped with the build, leaving every <img src="images/..."> untouched.
+var brandImageDirectory = builder.Configuration["Branding:ImageDirectory"];
+var brandImageProvider = BrandingImages.OverrideProvider(brandImageDirectory);
+if (brandImageProvider is not null)
+{
+    app.UseStaticFiles(new StaticFileOptions { FileProvider = brandImageProvider, RequestPath = "/images" });
+    app.Logger.LogInformation("Brand images served from {Directory}, ahead of wwwroot/images.", brandImageDirectory);
+}
+else if (!string.IsNullOrWhiteSpace(brandImageDirectory))
+{
+    // Configured but unreachable: say so rather than silently serving the bundled logo, because
+    // "the new logo did not appear" and "the share is down" look identical from the browser.
+    app.Logger.LogWarning(
+        "Branding:ImageDirectory is set to {Directory} but that folder cannot be read, so the images built into the app are being served instead. On a UNC share, check the application pool identity has read access.",
+        brandImageDirectory);
+}
 
 app.UseStaticFiles();
 app.UseAntiforgery();

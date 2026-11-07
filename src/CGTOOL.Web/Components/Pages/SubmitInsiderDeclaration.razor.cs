@@ -1576,8 +1576,7 @@ public partial class SubmitInsiderDeclaration
                             .Include(x => x.Relatives)
                             .Include(x => x.NinHolders)
                             .FirstAsync(x => x.Id == declarationId);
-                        var logoPath = Path.Combine(Env.WebRootPath, "images", "di-logo.jpg");
-                        var pdfBytes = InsiderDeclarationPdfBuilder.Build(declaration, _effectiveMember, _run, File.Exists(logoPath) ? logoPath : null);
+                        var pdfBytes = InsiderDeclarationPdfBuilder.Build(declaration, _effectiveMember, _run, Branding.FilePath("di-logo.jpg"));
                         var attachmentFilename = $"InsiderTradingDeclaration_Q{_run.PeriodQuarter}_{_run.PeriodYear}.pdf";
                         await SqlMail.SendWithFileAttachmentAsync(_effectiveMember.Email, confirmSubject, confirmBody, pdfBytes, attachmentFilename);
                     }
@@ -1640,7 +1639,7 @@ public partial class SubmitInsiderDeclaration
     // SqlMail.AttachmentFolderConfigured -- see SqlDbMailSender for why that's conditional).
     private string BuildConfirmationEmail(string summary, bool attached)
     {
-        const string logoTag = "<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"DIP Holding PLC\" height=\"44\" style=\"display:block;\" />";
+        var logoTag = Branding.EmailLogoTag(44);
         var rows = string.Join("", summary.Split("; ").Select(row =>
         {
             var parts = row.Split(':', 2);

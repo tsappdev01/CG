@@ -75,13 +75,15 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
             if (!IsReminderDue(setup, run.LastReminderSentUtc ?? run.SentAtUtc)) continue;
 
             var recipients = await ResolveRecipientsAsync(db, run.CompanyId, ct);
+            var onBehalfCc = await ResolveOnBehalfCcAsync(db, [.. recipients.Select(r => r.MemberId)], ct);
             var reminderNumber = run.RemindersSent + 1;
             foreach (var (memberId, email, fullName, _) in recipients)
             {
                 var body = ApplyPlaceholders(setup.EmailBody, fullName, run.DueDateUtc, baseUrl ?? BaseUrl(null));
                 try
                 {
-                    await emailSender.SendAsync(email, $"Reminder: {setup.EmailSubject}", body, ct);
+                    await emailSender.SendAsync(email, $"Reminder: {setup.EmailSubject}", body, ct,
+                        onBehalfCc.GetValueOrDefault(memberId));
                     await auditLog.LogAsync("System", AuditAction.Notify, nameof(Member), memberId.ToString(),
                         $"Reminder {reminderNumber}/{setup.ReminderCount} for {setup.Type} sent to {fullName} <{email}>, due {run.DueDateUtc.ToLocalDisplay():yyyy-MM-dd}");
                 }
@@ -117,6 +119,7 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
     public static async Task<(int SentCount, int FailedCount)> SendNotificationAsync(ApplicationDbContext db, IActivityEmailSender emailSender, IDeclarationCycleRunWriter runWriter, IAuditLogger auditLog, DeclarationCycleRun run, DeclarationCycleSetup setup, string actorName, CancellationToken ct = default, string? baseUrl = null)
     {
         var recipients = await ResolveRecipientsAsync(db, run.CompanyId, ct);
+        var onBehalfCc = await ResolveOnBehalfCcAsync(db, [.. recipients.Select(r => r.MemberId)], ct);
         var sentCount = 0;
         var failedCount = 0;
 
@@ -126,7 +129,8 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
             var success = true;
             try
             {
-                await emailSender.SendAsync(email, setup.EmailSubject, body, ct);
+                await emailSender.SendAsync(email, setup.EmailSubject, body, ct,
+                    onBehalfCc.GetValueOrDefault(memberId));
                 sentCount++;
                 await auditLog.LogAsync(actorName, AuditAction.Notify, nameof(Member), memberId.ToString(),
                     $"{setup.Type} notification sent to {fullName} <{email}>, due {run.DueDateUtc.ToLocalDisplay():yyyy-MM-dd}");
@@ -215,6 +219,36 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
         var query = db.Members.Include(m => m.Company).Where(m => m.Active && m.Email != null);
         if (companyId is { } id) query = query.Where(m => m.CompanyId == id);
         return await query.Select(m => new ValueTuple<int, string, string, string?>(m.Id, m.Email!, m.FullName, m.Company!.Name)).ToListAsync(ct);
+    }
+
+    /// <summary>For each member, the e-mail addresses of the people allowed to file on their
+    /// behalf -- the "Who may file on their behalf?" ticks on the member's own screen. Those
+    /// people are copied on the declaration mail, because someone expected to file for a colleague
+    /// cannot act on a notice they never saw.
+    ///
+    /// One query for the whole send rather than one per recipient. The member's own address is
+    /// dropped if it appears: a person approved to file for themselves would otherwise be both the
+    /// recipient and a copy, and some clients then show the mail twice. Only active filers with an
+    /// address count, and the result is semicolon-separated because that is what Database Mail's
+    /// @copy_recipients takes.</summary>
+    public static async Task<Dictionary<int, string>> ResolveOnBehalfCcAsync(
+        ApplicationDbContext db, IReadOnlyCollection<int> memberIds, CancellationToken ct)
+    {
+        if (memberIds.Count == 0) return [];
+
+        var pairs = await db.MemberImpersonationApprovals
+            .Where(a => memberIds.Contains(a.MemberId)
+                        && a.Impersonator!.Active
+                        && a.Impersonator.Email != null
+                        && a.Impersonator.Email != a.Member!.Email)
+            .Select(a => new { a.MemberId, Email = a.Impersonator!.Email! })
+            .ToListAsync(ct);
+
+        return pairs
+            .GroupBy(x => x.MemberId)
+            .ToDictionary(
+                g => g.Key,
+                g => string.Join(";", g.Select(x => x.Email).Distinct(StringComparer.OrdinalIgnoreCase)));
     }
 
     /// <summary>The site's own address. A reminder is read in a mail client, which is not this

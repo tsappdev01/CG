@@ -2,6 +2,7 @@
 @using CGTOOL.Web.Data.Reports
 @inject IJSRuntime JS
 @inject IWebHostEnvironment Env
+@inject BrandingImages Branding
 
 @* The chrome every report is read through: the filter line, the three ways out (print, PDF,
    Excel), the paginated sheets themselves, and the viewer controls under them.
@@ -314,7 +315,7 @@
     }
 
     private Task DownloadPdfAsync() => DownloadAsync(
-        () => ReportPdfBuilder.Build(Report, Path.Combine(Env.WebRootPath, "images", "di-logo-en-transparent.png")),
+        () => ReportPdfBuilder.Build(Report, Branding.FilePath("di-logo-en-transparent.png")),
         Report.FileName("pdf"),
         "application/pdf");
 

@@ -1680,12 +1680,11 @@ public partial class SubmitRelatedPartyCoiDeclaration
                     .Include(x => x.Conflicts)
                     .FirstAsync(x => x.Id == declarationId);
 
-                var logoPath = Path.Combine(Env.WebRootPath, "images", "di-logo.jpg");
                 var pdf = RelatedPartyCoiDeclarationPdfBuilder.Build(
                     declaration,
                     _effectiveMember,
                     _run,
-                    File.Exists(logoPath) ? logoPath : null,
+                    Branding.FilePath("di-logo.jpg"),
                     SignatureFilePath(declaration.SignaturePath));
 
                 await SqlMail.SendWithFileAttachmentAsync(_effectiveMember.Email, subject, body, pdf,
@@ -1727,7 +1726,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     // happened -- a PDF really attached, or the app to go and read it in.
     private string BuildConfirmationEmail(bool attached)
     {
-        const string logoTag = "<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"DIP Holding PLC\" height=\"44\" style=\"display:block;\" />";
+        var logoTag = Branding.EmailLogoTag(44);
         var rows = string.Join("", BuildSummary().Split("; ").Select(row =>
         {
             var parts = row.Split(':', 2);

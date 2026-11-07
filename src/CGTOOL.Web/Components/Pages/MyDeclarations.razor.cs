@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
 using CGTOOL.Web.Data;
 using CGTOOL.Web.Data.Governance;
+using CGTOOL.Web.Data.Reports;
 
 namespace CGTOOL.Web.Components.Pages;
 
@@ -18,7 +19,6 @@ public partial class MyDeclarations
     private InsiderDeclaration? _confirmEditDeclaration;
     private RelatedPartyCoiDeclaration? _confirmEditCoiDeclaration;
 
-    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     private void ConfirmEdit()
     {
@@ -31,14 +31,6 @@ public partial class MyDeclarations
         if (_confirmEditCoiDeclaration is null) return;
         Nav.NavigateTo($"/declarations/related-party-coi/{_confirmEditCoiDeclaration.Id}");
     }
-
-    private static string RelationshipLabel(RelativeRelationship relationship) => relationship switch
-    {
-        RelativeRelationship.InLaws => "In-Laws",
-        RelativeRelationship.FatherInLaw => "Father-in-Law",
-        RelativeRelationship.MotherInLaw => "Mother-in-Law",
-        _ => relationship.ToString(),
-    };
 
     private bool Option1Enabled => _effectiveMember is { InsiderTradingAccess: true } && _insiderRun is not null;
 
@@ -68,13 +60,17 @@ public partial class MyDeclarations
 
         if (Impersonation.ActingMemberId is { } actingId)
         {
-            _effectiveMember = await db.Members.FirstOrDefaultAsync(m => m.Id == actingId);
+            _effectiveMember = await db.Members
+                .Include(m => m.Company).Include(m => m.Department)
+                .FirstOrDefaultAsync(m => m.Id == actingId);
         }
         else
         {
             var state = await AuthState.GetAuthenticationStateAsync();
             var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            _effectiveMember = userId is null ? null : await db.Members.FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
+            _effectiveMember = userId is null ? null : await db.Members
+                .Include(m => m.Company).Include(m => m.Department)
+                .FirstOrDefaultAsync(m => m.ApplicationUserId == userId);
         }
 
         if (_effectiveMember is null) return;
@@ -133,6 +129,10 @@ public partial class MyDeclarations
             .Include(d => d.DeclarationCycleRun)
             .Include(d => d.Relatives)
             .Include(d => d.NinHolders)
+            // The print sheet shows these, and an un-included collection prints as "none
+            // declared" rather than failing -- a declaration that silently loses its share
+            // transactions on the way to paper.
+            .Include(d => d.ShareEntries)
             .Where(d => d.MemberId == _effectiveMember.Id)
             .OrderByDescending(d => d.SubmittedAtUtc)
             .ToListAsync();
@@ -143,5 +143,37 @@ public partial class MyDeclarations
             .Where(d => d.MemberId == _effectiveMember.Id)
             .OrderByDescending(d => d.SubmittedAtUtc)
             .ToListAsync();
+    }
+
+    /// <summary>The declarant's own copy of their sheet, built the way the detailed submission
+    /// report builds a reviewer's -- the same code, so the two cannot say different things about
+    /// the same declaration.
+    ///
+    /// No stat band and no filter line: those answer "how many of these are there", which is a
+    /// question about a report, not about your own declaration.</summary>
+    private ReportDocument PrintSheet()
+    {
+        var d = _printDeclaration!;
+        var run = d.DeclarationCycleRun!;
+
+        var row = new DeclarationSubmissionRow<InsiderDeclaration>
+        {
+            MemberId = _effectiveMember!.Id,
+            MemberName = _effectiveMember.FullName,
+            CompanyId = _effectiveMember.CompanyId,
+            CompanyName = _effectiveMember.Company?.Name,
+            DepartmentName = _effectiveMember.Department?.Name,
+            Year = run.PeriodYear,
+            Quarter = run.PeriodQuarter,
+            Submitted = !d.IsDraft,
+            Declaration = d,
+        };
+
+        return new ReportDocument
+        {
+            Title = "Insider Trading Declaration",
+            PreparedBy = _effectiveMember.FullName,
+            Records = [InsiderDetailSheet.Record(row, Branding.ParentHoldingCompany)],
+        };
     }
 }

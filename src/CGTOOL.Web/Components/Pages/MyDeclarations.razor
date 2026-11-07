@@ -170,80 +170,14 @@
             <div class="cg-print-overlay">
                 <div class="cg-print-modal cg-print-modal-wide">
                     <div class="cg-print-modal-actions no-print">
-                        <button type="button" class="cg-action-btn cg-good" @onclick="PrintAsync">Print / Save as PDF</button>
                         <button type="button" class="cg-action-btn" @onclick="() => _printDeclaration = null">Close</button>
                     </div>
-                    <div class="cg-print-area">
-                        <div class="cg-print-header">
-                            <img src="images/di-logo.jpg" alt="DIP Holding PLC" />
-                            <div>
-                                <h2>Corporate Governance Tool — Insider Trading Declaration</h2>
-                                <p>@_effectiveMember.FullName — Q@(_printDeclaration.DeclarationCycleRun!.PeriodQuarter) @_printDeclaration.DeclarationCycleRun!.PeriodYear</p>
-                            </div>
-                        </div>
-                        <PrintFooter />
-                        <div class="cg-table-wrap">
-                            <table>
-                                <tbody>
-                                    <tr><th>Status</th><td>@(_printDeclaration.IsDraft ? "Draft" : "Submitted")</td></tr>
-                                    <tr><th>Submitted</th><td>@(_printDeclaration.IsDraft ? "—" : _printDeclaration.SubmittedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm"))</td></tr>
-                                    <tr><th>Last modified</th><td>@(_printDeclaration.ModifiedAtUtc?.ToLocalDisplay("dd/MM/yyyy HH:mm") ?? "—")</td></tr>
-                                    <tr><th>Due date</th><td>@_printDeclaration.DeclarationCycleRun!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</td></tr>
-                                    <tr><th>Holds a NIN</th><td>@(_printDeclaration.HasNin ? $"Yes ({_printDeclaration.NinNumber})" : "No")</td></tr>
-                                    <tr><th>Relatives have a NIN</th><td>@(_printDeclaration.RelativesHaveNin ? "Yes" : "No")</td></tr>
-                                    <tr><th>Holds shares in @Branding.ParentHoldingCompany (self or relatives)</th><td>@(_printDeclaration.HoldsShares ? "Yes" : "No")</td></tr>
-                                    <tr><th>Emirates ID</th><td>@(string.IsNullOrEmpty(_printDeclaration.EmiratesIdPath) ? "—" : $"{_printDeclaration.EmiratesIdNumber} — {_printDeclaration.EmiratesIdNameOnCard}, expires {_printDeclaration.EmiratesIdExpiryDate:dd/MM/yyyy}")</td></tr>
-                                    <tr><th>Passport</th><td>@(string.IsNullOrEmpty(_printDeclaration.PassportPath) ? "—" : $"{_printDeclaration.PassportNumber} ({_printDeclaration.PassportIssuingCountry}), expires {_printDeclaration.PassportExpiryDate:dd/MM/yyyy}")</td></tr>
-                                    @if (!string.IsNullOrEmpty(_printDeclaration.TradeLicencePath))
-                                    {
-                                        <tr><th>Trade Licence</th><td>@_printDeclaration.TradeLicenceNumber — @_printDeclaration.TradeLicenceLegalName@(_printDeclaration.TradeLicenceExpiryDate is null ? "" : $", expires {_printDeclaration.TradeLicenceExpiryDate:dd/MM/yyyy}")@(string.IsNullOrEmpty(_printDeclaration.TradeLicenceIssuingAuthority) ? "" : $" ({_printDeclaration.TradeLicenceIssuingAuthority})")</td></tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-
-                        @if (_printDeclaration.RelativesHaveNin && _printDeclaration.NinHolders.Count > 0)
-                        {
-                            <h2 class="cg-section-heading">Relatives' NIN</h2>
-                            <div class="cg-table-wrap">
-                                <table>
-                                    <thead><tr><th>Share Held By</th><th>Name of Share Holder</th><th>NIN</th><th>Additional</th></tr></thead>
-                                    <tbody>
-                                        @foreach (var h in _printDeclaration.NinHolders)
-                                        {
-                                            <tr class="cg-data-row">
-                                                <td>@RelationshipLabel(h.Relationship)</td>
-                                                <td>@h.NameOfShareHolder</td>
-                                                <td>@h.NinNumber</td>
-                                                <td>@h.Additional</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-
-                        @if (_printDeclaration.HoldsShares && _printDeclaration.Relatives.Count > 0)
-                        {
-                            <h2 class="cg-section-heading">Shareholding</h2>
-                            <div class="cg-table-wrap">
-                                <table>
-                                    <thead><tr><th>Share Held By</th><th>Name of Share Holder</th><th>NIN</th><th>Additional</th></tr></thead>
-                                    <tbody>
-                                        @foreach (var r in _printDeclaration.Relatives)
-                                        {
-                                            <tr class="cg-data-row">
-                                                <td>@(r.IsSelf ? "Self" : RelationshipLabel(r.Relationship))</td>
-                                                <td>@(r.IsSelf ? _effectiveMember?.FullName : r.RelativeName)</td>
-                                                <td>@r.NinNumber</td>
-                                                <td>@r.Additional</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-                    </div>
+                    @* The detailed submission report's own sheet, not a copy of it. The copy had
+                       fallen a release behind without anyone noticing: no share transactions, and
+                       a document list that stopped at the three built-in kinds. It also brings the
+                       Print, PDF and Excel buttons with it, so what a declarant keeps is the same
+                       document a reviewer reads. *@
+                    <ReportViewer Report="PrintSheet()" />
                 </div>
             </div>
         }

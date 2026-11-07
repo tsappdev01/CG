@@ -504,7 +504,9 @@ public partial class DeclarationsSetupPage
 
         var (sentCount, failedCount) = await DeclarationCycleReminderHostedService.SendNotificationAsync(
             db, EmailSender, RunWriter, AuditLog, run, _setup, actor,
-            baseUrl: DeclarationCycleReminderHostedService.BaseUrl(Config));
+            // Nav.BaseUri is whatever the admin reached this screen on, so a Send Now from a
+            // developer machine links to localhost and one from the deployed site links to it.
+            baseUrl: DeclarationCycleReminderHostedService.BaseUrl(Config, Nav.BaseUri));
         await RunWriter.MarkSentAsync(run.Id, DateTime.UtcNow, sentCount + failedCount);
 
         Toasts.ShowSuccess(failedCount == 0

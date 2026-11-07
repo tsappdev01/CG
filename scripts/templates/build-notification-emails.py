@@ -13,8 +13,14 @@ Placeholders are filled by DeclarationCycleReminderHostedService.ApplyPlaceholde
   {DueDate}   the due date set on the Send Notification tab
   {LogoUrl}   absolute when sent, site-relative in the setup screen's preview
   {BaseUrl}   likewise, so a link is never tied to one host
+
+Every link goes to /Account/Login carrying a ReturnUrl. Recipients are nearly always signed out
+when they open one of these, so a bare deep link only bounces them through the login page anyway
+-- and lands them on the dashboard afterwards rather than on the thing the mail asked for. Going
+to the login page explicitly, with where they were headed attached, gets them to the right screen.
 """
 import pathlib
+import urllib.parse
 
 NAVY, GOLD, GOLD_INK, INK, MUTED, FAINT, LINE, LINK = (
     "#002850", "#C8952E", "#0D2B57", "#16202E", "#64748B", "#94A3B8", "#e6ebf2", "#1A4F86")
@@ -147,9 +153,10 @@ for key, (title, intro, button, path) in DECLARATIONS.items():
                else "Please submit your declaration using the button below:"
                if key != "related-party-register"
                else "Please review your register using the button below:")
+    link = "/Account/Login?ReturnUrl=" + urllib.parse.quote(path, safe="")
     out = here / f"notification-{key}.html"
     out.write_text(SHELL.format(
-        title=title, intro=intro, lead_in=lead_in, button=button, path=path,
+        title=title, intro=intro, lead_in=lead_in, button=button, path=link,
         navy=NAVY, rule=RULE, gold=GOLD, gold_ink=GOLD_INK, ink=INK,
         muted=MUTED, faint=FAINT, line=LINE, link=LINK), encoding="utf-8")
     print(f"wrote {out.name}")

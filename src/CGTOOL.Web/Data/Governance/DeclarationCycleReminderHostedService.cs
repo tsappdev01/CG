@@ -254,12 +254,24 @@ public class DeclarationCycleReminderHostedService(IServiceScopeFactory scopeFac
     /// <summary>The site's own address. A reminder is read in a mail client, which is not this
     /// app, so both the logo and every link in a template need an absolute URL. Overridable with
     /// Branding:PublicBaseUrl for a deployment on another host.</summary>
-    public static string BaseUrl(IConfiguration? config) =>
-        (config?["Branding:PublicBaseUrl"] is { Length: > 0 } url ? url : "https://cg.dubaiinvestments.com")
-            .TrimEnd('/');
+    /// <param name="requestBaseUrl">The address the browser reached the app on, where there is a
+    /// browser -- NavigationManager.BaseUri when an administrator presses Send Now. It wins,
+    /// because it is the one address that is right in every environment without being configured:
+    /// https://localhost:7184 while developing, https://cg.dipark.com once deployed.
+    ///
+    /// The reminder service runs on a timer with no request behind it and passes null, so a
+    /// deployment has to set Branding:PublicBaseUrl for those. The literal below is only the last
+    /// resort when neither is available.</param>
+    public static string BaseUrl(IConfiguration? config, string? requestBaseUrl = null)
+    {
+        if (!string.IsNullOrWhiteSpace(requestBaseUrl)) return requestBaseUrl.TrimEnd('/');
+        if (config?["Branding:PublicBaseUrl"] is { Length: > 0 } configured) return configured.TrimEnd('/');
+        return "https://cg.dipark.com";
+    }
 
     /// <summary>What {LogoUrl} becomes when the mail is sent.</summary>
-    public static string LogoUrl(IConfiguration? config) => BaseUrl(config) + "/images/di-logo.jpg";
+    public static string LogoUrl(IConfiguration? config, string? requestBaseUrl = null) =>
+        BaseUrl(config, requestBaseUrl) + "/images/di-logo.jpg";
 
     /// <param name="baseUrl">What {BaseUrl} becomes, and what {LogoUrl} is built from. The sending
     /// paths pass the absolute address, because the mail is read outside the app; the setup

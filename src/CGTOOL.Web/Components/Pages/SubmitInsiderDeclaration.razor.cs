@@ -1839,6 +1839,15 @@ public partial class SubmitInsiderDeclaration
                     }
                 }
 
+                // Nothing filled in at all. Said here rather than quietly dropped at submission:
+                // a row that disappears without a word reads as the form losing work.
+                if (entry.NumberOfShares == 0 && entry.Rate is null && entry.TransactionDate is null)
+                {
+                    Toasts.ShowError($"The {ShareEntryLabel(entry.EntryKind).ToLowerInvariant()} row for {ShareHolderLabel(entry)} is empty. "
+                        + "Enter the number of shares, or remove the row.");
+                    return;
+                }
+
                 if (!entry.IsSelf && string.IsNullOrWhiteSpace(ListedHolderName(entry) ?? entry.HolderName))
                 {
                     Toasts.ShowError($"{ShareHolderLabel(entry)} has no name. Add them to the shareholding list above, or type the name on the transaction row.");
@@ -2074,8 +2083,13 @@ public partial class SubmitInsiderDeclaration
             // leave an empty attachment behind.
             foreach (var entry in _shareEntries)
             {
-                // A row someone added and left alone is not a declaration of nothing.
-                if (entry.NumberOfShares == 0 && entry.Rate is null && entry.TransactionDate is null) continue;
+                // On a submission, a row someone added and left alone is not a declaration of
+                // nothing, and is dropped. On a draft it is kept, however empty: the member added
+                // the row and chose who it is for, pressed Save as draft, and watched the rows
+                // disappear on the way back. A draft is the half-finished state -- refusing to
+                // store half-finished work is the one thing it must not do. Proceeding to the
+                // review rejects an empty row by name before it can be submitted.
+                if (!isDraft && entry.NumberOfShares == 0 && entry.Rate is null && entry.TransactionDate is null) continue;
 
                 await Writer.InsertShareEntryAsync(declarationId, new InsiderDeclarationShareEntry
                 {

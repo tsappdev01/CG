@@ -218,7 +218,6 @@
         {
             <div class="cg-member-form cg-declaration-form">
                 <h3>Companies in which a relative owns ≥30% of its shares</h3>
-                <p class="cg-hint">Built from your relatives in My Workspace whose own holding is 30% or more. Switching this section to "nothing to declare" clears them.</p>
                 <label class="cg-switch cg-nothing-switch">
                     <input type="checkbox" @bind:get="!_nothingRelativeOwned" @bind:set="v => { _nothingRelativeOwned = !v; SetNothingRelativeOwned(); }" />
                     <span class="cg-switch-track" aria-hidden="true"></span>
@@ -258,7 +257,6 @@
         {
             <div class="cg-member-form cg-declaration-form">
                 <h3>Companies in which I serve as board member or senior executive</h3>
-                <p class="cg-hint">The companies in My Workspace marked "serve as board member or senior executive". Switching this section to "nothing to declare" clears them.</p>
                 <label class="cg-switch cg-nothing-switch">
                     <input type="checkbox" @bind:get="!_nothingBoardRoles" @bind:set="v => { _nothingBoardRoles = !v; SetNothingBoardRoles(); }" />
                     <span class="cg-switch-track" aria-hidden="true"></span>

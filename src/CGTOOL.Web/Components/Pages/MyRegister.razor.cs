@@ -118,6 +118,7 @@ public partial class MyRegister : ComponentBase
         // it simply stops being asked for.
         _documentTypes.Clear();
         _documentTypes.AddRange(await db.DocumentTypes.AsNoTracking()
+            .Include(t => t.Requirements)
             .Where(t => t.IsActive)
             .OrderBy(t => t.SortOrder).ThenBy(t => t.Name)
             .ToListAsync());
@@ -510,7 +511,43 @@ public partial class MyRegister : ComponentBase
         _documents.Where(d => d.Kind == MemberDocumentKind.Other && d.DocumentTypeId is null)
             .OrderBy(d => d.Id).ToList();
 
-    private static string RequirementLabel(DocumentType type) => type.IsMandatory ? "Required" : "Optional";
+    /// <summary>My Workspace is not a declaration, so a document is marked here when some
+    /// declaration will insist on it. Which ones goes in the tooltip rather than the pill: a card
+    /// headed "Required for the Insider Declaration and the RP and COI Declaration" is a sentence
+    /// where a word will do.</summary>
+    private static string RequirementLabel(DocumentType type) =>
+        type.IsRequiredByAnyDeclaration ? "Required" : "Optional";
+
+    private static bool IsRequired(DocumentType type) => type.IsRequiredByAnyDeclaration;
+
+    private static string RequirementTooltip(DocumentType type)
+    {
+        var wanted = type.Requirements
+            .Where(r => r.Requirement == DocumentRequirement.Required)
+            .Select(r => DeclarationLabel(r.Declaration))
+            .ToList();
+
+        if (wanted.Count == 0)
+        {
+            var offered = type.Requirements
+                .Where(r => r.Requirement == DocumentRequirement.Optional)
+                .Select(r => DeclarationLabel(r.Declaration))
+                .ToList();
+
+            return offered.Count == 0
+                ? "Kept on your file. No declaration asks for it."
+                : $"Offered on {string.Join(" and ", offered)}, but not required.";
+        }
+
+        return $"Required on {string.Join(" and ", wanted)}.";
+    }
+
+    private static string DeclarationLabel(DeclarationType declaration) => declaration switch
+    {
+        DeclarationType.InsiderTrading => "the Insider Declaration",
+        DeclarationType.ConflictOfInterest => "the RP and COI Declaration",
+        _ => declaration.ToString(),
+    };
 
     /// <summary>What to call a document in a toast or an audit line. The Document Centre's name
     /// wins where there is one, so renaming a document there renames it in the log too; the

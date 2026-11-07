@@ -45,7 +45,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<OwnedCompany> OwnedCompanies => Set<OwnedCompany>();
     public DbSet<MemberDocument> MemberDocuments => Set<MemberDocument>();
     public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
+    public DbSet<DocumentTypeRequirement> DocumentTypeRequirements => Set<DocumentTypeRequirement>();
     public DbSet<InsiderDeclarationDocument> InsiderDeclarationDocuments => Set<InsiderDeclarationDocument>();
+    public DbSet<RelatedPartyCoiDeclarationDocument> RelatedPartyCoiDeclarationDocuments => Set<RelatedPartyCoiDeclarationDocument>();
     public DbSet<FamilyMemberHolding> FamilyMemberHoldings => Set<FamilyMemberHolding>();
     public DbSet<DelegationOfAuthority> DelegationsOfAuthority => Set<DelegationOfAuthority>();
     public DbSet<DelegationOfAuthorityBand> DelegationOfAuthorityBands => Set<DelegationOfAuthorityBand>();
@@ -77,6 +79,20 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .IsUnique()
             .HasFilter("[BuiltInKind] IS NOT NULL");
 
+        // One answer per document per declaration. Two rows would leave the form with nothing to
+        // say which of them decides whether a passport blocks submission.
+        builder.Entity<DocumentTypeRequirement>()
+            .HasIndex(r => new { r.DocumentTypeId, r.Declaration })
+            .IsUnique();
+
+        // These rows belong to the document, not to the person: removing a document type takes its
+        // requirements with it, and there is nothing to preserve.
+        builder.Entity<DocumentTypeRequirement>()
+            .HasOne(r => r.DocumentType)
+            .WithMany(t => t.Requirements)
+            .HasForeignKey(r => r.DocumentTypeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Restrict, not cascade: a type someone has already filed documents against must not take
         // them with it. The Document Centre offers Inactive for exactly this reason, and the
         // delete it does offer refuses when anything references the row.
@@ -97,6 +113,18 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasOne(d => d.InsiderDeclaration)
             .WithMany()
             .HasForeignKey(d => d.InsiderDeclarationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<RelatedPartyCoiDeclarationDocument>()
+            .HasOne(d => d.DocumentType)
+            .WithMany()
+            .HasForeignKey(d => d.DocumentTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<RelatedPartyCoiDeclarationDocument>()
+            .HasOne(d => d.RelatedPartyCoiDeclaration)
+            .WithMany()
+            .HasForeignKey(d => d.RelatedPartyCoiDeclarationId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Entity<NavMenuItemLabel>()

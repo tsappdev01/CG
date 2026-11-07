@@ -11,7 +11,7 @@
 
 <div class="cg-shell cg-shell-full">
     <h1 data-icon="folder">Document Center</h1>
-    <p class="cg-subtitle">Control Panel — the documents people are asked to keep on file.</p>
+    <p class="cg-subtitle">Control Panel — the documents people are asked to keep on file, and what each declaration asks of them.</p>
 
     @if (_types is null)
     {
@@ -19,75 +19,160 @@
     }
     else
     {
-        <div class="cg-actions">
-            <button type="button" class="cg-action-btn cg-good" @onclick="StartAdd">+ Add document</button>
+        <div class="cg-tabs" role="tablist">
+            <button type="button" class="cg-tab @(_tab == Tab.Documents ? "active" : "")" role="tab"
+                    aria-selected="@(_tab == Tab.Documents)" @onclick="() => _tab = Tab.Documents">
+                User Documents — @_types.Count
+            </button>
+            <button type="button" class="cg-tab @(_tab == Tab.Insider ? "active" : "")" role="tab"
+                    aria-selected="@(_tab == Tab.Insider)" @onclick="() => _tab = Tab.Insider">
+                Insider Declaration — @RequiredCount(DeclarationType.InsiderTrading) required
+            </button>
+            <button type="button" class="cg-tab @(_tab == Tab.RpCoi ? "active" : "")" role="tab"
+                    aria-selected="@(_tab == Tab.RpCoi)" @onclick="() => _tab = Tab.RpCoi">
+                RP &amp; COI Declaration — @RequiredCount(DeclarationType.ConflictOfInterest) required
+            </button>
         </div>
 
-        <p class="cg-subtitle">
-            Shown on My Workspace and on the declaration forms. <b>Required</b> means a person cannot
-            complete a declaration without one. Switching a document off stops it being asked for,
-            without losing anything already uploaded against it.
-        </p>
+        @if (_tab == Tab.Documents)
+        {
+            <div class="cg-actions">
+                <button type="button" class="cg-action-btn cg-good" @onclick="StartAdd">+ Add document</button>
+            </div>
 
-        <div class="cg-table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Requirement</th>
-                        <th scope="col">On file</th>
-                        <th scope="col">Status</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var type in _types)
-                    {
-                        <tr class="cg-data-row">
-                            <td>
-                                @type.Name
-                                @if (type.IsBuiltIn)
-                                {
-                                    <span class="cg-pill" title="Read automatically. Can be renamed or switched off, but not removed.">Built-in</span>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(type.Description))
-                                {
-                                    <p class="cg-subtitle">@type.Description</p>
-                                }
-                            </td>
-                            <td>
-                                <span class="cg-pill @(type.IsMandatory ? "cg-pill-required" : "")">@(type.IsMandatory ? "Required" : "Optional")</span>
-                            </td>
-                            <td class="mono">@UploadCount(type.Id)</td>
-                            <td><ToggleSwitch Value="type.IsActive" ValueChanged="() => _pendingJustify = type" /></td>
-                            <td>
-                                <button type="button" class="cg-action-btn" @onclick="() => Edit(type)">Edit</button>
-                                @if (!type.IsBuiltIn)
-                                {
-                                    <button type="button" class="cg-action-btn cg-critical" @onclick="() => _pendingDelete = type">Remove</button>
-                                }
-                            </td>
+            <p class="cg-subtitle">
+                The documents this application knows about. <b>Inactive</b> withdraws one everywhere at
+                once, without losing what has already been uploaded against it. What each declaration
+                asks for is set on its own tab.
+            </p>
+
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Insider Declaration</th>
+                            <th scope="col">RP &amp; COI Declaration</th>
+                            <th scope="col">On file</th>
+                            <th scope="col">Status</th>
+                            <th></th>
                         </tr>
-                    }
+                    </thead>
+                    <tbody>
+                        @foreach (var type in _types)
+                        {
+                            <tr class="cg-data-row">
+                                <td>
+                                    @type.Name
+                                    @if (type.IsBuiltIn)
+                                    {
+                                        <span class="cg-pill" title="Read automatically. Can be renamed or switched off, but not removed.">Built-in</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(type.Description))
+                                    {
+                                        <p class="cg-subtitle">@type.Description</p>
+                                    }
+                                </td>
+                                <td><span class="cg-pill @PillClass(type.RequirementFor(DeclarationType.InsiderTrading))">@Describe(type.RequirementFor(DeclarationType.InsiderTrading))</span></td>
+                                <td><span class="cg-pill @PillClass(type.RequirementFor(DeclarationType.ConflictOfInterest))">@Describe(type.RequirementFor(DeclarationType.ConflictOfInterest))</span></td>
+                                <td class="mono">@UploadCount(type.Id)</td>
+                                <td><ToggleSwitch Value="type.IsActive" ValueChanged="() => _pendingJustify = type" /></td>
+                                <td>
+                                    <button type="button" class="cg-action-btn" @onclick="() => Edit(type)">Edit</button>
+                                    @if (!type.IsBuiltIn)
+                                    {
+                                        <button type="button" class="cg-action-btn cg-critical" @onclick="() => _pendingDelete = type">Remove</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
 
-                    @if (_types.Count == 0)
-                    {
-                        <tr><td colspan="5">
-                            <div class="cg-empty-state">
-                                <h3>No documents configured</h3>
-                                <p>Use <b>+ Add document</b> above. Nothing will be asked for on My Workspace or on a declaration until there is something here.</p>
-                            </div>
-                        </td></tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+                        @if (_types.Count == 0)
+                        {
+                            <tr><td colspan="6">
+                                <div class="cg-empty-state">
+                                    <h3>No documents configured</h3>
+                                    <p>Use <b>+ Add document</b> above. Nothing will be asked for on My Workspace or on a declaration until there is something here.</p>
+                                </div>
+                            </td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
 
-        <p class="cg-subtitle">
-            Only Emirates ID, passport and trade licence are read automatically — those three have a
-            trained model behind them. A document added here takes a file, a reference number and an
-            expiry date, typed in.
-        </p>
+            <p class="cg-subtitle">
+                Only Emirates ID, passport and trade licence are read automatically — those three have a
+                trained model behind them. A document added here takes a file, a reference number and an
+                expiry date, typed in.
+            </p>
+        }
+        else
+        {
+            var declaration = _tab == Tab.Insider ? DeclarationType.InsiderTrading : DeclarationType.ConflictOfInterest;
+
+            <p class="cg-subtitle">
+                What the <b>@DeclarationLabel(declaration)</b> asks for. <b>Required</b> blocks submission
+                until the document is attached; <b>Optional</b> offers it without insisting;
+                <b>Not requested</b> leaves it off this form altogether. Each declaration is set on its
+                own, so the two need not agree.
+            </p>
+
+            <div class="cg-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th scope="col">Document</th>
+                            <th scope="col">On this declaration</th>
+                            <th scope="col">Read automatically</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var type in _types.Where(t => t.IsActive))
+                        {
+                            <tr class="cg-data-row">
+                                <td>
+                                    @type.Name
+                                    @if (!string.IsNullOrWhiteSpace(type.Description))
+                                    {
+                                        <p class="cg-subtitle">@type.Description</p>
+                                    }
+                                </td>
+                                <td>
+                                    <select class="cg-input cg-requirement-select" value="@((int)type.RequirementFor(declaration))"
+                                            aria-label="@($"What {DeclarationLabel(declaration)} asks of {type.Name}")"
+                                            @onchange="e => SetRequirementAsync(type, declaration, e.Value)">
+                                        <option value="0">Not requested</option>
+                                        <option value="1">Optional</option>
+                                        <option value="2">Required</option>
+                                    </select>
+                                </td>
+                                <td class="cg-subtitle">
+                                    @(type.IsBuiltIn && type.BuiltInKind != MemberDocumentKind.Other ? "Yes" : "No — typed in")
+                                </td>
+                            </tr>
+                        }
+
+                        @if (!_types.Any(t => t.IsActive))
+                        {
+                            <tr><td colspan="3">
+                                <div class="cg-empty-state">
+                                    <h3>Nothing to ask for</h3>
+                                    <p>Every document is Inactive. Switch one on under <b>User Documents</b> before setting what this declaration asks of it.</p>
+                                </div>
+                            </td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (_types.Any(t => !t.IsActive))
+            {
+                <p class="cg-subtitle">
+                    @_types.Count(t => !t.IsActive) document(s) are Inactive and not listed here. An inactive
+                    document is withdrawn from every declaration whatever this tab says.
+                </p>
+            }
+        }
 
         @if (_pendingJustify is not null)
         {
@@ -113,18 +198,18 @@
                 <span>What is wanted</span>
                 <input class="cg-input" maxlength="300" @bind="_formDescription" placeholder="Optional — the line shown under the name" />
             </label>
-            <label class="cg-field">
-                <span>Requirement</span>
-                <select class="cg-input" @bind="_formMandatory">
-                    <option value="false">Optional</option>
-                    <option value="true">Required</option>
-                </select>
-            </label>
-            @if (_editing.IsBuiltIn)
+            @if (_editing.Id == 0)
             {
                 <p class="cg-subtitle">
-                    This document is read automatically, so it cannot be removed and its capture
-                    stays as it is. The name, the line under it and whether it is required are yours.
+                    A new document starts as <b>Optional</b> on both declarations. Set what each one
+                    actually asks of it on its own tab.
+                </p>
+            }
+            else if (_editing.IsBuiltIn)
+            {
+                <p class="cg-subtitle">
+                    This document is read automatically, so it cannot be removed and its capture stays
+                    as it is. The name and the line under it are yours.
                 </p>
             }
             <div class="cg-actions">
@@ -141,8 +226,9 @@
         <div class="cg-confirm-modal">
             <h3>Remove “@_pendingDelete.Name”?</h3>
             <p class="cg-confirm-detail">
-                It stops being asked for and is gone from the list. If anyone has already uploaded one,
-                this is refused — switch it off instead, which keeps their files readable.
+                It stops being asked for on every declaration and is gone from the list. If anyone has
+                already uploaded one, this is refused — switch it off instead, which keeps their files
+                readable.
             </p>
             <div class="cg-actions">
                 <button type="button" class="cg-action-btn" @onclick="() => _pendingDelete = null">Cancel</button>

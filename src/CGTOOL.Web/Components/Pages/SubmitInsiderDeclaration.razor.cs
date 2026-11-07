@@ -189,6 +189,7 @@ public partial class SubmitInsiderDeclaration
         // it, and an empty list would show a person a document-free step.
         _documentTypes.Clear();
         _documentTypes.AddRange(await db.DocumentTypes.AsNoTracking()
+            .Include(t => t.Requirements)
             .Where(t => t.IsActive)
             .OrderBy(t => t.SortOrder).ThenBy(t => t.Name)
             .ToListAsync());
@@ -826,14 +827,24 @@ public partial class SubmitInsiderDeclaration
     private readonly HashSet<int> _uploadingTypeIds = [];
     private readonly Dictionary<int, int> _typeUploadProgress = [];
 
+    /// <summary>This form asks only what the Insider Declaration tab of the Document Center says
+    /// it asks. A document that tab marks Not requested is not part of this declaration, however
+    /// the RP and COI tab has it set.</summary>
+    private const DeclarationType Scope = DeclarationType.InsiderTrading;
+
     private DocumentType? TypeFor(MemberDocumentKind kind) =>
         _documentTypes.FirstOrDefault(t => t.BuiltInKind == kind);
 
-    /// <summary>Whether to show a built-in document's card at all. Only active types are loaded, so
-    /// a document switched off in the Document Centre simply is not here.</summary>
-    private bool ShowDocument(MemberDocumentKind kind) => TypeFor(kind) is not null;
+    private DocumentRequirement RequirementOf(MemberDocumentKind kind) =>
+        TypeFor(kind)?.RequirementFor(Scope) ?? DocumentRequirement.NotRequested;
 
-    private bool RequiredDocument(MemberDocumentKind kind) => TypeFor(kind)?.IsMandatory == true;
+    /// <summary>Whether to draw a built-in document's card. Switched off in the Document Center, or
+    /// not asked for by this declaration, and it is not on the form at all.</summary>
+    private bool ShowDocument(MemberDocumentKind kind) =>
+        RequirementOf(kind) != DocumentRequirement.NotRequested;
+
+    private bool RequiredDocument(MemberDocumentKind kind) =>
+        RequirementOf(kind) == DocumentRequirement.Required;
 
     /// <summary>The configured name, falling back to the built-in one for a type that has been
     /// switched off -- the fallback is only reached by text that names the document in an error or
@@ -843,7 +854,8 @@ public partial class SubmitInsiderDeclaration
     private string RequirementLabel(MemberDocumentKind kind) => RequiredDocument(kind) ? "Required" : "Optional";
 
     private IEnumerable<DocumentType> AddedDocumentTypes =>
-        _documentTypes.Where(t => t.BuiltInKind is null);
+        _documentTypes.Where(t => t.BuiltInKind is null
+                                  && t.RequirementFor(Scope) != DocumentRequirement.NotRequested);
 
     private InsiderDeclarationDocument AddedDocumentFor(int documentTypeId)
     {
@@ -877,7 +889,7 @@ public partial class SubmitInsiderDeclaration
     /// are not demanded: the Document Centre says a document is wanted, not which of its fields
     /// someone three months from now will consider mandatory.</summary>
     private bool AddedDocumentsComplete =>
-        AddedDocumentTypes.Where(t => t.IsMandatory)
+        AddedDocumentTypes.Where(t => t.RequirementFor(Scope) == DocumentRequirement.Required)
             .All(t => !string.IsNullOrWhiteSpace(AddedDocumentFor(t.Id).FilePath));
 
     private bool HasEmiratesId => !string.IsNullOrWhiteSpace(_emiratesIdPath);

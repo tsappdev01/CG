@@ -87,6 +87,8 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR OBJECT_ID('dbo.DocumentTypes', 'U') IS NULL
     OR OBJECT_ID('dbo.InsiderDeclarationDocuments', 'U') IS NULL
     OR COL_LENGTH('dbo.MemberDocuments', 'DocumentTypeId') IS NULL
+    OR OBJECT_ID('dbo.DocumentTypeRequirements', 'U') IS NULL
+    OR OBJECT_ID('dbo.RelatedPartyCoiDeclarationDocuments', 'U') IS NULL
 BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
@@ -2236,7 +2238,6 @@ GO
 CREATE OR ALTER PROCEDURE dbo.usp_DocumentType_Insert
     @Name nvarchar(120),
     @Description nvarchar(300) = NULL,
-    @IsMandatory bit,
     @IsActive bit,
     @SortOrder int,
     @NewId int OUTPUT
@@ -2250,8 +2251,8 @@ BEGIN
         row claiming BuiltInKind.Passport would carry the passport capture wiring and the
         declaration's own PassportPath column behind a name that is not the seeded passport.
     */
-    INSERT INTO dbo.DocumentTypes (Name, Description, IsMandatory, BuiltInKind, IsActive, SortOrder)
-    VALUES (@Name, @Description, @IsMandatory, NULL, @IsActive, @SortOrder);
+    INSERT INTO dbo.DocumentTypes (Name, Description, BuiltInKind, IsActive, SortOrder)
+    VALUES (@Name, @Description, NULL, @IsActive, @SortOrder);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -2261,7 +2262,6 @@ CREATE OR ALTER PROCEDURE dbo.usp_DocumentType_Update
     @Id int,
     @Name nvarchar(120),
     @Description nvarchar(300) = NULL,
-    @IsMandatory bit,
     @IsActive bit,
     @SortOrder int
 AS
@@ -2272,7 +2272,6 @@ BEGIN
     UPDATE dbo.DocumentTypes
     SET Name = @Name,
         Description = @Description,
-        IsMandatory = @IsMandatory,
         IsActive = @IsActive,
         SortOrder = @SortOrder
     WHERE Id = @Id;
@@ -2311,7 +2310,69 @@ BEGIN
         THROW 51602, 'Declarations have already been submitted with this document type. Set it to Inactive instead.', 1;
     END
 
+    -- The requirement rows belong to the document, not to anyone's file, so they go with it.
+    DELETE FROM dbo.DocumentTypeRequirements WHERE DocumentTypeId = @Id;
     DELETE FROM dbo.DocumentTypes WHERE Id = @Id;
+END
+GO
+
+/*
+    One row per (document, declaration). Written as an upsert because the screen offers a
+    three-way choice and not an add/remove: the administrator is answering "what does the insider
+    declaration ask of a passport", and whether a row exists yet is not their concern.
+*/
+CREATE OR ALTER PROCEDURE dbo.usp_DocumentTypeRequirement_Set
+    @DocumentTypeId int,
+    @Declaration int,
+    @Requirement int
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.DocumentTypeRequirements
+    SET Requirement = @Requirement
+    WHERE DocumentTypeId = @DocumentTypeId AND Declaration = @Declaration;
+
+    IF @@ROWCOUNT = 0
+    BEGIN
+        INSERT INTO dbo.DocumentTypeRequirements (DocumentTypeId, Declaration, Requirement)
+        VALUES (@DocumentTypeId, @Declaration, @Requirement);
+    END
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_RelatedPartyCoiDeclarationDocument_Insert
+    @RelatedPartyCoiDeclarationId int,
+    @DocumentTypeId int,
+    @FilePath nvarchar(260) = NULL,
+    @OriginalFileName nvarchar(260) = NULL,
+    @DocumentNumber nvarchar(100) = NULL,
+    @ExpiryDate datetime2 = NULL,
+    @NewId int OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO dbo.RelatedPartyCoiDeclarationDocuments
+        (RelatedPartyCoiDeclarationId, DocumentTypeId, FilePath, OriginalFileName, DocumentNumber, ExpiryDate)
+    VALUES
+        (@RelatedPartyCoiDeclarationId, @DocumentTypeId, @FilePath, @OriginalFileName, @DocumentNumber, @ExpiryDate);
+
+    SET @NewId = SCOPE_IDENTITY();
+END
+GO
+
+/*
+    Clears a declaration's attachments so the save can write them again, the way its relatives and
+    company grids are saved. Call it inside the same transaction as the header update: on its own
+    it empties the list.
+*/
+CREATE OR ALTER PROCEDURE dbo.usp_RelatedPartyCoiDeclarationDocument_DeleteForDeclaration
+    @RelatedPartyCoiDeclarationId int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM dbo.RelatedPartyCoiDeclarationDocuments WHERE RelatedPartyCoiDeclarationId = @RelatedPartyCoiDeclarationId;
 END
 GO
 

@@ -390,6 +390,91 @@
 
             </div>
         }
+        else if (_step == Step.Documents)
+        {
+            <div class="cg-member-form cg-declaration-form">
+                <h2 class="cg-section-heading">Supporting documents</h2>
+                <p class="cg-hint">
+                    What this declaration asks for is set in the Document Center, separately from the
+                    Insider Declaration — the two need not ask for the same things. Anything marked
+                    <b>Required</b> must be attached before you can continue.
+                </p>
+
+                @if (!RequestedDocumentTypes.Any())
+                {
+                    <div class="cg-empty-state">
+                        <h3>No documents are asked for</h3>
+                        <p>This declaration does not ask for any supporting documents. Continue to the review step.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn" @onclick="PullDocumentsFromWorkspaceAsync">Load from My Workspace</button>
+                    </div>
+                    <p class="cg-hint">
+                        What you already keep on file is brought across, and this declaration keeps its own
+                        copy — replacing a document in My Workspace later will not change what you declared here.
+                    </p>
+
+                    @foreach (var type in RequestedDocumentTypes)
+                    {
+                        var row = DocumentFor(type.Id);
+                        var attached = !string.IsNullOrWhiteSpace(row.FilePath);
+                        <div class="cg-doc-panel @(IsExpiredOn(row.ExpiryDate) ? "is-expired" : "")">
+                            <div class="cg-doc-panel-head">
+                                <div>
+                                    <h3>
+                                        @type.Name
+                                        <span class="cg-pill @(IsRequired(type) ? "cg-pill-required" : "")">@(IsRequired(type) ? "Required" : "Optional")</span>
+                                        <span class="cg-pill cg-pill-status @(attached ? "cg-pill-done" : "")">@(attached ? "Attached" : "Not attached")</span>
+                                    </h3>
+                                    <p class="cg-subtitle">@(string.IsNullOrWhiteSpace(type.Description) ? "JPG, PNG or PDF, up to 10 MB." : type.Description)</p>
+                                </div>
+                                <div class="cg-doc-panel-file">
+                                    <InputFile OnChange="e => OnDeclarationDocumentSelectedAsync(type, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploadingDocument(type.Id)" />
+                                    @if (IsUploadingDocument(type.Id))
+                                    {
+                                        <CgProgressBar Label="Uploading…" Percent="DocumentUploadProgress(type.Id)" />
+                                    }
+                                </div>
+                            </div>
+
+                            @if (attached)
+                            {
+                            <div class="cg-doc-panel-split">
+                                <div>
+                                    <div class="cg-form-grid cg-captured-grid">
+                                        <label class="cg-field">
+                                            <span>Reference number</span>
+                                            <input class="cg-input" @bind="row.DocumentNumber" maxlength="100" />
+                                        </label>
+                                        <label class="cg-field">
+                                            <span>Expiry date</span>
+                                            <UaeDateInput CssClass="@(IsExpiredOn(row.ExpiryDate) ? "cg-input-invalid" : null)"
+                                                          Value="row.ExpiryDate"
+                                                          ValueChanged="d => row.ExpiryDate = d" />
+                                            @if (IsExpiredOn(row.ExpiryDate))
+                                            {
+                                                <span class="cg-field-error">Expired — attach a current one.</span>
+                                            }
+                                        </label>
+                                    </div>
+                                    <div class="cg-actions cg-doc-panel-actions">
+                                        <button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveDeclarationDocument(row)">Remove</button>
+                                    </div>
+                                </div>
+                                <DocumentPreview FilePath="@row.FilePath" OriginalFileName="@row.OriginalFileName" />
+                            </div>
+                            }
+                        </div>
+                    }
+                }
+
+                @StepActions()
+
+            </div>
+        }
         else if (_step == Step.Review)
         {
             <div class="cg-member-form cg-declaration-form">

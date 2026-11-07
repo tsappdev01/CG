@@ -10,6 +10,10 @@ public interface IRelatedPartyCoiDeclarationWriter
 
     Task SetUaePassVerificationAsync(int declarationId, DateTime verifiedAtUtc, string verifiedName, string uuid);
 
+    Task<int> InsertDocumentAsync(int declarationId, RelatedPartyCoiDeclarationDocument document);
+
+    Task DeleteDocumentsAsync(int declarationId);
+
     Task<int> InsertRelativeAsync(int declarationId, CoiRelative relative);
 
     Task DeleteRelativesAsync(int declarationId);
@@ -71,6 +75,19 @@ public class RelatedPartyCoiDeclarationWriter(IStoredProcedureExecutor sp) : IRe
         new SqlParameter("@UaePassVerifiedAtUtc", verifiedAtUtc),
         new SqlParameter("@UaePassVerifiedName", verifiedName),
         new SqlParameter("@UaePassUuid", uuid));
+
+    public Task<int> InsertDocumentAsync(int declarationId, RelatedPartyCoiDeclarationDocument document) => sp.InsertAsync(
+        "dbo.usp_RelatedPartyCoiDeclarationDocument_Insert",
+        new SqlParameter("@RelatedPartyCoiDeclarationId", declarationId),
+        new SqlParameter("@DocumentTypeId", document.DocumentTypeId),
+        new SqlParameter("@FilePath", (object?)document.FilePath ?? DBNull.Value),
+        new SqlParameter("@OriginalFileName", (object?)document.OriginalFileName ?? DBNull.Value),
+        new SqlParameter("@DocumentNumber", (object?)document.DocumentNumber ?? DBNull.Value),
+        new SqlParameter("@ExpiryDate", (object?)document.ExpiryDate ?? DBNull.Value));
+
+    public Task DeleteDocumentsAsync(int declarationId) => sp.ExecuteAsync(
+        "dbo.usp_RelatedPartyCoiDeclarationDocument_DeleteForDeclaration",
+        new SqlParameter("@RelatedPartyCoiDeclarationId", declarationId));
 
     public Task<int> InsertRelativeAsync(int declarationId, CoiRelative relative) => sp.InsertAsync(
         "dbo.usp_CoiRelative_Insert",

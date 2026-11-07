@@ -33,9 +33,10 @@ public class DocumentType
     [MaxLength(300)]
     public string? Description { get; set; }
 
-    /// <summary>Whether a person has to supply one. Read by My Workspace, which marks the card, and
-    /// by the declaration, which will not let the step be completed without it.</summary>
-    public bool IsMandatory { get; set; }
+    /// <summary>What each declaration asks of this document -- see DocumentTypeRequirement. This
+    /// was a single IsMandatory flag, which could not say that the insider declaration wants an
+    /// Emirates ID while the RP and COI one wants an Emirates ID and a passport.</summary>
+    public List<DocumentTypeRequirement> Requirements { get; set; } = [];
 
     /// <summary>Set for the documents the application has specific code for, null for everything an
     /// administrator adds. Not editable from the Document Centre -- see the class note.</summary>
@@ -51,4 +52,20 @@ public class DocumentType
 
     /// <summary>A built-in cannot be deleted or have its kind reassigned.</summary>
     public bool IsBuiltIn => BuiltInKind is not null;
+
+    /// <summary>What one declaration asks of this document. A document with no row for a
+    /// declaration is not part of it, which is the same thing the enum's zero says -- so nothing
+    /// has to be backfilled when a declaration is added.
+    ///
+    /// Requires Requirements to have been loaded. Every caller includes it; the alternative is a
+    /// lazy load per row inside a render loop.</summary>
+    public DocumentRequirement RequirementFor(DeclarationType declaration) =>
+        Requirements.FirstOrDefault(r => r.Declaration == declaration)?.Requirement
+        ?? DocumentRequirement.NotRequested;
+
+    /// <summary>Whether any declaration insists on this document. My Workspace marks a card with
+    /// it: the workspace is not a declaration, so "required" there can only mean "something will
+    /// ask you for this", and which declarations those are goes in the tooltip.</summary>
+    public bool IsRequiredByAnyDeclaration =>
+        Requirements.Any(r => r.Requirement == DocumentRequirement.Required);
 }

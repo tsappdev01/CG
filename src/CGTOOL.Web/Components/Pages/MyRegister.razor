@@ -62,7 +62,7 @@
                             <div>
                                 <h3>
                                     @named.Name
-                                    <span class="cg-pill @(named.IsMandatory ? "cg-pill-required" : "")">@RequirementLabel(named)</span>
+                                    <span class="cg-pill @(IsRequired(named) ? "cg-pill-required" : "")" title="@RequirementTooltip(named)">@RequirementLabel(named)</span>
                                     @if (IsExpired(doc)) { <span class="cg-pill-critical">Expired</span> }
                                 </h3>
                                 <p class="cg-subtitle">@named.Description</p>
@@ -155,7 +155,7 @@
                             <div>
                                 <h3>
                                     @type.Name
-                                    <span class="cg-pill @(type.IsMandatory ? "cg-pill-required" : "")">@RequirementLabel(type)</span>
+                                    <span class="cg-pill @(IsRequired(type) ? "cg-pill-required" : "")" title="@RequirementTooltip(type)">@RequirementLabel(type)</span>
                                     @if (IsExpired(added)) { <span class="cg-pill-critical">Expired</span> }
                                 </h3>
                                 <p class="cg-subtitle">@type.Description</p>
@@ -212,7 +212,7 @@
                         <div>
                             <h3>
                                 @otherType.Name
-                                <span class="cg-pill @(otherType.IsMandatory ? "cg-pill-required" : "")">@RequirementLabel(otherType)</span>
+                                <span class="cg-pill @(IsRequired(otherType) ? "cg-pill-required" : "")" title="@RequirementTooltip(otherType)">@RequirementLabel(otherType)</span>
                             </h3>
                             <p class="cg-subtitle">@otherType.Description</p>
                         </div>

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using CGTOOL.Web.Data;
@@ -19,6 +20,10 @@ namespace CGTOOL.Web.Components.Pages.Admin;
 /// built-in documents plus whatever has been added, and a filter bar over five rows is furniture.</summary>
 public partial class DocumentCenter
 {
+    private enum Tab { Documents, Insider, RpCoi }
+
+    private Tab _tab = Tab.Documents;
+
     private List<DocumentType>? _types;
 
     /// <summary>How many documents exist of each type, for the "On file" column and to explain why
@@ -34,7 +39,6 @@ public partial class DocumentCenter
     private DocumentType? _editing;
     private string _formName = string.Empty;
     private string? _formDescription;
-    private bool _formMandatory;
 
     private DocumentType? _pendingJustify;
     private DocumentType? _pendingDelete;
@@ -46,6 +50,7 @@ public partial class DocumentCenter
         await using var db = await DbFactory.CreateDbContextAsync();
 
         _types = await db.DocumentTypes
+            .Include(t => t.Requirements)
             .OrderBy(t => t.SortOrder).ThenBy(t => t.Name)
             .ToListAsync();
 
@@ -72,6 +77,71 @@ public partial class DocumentCenter
         }
     }
 
+    private static string DeclarationLabel(DeclarationType declaration) => declaration switch
+    {
+        DeclarationType.InsiderTrading => "Insider Declaration",
+        DeclarationType.ConflictOfInterest => "RP & COI Declaration",
+        _ => declaration.ToString(),
+    };
+
+    private int RequiredCount(DeclarationType declaration) =>
+        _types?.Count(t => t.IsActive && t.RequirementFor(declaration) == DocumentRequirement.Required) ?? 0;
+
+    private static string Describe(DocumentRequirement requirement) => requirement switch
+    {
+        DocumentRequirement.Required => "Required",
+        DocumentRequirement.Optional => "Optional",
+        _ => "Not requested",
+    };
+
+    /// <summary>Only Required is coloured. Optional and Not requested are both "this will not stop
+    /// anyone submitting", and giving each its own colour would make a table of five documents
+    /// look like a status board.</summary>
+    private static string PillClass(DocumentRequirement requirement) =>
+        requirement == DocumentRequirement.Required ? "cg-pill-required" : string.Empty;
+
+    /// <summary>Takes the raw select value rather than the enum because the comparison cannot live
+    /// in the markup: a string literal inside a Razor attribute ends the attribute.</summary>
+    private async Task SetRequirementAsync(DocumentType type, DeclarationType declaration, object? value)
+    {
+        if (!int.TryParse(value?.ToString(), out var raw)) return;
+
+        var requirement = (DocumentRequirement)raw;
+        if (requirement == type.RequirementFor(declaration)) return;
+
+        try
+        {
+            await DocumentTypeWriter.SetRequirementAsync(type.Id, declaration, requirement);
+        }
+        catch (SqlException ex)
+        {
+            Toasts.ShowError(ex.Message);
+            await LoadAsync();
+            return;
+        }
+
+        // The in-memory row is corrected rather than reloaded: re-querying every document and its
+        // upload counts to move one pill is work for nothing.
+        var existing = type.Requirements.FirstOrDefault(r => r.Declaration == declaration);
+        if (existing is null)
+        {
+            type.Requirements.Add(new DocumentTypeRequirement
+            {
+                DocumentTypeId = type.Id,
+                Declaration = declaration,
+                Requirement = requirement,
+            });
+        }
+        else
+        {
+            existing.Requirement = requirement;
+        }
+
+        var message = $"{DeclarationLabel(declaration)}: '{type.Name}' is now {Describe(requirement)}.";
+        await LogAsync(AuditAction.Update, type.Id, message);
+        Toasts.ShowSuccess(message);
+    }
+
     private string UploadCount(int typeId) =>
         _uploadCounts.TryGetValue(typeId, out var count) && count > 0 ? count.ToString() : "0";
 
@@ -82,7 +152,6 @@ public partial class DocumentCenter
         _editing = new DocumentType();
         _formName = string.Empty;
         _formDescription = null;
-        _formMandatory = false;
     }
 
     private void Edit(DocumentType type)
@@ -90,7 +159,6 @@ public partial class DocumentCenter
         _editing = type;
         _formName = type.Name;
         _formDescription = type.Description;
-        _formMandatory = type.IsMandatory;
     }
 
     private void CancelEdit() => _editing = null;
@@ -122,7 +190,6 @@ public partial class DocumentCenter
                 {
                     Name = name,
                     Description = description,
-                    IsMandatory = _formMandatory,
                     IsActive = true,
                     SortOrder = sortOrder,
                 };
@@ -138,8 +205,16 @@ public partial class DocumentCenter
                     return;
                 }
 
+                // Optional on both declarations to begin with: it appears where it will be asked
+                // for, without blocking anyone's submission before an administrator has decided
+                // what it is actually for.
+                foreach (var declaration in new[] { DeclarationType.InsiderTrading, DeclarationType.ConflictOfInterest })
+                {
+                    await DocumentTypeWriter.SetRequirementAsync(newId, declaration, DocumentRequirement.Optional);
+                }
+
                 await LogAsync(AuditAction.Create, newId,
-                    $"Added document type '{name}' ({(_formMandatory ? "Required" : "Optional")}).");
+                    $"Added document type '{name}', Optional on both declarations.");
 
                 _editing = null;
                 Toasts.ShowSuccess($"'{name}' added. People will see it on My Workspace and on their declarations.");
@@ -150,7 +225,6 @@ public partial class DocumentCenter
             var previousName = _editing.Name;
             _editing.Name = name;
             _editing.Description = description;
-            _editing.IsMandatory = _formMandatory;
 
             try
             {
@@ -170,8 +244,8 @@ public partial class DocumentCenter
             }
 
             await LogAsync(AuditAction.Update, _editing.Id, previousName == name
-                ? $"Updated document type '{name}' ({(_formMandatory ? "Required" : "Optional")})."
-                : $"Renamed document type '{previousName}' to '{name}' ({(_formMandatory ? "Required" : "Optional")}).");
+                ? $"Updated document type '{name}'."
+                : $"Renamed document type '{previousName}' to '{name}'.");
 
             _editing = null;
             Toasts.ShowSuccess($"'{name}' saved.");

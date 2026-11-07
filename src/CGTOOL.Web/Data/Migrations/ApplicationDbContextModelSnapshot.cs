@@ -774,9 +774,6 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsMandatory")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -795,6 +792,31 @@ namespace CGTOOL.Web.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("DocumentTypes");
+                });
+
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.DocumentTypeRequirement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Declaration")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DocumentTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Requirement")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentTypeId", "Declaration")
+                        .IsUnique();
+
+                    b.ToTable("DocumentTypeRequirements");
                 });
 
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.FamilyMember", b =>
@@ -1667,6 +1689,44 @@ namespace CGTOOL.Web.Data.Migrations
                     b.ToTable("RelatedPartyCoiDeclarations");
                 });
 
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.RelatedPartyCoiDeclarationDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DocumentNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("DocumentTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FilePath")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<string>("OriginalFileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<int>("RelatedPartyCoiDeclarationId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentTypeId");
+
+                    b.HasIndex("RelatedPartyCoiDeclarationId");
+
+                    b.ToTable("RelatedPartyCoiDeclarationDocuments");
+                });
+
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.RelatedPartyTransaction", b =>
                 {
                     b.Property<int>("Id")
@@ -2474,6 +2534,17 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Navigation("DelegationOfAuthority");
                 });
 
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.DocumentTypeRequirement", b =>
+                {
+                    b.HasOne("CGTOOL.Web.Data.Governance.DocumentType", "DocumentType")
+                        .WithMany("Requirements")
+                        .HasForeignKey("DocumentTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DocumentType");
+                });
+
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.FamilyMember", b =>
                 {
                     b.HasOne("CGTOOL.Web.Data.Governance.Member", "Member")
@@ -2666,6 +2737,25 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Navigation("Member");
                 });
 
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.RelatedPartyCoiDeclarationDocument", b =>
+                {
+                    b.HasOne("CGTOOL.Web.Data.Governance.DocumentType", "DocumentType")
+                        .WithMany()
+                        .HasForeignKey("DocumentTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CGTOOL.Web.Data.Governance.RelatedPartyCoiDeclaration", "RelatedPartyCoiDeclaration")
+                        .WithMany()
+                        .HasForeignKey("RelatedPartyCoiDeclarationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DocumentType");
+
+                    b.Navigation("RelatedPartyCoiDeclaration");
+                });
+
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.RelatedPartyTransaction", b =>
                 {
                     b.HasOne("CGTOOL.Web.Data.Governance.Member", "ApproverMember")
@@ -2821,6 +2911,11 @@ namespace CGTOOL.Web.Data.Migrations
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.Department", b =>
                 {
                     b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.DocumentType", b =>
+                {
+                    b.Navigation("Requirements");
                 });
 
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.FamilyMember", b =>

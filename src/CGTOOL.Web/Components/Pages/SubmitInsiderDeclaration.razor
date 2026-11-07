@@ -480,7 +480,7 @@
                         <div class="cg-doc-card @(IsExpiredOn(added.ExpiryDate) ? "is-expired" : "")">
                             <div class="cg-doc-card-head">
                                 <span class="cg-doc-card-name">@type.Name</span>
-                                <span class="cg-pill @(type.IsMandatory ? "cg-pill-required" : "")">@(type.IsMandatory ? "Required" : "Optional")</span>
+                                <span class="cg-pill @(type.RequirementFor(DeclarationType.InsiderTrading) == DocumentRequirement.Required ? "cg-pill-required" : "")">@(type.RequirementFor(DeclarationType.InsiderTrading) == DocumentRequirement.Required ? "Required" : "Optional")</span>
                                 <span class="cg-pill cg-pill-status @(string.IsNullOrWhiteSpace(added.FilePath) ? "" : "cg-pill-done")">@(string.IsNullOrWhiteSpace(added.FilePath) ? "Not uploaded" : "Uploaded")</span>
                             </div>
                             <div class="cg-doc-card-source">

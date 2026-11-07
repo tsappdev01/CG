@@ -14,7 +14,7 @@ namespace CGTOOL.Web.Components.Pages;
 
 public partial class SubmitRelatedPartyCoiDeclaration
 {
-    private enum Step { Loading, NoAccess, NotDue, EditWindowClosed, Relatives, SelfOwned, RelativeOwned, BoardRoles, Conflicts, Review, Done }
+    private enum Step { Loading, NoAccess, NotDue, EditWindowClosed, Relatives, SelfOwned, RelativeOwned, BoardRoles, Conflicts, Documents, Review, Done }
 
     /// <summary>The wizard in order, and what the chevron calls each one. Review is the last of
     /// them: the attestation belongs beside the summary it attests to, not half-way up the form.</summary>
@@ -25,8 +25,183 @@ public partial class SubmitRelatedPartyCoiDeclaration
         (Step.RelativeOwned, "Relatives' companies"),
         (Step.BoardRoles, "Board roles"),
         (Step.Conflicts, "Conflicts"),
+        (Step.Documents, "Documents"),
         (Step.Review, "Review & submit"),
     ];
+
+    /// <summary>What the Document Center's RP and COI tab asks for. This form had no documents
+    /// step at all until the two declarations were given their own sets -- the insider one asked
+    /// for an Emirates ID and a passport and this one asked for nothing, whatever the rules said.
+    ///
+    /// Only this declaration's scope. A document the RP and COI tab marks Not requested is not on
+    /// this form, however the insider tab has it set.</summary>
+    private const DeclarationType Scope = DeclarationType.ConflictOfInterest;
+
+    private readonly List<DocumentType> _documentTypes = [];
+    private readonly List<RelatedPartyCoiDeclarationDocument> _documents = [];
+    private readonly HashSet<int> _uploadingTypeIds = [];
+    private readonly Dictionary<int, int> _documentUploadProgress = [];
+
+    private const long MaxDeclarationDocumentBytes = 10 * 1024 * 1024;
+
+    /// <summary>Active documents this declaration asks for, in the Document Center's order.</summary>
+    private IEnumerable<DocumentType> RequestedDocumentTypes =>
+        _documentTypes.Where(t => t.RequirementFor(Scope) != DocumentRequirement.NotRequested);
+
+    private static bool IsRequired(DocumentType type) =>
+        type.RequirementFor(Scope) == DocumentRequirement.Required;
+
+    /// <summary>The row behind a card, created on first sight rather than on upload: it backs the
+    /// reference and expiry fields too, which a person may fill in before attaching anything.</summary>
+    private RelatedPartyCoiDeclarationDocument DocumentFor(int documentTypeId)
+    {
+        var existing = _documents.FirstOrDefault(d => d.DocumentTypeId == documentTypeId);
+        if (existing is not null) return existing;
+
+        var row = new RelatedPartyCoiDeclarationDocument { DocumentTypeId = documentTypeId };
+        _documents.Add(row);
+        return row;
+    }
+
+    /// <summary>Expired by today, in local terms. A document with no expiry date is not expired --
+    /// plenty of things people attach do not carry one.</summary>
+    private static bool IsExpiredOn(DateTime? expiry) =>
+        expiry is { } date && date.Date < DateTime.UtcNow.ToLocalTime().Date;
+
+    private bool IsUploadingDocument(int documentTypeId) => _uploadingTypeIds.Contains(documentTypeId);
+
+    private int DocumentUploadProgress(int documentTypeId) =>
+        _documentUploadProgress.TryGetValue(documentTypeId, out var percent) ? percent : 0;
+
+    /// <summary>Every document this declaration marks Required has a file against it. Reference
+    /// numbers and expiry dates are not demanded: the Document Center says a document is wanted,
+    /// not which of its fields someone three months from now will consider mandatory.</summary>
+    private bool DocumentsComplete =>
+        RequestedDocumentTypes.Where(IsRequired)
+            .All(t => !string.IsNullOrWhiteSpace(DocumentFor(t.Id).FilePath));
+
+    private List<string> MissingRequiredDocuments() =>
+        RequestedDocumentTypes.Where(IsRequired)
+            .Where(t => string.IsNullOrWhiteSpace(DocumentFor(t.Id).FilePath))
+            .Select(t => t.Name)
+            .ToList();
+
+    private async Task OnDeclarationDocumentSelectedAsync(DocumentType type, InputFileChangeEventArgs e)
+    {
+        if (_effectiveMember is null) return;
+
+        var file = e.File;
+        var extension = file.ContentType switch
+        {
+            "image/png" => ".png",
+            "image/jpeg" => ".jpg",
+            "application/pdf" => ".pdf",
+            _ => null,
+        };
+        if (extension is null)
+        {
+            Toasts.ShowError("Only JPEG, PNG, or PDF files are supported.");
+            return;
+        }
+        if (file.Size > MaxDeclarationDocumentBytes)
+        {
+            Toasts.ShowError("File must be 10 MB or smaller.");
+            return;
+        }
+
+        var row = DocumentFor(type.Id);
+        _uploadingTypeIds.Add(type.Id);
+        _documentUploadProgress[type.Id] = 0;
+        StateHasChanged();
+        try
+        {
+            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "coi-declaration-documents");
+            Directory.CreateDirectory(uploadsDir);
+
+            // Named for the member and the document type, so re-uploading replaces rather than
+            // accumulating: this is one slot, not a list.
+            var fileName = $"{_effectiveMember.Id}-type{type.Id}{extension}";
+            var filePath = Path.Combine(uploadsDir, fileName);
+
+            foreach (var stale in Directory.GetFiles(uploadsDir, $"{_effectiveMember.Id}-type{type.Id}.*"))
+            {
+                File.Delete(stale);
+            }
+
+            const int chunkBytes = 64 * 1024;
+            await using (var stream = file.OpenReadStream(MaxDeclarationDocumentBytes))
+            await using (var target = File.Create(filePath))
+            {
+                var buffer = new byte[chunkBytes];
+                long totalRead = 0;
+                int read;
+                while ((read = await stream.ReadAsync(buffer)) > 0)
+                {
+                    await target.WriteAsync(buffer.AsMemory(0, read));
+                    totalRead += read;
+                    _documentUploadProgress[type.Id] = (int)(totalRead * 100 / Math.Max(1, file.Size));
+                    StateHasChanged();
+                }
+            }
+
+            row.FilePath = $"/uploads/coi-declaration-documents/{fileName}";
+            row.OriginalFileName = file.Name;
+            Toasts.ShowSuccess($"{type.Name} attached.");
+        }
+        catch (Exception ex)
+        {
+            Toasts.ShowError($"The file could not be read ({ex.Message}). Try again.");
+        }
+        finally
+        {
+            _uploadingTypeIds.Remove(type.Id);
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveDeclarationDocument(RelatedPartyCoiDeclarationDocument row)
+    {
+        row.FilePath = null;
+        row.OriginalFileName = null;
+    }
+
+    /// <summary>Brings across what the member already has on file in My Workspace, so the same
+    /// passport is not scanned twice a year. A copy, not a reference: see
+    /// RelatedPartyCoiDeclarationDocument.</summary>
+    private async Task PullDocumentsFromWorkspaceAsync()
+    {
+        if (_effectiveMember is null) return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var onFile = await db.MemberDocuments.AsNoTracking()
+            .Where(d => d.MemberId == _effectiveMember.Id && d.FilePath != null)
+            .ToListAsync();
+
+        var filled = 0;
+        foreach (var type in RequestedDocumentTypes)
+        {
+            var row = DocumentFor(type.Id);
+            if (!string.IsNullOrWhiteSpace(row.FilePath)) continue;
+
+            // Matched the way the document is identified: an added type by its id, a built-in by
+            // the kind its capture wiring uses.
+            var match = type.BuiltInKind is { } kind
+                ? onFile.FirstOrDefault(d => d.DocumentTypeId == null && d.Kind == kind)
+                : onFile.FirstOrDefault(d => d.DocumentTypeId == type.Id);
+
+            if (match is null) continue;
+
+            row.FilePath = match.FilePath;
+            row.OriginalFileName = match.OriginalFileName;
+            row.DocumentNumber = match.DocumentNumber;
+            row.ExpiryDate = match.ExpiryDate;
+            filled++;
+        }
+
+        Toasts.ShowSuccess(filled == 0
+            ? "Nothing on your My Workspace file matches what this declaration asks for."
+            : $"{filled} document(s) brought across from My Workspace. Check them before continuing.");
+    }
 
     [Parameter] public int? Id { get; set; }
 
@@ -183,6 +358,15 @@ public partial class SubmitRelatedPartyCoiDeclaration
         // it -- which kills the circuit and takes the page with it.
         await using var db = await DbFactory.CreateDbContextAsync();
 
+        // What the Document Center's RP and COI tab asks for. Loaded before anything branches, so
+        // the documents step has its cards whether this is a new declaration or an edit.
+        _documentTypes.Clear();
+        _documentTypes.AddRange(await db.DocumentTypes.AsNoTracking()
+            .Include(t => t.Requirements)
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.SortOrder).ThenBy(t => t.Name)
+            .ToListAsync());
+
         var state = await AuthState.GetAuthenticationStateAsync();
 
         if (Impersonation.ActingMemberId is { } actingId)
@@ -330,6 +514,11 @@ public partial class SubmitRelatedPartyCoiDeclaration
         _loadedAsSubmittedEdit = !declaration.IsDraft;
         _editingDeclarationId = declaration.Id;
         _run = declaration.DeclarationCycleRun;
+
+        _documents.Clear();
+        _documents.AddRange(await db.RelatedPartyCoiDeclarationDocuments.AsNoTracking()
+            .Where(d => d.RelatedPartyCoiDeclarationId == declaration.Id)
+            .ToListAsync());
 
         _signaturePath = declaration.SignaturePath;
         _signedAtUtc = declaration.SignedAtUtc;
@@ -1258,8 +1447,23 @@ public partial class SubmitRelatedPartyCoiDeclaration
         Step.RelativeOwned => ValidateCompanySection(_relativeOwnedCompanies, _nothingRelativeOwned, "Companies a relative owns ≥30%", requireLinkedRelative: true),
         Step.BoardRoles => ValidateCompanySection(_boardRoleCompanies, _nothingBoardRoles, "Companies in which I serve as board member or senior executive"),
         Step.Conflicts => ValidateConflicts(),
+        Step.Documents => ValidateDocuments(),
         _ => true,
     };
+
+    /// <summary>Nothing passes this step until every document the RP and COI tab marks Required is
+    /// attached. Named one by one rather than "documents are missing": the person is looking at a
+    /// list of cards and needs to know which.</summary>
+    private bool ValidateDocuments()
+    {
+        var missing = MissingRequiredDocuments();
+        if (missing.Count == 0) return true;
+
+        Toasts.ShowError(missing.Count == 1
+            ? $"Attach your {missing[0]} before continuing."
+            : $"Attach these before continuing: {string.Join(", ", missing)}.");
+        return false;
+    }
 
     private bool ValidateRelatives()
     {
@@ -1519,6 +1723,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 await Writer.DeleteCompaniesAsync(_editingDeclarationId);
                 await Writer.DeleteRelativesAsync(_editingDeclarationId);
                 await Writer.DeleteConflictsAsync(_editingDeclarationId);
+                await Writer.DeleteDocumentsAsync(_editingDeclarationId);
                 declarationId = _editingDeclarationId;
             }
             else
@@ -1539,6 +1744,21 @@ public partial class SubmitRelatedPartyCoiDeclaration
             await InsertCompanyRowsAsync(declarationId, _selfOwnedCompanies, CoiCompanyOwnerType.Self, _nothingSelfOwned, relativeIdMap);
             await InsertCompanyRowsAsync(declarationId, _relativeOwnedCompanies, CoiCompanyOwnerType.Relative, _nothingRelativeOwned, relativeIdMap);
             await InsertCompanyRowsAsync(declarationId, _boardRoleCompanies, CoiCompanyOwnerType.BoardOrExecutiveRole, _nothingBoardRoles, relativeIdMap);
+
+            // Written the way the grids are: cleared and rewritten in the same transaction, so a
+            // save can remove an attachment as well as add one. A card someone opened and left
+            // alone leaves nothing behind.
+            foreach (var document in _documents)
+            {
+                if (string.IsNullOrWhiteSpace(document.FilePath)
+                    && string.IsNullOrWhiteSpace(document.DocumentNumber)
+                    && document.ExpiryDate is null)
+                {
+                    continue;
+                }
+
+                await Writer.InsertDocumentAsync(declarationId, document);
+            }
 
             if (!_nothingConflicts)
             {

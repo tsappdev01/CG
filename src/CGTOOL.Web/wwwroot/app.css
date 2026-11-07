@@ -3532,6 +3532,18 @@ button.cg-appbar-user {
    body around it -- weight is what marks it, not scale. */
 .cg-undertaking { margin: 0 0 14px; font-size: 14px; font-weight: 650; line-height: 1.55; color: var(--cg-ink); }
 
+/* The signature on a detail sheet: the mark, then who made it and when, the way it sits on the
+   paper form. The rule under the image is the signature line. */
+.cg-report-signature { margin: 6px 0 4px; }
+.cg-report-signature img {
+    display: block; max-width: 220px; max-height: 70px;
+    padding-bottom: 4px; border-bottom: 1px solid var(--cg-line-strong);
+}
+.cg-report-signature-meta { display: flex; flex-direction: column; gap: 1px; margin-top: 5px; }
+.cg-report-signature-name { font-size: 13px; font-weight: 650; }
+.cg-report-signature-at { font-size: 11.5px; color: var(--cg-ink-muted); }
+@media print { .cg-report-signature img { max-width: 200px; max-height: 64px; } }
+
 /* Uploading a signature instead of drawing one. Under the pad rather than beside it: drawing is
    the first offer, and this is the way out for anyone without a stylus. */
 .cg-signature-upload { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }

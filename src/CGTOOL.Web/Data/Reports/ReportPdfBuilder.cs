@@ -89,6 +89,8 @@ public static class ReportPdfBuilder
                     else
                         writer.DataTable([.. table.Columns.Select(c => c.Header)], Fractions(table.Columns), table.Rows);
                 }
+
+                DrawSignature(writer, record, logoFilePath);
             }
         }
         else
@@ -102,6 +104,62 @@ public static class ReportPdfBuilder
         using var stream = new MemoryStream();
         document.Save(stream, false);
         return stream.ToArray();
+    }
+
+    /// <summary>The signature under the record it signs, with the name and the time beneath it.
+    ///
+    /// A missing or unreadable file does not take the sheet down with it: the name and the time are
+    /// still printed, and "signature image unavailable" is a truer thing to hand a reviewer than a
+    /// report that failed to generate.</summary>
+    private static void DrawSignature(DeclarationPdfWriter writer, ReportRecord record, string? logoFilePath)
+    {
+        if (record.Signature is not { } signature) return;
+
+        writer.SectionHeading("Signature");
+
+        var path = LocalPathOf(signature.ImagePath, logoFilePath);
+        if (path is not null && File.Exists(path))
+        {
+            try
+            {
+                using var image = XImage.FromFile(path);
+                writer.Signature(image, 180, 60);
+            }
+            catch (Exception)
+            {
+                writer.Paragraph("Signature image unavailable.");
+            }
+        }
+        else
+        {
+            writer.Paragraph("Signature image unavailable.");
+        }
+
+        writer.Paragraph(signature.Name is { Length: > 0 } name ? name : record.Title);
+        writer.Paragraph(signature.SignedAtUtc is { } at
+            ? $"Signed {at.ToLocalDisplay("dd/MM/yyyy HH:mm")}"
+            : "Time not recorded");
+    }
+
+    /// <summary>Turns a web path like "/uploads/declarations/coi/ab12.png" into a file on this
+    /// server, by walking back from the logo -- which the caller already resolved against
+    /// wwwroot, and which is the only thing here that knows where wwwroot is.</summary>
+    private static string? LocalPathOf(string webPath, string? logoFilePath)
+    {
+        if (logoFilePath is null) return null;
+
+        // wwwroot/images/<logo> -> wwwroot
+        var webRoot = Path.GetDirectoryName(Path.GetDirectoryName(logoFilePath));
+        if (webRoot is null) return null;
+
+        var relative = webPath.TrimStart('/', '\\').Replace('/', Path.DirectorySeparatorChar);
+        var full = Path.GetFullPath(Path.Combine(webRoot, relative));
+
+        // Stays inside wwwroot: the path comes from a database row, and a row that says "../.."
+        // should not read a file off the server.
+        return full.StartsWith(Path.GetFullPath(webRoot) + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+            ? full
+            : null;
     }
 
     /// <summary>How tall a record will be, measured before anything is drawn, so the decision to
@@ -123,6 +181,12 @@ public static class ReportPdfBuilder
             height += table.Rows.Count == 0
                 ? writer.MeasureParagraph(table.EmptyNote ?? "None.")
                 : writer.MeasureDataTable([.. table.Columns.Select(c => c.Header)], Fractions(table.Columns), [.. table.Rows]);
+        }
+
+        if (record.Signature is not null)
+        {
+            // Heading, the image at its drawn height, then the name and the time.
+            height += writer.MeasureSectionHeading() + 60 + 13 + (2 * writer.MeasureParagraph("Signed 00/00/0000 00:00"));
         }
 
         return height;

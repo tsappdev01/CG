@@ -43,11 +43,22 @@ public sealed record ReportSubTable(
 /// Detail reports are a different shape from the tabular ones -- the legacy Insider Submission
 /// Detail ran to 304 pages, one per declarant -- so a report carries either rows or records, never
 /// both.</summary>
+/// <summary>The signature a declaration was signed with, as it was signed.
+///
+/// A report that says "Signed 07/11/2026 23:30" states that a signature exists. Whoever is
+/// checking the declaration wants to see it: a typed name and a timestamp are what the system
+/// recorded, and the mark is what the person made.</summary>
+/// <param name="ImagePath">Where the signature image is kept, under wwwroot.</param>
+/// <param name="Name">The name it was signed under.</param>
+/// <param name="SignedAtUtc">When, to the minute.</param>
+public sealed record ReportSignature(string ImagePath, string? Name, DateTime? SignedAtUtc);
+
 public sealed record ReportRecord(
     string Title,
     string? Subtitle,
     IReadOnlyList<ReportFact> Facts,
-    IReadOnlyList<ReportSubTable> Tables);
+    IReadOnlyList<ReportSubTable> Tables,
+    ReportSignature? Signature = null);
 
 /// <summary>A report, described once and rendered four ways: on screen, on paper, as a PDF and as
 /// a spreadsheet. The four must agree -- a PDF that shows different numbers from the screen it was

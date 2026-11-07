@@ -142,7 +142,12 @@ public partial class RpCoiDetailReport
                         c.NatureOfInterest ?? c.NatureOfHolding ?? "—",
                     })],
                     d.NothingToDeclareConflicts ? "Declared no conflicts of interest." : "No conflicts entered."),
-            ]);
+            ],
+            // The mark itself, under the sheet it signs. "Signed 07/11/2026 23:30" in the facts
+            // says a signature exists; a reviewer checking a declaration wants to see it.
+            d.SignaturePath is { Length: > 0 } signature
+                ? new ReportSignature(signature, d.AttestationName, d.SignedAtUtc)
+                : null);
     }
 
     /// <summary>The trade licences uploaded against this declarant's companies. Ported from the

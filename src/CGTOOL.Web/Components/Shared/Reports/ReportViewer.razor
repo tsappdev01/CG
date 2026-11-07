@@ -155,6 +155,20 @@
                                             </table>
                                         }
                                     }
+
+                                    @* The mark the declaration was signed with, under what it
+                                       signs -- the way it sits on the paper form. *@
+                                    @if (record.Signature is { } signature)
+                                    {
+                                        <h4>Signature</h4>
+                                        <div class="cg-report-signature">
+                                            <img src="@signature.ImagePath" alt="@($"Signature of {signature.Name ?? record.Title}")" />
+                                            <div class="cg-report-signature-meta">
+                                                <span class="cg-report-signature-name">@(signature.Name is { Length: > 0 } ? signature.Name : record.Title)</span>
+                                                <span class="cg-report-signature-at">@(signature.SignedAtUtc is { } at ? at.ToLocalDisplay("dd/MM/yyyy HH:mm") : "Time not recorded")</span>
+                                            </div>
+                                        </div>
+                                    }
                                 </div>
                             }
 

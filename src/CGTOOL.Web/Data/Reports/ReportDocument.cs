@@ -86,6 +86,14 @@ public sealed class ReportDocument
     /// <summary>The sheets of a detail report, one per person. Empty on a tabular report.</summary>
     public IReadOnlyList<ReportRecord> Records { get; init; } = [];
 
+    /// <summary>Where each row's "View details" action goes, indexed alongside <see cref="Rows"/>.
+    /// Empty when a report has no detail to open; null or empty for a row that has none of its own
+    /// -- a person who has not submitted anything has nothing to show.
+    ///
+    /// On screen only. A printed sheet and a spreadsheet have nowhere to click, and the exporters
+    /// read Columns and Rows, so they are untouched by this.</summary>
+    public IReadOnlyList<string?> RowLinks { get; init; } = [];
+
     /// <summary>Which of the two shapes this is. A report sets Rows or Records, never both, and
     /// every writer branches here rather than guessing from whichever list happens to be empty --
     /// a tabular report that legitimately found nothing would otherwise be drawn as a detail

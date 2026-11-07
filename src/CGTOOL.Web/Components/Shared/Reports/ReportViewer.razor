@@ -25,7 +25,7 @@
             @for (var i = 0; i < PageCount; i++)
             {
                 var pageNumber = i + 1;
-                var rows = RowsOn(pageNumber);
+                var rowIndexes = RowIndexesOn(pageNumber);
                 <section class="cg-report-sheet" data-page="@pageNumber" style="@(pageNumber == _page || _showAllPages ? "" : "display:none;")">
                     @if (pageNumber == 1)
                     {
@@ -170,6 +170,10 @@
                                 {
                                     <col style="width:@(column.Width.ToString("0.###", CultureInfo.InvariantCulture))%" />
                                 }
+                                @if (HasRowLinks)
+                                {
+                                    <col class="cg-report-open-col" />
+                                }
                             </colgroup>
                             <thead>
                                 <tr>
@@ -177,15 +181,31 @@
                                     {
                                         <th>@column.Header</th>
                                     }
+                                    @if (HasRowLinks)
+                                    {
+                                        <th class="cg-report-open"><span class="cg-visually-hidden">Details</span></th>
+                                    }
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var row in rows)
+                                @foreach (var index in rowIndexes)
                                 {
+                                    var row = Report.Rows[index];
                                     <tr>
                                         @for (var c = 0; c < Report.Columns.Count; c++)
                                         {
                                             <td>@(c < row.Length ? row[c] : string.Empty)</td>
+                                        }
+                                        @if (HasRowLinks)
+                                        {
+                                            <td class="cg-report-open">
+                                                @* Nothing for a row with no detail behind it, rather
+                                                   than a link that opens an empty sheet. *@
+                                                @if (Report.RowLinks.ElementAtOrDefault(index) is { Length: > 0 } href)
+                                                {
+                                                    <a class="cg-doc-chip" href="@href">View details</a>
+                                                }
+                                            </td>
                                         }
                                     </tr>
                                 }
@@ -280,9 +300,23 @@
         ? Math.Max(1, Report.Records.Count)
         : Math.Max(1, (int)Math.Ceiling(Math.Max(0, Report.Rows.Count - RowsOnFirstPage) / (double)RowsPerPage) + 1);
 
-    private IEnumerable<string[]> RowsOn(int pageNumber) => pageNumber == 1
-        ? Report.Rows.Take(RowsOnFirstPage)
-        : Report.Rows.Skip(RowsOnFirstPage + ((pageNumber - 2) * RowsPerPage)).Take(RowsPerPage);
+    /// <summary>Whether this report has anything to open behind its rows. Asked once per table
+    /// rather than per row, because a column that exists for some rows and not others is a column
+    /// whose header moves about.</summary>
+    private bool HasRowLinks => Report.RowLinks.Count > 0;
+
+    /// <summary>Which rows this sheet shows, by index rather than by value: the index is what ties
+    /// a row to its link.</summary>
+    private IEnumerable<int> RowIndexesOn(int pageNumber)
+    {
+        var skip = pageNumber == 1 ? 0 : RowsOnFirstPage + ((pageNumber - 2) * RowsPerPage);
+        var take = pageNumber == 1 ? RowsOnFirstPage : RowsPerPage;
+
+        for (var i = Math.Max(0, skip); i < Math.Min(skip + take, Report.Rows.Count); i++)
+        {
+            yield return i;
+        }
+    }
 
     private IEnumerable<ReportRecord> RecordsOn(int pageNumber) =>
         Report.Records.Skip(pageNumber - 1).Take(1);

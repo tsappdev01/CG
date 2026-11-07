@@ -167,8 +167,19 @@ public partial class InsiderSubmissionReport
                     ModifiedBy(r),
                 })
             ],
+            RowLinks = [.. rows.Select(DetailLink)],
         };
     }
+
+    /// <summary>Opens this person's sheet on the detailed report, on the period this row is for
+    /// rather than whatever that report happened to be showing -- a report named "Q1 2026" that
+    /// opens on Q3 has answered a different question from the one that was asked.
+    ///
+    /// Nothing for someone who has not submitted: there is no sheet behind them, and a link to an
+    /// empty report is worse than no link.</summary>
+    private static string? DetailLink(Row r) => r.Submitted
+        ? $"/reports/insider-submission-detail?name={Uri.EscapeDataString(r.MemberName)}&year={r.Year}&quarter={r.Quarter}"
+        : null;
 
     /// <summary>When the declaration was last touched: the edit if there has been one, otherwise
     /// the submission. The legacy report had a ModifiedOn column that printed an expression error

@@ -1666,6 +1666,16 @@ public partial class SubmitRelatedPartyCoiDeclaration
         var updated = _hadExistingRow;
         var subject = $"Related Party & Conflict of Interest Declaration {(updated ? "update" : "confirmation")} — Q{_run.PeriodQuarter} {_run.PeriodYear}";
         var attach = SqlMail.IsConfigured && SqlMail.AttachmentFolderConfigured;
+        // Anyone approved to file for this person is copied, same as on the cycle notifications.
+        // Its own context: the one below is scoped to the attachment branch, and this is needed
+        // whichever branch sends.
+        string? confirmCc;
+        await using (var ccDb = await DbFactory.CreateDbContextAsync())
+        {
+            confirmCc = (await DeclarationCycleReminderHostedService
+                .ResolveOnBehalfCcAsync(ccDb, [_effectiveMember.Id], default))
+                .GetValueOrDefault(_effectiveMember.Id);
+        }
         var body = BuildConfirmationEmail(attached: attach);
 
         try
@@ -1689,15 +1699,15 @@ public partial class SubmitRelatedPartyCoiDeclaration
                     SignatureFilePath(declaration.SignaturePath));
 
                 await SqlMail.SendWithFileAttachmentAsync(_effectiveMember.Email, subject, body, pdf,
-                    RelatedPartyCoiDeclarationPdfBuilder.FileName(_effectiveMember, _run));
+                    RelatedPartyCoiDeclarationPdfBuilder.FileName(_effectiveMember, _run), ccEmails: confirmCc);
             }
             else if (SqlMail.IsConfigured)
             {
-                await SqlMail.SendAsync(_effectiveMember.Email, subject, body);
+                await SqlMail.SendAsync(_effectiveMember.Email, subject, body, ccEmails: confirmCc);
             }
             else
             {
-                await EmailSender.SendAsync(_effectiveMember.Email, subject, body);
+                await EmailSender.SendAsync(_effectiveMember.Email, subject, body, ccEmails: confirmCc);
             }
 
             await AuditLog.LogAsync(actorName, AuditAction.Notify, nameof(Member), _effectiveMember.Id.ToString(),

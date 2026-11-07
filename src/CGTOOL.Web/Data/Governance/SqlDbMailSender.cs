@@ -21,13 +21,25 @@ public class SqlDbMailSender(IStoredProcedureExecutor sp, IConfiguration config)
 
     public bool AttachmentFolderConfigured => !string.IsNullOrWhiteSpace(AttachmentFolder);
 
-    public Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct = default) => sp.ExecuteAsync(
-        "msdb.dbo.sp_send_dbmail",
-        new SqlParameter("@profile_name", ProfileName),
-        new SqlParameter("@recipients", toEmail),
-        new SqlParameter("@subject", subject),
-        new SqlParameter("@body", htmlBody),
-        new SqlParameter("@body_format", "HTML"));
+    public Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct = default, string? ccEmails = null) =>
+        sp.ExecuteAsync("msdb.dbo.sp_send_dbmail", CoreParameters(toEmail, subject, htmlBody, ccEmails));
+
+    /// <summary>The parameters both sends share. @copy_recipients is added only when there is
+    /// something to put in it: sp_send_dbmail rejects an empty string there, where leaving the
+    /// parameter off altogether is fine.</summary>
+    private SqlParameter[] CoreParameters(string toEmail, string subject, string htmlBody, string? ccEmails)
+    {
+        var parameters = new List<SqlParameter>
+        {
+            new("@profile_name", ProfileName),
+            new("@recipients", toEmail),
+            new("@subject", subject),
+            new("@body", htmlBody),
+            new("@body_format", "HTML"),
+        };
+        if (!string.IsNullOrWhiteSpace(ccEmails)) parameters.Add(new SqlParameter("@copy_recipients", ccEmails));
+        return [.. parameters];
+    }
 
     /// <summary>Writes <paramref name="fileBytes"/> to the configured shared attachment folder and
     /// asks Database Mail to attach that file by path via @file_attachments. Only call this when
@@ -35,7 +47,7 @@ public class SqlDbMailSender(IStoredProcedureExecutor sp, IConfiguration config)
     /// asynchronously via its own queue, so deleting it right after this call returns could race a send
     /// that hasn't happened yet) -- an operator should schedule periodic cleanup of old files in that
     /// folder (e.g. a SQL Agent job or Windows scheduled task), documented in README.md.</summary>
-    public async Task SendWithFileAttachmentAsync(string toEmail, string subject, string htmlBody, byte[] fileBytes, string attachmentFilename, CancellationToken ct = default)
+    public async Task SendWithFileAttachmentAsync(string toEmail, string subject, string htmlBody, byte[] fileBytes, string attachmentFilename, CancellationToken ct = default, string? ccEmails = null)
     {
         var uniqueName = $"{Guid.NewGuid():N}_{attachmentFilename}";
         var fullPath = Path.Combine(AttachmentFolder, uniqueName);
@@ -43,20 +55,15 @@ public class SqlDbMailSender(IStoredProcedureExecutor sp, IConfiguration config)
 
         await sp.ExecuteAsync(
             "msdb.dbo.sp_send_dbmail",
-            new SqlParameter("@profile_name", ProfileName),
-            new SqlParameter("@recipients", toEmail),
-            new SqlParameter("@subject", subject),
-            new SqlParameter("@body", htmlBody),
-            new SqlParameter("@body_format", "HTML"),
-            new SqlParameter("@file_attachments", fullPath));
+            [.. CoreParameters(toEmail, subject, htmlBody, ccEmails), new SqlParameter("@file_attachments", fullPath)]);
     }
 
 }
 
 public class SqlDbMailActivityEmailSender(SqlDbMailSender mail) : IActivityEmailSender
 {
-    public Task SendAsync(string toEmail, string subject, string body, CancellationToken ct = default) =>
-        mail.SendAsync(toEmail, subject, body, ct);
+    public Task SendAsync(string toEmail, string subject, string body, CancellationToken ct = default, string? ccEmails = null) =>
+        mail.SendAsync(toEmail, subject, body, ct, ccEmails);
 }
 
 public class SqlDbMailMemberWelcomeEmailSender(SqlDbMailSender mail) : IMemberWelcomeEmailSender

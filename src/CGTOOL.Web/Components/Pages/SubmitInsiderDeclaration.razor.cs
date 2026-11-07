@@ -1565,6 +1565,11 @@ public partial class SubmitInsiderDeclaration
             if (!string.IsNullOrWhiteSpace(_effectiveMember.Email))
             {
                 var attachPdf = SqlMail.IsConfigured && SqlMail.AttachmentFolderConfigured;
+                // Anyone approved to file for this person is copied, same as on the cycle
+                // notifications: the confirmation is the receipt for a filing they may have made.
+                var confirmCc = (await DeclarationCycleReminderHostedService
+                    .ResolveOnBehalfCcAsync(db, [_effectiveMember.Id], default))
+                    .GetValueOrDefault(_effectiveMember.Id);
                 var confirmSubject = $"Insider Trading Declaration {(_hadExistingRow ? "update" : "confirmation")} — Q{_run.PeriodQuarter} {_run.PeriodYear}";
                 var confirmBody = BuildConfirmationEmail(summary, attached: attachPdf);
                 try
@@ -1579,15 +1584,15 @@ public partial class SubmitInsiderDeclaration
                         var logoPath = Path.Combine(Env.WebRootPath, "images", "di-logo.jpg");
                         var pdfBytes = InsiderDeclarationPdfBuilder.Build(declaration, _effectiveMember, _run, File.Exists(logoPath) ? logoPath : null);
                         var attachmentFilename = $"InsiderTradingDeclaration_Q{_run.PeriodQuarter}_{_run.PeriodYear}.pdf";
-                        await SqlMail.SendWithFileAttachmentAsync(_effectiveMember.Email, confirmSubject, confirmBody, pdfBytes, attachmentFilename);
+                        await SqlMail.SendWithFileAttachmentAsync(_effectiveMember.Email, confirmSubject, confirmBody, pdfBytes, attachmentFilename, ccEmails: confirmCc);
                     }
                     else if (SqlMail.IsConfigured)
                     {
-                        await SqlMail.SendAsync(_effectiveMember.Email, confirmSubject, confirmBody);
+                        await SqlMail.SendAsync(_effectiveMember.Email, confirmSubject, confirmBody, ccEmails: confirmCc);
                     }
                     else
                     {
-                        await EmailSender.SendAsync(_effectiveMember.Email, confirmSubject, confirmBody);
+                        await EmailSender.SendAsync(_effectiveMember.Email, confirmSubject, confirmBody, ccEmails: confirmCc);
                     }
 
                     await AuditLog.LogAsync(actorName, AuditAction.Notify, nameof(Member), _effectiveMember.Id.ToString(),

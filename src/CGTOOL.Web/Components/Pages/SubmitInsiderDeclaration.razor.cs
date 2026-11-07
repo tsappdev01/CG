@@ -35,6 +35,91 @@ public partial class SubmitInsiderDeclaration
     private bool _justAutoSaved;
 
     // Case 1 (Functional Spec §3.1)
+    /// <summary>The share movement table from the printed form: what was held when the period
+    /// opened, each purchase and sale during it, and what was held when it closed -- for the
+    /// declarant, their spouse and their relatives.</summary>
+    private readonly List<ShareEntryRow> _shareEntries = [];
+
+    private class ShareEntryRow
+    {
+        public ShareHolderKind HolderKind { get; set; } = ShareHolderKind.Self;
+        public string HolderName { get; set; } = string.Empty;
+        public string HolderNin { get; set; } = string.Empty;
+        public ShareEntryKind EntryKind { get; set; } = ShareEntryKind.OpeningBalance;
+        public DateTime? TransactionDate { get; set; }
+        public long NumberOfShares { get; set; }
+        public decimal? Rate { get; set; }
+    }
+
+    /// <summary>Whether the declarant's own DFM number is on file. Half the trigger for the share
+    /// movement table: someone with no investor number has no DFM holding to report.</summary>
+    private bool _hasDfmInvestorNumber;
+
+    /// <summary>The share movement table is asked of employees who hold a DFM investor number.
+    /// Board members and corporate declarants report through their own arrangements, and someone
+    /// without a number has nothing the table could describe.</summary>
+    private bool ShowShareMovements =>
+        _hasDfmInvestorNumber
+        && _effectiveMember?.DeclarationType is MemberDeclarationType.EmployeeDiPjsc
+                                             or MemberDeclarationType.EmployeeOther;
+
+    private static readonly (ShareHolderKind Value, string Label)[] ShareHolderKinds =
+    [
+        (ShareHolderKind.Self, "Self"),
+        (ShareHolderKind.Spouse, "Spouse"),
+        (ShareHolderKind.Relative, "Relative"),
+    ];
+
+    /// <summary>The printed form's row labels, in its order.</summary>
+    private static readonly (ShareEntryKind Value, string Label)[] ShareEntryKinds =
+    [
+        (ShareEntryKind.OpeningBalance, "Held at the beginning of the period"),
+        (ShareEntryKind.Purchase, "Purchase during the period"),
+        (ShareEntryKind.Sale, "Sale during the period"),
+        (ShareEntryKind.ClosingBalance, "Held at the end of the period"),
+    ];
+
+    private static string ShareHolderLabel(ShareHolderKind kind) =>
+        ShareHolderKinds.First(k => k.Value == kind).Label;
+
+    private static string ShareEntryLabel(ShareEntryKind kind) =>
+        ShareEntryKinds.First(k => k.Value == kind).Label;
+
+    private static bool IsTransactionKind(ShareEntryKind kind) =>
+        kind is ShareEntryKind.Purchase or ShareEntryKind.Sale;
+
+    private void AddShareEntry() => _shareEntries.Add(new ShareEntryRow
+    {
+        // Seeded with the declarant, which is whose line it usually is, and with their own number
+        // so the commonest row needs nothing typed into it but a quantity.
+        HolderKind = ShareHolderKind.Self,
+        HolderNin = _ninNumber,
+    });
+
+    private void RemoveShareEntry(ShareEntryRow row) => _shareEntries.Remove(row);
+
+    /// <summary>A transaction has to have happened inside the period being declared. A date in
+    /// another quarter belongs on another declaration, and one typed by accident would otherwise
+    /// be filed as though it were this quarter's.</summary>
+    /// <summary>The period as people say it -- "Q1 2026 (Jan - Mar)" -- for the message on a date
+    /// that falls outside it. A date is wrong against a quarter, not against two timestamps, and
+    /// the quarter is what the person can check.</summary>
+    private string PeriodLabel()
+    {
+        if (_run is null) return "the declaration period";
+
+        var (from, to) = PeriodRange();
+        return $"Q{_run.PeriodQuarter} {_run.PeriodYear} ({from:MMM} \u2013 {to:MMM})";
+    }
+
+    private bool IsOutsidePeriod(DateTime? date)
+    {
+        if (date is not { } value || _run is null) return false;
+
+        var (from, to) = PeriodRange();
+        return value.Date < from.Date || value.Date > to.Date;
+    }
+
     private bool _hasNin;
     private string _ninNumber = string.Empty;
 
@@ -268,6 +353,7 @@ public partial class SubmitInsiderDeclaration
 
         if (!Nin.IsValid(investorNumber)) return;
 
+        _hasDfmInvestorNumber = true;
         _hasNin = true;
         _ninNumber = investorNumber!.Trim();
         _ninFromDfm = true;
@@ -433,6 +519,29 @@ public partial class SubmitInsiderDeclaration
         _addedDocuments.AddRange(await db.InsiderDeclarationDocuments.AsNoTracking()
             .Where(d => d.InsiderDeclarationId == declaration.Id)
             .ToListAsync());
+
+        _shareEntries.Clear();
+        _shareEntries.AddRange((await db.InsiderDeclarationShareEntries.AsNoTracking()
+            .Where(e => e.InsiderDeclarationId == declaration.Id)
+            .OrderBy(e => e.HolderKind).ThenBy(e => e.EntryKind).ThenBy(e => e.Id)
+            .ToListAsync())
+            .Select(e => new ShareEntryRow
+            {
+                HolderKind = e.HolderKind,
+                HolderName = e.HolderName ?? string.Empty,
+                HolderNin = e.HolderNin ?? string.Empty,
+                EntryKind = e.EntryKind,
+                TransactionDate = e.TransactionDate,
+                NumberOfShares = e.NumberOfShares,
+                Rate = e.Rate,
+            }));
+
+        // The prefill does not run on this path, so the table's trigger has to be established here
+        // as well -- otherwise reopening a draft would hide a table that was filled in.
+        _hasDfmInvestorNumber = await db.MemberDfmProfiles.AsNoTracking()
+            .Where(profile => profile.MemberId == declaration.MemberId)
+            .Select(profile => profile.InvestorNumber)
+            .FirstOrDefaultAsync() is { } onFile && Nin.IsValid(onFile);
 
         _relatives.Clear();
         _relatives.AddRange(declaration.Relatives.Select(r => new RelativeRow
@@ -1492,6 +1601,41 @@ public partial class SubmitInsiderDeclaration
             }
         }
 
+        if (ShowShareMovements)
+        {
+            foreach (var entry in _shareEntries)
+            {
+                if (IsTransactionKind(entry.EntryKind))
+                {
+                    if (entry.TransactionDate is null)
+                    {
+                        Toasts.ShowError($"Enter the date of each {ShareEntryLabel(entry.EntryKind).ToLowerInvariant()}.");
+                        return;
+                    }
+
+                    if (IsOutsidePeriod(entry.TransactionDate))
+                    {
+                        Toasts.ShowError($"Transactions must fall in {PeriodLabel()}. {entry.TransactionDate:dd/MM/yyyy} does not.");
+                        return;
+                    }
+                }
+
+                if (entry.HolderKind != ShareHolderKind.Self && string.IsNullOrWhiteSpace(entry.HolderName))
+                {
+                    Toasts.ShowError("Enter the name of every share holder listed.");
+                    return;
+                }
+
+                if (Nin.IsInvalidEntry(entry.HolderNin))
+                {
+                    Toasts.ShowError(Nin.ErrorFor(entry.HolderKind == ShareHolderKind.Self
+                        ? "your own share transaction row"
+                        : entry.HolderName));
+                    return;
+                }
+            }
+        }
+
         // The types an administrator added, which had no gate here at all -- marking one Required
         // showed a card and nothing more.
         var missingAdded = AddedDocumentTypes
@@ -1641,6 +1785,7 @@ public partial class SubmitInsiderDeclaration
                 await Writer.DeleteRelativesAsync(_editingDeclarationId);
                 await Writer.DeleteNinHoldersAsync(_editingDeclarationId);
                 await Writer.DeleteDocumentsAsync(_editingDeclarationId);
+                await Writer.DeleteShareEntriesAsync(_editingDeclarationId);
                 declarationId = _editingDeclarationId;
             }
             else
@@ -1682,6 +1827,27 @@ public partial class SubmitInsiderDeclaration
             // transaction, so a save can remove an attachment as well as add one. Rows with
             // nothing in them are skipped -- a card someone opened and left alone should not
             // leave an empty attachment behind.
+            foreach (var entry in _shareEntries)
+            {
+                // A row someone added and left alone is not a declaration of nothing.
+                if (entry.NumberOfShares == 0 && entry.Rate is null && entry.TransactionDate is null) continue;
+
+                await Writer.InsertShareEntryAsync(declarationId, new InsiderDeclarationShareEntry
+                {
+                    HolderKind = entry.HolderKind,
+                    HolderName = entry.HolderKind == ShareHolderKind.Self || string.IsNullOrWhiteSpace(entry.HolderName)
+                        ? null
+                        : entry.HolderName.Trim(),
+                    HolderNin = string.IsNullOrWhiteSpace(entry.HolderNin) ? null : entry.HolderNin.Trim(),
+                    EntryKind = entry.EntryKind,
+                    // A balance has no day and no price, whatever was typed before the row's kind
+                    // was changed to one.
+                    TransactionDate = IsTransactionKind(entry.EntryKind) ? entry.TransactionDate : null,
+                    NumberOfShares = entry.NumberOfShares,
+                    Rate = IsTransactionKind(entry.EntryKind) ? entry.Rate : null,
+                });
+            }
+
             foreach (var added in _addedDocuments)
             {
                 if (string.IsNullOrWhiteSpace(added.FilePath)

@@ -48,6 +48,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
     public DbSet<DocumentTypeRequirement> DocumentTypeRequirements => Set<DocumentTypeRequirement>();
     public DbSet<InsiderDeclarationDocument> InsiderDeclarationDocuments => Set<InsiderDeclarationDocument>();
+    public DbSet<InsiderDeclarationShareEntry> InsiderDeclarationShareEntries => Set<InsiderDeclarationShareEntry>();
     public DbSet<RelatedPartyCoiDeclarationDocument> RelatedPartyCoiDeclarationDocuments => Set<RelatedPartyCoiDeclarationDocument>();
     public DbSet<FamilyMemberHolding> FamilyMemberHoldings => Set<FamilyMemberHolding>();
     public DbSet<DelegationOfAuthority> DelegationsOfAuthority => Set<DelegationOfAuthority>();
@@ -114,6 +115,18 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany()
             .HasForeignKey(d => d.DocumentTypeId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // A price, not a quantity: 18,4 is what a DFM rate carries and what the reports total.
+        builder.Entity<InsiderDeclarationShareEntry>()
+            .Property(e => e.Rate)
+            .HasPrecision(18, 4);
+
+        // The declaration owns its share lines the way it owns its grids.
+        builder.Entity<InsiderDeclarationShareEntry>()
+            .HasOne(e => e.InsiderDeclaration)
+            .WithMany()
+            .HasForeignKey(e => e.InsiderDeclarationId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // The declaration owns its attachments: deleting a draft takes them with it.
         builder.Entity<InsiderDeclarationDocument>()

@@ -1192,6 +1192,48 @@ namespace CGTOOL.Web.Data.Migrations
                     b.ToTable("InsiderDeclarationRelatives");
                 });
 
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.InsiderDeclarationShareEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("EntryKind")
+                        .HasColumnType("int");
+
+                    b.Property<int>("HolderKind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("HolderName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("HolderNin")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<int>("InsiderDeclarationId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("NumberOfShares")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal?>("Rate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime?>("TransactionDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InsiderDeclarationId");
+
+                    b.ToTable("InsiderDeclarationShareEntries");
+                });
+
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.JobTitle", b =>
                 {
                     b.Property<int>("Id")
@@ -2662,6 +2704,17 @@ namespace CGTOOL.Web.Data.Migrations
                 {
                     b.HasOne("CGTOOL.Web.Data.Governance.InsiderDeclaration", "InsiderDeclaration")
                         .WithMany("Relatives")
+                        .HasForeignKey("InsiderDeclarationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InsiderDeclaration");
+                });
+
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.InsiderDeclarationShareEntry", b =>
+                {
+                    b.HasOne("CGTOOL.Web.Data.Governance.InsiderDeclaration", "InsiderDeclaration")
+                        .WithMany()
                         .HasForeignKey("InsiderDeclarationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

@@ -613,6 +613,120 @@
                     </div>
                 }
 
+                @* The share movement table from the printed declaration form. Shown to employees who
+                   hold a DFM investor number: a board member or a corporate declarant reports through
+                   other arrangements, and someone with no number has no holding to report. *@
+                @if (ShowShareMovements)
+                {
+                    var declarationPeriod = PeriodRange();
+                    <h2 class="cg-section-heading">Share transactions in @Branding.ParentHoldingCompany</h2>
+                    <p class="cg-hint">
+                        Every purchase and every sale in <b>@PeriodLabel()</b> —
+                        <b class="mono">@declarationPeriod.From.ToString("dd/MM/yyyy")</b> to
+                        <b class="mono">@declarationPeriod.To.ToString("dd/MM/yyyy")</b> — yours, your spouse's and
+                        your relatives'. Record the holdings at the start and end of the period on the same table.
+                    </p>
+
+                    <div class="cg-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Share held by</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">NIN</th>
+                                    <th scope="col">Entry</th>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">No. of shares</th>
+                                    <th scope="col">Rate of sale / purchase</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in _shareEntries)
+                                {
+                                    <tr class="cg-data-row">
+                                        <td>
+                                            <select class="cg-input" @bind="entry.HolderKind">
+                                                @foreach (var kind in ShareHolderKinds)
+                                                {
+                                                    <option value="@kind.Value">@kind.Label</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td>
+                                            @if (entry.HolderKind == ShareHolderKind.Self)
+                                            {
+                                                <span class="cg-subtitle">@_effectiveMember!.FullName</span>
+                                            }
+                                            else
+                                            {
+                                                <input class="cg-input" @bind="entry.HolderName" maxlength="200" placeholder="Name of share holder" />
+                                            }
+                                        </td>
+                                        <td>
+                                            <input class="cg-input cg-input-short@(Nin.IsInvalidEntry(entry.HolderNin) ? " cg-input-invalid" : "")"
+                                                   @bind="entry.HolderNin" @bind:event="oninput"
+                                                   maxlength="@Nin.Length" minlength="@Nin.Length" placeholder="10 characters" />
+                                        </td>
+                                        <td>
+                                            <select class="cg-input" @bind="entry.EntryKind">
+                                                @foreach (var kind in ShareEntryKinds)
+                                                {
+                                                    <option value="@kind.Value">@kind.Label</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td>
+                                            @if (IsTransactionKind(entry.EntryKind))
+                                            {
+                                                <UaeDateInput CssClass="@(IsOutsidePeriod(entry.TransactionDate) ? "cg-input-invalid" : null)"
+                                                              Value="entry.TransactionDate"
+                                                              ValueChanged="d => entry.TransactionDate = d" />
+                                                @if (IsOutsidePeriod(entry.TransactionDate))
+                                                {
+                                                    <span class="cg-field-error">Outside @PeriodLabel().</span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                @* A balance is a position on a day the period already fixes,
+                                                   not a transaction with a date of its own. *@
+                                                <span class="cg-subtitle">—</span>
+                                            }
+                                        </td>
+                                        <td><input class="cg-input cg-input-short" type="number" min="0" step="1" @bind="entry.NumberOfShares" /></td>
+                                        <td>
+                                            @if (IsTransactionKind(entry.EntryKind))
+                                            {
+                                                <input class="cg-input cg-input-short" type="number" min="0" step="0.0001" @bind="entry.Rate" />
+                                            }
+                                            else
+                                            {
+                                                <span class="cg-subtitle">—</span>
+                                            }
+                                        </td>
+                                        <td><button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveShareEntry(entry)">Remove</button></td>
+                                    </tr>
+                                }
+
+                                @if (_shareEntries.Count == 0)
+                                {
+                                    <tr><td colspan="8">
+                                        <div class="cg-empty-state">
+                                            <h3>Nothing recorded yet</h3>
+                                            <p>Use <b>+ Add entry</b> below for each purchase and sale in this period.</p>
+                                        </div>
+                                    </td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="cg-dfm-actions cg-dfm-actions-save">
+                        <button type="button" class="cg-action-btn cg-good" @onclick="AddShareEntry">+ Add entry</button>
+                    </div>
+                }
+
                 <div class="cg-action-bar">
                     <button type="button" class="cg-action-btn" @onclick="() => _step = Step.Capture1">← Back</button>
                     <div class="cg-action-bar-right">
@@ -662,6 +776,35 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if (ShowShareMovements && _shareEntries.Count > 0)
+                {
+                    <h2 class="cg-section-heading">Share transactions in @Branding.ParentHoldingCompany — @PeriodLabel()</h2>
+                    <div class="cg-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Share held by</th><th>Name</th><th>NIN</th><th>Entry</th>
+                                    <th>Date</th><th>No. of shares</th><th>Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in _shareEntries)
+                                {
+                                    <tr class="cg-data-row">
+                                        <td>@ShareHolderLabel(entry.HolderKind)</td>
+                                        <td>@(entry.HolderKind == ShareHolderKind.Self ? _effectiveMember!.FullName : entry.HolderName)</td>
+                                        <td class="mono">@(string.IsNullOrWhiteSpace(entry.HolderNin) ? "—" : entry.HolderNin)</td>
+                                        <td>@ShareEntryLabel(entry.EntryKind)</td>
+                                        <td class="mono">@(entry.TransactionDate is { } d ? d.ToString("dd/MM/yyyy") : "—")</td>
+                                        <td class="mono">@entry.NumberOfShares.ToString("N0")</td>
+                                        <td class="mono">@(entry.Rate is { } r ? r.ToString("N4") : "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
 
                 @if (_relativesHaveNin && _ninHolders.Count > 0)
                 {

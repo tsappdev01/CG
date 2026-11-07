@@ -90,6 +90,7 @@ IF OBJECT_ID('dbo.FamilyMembers', 'U') IS NULL
     OR OBJECT_ID('dbo.DocumentTypeRequirements', 'U') IS NULL
     OR OBJECT_ID('dbo.RelatedPartyCoiDeclarationDocuments', 'U') IS NULL
     OR OBJECT_ID('dbo.MemberDfmProfiles', 'U') IS NULL
+    OR OBJECT_ID('dbo.InsiderDeclarationShareEntries', 'U') IS NULL
 BEGIN
     -- RAISERROR substitutes constants and variables only, never a function call.
     DECLARE @db varchar(128) = DB_NAME();
@@ -2431,6 +2432,43 @@ AS
 BEGIN
     SET NOCOUNT ON;
     DELETE FROM dbo.RelatedPartyCoiDeclarationDocuments WHERE RelatedPartyCoiDeclarationId = @RelatedPartyCoiDeclarationId;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_InsiderDeclarationShareEntry_Insert
+    @InsiderDeclarationId int,
+    @HolderKind int,
+    @HolderName nvarchar(200) = NULL,
+    @HolderNin nvarchar(40) = NULL,
+    @EntryKind int,
+    @TransactionDate datetime2 = NULL,
+    @NumberOfShares bigint,
+    @Rate decimal(18, 4) = NULL,
+    @NewId int OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO dbo.InsiderDeclarationShareEntries
+        (InsiderDeclarationId, HolderKind, HolderName, HolderNin, EntryKind, TransactionDate, NumberOfShares, Rate)
+    VALUES
+        (@InsiderDeclarationId, @HolderKind, @HolderName, @HolderNin, @EntryKind, @TransactionDate, @NumberOfShares, @Rate);
+
+    SET @NewId = SCOPE_IDENTITY();
+END
+GO
+
+/*
+    Clears a declaration's share lines so the save can write them again, the way its relatives and
+    NIN holder grids are saved. Call it inside the same transaction as the header update: on its
+    own it empties the table for that declaration.
+*/
+CREATE OR ALTER PROCEDURE dbo.usp_InsiderDeclarationShareEntry_DeleteForDeclaration
+    @InsiderDeclarationId int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM dbo.InsiderDeclarationShareEntries WHERE InsiderDeclarationId = @InsiderDeclarationId;
 END
 GO
 

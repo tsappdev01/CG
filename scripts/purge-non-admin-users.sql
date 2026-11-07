@@ -208,6 +208,8 @@ BEGIN
     PRINT N'COMMITTED -- non-admin users and members deleted.';
 END;
 
--- Dropped AFTER the transaction closes. A DROP inside it is itself rolled back on a dry run,
--- leaving the tables behind for the rest of the session and failing the next run's CREATE.
-DROP TABLE #KeepUsers, #KeepMembers, #GoUsers, #GoMembers;
+-- Dropped AFTER the transaction closes, and only IF EXISTS. CREATE TABLE is itself
+-- transactional in SQL Server, so a dry run's ROLLBACK has already removed these four and an
+-- unguarded DROP then fails with "Cannot drop the table '#KeepUsers'". After a committed run
+-- they are still here and this clears them.
+DROP TABLE IF EXISTS #KeepUsers, #KeepMembers, #GoUsers, #GoMembers;

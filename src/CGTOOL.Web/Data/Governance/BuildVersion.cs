@@ -6,8 +6,9 @@ namespace CGTOOL.Web.Data.Governance;
 ///
 /// Read from the assembly's informational version, which the pipeline stamps with its own build
 /// number -- so what is on screen is the build that produced the files on disk, and cannot drift
-/// from it the way a hand-edited constant does. The format is the pipeline's `name:`, currently
-/// "ddMMyyyy v N", where N restarts each day.
+/// from it the way a hand-edited constant does. The format is "ddMMyy v HH:mm" -- the date and the
+/// time the build started, on UATWEB01's own clock, so two builds on the same day are told apart
+/// by when they ran rather than by a counter that means nothing on its own.
 ///
 /// A local build has no stamp and says so rather than inventing a number: "Local build" is the
 /// truth, and a developer who sees a date and a counter on their own machine will believe it.</summary>
@@ -31,8 +32,8 @@ public class BuildVersion
         var version = (plus >= 0 ? informational[..plus] : informational).Trim();
 
         // An unstamped build still carries the project's own version, which is 1.0.0 and says
-        // nothing. Anything the pipeline set is longer and holds a space, because its name is
-        // "ddMMyyyy v N".
+        // nothing. Anything the pipeline set is longer and holds a space, because it is
+        // "ddMMyy v HH:mm".
         return version.Length == 0 || version == "1.0.0" ? LocalBuildLabel : version;
     }
 }

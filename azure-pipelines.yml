@@ -9,10 +9,10 @@
 # would create it lives in this repository and the agent's checkout is the only copy of it on the
 # server. Set the ensureSite variable to false to turn that off.
 
-# The build number, which is also the version shown at the foot of the sidebar. $(Rev:r) is a
-# counter that restarts whenever the rest of the name changes -- with the date in front of it, that
-# means it restarts each day: "07112026 v 1", "07112026 v 2", then "08112026 v 1" tomorrow.
-name: $(Date:ddMMyyyy) v $(Rev:r)
+# A fallback only: the "Stamp the build version" step below replaces this with the real
+# "ddMMyy v HHmm" the moment it runs. It stays here because a run whose first step fails still
+# needs a name, and a date with a daily counter is a better one than nothing.
+name: $(Date:ddMMyy) v $(Rev:r)
 
 trigger:
   branches:
@@ -40,6 +40,32 @@ variables:
   aspNetCoreEnvironment: 'Production'
 
 steps:
+  # The version shown at the foot of the sidebar: the date and the time the build started, as
+  # "071126 v 20:31".
+  #
+  # Computed here rather than with $(Date:ddMMyy) and $(Hours)$(Minutes), which are UTC: this agent
+  # runs on UATWEB01, so Get-Date is Gulf Standard Time and the time on screen is the time on the
+  # clock of the person who pressed the button. UTC would read four hours early and look wrong
+  # without looking broken, which is worse.
+  #
+  # Two strings for one version because a build number may not contain a colon (Azure DevOps
+  # rejects " / : < > \ | ? @ *). The run is named "071126 v 2031" and the site shows
+  # "071126 v 20:31" -- same build, and the only difference is the character the run name cannot
+  # carry. InformationalVersion is a free-form string, so the colon is fine there.
+  - task: PowerShell@2
+    displayName: 'Stamp the build version'
+    inputs:
+      targetType: 'inline'
+      pwsh: false
+      script: |
+        $now = Get-Date
+        $display = '{0} v {1}' -f $now.ToString('ddMMyy'), $now.ToString('HH:mm')
+        $runName = '{0} v {1}' -f $now.ToString('ddMMyy'), $now.ToString('HHmm')
+
+        Write-Host "##vso[task.setvariable variable=buildVersionDisplay]$display"
+        Write-Host "##vso[build.updatebuildnumber]$runName"
+        Write-Host "Build version: $display"
+
   # useGlobalJson, not a pinned version here: global.json already names the SDK (10.0.402) and two
   # places saying which SDK to use is one place to forget.
   - task: UseDotNet@2
@@ -57,15 +83,15 @@ steps:
   # The cost is size: roughly 130MB per deploy instead of 30, which matters on a disk already at
   # 95%. The gain is that a runtime upgrade is a redeploy rather than a server change.
   #
-  # InformationalVersion carries the build number into the assembly, which is where the site reads
+  # InformationalVersion carries the build version into the assembly, which is where the site reads
   # it from to show "Build version: ..." at the foot of the sidebar. Stamped at publish rather than
-  # kept in the csproj, so the number on screen is the one that produced the files on disk and
+  # kept in the csproj, so the version on screen is the one that produced the files on disk and
   # cannot drift from them. InformationalVersion and not Version: Version must be a valid version
-  # number and "07112026 v 3" is not one.
+  # number and "071126 v 20:31" is not one.
   - script: >-
       dotnet publish "$(projectPath)" --configuration $(buildConfiguration) --no-restore
       --self-contained --runtime win-x64 --output "$(publishPath)"
-      /p:InformationalVersion="$(Build.BuildNumber)"
+      /p:InformationalVersion="$(buildVersionDisplay)"
     displayName: 'Publish (self-contained)'
 
   # Before the deploy, not by hand beforehand: the script that creates the site lives in this

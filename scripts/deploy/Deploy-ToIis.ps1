@@ -40,7 +40,19 @@ if (-not (Test-Path $SitePath)) { New-Item -ItemType Directory -Path $SitePath -
 
 $excludeDirs  = @((Join-Path $SitePath 'wwwroot\uploads'))
 $excludeFiles = @()
-if (-not $OverwriteAppSettings) { $excludeFiles += (Join-Path $SitePath 'appsettings.json') }
+# Only exclude it when the server already HAS one. On a brand-new site folder there is nothing
+# to protect, and excluding it unconditionally means the very first deploy to a new site copies
+# no appsettings.json at all -- the app then starts with no connection string and no Entra
+# settings, which looks like a broken build rather than a missing file.
+$destinationAppSettings = Join-Path $SitePath 'appsettings.json'
+if (-not $OverwriteAppSettings -and (Test-Path $destinationAppSettings)) {
+    $excludeFiles += $destinationAppSettings
+}
+elseif (-not $OverwriteAppSettings) {
+    Write-Host "No appsettings.json on the server yet, so the build's copy is being deployed." `
+               "Put the real connection string and secrets in it (or better, in the app pool's" `
+               "environment variables) -- later deploys will leave it alone."
+}
 
 Write-Host "Stopping app pool '$AppPoolName'..."
 if ((Get-WebAppPoolState -Name $AppPoolName).Value -ne 'Stopped') {

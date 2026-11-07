@@ -2701,6 +2701,18 @@ button.cg-doc-chip:disabled { cursor: default; opacity: 0.6; text-decoration: no
 .cg-input-invalid { border-color: var(--cg-critical); background: var(--cg-critical-tint); }
 .cg-field-error { display: block; margin-top: 4px; font-size: 11.5px; color: var(--cg-critical); }
 
+/* The other half of that pair: a box holding a whole, well-formed value, and the tick confirming
+   it. Only fields with a fixed shape get this -- a NIN is ten characters or it is not one, so the
+   tick is a fact rather than praise. Fields that simply hold free text stay unmarked. */
+.cg-input-valid { border-color: var(--cg-good); background: var(--cg-good-tint); }
+.cg-field-ok {
+    display: block;
+    margin-top: 4px;
+    font-size: 11.5px;
+    font-weight: 650;
+    color: var(--cg-good);
+}
+
 /* Marks a field the form will not be submitted without. aria-hidden on the star itself: the input
    carries aria-required, and a screen reader reading "asterisk" after the label says less. */
 .cg-required { color: var(--cg-critical); font-weight: 700; }

@@ -142,14 +142,17 @@ public partial class SubmitInsiderDeclaration
         public string Additional { get; set; } = string.Empty;
     }
 
-    // Functional Spec §3.1/§8: alphanumeric, minimum 10 characters. The rule itself lives in Nin,
-    // so My Register enforces the same one when it captures a relative's NIN.
+    // Alphanumeric, exactly 10 characters. The rule itself lives in Nin, so My Register enforces
+    // the same one when it captures a relative's NIN.
     private static bool IsValidNin(string nin) => Nin.IsValid(nin);
 
     /// <summary>Marks a box that holds something that is not a NIN. Empty is not marked: the person
     /// may simply not have got there yet, and a form that turns red before it is filled in is
     /// noise.</summary>
-    private static string NinFieldClass(string? nin) => Nin.IsInvalidEntry(nin) ? " cg-input-invalid" : string.Empty;
+    private static string NinFieldClass(string? nin) =>
+        Nin.IsInvalidEntry(nin) ? " cg-input-invalid"
+        : Nin.IsComplete(nin) ? " cg-input-valid"
+        : string.Empty;
 
     protected override async Task OnParametersSetAsync() => await LoadAsync();
 

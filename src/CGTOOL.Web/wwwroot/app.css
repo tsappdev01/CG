@@ -3510,6 +3510,24 @@ button.cg-appbar-user {
 .cg-modal-body { padding: 16px 22px; overflow: auto; }
 .cg-modal-foot { padding: 14px 22px; border-top: 1px solid var(--cg-line); display: flex; justify-content: flex-end; gap: 10px; }
 
+/* The undertakings a declarant confirms before filing, and the signature block beneath them --
+   the part of the printed form a pen went to. Numbered because the form numbers them, and people
+   refer to them by number. */
+.cg-undertakings { margin: 0 0 16px; padding-left: 22px; }
+.cg-undertakings li { margin-bottom: 9px; font-size: 13.5px; line-height: 1.5; }
+.cg-undertakings li:last-child { margin-bottom: 0; }
+.cg-signature-block {
+    display: flex; flex-wrap: wrap; gap: 10px 32px; margin: 0 0 16px;
+    padding: 12px 14px; border: 1px solid var(--cg-line); border-radius: var(--cg-radius-sm);
+    background: var(--cg-surface-muted, rgba(13, 27, 51, .03));
+}
+.cg-signature-block div { display: flex; flex-direction: column; gap: 2px; }
+.cg-signature-block dt { font-size: 11.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--cg-ink-muted); }
+.cg-signature-block dd { margin: 0; font-size: 14px; font-weight: 600; }
+/* Clear of the footer rule: a toggle touching the line above the Submit button reads as part of
+   the button bar rather than as the thing the button is waiting for. */
+.cg-undertakings-confirm { margin-bottom: 6px; }
+
 /* ---------- Profile picker ---------- */
 .cg-profile-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .cg-profile-form { margin: 0; }

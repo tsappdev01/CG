@@ -316,6 +316,15 @@ public partial class SubmitInsiderDeclaration
     private bool _savingDraft;
     private bool _agreeConfirmed;
 
+    /// <summary>The undertakings window, and the confirmation inside it. Two separate
+    /// acknowledgements because they say different things: the first that what is written down is
+    /// true, the second that the declarant will do what the form commits them to. The printed form
+    /// asks both, and one toggle standing for both would be a weaker record than the paper it
+    /// replaces.</summary>
+    private bool _showUndertakings;
+
+    private bool _undertakingsConfirmed;
+
     // Functional Spec §3.2/§4 "Relatives option set", used consistently by both grids.
     private static readonly (RelativeRelationship Value, string Label)[] RelativeOptions =
     [
@@ -2033,6 +2042,8 @@ public partial class SubmitInsiderDeclaration
 
         _justAutoSaved = true;
         _agreeConfirmed = false;
+        _undertakingsConfirmed = false;
+        _showUndertakings = false;
         _step = Step.Review;
     }
 
@@ -2268,12 +2279,14 @@ public partial class SubmitInsiderDeclaration
             }
             catch (SqlException ex) when (ex.Number == 50011)
             {
+                _showUndertakings = false;
                 Toasts.ShowError("This Insider Trading declaration was already submitted.");
                 await LoadAsync();
                 return;
             }
             catch (Exception ex)
             {
+                _showUndertakings = false;
                 Toasts.ShowError(SaveFailureMessage(ex));
                 return;
             }

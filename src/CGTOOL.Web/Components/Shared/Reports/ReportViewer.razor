@@ -2,6 +2,7 @@
 @using CGTOOL.Web.Data.Reports
 @inject IJSRuntime JS
 @inject IWebHostEnvironment Env
+@inject Branding Branding
 
 @* The chrome every report is read through: the filter line, the three ways out (print, PDF,
    Excel), the paginated sheets themselves, and the viewer controls under them.
@@ -34,7 +35,7 @@
                                 <img src="images/di-logo-en-transparent.png" alt="DIP Holding PLC" />
                             </div>
                             <div class="cg-report-headline">
-                                <div class="cg-report-kicker">Corporate Governance Tool</div>
+                                <div class="cg-report-kicker">@Branding.ParentHoldingCompany</div>
                                 <h2>@Report.Title</h2>
                             </div>
                             <dl class="cg-report-meta">
@@ -369,7 +370,8 @@
     }
 
     private Task DownloadPdfAsync() => DownloadAsync(
-        () => ReportPdfBuilder.Build(Report, Path.Combine(Env.WebRootPath, "images", "di-logo-en-transparent.png")),
+        () => ReportPdfBuilder.Build(Report, Path.Combine(Env.WebRootPath, "images", "di-logo-en-transparent.png"),
+            Branding.ParentHoldingCompany),
         Report.FileName("pdf"),
         "application/pdf");
 

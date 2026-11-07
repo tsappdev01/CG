@@ -18,6 +18,7 @@ public static class InsiderDeclarationPdfBuilder
         using var document = new PdfDocument();
         var logo = logoFilePath is not null && File.Exists(logoFilePath) ? XImage.FromFile(logoFilePath) : null;
         var writer = new DeclarationPdfWriter(document, logo,
+            parentHoldingCompany,
             "Insider Trading Declaration — Confirmation",
             "Confidential — for the intended recipient only. This is a system-generated record of your Insider Trading declaration.");
 

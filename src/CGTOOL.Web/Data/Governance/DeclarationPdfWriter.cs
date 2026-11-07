@@ -4,7 +4,8 @@ using PdfSharp.Pdf;
 
 namespace CGTOOL.Web.Data.Governance;
 
-/// <summary>The page furniture every declaration PDF shares: the navy/gold header band, the footer
+/// <summary>The page furniture every declaration PDF shares: the navy/gold header band naming the
+/// group these documents come from, the footer
 /// disclaimer with "Page X of N", and the section headings, label/value rows and data tables the
 /// documents are built from. It owns pagination -- the vertical cursor, and starting a new page
 /// whenever content would run into the footer band.
@@ -15,6 +16,7 @@ namespace CGTOOL.Web.Data.Governance;
 internal class DeclarationPdfWriter(
     PdfDocument document,
     XImage? logo,
+    string brandName,
     string documentTitle,
     string footerNote,
     PageOrientation orientation = PageOrientation.Portrait)
@@ -503,12 +505,12 @@ internal class DeclarationPdfWriter(
                 var logoHeight = 32.0;
                 var logoWidth = logoHeight * logo.PixelWidth / logo.PixelHeight;
                 gfx.DrawImage(logo, Margin, (HeaderHeight - logoHeight) / 2, logoWidth, logoHeight);
-                gfx.DrawString("Corporate Governance Tool", _title, new XSolidBrush(BrandOnDark), Margin + logoWidth + 16, 34);
+                gfx.DrawString(brandName, _title, new XSolidBrush(BrandOnDark), Margin + logoWidth + 16, 34);
                 gfx.DrawString(documentTitle, _subtitle, XBrushes.White, Margin + logoWidth + 16, 52);
             }
             else
             {
-                gfx.DrawString("Corporate Governance Tool", _title, new XSolidBrush(BrandOnDark), Margin, 34);
+                gfx.DrawString(brandName, _title, new XSolidBrush(BrandOnDark), Margin, 34);
                 gfx.DrawString(documentTitle, _subtitle, XBrushes.White, Margin, 52);
             }
 

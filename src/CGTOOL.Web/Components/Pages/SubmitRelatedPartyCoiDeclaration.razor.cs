@@ -1916,7 +1916,8 @@ public partial class SubmitRelatedPartyCoiDeclaration
                     _effectiveMember,
                     _run,
                     File.Exists(logoPath) ? logoPath : null,
-                    SignatureFilePath(declaration.SignaturePath));
+                    SignatureFilePath(declaration.SignaturePath),
+                    Branding.ParentHoldingCompany);
 
                 await SqlMail.SendWithFileAttachmentAsync(_effectiveMember.Email, subject, body, pdf,
                     RelatedPartyCoiDeclarationPdfBuilder.FileName(_effectiveMember, _run), ccEmails: confirmCc);

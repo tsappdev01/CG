@@ -16,7 +16,7 @@ namespace CGTOOL.Web.Data.Reports;
 /// solved a second time.</summary>
 public static class ReportPdfBuilder
 {
-    public static byte[] Build(ReportDocument report, string? logoFilePath)
+    public static byte[] Build(ReportDocument report, string? logoFilePath, string brandName)
     {
         using var document = new PdfDocument();
         document.Info.Title = report.Title;
@@ -27,6 +27,7 @@ public static class ReportPdfBuilder
         var writer = new DeclarationPdfWriter(
             document,
             logo,
+            brandName,
             report.Title,
             $"Confidential — for internal compliance use only. Prepared by {report.PreparedBy} on {report.GeneratedAt:dd MMM yyyy HH:mm}.",
             // Landscape, because these are wide tables. The Users Report alone runs to eight

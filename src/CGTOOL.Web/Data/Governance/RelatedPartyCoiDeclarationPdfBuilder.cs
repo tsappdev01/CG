@@ -28,11 +28,13 @@ public static class RelatedPartyCoiDeclarationPdfBuilder
         Member member,
         DeclarationCycleRun run,
         string? logoFilePath,
-        string? signatureFilePath)
+        string? signatureFilePath,
+        string parentHoldingCompany)
     {
         using var document = new PdfDocument();
         var logo = logoFilePath is not null && File.Exists(logoFilePath) ? XImage.FromFile(logoFilePath) : null;
         var writer = new DeclarationPdfWriter(document, logo,
+            parentHoldingCompany,
             "Related Party & Conflict of Interest Declaration",
             "Confidential — for the intended recipient only. This is a system-generated record of your Related Party & COI declaration.");
 

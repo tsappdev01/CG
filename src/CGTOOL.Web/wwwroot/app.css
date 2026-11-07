@@ -2653,6 +2653,34 @@ button.cg-doc-chip:disabled { cursor: default; opacity: 0.6; text-decoration: no
 .cg-doc-card-source .cg-doc-card-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .cg-doc-card-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
 .cg-doc-card-fields .cg-field-wide { grid-column: 1 / -1; }
+
+/* A card with no neighbour takes the row and puts its fields in the space the second card would
+   have had, instead of stacking them under a narrow upload box with half the step left blank.
+   Happens whenever the Document Center leaves one document on this declaration.
+
+   :only-child rather than counting in C#: the rule is about what the row looks like, and with two
+   cards there is no space to move anything into, so nothing changes. Everything but the fields
+   stacks in the left column, which keeps the layout right whatever else the card renders -- a
+   progress bar, an expiry warning -- without naming each one. */
+.cg-doc-cards > .cg-doc-card:only-child {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+    /* Enough explicit rows for a card to fill and then some, so the fields can span to -1. Unused
+       ones collapse; min-content keeps the left column's items at their own heights instead of
+       being stretched to match the taller fields beside them. */
+    grid-template-rows: repeat(8, min-content);
+    column-gap: 28px;
+    row-gap: 12px;
+    align-content: start;
+}
+.cg-doc-cards > .cg-doc-card:only-child > * { grid-column: 1; align-self: start; }
+.cg-doc-cards > .cg-doc-card:only-child > .cg-doc-card-fields { grid-column: 2; grid-row: 1 / -1; }
+
+@media (max-width: 900px) {
+    .cg-doc-cards > .cg-doc-card:only-child { grid-template-columns: minmax(0, 1fr); }
+    .cg-doc-cards > .cg-doc-card:only-child > .cg-doc-card-fields { grid-column: 1; grid-row: auto; }
+}
 .cg-dropzone {
     border: 2px dashed var(--cg-line-strong); border-radius: 12px;
     padding: 22px; text-align: center; display: flex; flex-direction: column; gap: 6px; align-items: center;

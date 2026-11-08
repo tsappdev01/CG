@@ -1,4 +1,5 @@
 using CGTOOL.Web.Data.Governance;
+using Microsoft.Net.Http.Headers;
 
 namespace CGTOOL.Web.Components.Account;
 
@@ -60,14 +61,25 @@ internal static class DocumentEndpoints
 
             context.Response.Headers.CacheControl = "private, max-age=0, must-revalidate";
 
-            // Inline so the existing previews (an <img> for a scan, an <iframe> for a PDF) keep
-            // working; the file name is still carried for a download. Content-Type is the one
-            // recorded at upload, which came from an allow-list, so this cannot be talked into
-            // serving something as text/html.
+            // Inline, with the name still on it.
+            //
+            // This said "inline" before and was not: handing Results.File a download name is what
+            // makes it send Content-Disposition: attachment, so every preview got a file the
+            // browser wanted to save and an <iframe> that rendered blank. Writing the header
+            // directly keeps the name for anyone who does download it without telling the browser
+            // to. SetHttpFileName encodes it both ways, so a card named in Arabic survives as
+            // filename* rather than becoming a header the name could be smuggled into.
+            //
+            // Content-Type is the one recorded at upload, which came from an allow-list, so this
+            // cannot be talked into serving something as text/html.
+            var disposition = new ContentDispositionHeaderValue("inline");
+            disposition.SetHttpFileName(descriptor.FileName);
+            context.Response.Headers.ContentDisposition = disposition.ToString();
+
             return Results.File(
                 document.Stream,
                 descriptor.ContentType,
-                descriptor.FileName,
+                fileDownloadName: null,
                 enableRangeProcessing: true);
         });
 

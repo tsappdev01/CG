@@ -1363,10 +1363,17 @@ public partial class SubmitInsiderDeclaration
         // An added type stores Kind = Other with its DocumentTypeId set, so "not Other" would have
         // skipped every document the Document Centre added. Only a free-form Other -- no type at
         // all -- is left out, because this screen has no slot that is certainly the one meant.
+        //
+        // Selected by BlobId, which is where documents live now. This asked for a non-empty
+        // FilePath, from when they were files under wwwroot -- and CopyIntoDeclaration below
+        // refuses anything without a BlobId, so the query and the copier were asking for
+        // opposite things and the pull could never bring anything across. A member with their
+        // Emirates ID plainly on screen in My Workspace was told this declaration had nothing
+        // to load.
         var documents = await db.MemberDocuments.AsNoTracking()
             .Where(d => d.MemberId == _effectiveMember.Id
                         && (d.Kind != MemberDocumentKind.Other || d.DocumentTypeId != null)
-                        && d.FilePath != null && d.FilePath != "")
+                        && d.BlobId != null)
             .ToListAsync();
 
         // An expired document is not offered: bringing it across only to be stopped at Proceed to

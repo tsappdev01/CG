@@ -85,14 +85,23 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// numbers and expiry dates are not demanded: the Document Center says a document is wanted,
     /// not which of its fields someone three months from now will consider mandatory.</summary>
     private bool DocumentsComplete =>
-        RequestedDocumentTypes.Where(IsRequired)
-            .All(t => !string.IsNullOrWhiteSpace(DocumentFor(t.Id).FilePath));
+        RequestedDocumentTypes.Where(IsRequired).All(t => IsAttached(DocumentFor(t.Id)));
 
     private List<string> MissingRequiredDocuments() =>
         RequestedDocumentTypes.Where(IsRequired)
-            .Where(t => string.IsNullOrWhiteSpace(DocumentFor(t.Id).FilePath))
+            .Where(t => !IsAttached(DocumentFor(t.Id)))
             .Select(t => t.Name)
             .ToList();
+
+    /// <summary>Whether a slot actually holds a document.
+    ///
+    /// Blob first, because that is where an uploaded file goes: the upload sets BlobId and clears
+    /// FilePath, and this asked only about FilePath -- so attaching a required document left the
+    /// declaration still reporting it missing, and the member could not submit the thing they had
+    /// just uploaded. The path is still accepted for anything written before documents moved into
+    /// the database.</summary>
+    private static bool IsAttached(RelatedPartyCoiDeclarationDocument row) =>
+        DocumentUrl.Exists(row.BlobId, row.FilePath);
 
     private async Task OnDeclarationDocumentSelectedAsync(DocumentType type, InputFileChangeEventArgs e)
     {
@@ -168,6 +177,9 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
     private void RemoveDeclarationDocument(RelatedPartyCoiDeclarationDocument row)
     {
+        // The blob too. Clearing only the path left the document attached by the reference that
+        // actually holds it, so "remove" removed nothing an upload had put there.
+        row.BlobId = null;
         row.FilePath = null;
         row.OriginalFileName = null;
     }
@@ -218,15 +230,18 @@ public partial class SubmitRelatedPartyCoiDeclaration
         if (_effectiveMember is null) return 0;
 
         await using var db = await DbFactory.CreateDbContextAsync();
+        // By blob, which is where My Workspace keeps them. Asking for a FilePath found only
+        // documents written before they moved into the database, which by now is none of them --
+        // so a member with their Emirates ID plainly on file was told nothing matched.
         var onFile = await db.MemberDocuments.AsNoTracking()
-            .Where(d => d.MemberId == _effectiveMember.Id && d.FilePath != null)
+            .Where(d => d.MemberId == _effectiveMember.Id && d.BlobId != null)
             .ToListAsync();
 
         var filled = 0;
         foreach (var type in RequestedDocumentTypes)
         {
             var row = DocumentFor(type.Id);
-            if (!string.IsNullOrWhiteSpace(row.FilePath)) continue;
+            if (IsAttached(row)) continue;
 
             // Matched the way the document is identified: an added type by its id, a built-in by
             // the kind its capture wiring uses.
@@ -236,7 +251,11 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
             if (match is null) continue;
 
-            row.FilePath = match.FilePath;
+            // The same blob row, not a copy: a declaration freezes the evidence as it was at
+            // submission, and replacing the workspace document writes a new blob and repoints only
+            // the workspace row.
+            row.BlobId = match.BlobId;
+            row.FilePath = null;
             row.OriginalFileName = match.OriginalFileName;
             row.DocumentNumber = match.DocumentNumber;
             row.ExpiryDate = match.ExpiryDate;

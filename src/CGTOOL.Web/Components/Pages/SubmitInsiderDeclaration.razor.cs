@@ -277,6 +277,11 @@ public partial class SubmitInsiderDeclaration
     // intentionally not wired up -- see the field comments on InsiderDeclaration for why -- so these
     // "Captured Information" fields are entered manually alongside the upload.
     private string? _emiratesIdPath;
+
+    /// <summary>Where the file actually is. _emiratesIdPath above is only what the page
+    /// renders it from, which for anything uploaded since documents moved into the database is
+    /// "/documents/{id}" derived from this.</summary>
+    private int? _emiratesIdBlobId;
     private string _emiratesIdNumber = string.Empty;
     private string _emiratesIdNameOnCard = string.Empty;
     private DateTime? _emiratesIdExpiryDate;
@@ -284,6 +289,11 @@ public partial class SubmitInsiderDeclaration
     private int _emiratesIdUploadProgress;
 
     private string? _passportPath;
+
+    /// <summary>Where the file actually is. _passportPath above is only what the page
+    /// renders it from, which for anything uploaded since documents moved into the database is
+    /// "/documents/{id}" derived from this.</summary>
+    private int? _passportBlobId;
     private string _passportNumber = string.Empty;
     private DateTime? _passportExpiryDate;
     private string _passportIssuingCountry = string.Empty;
@@ -291,6 +301,11 @@ public partial class SubmitInsiderDeclaration
     private int _passportUploadProgress;
 
     private string? _tradeLicencePath;
+
+    /// <summary>Where the file actually is. _tradeLicencePath above is only what the page
+    /// renders it from, which for anything uploaded since documents moved into the database is
+    /// "/documents/{id}" derived from this.</summary>
+    private int? _tradeLicenceBlobId;
     private string _tradeLicenceNumber = string.Empty;
     private string _tradeLicenceLegalName = string.Empty;
     private string _tradeLicenceIssuingAuthority = string.Empty;
@@ -299,6 +314,11 @@ public partial class SubmitInsiderDeclaration
     private int _tradeLicenceUploadProgress;
 
     private string? _otherDocumentPath;
+
+    /// <summary>Where the file actually is. _otherDocumentPath above is only what the page
+    /// renders it from, which for anything uploaded since documents moved into the database is
+    /// "/documents/{id}" derived from this.</summary>
+    private int? _otherDocumentBlobId;
     private bool _uploadingOtherDocument;
     private int _otherDocumentUploadProgress;
 
@@ -524,11 +544,12 @@ public partial class SubmitInsiderDeclaration
         _emiratesIdExpiryDate = prior.EmiratesIdExpiryDate;
         if (prior.EmiratesIdExpiryDate is { } eidExpiry && eidExpiry.Date >= today)
         {
-            _emiratesIdPath = prior.EmiratesIdPath;
+            _emiratesIdBlobId = prior.EmiratesIdBlobId;
+            _emiratesIdPath = DocumentUrl.For(prior.EmiratesIdBlobId, prior.EmiratesIdPath);
         }
         else
         {
-            _emiratesIdExpiredNeedsReupload = !string.IsNullOrEmpty(prior.EmiratesIdPath);
+            _emiratesIdExpiredNeedsReupload = DocumentUrl.Exists(prior.EmiratesIdBlobId, prior.EmiratesIdPath);
         }
 
         _passportNumber = prior.PassportNumber ?? string.Empty;
@@ -536,11 +557,12 @@ public partial class SubmitInsiderDeclaration
         _passportExpiryDate = prior.PassportExpiryDate;
         if (prior.PassportExpiryDate is { } passportExpiry && passportExpiry.Date >= today)
         {
-            _passportPath = prior.PassportPath;
+            _passportBlobId = prior.PassportBlobId;
+            _passportPath = DocumentUrl.For(prior.PassportBlobId, prior.PassportPath);
         }
         else
         {
-            _passportExpiredNeedsReupload = !string.IsNullOrEmpty(prior.PassportPath);
+            _passportExpiredNeedsReupload = DocumentUrl.Exists(prior.PassportBlobId, prior.PassportPath);
         }
 
         _tradeLicenceNumber = prior.TradeLicenceNumber ?? string.Empty;
@@ -549,11 +571,12 @@ public partial class SubmitInsiderDeclaration
         _tradeLicenceExpiryDate = prior.TradeLicenceExpiryDate;
         if (prior.TradeLicenceExpiryDate is { } licenceExpiry && licenceExpiry.Date >= today)
         {
-            _tradeLicencePath = prior.TradeLicencePath;
+            _tradeLicenceBlobId = prior.TradeLicenceBlobId;
+            _tradeLicencePath = DocumentUrl.For(prior.TradeLicenceBlobId, prior.TradeLicencePath);
         }
         else
         {
-            _tradeLicenceExpiredNeedsReupload = !string.IsNullOrEmpty(prior.TradeLicencePath);
+            _tradeLicenceExpiredNeedsReupload = DocumentUrl.Exists(prior.TradeLicenceBlobId, prior.TradeLicencePath);
         }
 
         if (_emiratesIdExpiredNeedsReupload || _passportExpiredNeedsReupload || _tradeLicenceExpiredNeedsReupload)
@@ -627,23 +650,27 @@ public partial class SubmitInsiderDeclaration
         _relativesHoldShares = declaration.RelativesHoldShares;
         _holdsSharesInDI = declaration.HoldsShares || declaration.RelativesHoldShares;
 
-        _emiratesIdPath = declaration.EmiratesIdPath;
+        _emiratesIdBlobId = declaration.EmiratesIdBlobId;
+        _emiratesIdPath = DocumentUrl.For(declaration.EmiratesIdBlobId, declaration.EmiratesIdPath);
         _emiratesIdNumber = declaration.EmiratesIdNumber ?? string.Empty;
         _emiratesIdNameOnCard = declaration.EmiratesIdNameOnCard ?? string.Empty;
         _emiratesIdExpiryDate = declaration.EmiratesIdExpiryDate;
 
-        _passportPath = declaration.PassportPath;
+        _passportBlobId = declaration.PassportBlobId;
+        _passportPath = DocumentUrl.For(declaration.PassportBlobId, declaration.PassportPath);
         _passportNumber = declaration.PassportNumber ?? string.Empty;
         _passportExpiryDate = declaration.PassportExpiryDate;
         _passportIssuingCountry = declaration.PassportIssuingCountry ?? string.Empty;
 
-        _tradeLicencePath = declaration.TradeLicencePath;
+        _tradeLicenceBlobId = declaration.TradeLicenceBlobId;
+        _tradeLicencePath = DocumentUrl.For(declaration.TradeLicenceBlobId, declaration.TradeLicencePath);
         _tradeLicenceNumber = declaration.TradeLicenceNumber ?? string.Empty;
         _tradeLicenceLegalName = declaration.TradeLicenceLegalName ?? string.Empty;
         _tradeLicenceIssuingAuthority = declaration.TradeLicenceIssuingAuthority ?? string.Empty;
         _tradeLicenceExpiryDate = declaration.TradeLicenceExpiryDate;
 
-        _otherDocumentPath = declaration.OtherDocumentPath;
+        _otherDocumentBlobId = declaration.OtherDocumentBlobId;
+        _otherDocumentPath = DocumentUrl.For(declaration.OtherDocumentBlobId, declaration.OtherDocumentPath);
 
         _addedDocuments.Clear();
         _addedDocuments.AddRange(await db.InsiderDeclarationDocuments.AsNoTracking()
@@ -873,19 +900,19 @@ public partial class SubmitInsiderDeclaration
     }
 
     private Task OnEmiratesIdSelectedAsync(InputFileChangeEventArgs e) => UploadIdDocumentAsync(e, "emirates-id",
-        path => _emiratesIdPath = path, () => _uploadingEmiratesId = false, () => _uploadingEmiratesId = true,
+        id => { _emiratesIdBlobId = id; _emiratesIdPath = DocumentUrl.For(id, null); }, () => _uploadingEmiratesId = false, () => _uploadingEmiratesId = true,
         p => _emiratesIdUploadProgress = p, AnalyzeAndFillEmiratesIdAsync);
 
     private Task OnPassportSelectedAsync(InputFileChangeEventArgs e) => UploadIdDocumentAsync(e, "passport",
-        path => _passportPath = path, () => _uploadingPassport = false, () => _uploadingPassport = true,
+        id => { _passportBlobId = id; _passportPath = DocumentUrl.For(id, null); }, () => _uploadingPassport = false, () => _uploadingPassport = true,
         p => _passportUploadProgress = p, AnalyzeAndFillPassportAsync);
 
     private Task OnTradeLicenceSelectedAsync(InputFileChangeEventArgs e) => UploadIdDocumentAsync(e, "trade-licence",
-        path => _tradeLicencePath = path, () => _uploadingTradeLicence = false, () => _uploadingTradeLicence = true,
+        id => { _tradeLicenceBlobId = id; _tradeLicencePath = DocumentUrl.For(id, null); }, () => _uploadingTradeLicence = false, () => _uploadingTradeLicence = true,
         p => _tradeLicenceUploadProgress = p, AnalyzeAndFillTradeLicenceAsync);
 
     private Task OnOtherDocumentSelectedAsync(InputFileChangeEventArgs e) => UploadIdDocumentAsync(e, "other-document",
-        path => _otherDocumentPath = path, () => _uploadingOtherDocument = false, () => _uploadingOtherDocument = true,
+        id => { _otherDocumentBlobId = id; _otherDocumentPath = DocumentUrl.For(id, null); }, () => _uploadingOtherDocument = false, () => _uploadingOtherDocument = true,
         p => _otherDocumentUploadProgress = p, onSavedAsync: null);
 
     private const int UploadChunkBytes = 64 * 1024;
@@ -893,7 +920,7 @@ public partial class SubmitInsiderDeclaration
     // Functional Spec §3.3: JPG, PNG, or PDF only, 1 MB max. Copies in chunks (rather than a single
     // CopyToAsync) purely so onProgress/StateHasChanged can report percent-complete back to the
     // progress bar in the UI as the upload streams in over SignalR.
-    private async Task UploadIdDocumentAsync(InputFileChangeEventArgs e, string kind, Action<string> onSaved, Action onDone, Action onStart, Action<int> onProgress, Func<string, Task>? onSavedAsync)
+    private async Task UploadIdDocumentAsync(InputFileChangeEventArgs e, string kind, Action<int> onSaved, Action onDone, Action onStart, Action<int> onProgress, Func<byte[], Task>? onSavedAsync)
     {
         if (_effectiveMember is null) return;
 
@@ -921,39 +948,33 @@ public partial class SubmitInsiderDeclaration
         StateHasChanged();
         try
         {
-            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "insider-declarations");
-            Directory.CreateDirectory(uploadsDir);
-
-            foreach (var existing in Directory.GetFiles(uploadsDir, $"{_effectiveMember.Id}-{kind}.*"))
-            {
-                File.Delete(existing);
-            }
-
-            var fileName = $"{_effectiveMember.Id}-{kind}{extension}";
-            var filePath = Path.Combine(uploadsDir, fileName);
-
+            // Still chunked, still only so the progress bar can move -- but into memory now, and
+            // from there into dbo.DocumentBlobs rather than onto the web server's disk.
+            using var buffer = new MemoryStream();
             await using (var stream = file.OpenReadStream(MaxIdUploadBytes))
-            await using (var target = File.Create(filePath))
             {
-                var buffer = new byte[UploadChunkBytes];
+                var chunk = new byte[UploadChunkBytes];
                 long totalRead = 0;
                 int read;
-                while ((read = await stream.ReadAsync(buffer)) > 0)
+                while ((read = await stream.ReadAsync(chunk)) > 0)
                 {
-                    await target.WriteAsync(buffer.AsMemory(0, read));
+                    await buffer.WriteAsync(chunk.AsMemory(0, read));
                     totalRead += read;
-                    onProgress((int)(totalRead * 100 / file.Size));
+                    onProgress(file.Size == 0 ? 100 : (int)(totalRead * 100 / file.Size));
                     StateHasChanged();
                 }
             }
 
+            var content = buffer.ToArray();
+            var blobId = await Documents.SaveAsync(content, file.Name, file.ContentType, Client.IpAddress);
+
             onProgress(100);
-            onSaved($"/uploads/insider-declarations/{fileName}");
+            onSaved(blobId);
             Toasts.ShowSuccess("File uploaded.");
 
             if (onSavedAsync is not null)
             {
-                await onSavedAsync(filePath);
+                await onSavedAsync(content);
             }
         }
         finally
@@ -967,7 +988,7 @@ public partial class SubmitInsiderDeclaration
     // DocumentIntelligence isn't configured (manual entry, as before) or when the model can't read the
     // file -- OCR on a photographed ID is never guaranteed, and every field it does fill stays a plain
     // editable input, so the declarant always has the final say before submitting.
-    private async Task AnalyzeAndFillEmiratesIdAsync(string filePath) => await AnalyzeAndFillAsync(filePath, extraction =>
+    private async Task AnalyzeAndFillEmiratesIdAsync(byte[] content) => await AnalyzeAndFillAsync(content, extraction =>
     {
         if (!string.IsNullOrWhiteSpace(extraction.DocumentNumber)) _emiratesIdNumber = extraction.DocumentNumber;
         var name = string.Join(" ", new[] { extraction.FirstName, extraction.LastName }.Where(s => !string.IsNullOrWhiteSpace(s)));
@@ -975,7 +996,7 @@ public partial class SubmitInsiderDeclaration
         if (extraction.DateOfExpiration is not null) _emiratesIdExpiryDate = extraction.DateOfExpiration;
     });
 
-    private async Task AnalyzeAndFillPassportAsync(string filePath) => await AnalyzeAndFillAsync(filePath, extraction =>
+    private async Task AnalyzeAndFillPassportAsync(byte[] content) => await AnalyzeAndFillAsync(content, extraction =>
     {
         if (!string.IsNullOrWhiteSpace(extraction.DocumentNumber)) _passportNumber = extraction.DocumentNumber;
         if (extraction.DateOfExpiration is not null) _passportExpiryDate = extraction.DateOfExpiration;
@@ -991,35 +1012,37 @@ public partial class SubmitInsiderDeclaration
     private bool _rereadingPassport;
     private bool _rereadingTradeLicence;
 
-    private Task ReadEmiratesIdAgainAsync() => ReadAgainAsync(_emiratesIdPath,
+    private Task ReadEmiratesIdAgainAsync() => ReadAgainAsync(_emiratesIdBlobId,
         v => _rereadingEmiratesId = v, AnalyzeAndFillEmiratesIdAsync);
 
-    private Task ReadPassportAgainAsync() => ReadAgainAsync(_passportPath,
+    private Task ReadPassportAgainAsync() => ReadAgainAsync(_passportBlobId,
         v => _rereadingPassport = v, AnalyzeAndFillPassportAsync);
 
-    private Task ReadTradeLicenceAgainAsync() => ReadAgainAsync(_tradeLicencePath,
+    private Task ReadTradeLicenceAgainAsync() => ReadAgainAsync(_tradeLicenceBlobId,
         v => _rereadingTradeLicence = v, AnalyzeAndFillTradeLicenceAsync);
 
-    /// <summary>The stored path is the URL the page serves the file from; the reader needs the file
-    /// on disk. Anything outside the uploads folder is refused rather than opened -- these paths are
-    /// written by this page, but a reader that will open any path it is handed is the wrong shape.</summary>
-    private async Task ReadAgainAsync(string? webPath, Action<bool> setBusy, Func<string, Task> analyze)
+    /// <summary>Reads a document that is already on file. It comes back out of the database, so
+    /// there is no path to resolve and nothing to contain: the previous version of this had to
+    /// refuse anything outside the uploads folder, because a reader that opens whatever path it is
+    /// handed is the wrong shape. An id either names a row or it does not.</summary>
+    private async Task ReadAgainAsync(int? blobId, Action<bool> setBusy, Func<byte[], Task> analyze)
     {
-        if (string.IsNullOrWhiteSpace(webPath)) return;
-
-        var uploadsRoot = Path.GetFullPath(Path.Combine(Env.WebRootPath, "uploads"));
-        var filePath = Path.GetFullPath(Path.Combine(Env.WebRootPath, webPath.TrimStart('/')));
-        if (!filePath.StartsWith(uploadsRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !File.Exists(filePath))
-        {
-            Toasts.ShowError("That file is no longer where it was saved — upload it again.");
-            return;
-        }
+        if (blobId is not int id) return;
 
         setBusy(true);
         StateHasChanged();
         try
         {
-            await analyze(filePath);
+            await using var document = await Documents.OpenAsync(id);
+            if (document is null)
+            {
+                Toasts.ShowError("That document could not be found — upload it again.");
+                return;
+            }
+
+            using var buffer = new MemoryStream();
+            await document.Stream.CopyToAsync(buffer);
+            await analyze(buffer.ToArray());
         }
         finally
         {
@@ -1027,13 +1050,13 @@ public partial class SubmitInsiderDeclaration
         }
     }
 
-    private async Task AnalyzeAndFillAsync(string filePath, Action<IdDocumentExtraction> apply)
+    private async Task AnalyzeAndFillAsync(byte[] content, Action<IdDocumentExtraction> apply)
     {
         if (!DocIntel.IsConfigured) return;
 
         try
         {
-            await using var stream = File.OpenRead(filePath);
+            using var stream = new MemoryStream(content, writable: false);
             var extraction = await DocIntel.AnalyzeIdDocumentAsync(stream);
             if (extraction is null || !AnythingRead(extraction))
             {
@@ -1063,13 +1086,13 @@ public partial class SubmitInsiderDeclaration
     // Trade licences run through the general-purpose document model rather than a purpose-built one
     // (see the comment on TradeLicenceExtraction) -- extraction is a rougher best-effort here, so the
     // success message says so rather than implying the same confidence as the ID document fields.
-    private async Task AnalyzeAndFillTradeLicenceAsync(string filePath)
+    private async Task AnalyzeAndFillTradeLicenceAsync(byte[] content)
     {
         if (!DocIntel.IsConfigured) return;
 
         try
         {
-            await using var stream = File.OpenRead(filePath);
+            using var stream = new MemoryStream(content, writable: false);
             var extraction = await DocIntel.AnalyzeTradeLicenceAsync(stream);
             if (extraction is null) return;
 
@@ -1265,7 +1288,7 @@ public partial class SubmitInsiderDeclaration
     {
         var row = AddedDocumentFor(type.Id);
         return UploadIdDocumentAsync(e, $"type-{type.Id}",
-            path => { row.FilePath = path; row.OriginalFileName = e.File.Name; },
+            id => { row.BlobId = id; row.FilePath = null; row.OriginalFileName = e.File.Name; },
             () => _uploadingTypeIds.Remove(type.Id),
             () => _uploadingTypeIds.Add(type.Id),
             percent => _typeUploadProgress[type.Id] = percent,
@@ -1479,7 +1502,8 @@ public partial class SubmitInsiderDeclaration
             if (document.DocumentTypeId is { } typeId)
             {
                 var row = AddedDocumentFor(typeId);
-                row.FilePath = copied;
+                row.BlobId = copied;
+                row.FilePath = null;
                 row.OriginalFileName = document.OriginalFileName;
                 if (!string.IsNullOrWhiteSpace(document.DocumentNumber)) row.DocumentNumber = document.DocumentNumber;
                 if (document.ExpiryDate is not null) row.ExpiryDate = document.ExpiryDate;
@@ -1492,7 +1516,8 @@ public partial class SubmitInsiderDeclaration
             switch (document.Kind)
             {
                 case MemberDocumentKind.EmiratesId:
-                    _emiratesIdPath = copied;
+                    _emiratesIdBlobId = copied;
+                    _emiratesIdPath = DocumentUrl.For(copied, null);
                     if (!string.IsNullOrWhiteSpace(document.DocumentNumber)) _emiratesIdNumber = document.DocumentNumber;
                     if (!string.IsNullOrWhiteSpace(document.HolderName)) _emiratesIdNameOnCard = document.HolderName;
                     if (document.ExpiryDate is not null) _emiratesIdExpiryDate = document.ExpiryDate;
@@ -1501,7 +1526,8 @@ public partial class SubmitInsiderDeclaration
                     break;
 
                 case MemberDocumentKind.Passport:
-                    _passportPath = copied;
+                    _passportBlobId = copied;
+                    _passportPath = DocumentUrl.For(copied, null);
                     if (!string.IsNullOrWhiteSpace(document.DocumentNumber)) _passportNumber = document.DocumentNumber;
                     if (document.ExpiryDate is not null) _passportExpiryDate = document.ExpiryDate;
                     if (!string.IsNullOrWhiteSpace(document.Nationality)) _passportIssuingCountry = document.Nationality;
@@ -1510,7 +1536,8 @@ public partial class SubmitInsiderDeclaration
                     break;
 
                 case MemberDocumentKind.TradeLicence:
-                    _tradeLicencePath = copied;
+                    _tradeLicenceBlobId = copied;
+                    _tradeLicencePath = DocumentUrl.For(copied, null);
                     if (!string.IsNullOrWhiteSpace(document.DocumentNumber)) _tradeLicenceNumber = document.DocumentNumber;
                     if (!string.IsNullOrWhiteSpace(document.HolderName)) _tradeLicenceLegalName = document.HolderName;
                     if (document.ExpiryDate is not null) _tradeLicenceExpiryDate = document.ExpiryDate;
@@ -1535,27 +1562,16 @@ public partial class SubmitInsiderDeclaration
     /// <summary>Copies the stored file into this declaration's own uploads folder and returns the
     /// web path to the copy, or null if the file is missing -- a record can outlive its file, and a
     /// declaration pointing at a file that is not there is worse than one with nothing attached.</summary>
-    private string? CopyIntoDeclaration(MemberDocument document)
+    private int? CopyIntoDeclaration(MemberDocument document)
     {
-        if (_effectiveMember is null || string.IsNullOrWhiteSpace(document.FilePath)) return null;
+        if (_effectiveMember is null || document.BlobId is not int blobId) return null;
 
-        var source = Path.Combine(Env.WebRootPath, document.FilePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(source)) return null;
-
-        var kind = document.Kind switch
-        {
-            MemberDocumentKind.EmiratesId => "emirates-id",
-            MemberDocumentKind.Passport => "passport",
-            _ => "trade-licence",
-        };
-
-        var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "insider-declarations");
-        Directory.CreateDirectory(uploadsDir);
-        foreach (var stale in Directory.GetFiles(uploadsDir, $"{_effectiveMember.Id}-{kind}.*")) File.Delete(stale);
-
-        var fileName = $"{_effectiveMember.Id}-{kind}{Path.GetExtension(source)}";
-        File.Copy(source, Path.Combine(uploadsDir, fileName), overwrite: true);
-        return $"/uploads/insider-declarations/{fileName}";
+        // No copy is made. The declaration points at the same row in dbo.DocumentBlobs that My
+        // Workspace does, which is both cheaper and more correct than duplicating the file: a
+        // declaration is meant to freeze the evidence as it was at submission, and replacing the
+        // workspace document writes a new blob and repoints only the workspace row -- so what this
+        // declaration references stays exactly the bytes that were pulled in.
+        return blobId;
     }
 
     private string DocumentPullLabel(MemberDocument d) =>
@@ -2088,20 +2104,24 @@ public partial class SubmitInsiderDeclaration
             RelativesHoldShares = _holdsSharesInDI,
             RelativesHaveNin = _relativesHaveNin,
             IsDraft = isDraft,
-            EmiratesIdPath = _emiratesIdPath,
+            EmiratesIdPath = _emiratesIdBlobId is null ? _emiratesIdPath : null,
+            EmiratesIdBlobId = _emiratesIdBlobId,
             EmiratesIdNumber = string.IsNullOrWhiteSpace(_emiratesIdNumber) ? null : _emiratesIdNumber.Trim(),
             EmiratesIdNameOnCard = string.IsNullOrWhiteSpace(_emiratesIdNameOnCard) ? null : _emiratesIdNameOnCard.Trim(),
             EmiratesIdExpiryDate = _emiratesIdExpiryDate,
-            PassportPath = _passportPath,
+            PassportPath = _passportBlobId is null ? _passportPath : null,
+            PassportBlobId = _passportBlobId,
             PassportNumber = string.IsNullOrWhiteSpace(_passportNumber) ? null : _passportNumber.Trim(),
             PassportExpiryDate = _passportExpiryDate,
             PassportIssuingCountry = string.IsNullOrWhiteSpace(_passportIssuingCountry) ? null : _passportIssuingCountry.Trim(),
-            TradeLicencePath = _tradeLicencePath,
+            TradeLicencePath = _tradeLicenceBlobId is null ? _tradeLicencePath : null,
+            TradeLicenceBlobId = _tradeLicenceBlobId,
             TradeLicenceNumber = string.IsNullOrWhiteSpace(_tradeLicenceNumber) ? null : _tradeLicenceNumber.Trim(),
             TradeLicenceLegalName = string.IsNullOrWhiteSpace(_tradeLicenceLegalName) ? null : _tradeLicenceLegalName.Trim(),
             TradeLicenceIssuingAuthority = string.IsNullOrWhiteSpace(_tradeLicenceIssuingAuthority) ? null : _tradeLicenceIssuingAuthority.Trim(),
             TradeLicenceExpiryDate = _tradeLicenceExpiryDate,
-            OtherDocumentPath = _otherDocumentPath,
+            OtherDocumentPath = _otherDocumentBlobId is null ? _otherDocumentPath : null,
+            OtherDocumentBlobId = _otherDocumentBlobId,
             SubmittedByName = actorName,
             SubmittedOnBehalfOf = isImpersonating ? _effectiveMember.FullName : null,
         };

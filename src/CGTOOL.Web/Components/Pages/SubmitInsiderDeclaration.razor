@@ -6,6 +6,8 @@
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject ILogger<SubmitInsiderDeclaration> Logger
 @inject IInsiderDeclarationWriter Writer
+@inject IDocumentStore Documents
+@inject ClientContext Client
 @inject IFamilyMemberWriter FamilyMemberWriter
 @inject IActivityEmailSender EmailSender
 @inject SqlDbMailSender SqlMail

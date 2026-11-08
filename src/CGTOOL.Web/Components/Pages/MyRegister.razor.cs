@@ -114,6 +114,16 @@ public partial class MyRegister : ComponentBase
             .OrderBy(d => d.Kind).ThenBy(d => d.Id)
             .ToListAsync());
 
+        // What each attached file actually is, so the preview can render it. The document rows
+        // carry the name the member uploaded, which for anything seeded rather than uploaded has
+        // no extension to go on.
+        var blobIds = _documents.Where(d => d.BlobId is not null).Select(d => d.BlobId!.Value).Distinct().ToList();
+        _blobContentTypes = blobIds.Count == 0
+            ? []
+            : await db.DocumentBlobs.AsNoTracking()
+                .Where(b => blobIds.Contains(b.Id))
+                .ToDictionaryAsync(b => b.Id, b => b.ContentType);
+
         _dfm = await db.MemberDfmProfiles.AsNoTracking()
             .FirstOrDefaultAsync(p => p.MemberId == _effectiveMember.Id)
             ?? new MemberDfmProfile { MemberId = _effectiveMember.Id };
@@ -209,6 +219,12 @@ public partial class MyRegister : ComponentBase
     /// row, so the form binds to something from the first render rather than having to be guarded
     /// field by field.</summary>
     private MemberDfmProfile _dfm = new();
+
+    private Dictionary<int, string> _blobContentTypes = [];
+
+    /// <summary>The stored media type for a document's file, where it has one.</summary>
+    private string? ContentTypeOf(MemberDocument doc) =>
+        doc.BlobId is { } id && _blobContentTypes.TryGetValue(id, out var type) ? type : null;
 
     private static readonly (DfmInvestorType Value, string Label)[] DfmInvestorTypes =
     [

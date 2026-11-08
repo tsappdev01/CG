@@ -34,13 +34,24 @@ else
     @if (_step != OnboardingStep.Welcome)
     {
         <ol class="cg-onboarding-steps">
-            <li class="@StepClass(OnboardingStep.EmiratesId)">Emirates ID</li>
-            <li class="@StepClass(OnboardingStep.Dfm)">DFM / NIN</li>
-            <li class="@StepClass(OnboardingStep.Done)">Done</li>
+            @foreach (var (step, label) in Rail)
+            {
+                <li class="@StepClass(step)">
+                    @if (CanGoTo(step))
+                    {
+                        <button type="button" class="cg-onboarding-step-btn" disabled="@_busy"
+                                title="Go back to @label" @onclick="() => GoTo(step)">@label</button>
+                    }
+                    else
+                    {
+                        <span>@label</span>
+                    }
+                </li>
+            }
         </ol>
     }
 
-    @switch (_step)
+    @switch (CurrentStep)
     {
         case OnboardingStep.Welcome:
             <svg class="cg-onboarding-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -135,7 +146,17 @@ else
             </label>
             <label class="cg-field">
                 <span>Emirates ID number</span>
-                <input class="cg-input" maxlength="100" @bind="_record.EmiratesIdNumber" />
+                <input class="cg-input@(EmiratesIdNumber.IsInvalidEntry(_record.EmiratesIdNumber) ? " cg-input-invalid" : EmiratesIdNumber.IsComplete(_record.EmiratesIdNumber) ? " cg-input-valid" : "")"
+                       maxlength="20" inputmode="numeric" placeholder="784 followed by 12 digits"
+                       @bind="_record.EmiratesIdNumber" @bind:event="oninput" />
+                @if (EmiratesIdNumber.IsInvalidEntry(_record.EmiratesIdNumber))
+                {
+                    <span class="cg-field-error">@EmiratesIdNumber.Hint</span>
+                }
+                else if (EmiratesIdNumber.IsComplete(_record.EmiratesIdNumber))
+                {
+                    <span class="cg-field-ok" role="status">&#10003; Complete</span>
+                }
             </label>
             <label class="cg-field">
                 <span>Nationality</span>
@@ -155,7 +176,8 @@ else
             @if (_editNote is not null) { <p class="cg-error">@_editNote</p> }
 
             <div class="cg-onboarding-actions">
-                <button type="button" class="cg-action-btn cg-good" disabled="@_busy" @onclick="SaveEmiratesIdAsync">
+                <button type="button" class="cg-action-btn cg-good"
+                        disabled="@(_busy || !EmiratesIdNumber.IsValid(_record.EmiratesIdNumber))" @onclick="SaveEmiratesIdAsync">
                     Save and continue
                 </button>
                 <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="CancelEmiratesIdEdit">
@@ -189,7 +211,17 @@ else
             </label>
             <label class="cg-field">
                 <span>Emirates ID number</span>
-                <input class="cg-input" maxlength="100" @bind="_record.EmiratesIdNumber" />
+                <input class="cg-input@(EmiratesIdNumber.IsInvalidEntry(_record.EmiratesIdNumber) ? " cg-input-invalid" : EmiratesIdNumber.IsComplete(_record.EmiratesIdNumber) ? " cg-input-valid" : "")"
+                       maxlength="20" inputmode="numeric" placeholder="784 followed by 12 digits"
+                       @bind="_record.EmiratesIdNumber" @bind:event="oninput" />
+                @if (EmiratesIdNumber.IsInvalidEntry(_record.EmiratesIdNumber))
+                {
+                    <span class="cg-field-error">@EmiratesIdNumber.Hint</span>
+                }
+                else if (EmiratesIdNumber.IsComplete(_record.EmiratesIdNumber))
+                {
+                    <span class="cg-field-ok" role="status">&#10003; Complete</span>
+                }
             </label>
             <label class="cg-field">
                 <span>Expiry date</span>
@@ -240,7 +272,17 @@ else
 
             <label class="cg-field">
                 <span>National Investor Number (NIN)</span>
-                <input class="cg-input" maxlength="100" placeholder="10 letters or digits" @bind="_record.NinNumber" />
+                <input class="cg-input@(Nin.IsInvalidEntry(_record.NinNumber) ? " cg-input-invalid" : Nin.IsComplete(_record.NinNumber) ? " cg-input-valid" : "")"
+                       maxlength="@Nin.Length" minlength="@Nin.Length" placeholder="10 letters or digits"
+                       @bind="_record.NinNumber" @bind:event="oninput" />
+                @if (Nin.IsInvalidEntry(_record.NinNumber))
+                {
+                    <span class="cg-field-error">@Nin.Hint</span>
+                }
+                else if (Nin.IsComplete(_record.NinNumber))
+                {
+                    <span class="cg-field-ok" role="status">&#10003; Complete</span>
+                }
             </label>
             <label class="cg-field">
                 <span>Registered name with DFM</span>
@@ -250,7 +292,8 @@ else
             @if (_editNote is not null) { <p class="cg-error">@_editNote</p> }
 
             <div class="cg-onboarding-actions">
-                <button type="button" class="cg-action-btn cg-good" disabled="@_busy" @onclick="SaveDfmAsync">
+                <button type="button" class="cg-action-btn cg-good"
+                        disabled="@(_busy || !Nin.IsValid(_record.NinNumber))" @onclick="SaveDfmAsync">
                     Save and continue
                 </button>
                 <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="CancelDfmEdit">
@@ -280,7 +323,17 @@ else
                 <div style="margin-top:22px;">
                     <label class="cg-field">
                         <span>National Investor Number (NIN)</span>
-                        <input class="cg-input" maxlength="100" @bind="_record!.NinNumber" />
+                        <input class="cg-input@(Nin.IsInvalidEntry(_record!.NinNumber) ? " cg-input-invalid" : Nin.IsComplete(_record.NinNumber) ? " cg-input-valid" : "")"
+                               maxlength="@Nin.Length" minlength="@Nin.Length" placeholder="10 letters or digits"
+                               @bind="_record.NinNumber" @bind:event="oninput" />
+                        @if (Nin.IsInvalidEntry(_record.NinNumber))
+                        {
+                            <span class="cg-field-error">@Nin.Hint</span>
+                        }
+                        else if (Nin.IsComplete(_record.NinNumber))
+                        {
+                            <span class="cg-field-ok" role="status">&#10003; Complete</span>
+                        }
                     </label>
                     <label class="cg-field">
                         <span>Registered name with DFM</span>
@@ -294,7 +347,7 @@ else
 
                     <div class="cg-onboarding-actions">
                         <button type="button" class="cg-action-btn cg-good"
-                                disabled="@(_busy || string.IsNullOrWhiteSpace(_record.NinNumber))" @onclick="SubmitNinAsync">
+                                disabled="@(_busy || !Nin.IsValid(_record.NinNumber))" @onclick="SubmitNinAsync">
                             Submit and continue
                         </button>
                     </div>
@@ -322,6 +375,15 @@ else
                     Finish onboarding
                 </button>
             </div>
+            <p class="cg-onboarding-note">
+                Need to change something? Go back to
+                <button type="button" class="cg-onboarding-link" disabled="@_busy"
+                        @onclick="() => GoTo(OnboardingStep.EmiratesId)">your Emirates ID</button>
+                or
+                <button type="button" class="cg-onboarding-link" disabled="@_busy"
+                        @onclick="() => GoTo(OnboardingStep.Dfm)">your DFM details</button>.
+                Nothing is final until you finish.
+            </p>
             break;
 
         default:

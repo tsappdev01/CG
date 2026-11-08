@@ -212,21 +212,13 @@
                                         <span class="cg-field-error">Expired — upload a current one. A declaration cannot be submitted on it.</span>
                                     }
                                 </label>
-                                @if (kind == MemberDocumentKind.EmiratesId)
-                                {
-                                    <label class="cg-field">
-                                        <span>Date of Birth</span>
-                                        <UaeDateInput Value="doc.DateOfBirth"
-                                                      ValueChanged="d => doc.DateOfBirth = d" />
-                                    </label>
-                                }
                             </div>
                             <div class="cg-actions cg-doc-panel-actions">
                                 <button type="button" class="cg-action-btn cg-good" @onclick="() => SaveDocumentAsync(doc)">Save</button>
                                 <button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveDocument(doc)">Remove</button>
                             </div>
                         </div>
-                        <DocumentPreview FilePath="@DocumentUrl.For(doc.BlobId, doc.FilePath)" OriginalFileName="@doc.OriginalFileName" Version="@doc.UploadedAtUtc" />
+                        <DocumentPreview FilePath="@DocumentUrl.For(doc.BlobId, doc.FilePath)" OriginalFileName="@doc.OriginalFileName" ContentType="@ContentTypeOf(doc)" Version="@doc.UploadedAtUtc" />
                         </div>
                         }
                     </div>
@@ -289,7 +281,7 @@
                                 <button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveDocument(added)">Remove</button>
                             </div>
                         </div>
-                        <DocumentPreview FilePath="@DocumentUrl.For(added.BlobId, added.FilePath)" OriginalFileName="@added.OriginalFileName" Version="@added.UploadedAtUtc" />
+                        <DocumentPreview FilePath="@DocumentUrl.For(added.BlobId, added.FilePath)" OriginalFileName="@added.OriginalFileName" ContentType="@ContentTypeOf(added)" Version="@added.UploadedAtUtc" />
                         </div>
                         }
                     </div>

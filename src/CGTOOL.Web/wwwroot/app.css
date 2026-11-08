@@ -2421,7 +2421,10 @@ button.cg-doc-chip:disabled { cursor: default; opacity: 0.6; text-decoration: no
    nothing, and the fields are what the person is actually correcting. */
 .cg-doc-panel-split {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 560px);
+    /* The fields take the width they need and the preview takes everything left over. It used to
+       be the other way round -- the preview capped at 560px -- which on a wide screen left a band
+       of empty panel to the right of the thing the fields are meant to be checked against. */
+    grid-template-columns: minmax(0, 680px) minmax(0, 1fr);
     gap: 24px;
     align-items: start;
     margin-top: 12px;
@@ -4348,6 +4351,35 @@ button.cg-appbar-user {
     padding-top: 8px;
     border-top: 3px solid var(--cg-line);
 }
+
+/* A step the member may go back to. A button rather than the plain label so it is reachable by
+   keyboard and announced as something that can be pressed, styled to look like the label it
+   replaces. */
+.cg-onboarding-step-btn {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+.cg-onboarding-step-btn:hover:not(:disabled) { text-decoration: underline; }
+.cg-onboarding-step-btn:disabled { cursor: default; }
+
+.cg-onboarding-link {
+    font: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--cg-accent);
+    text-decoration: underline;
+    cursor: pointer;
+}
+.cg-onboarding-link:disabled { cursor: default; opacity: .6; }
 
 .cg-onboarding-steps li.on { color: var(--cg-accent); border-top-color: var(--cg-accent); }
 .cg-onboarding-steps li.done { color: var(--cg-good); border-top-color: var(--cg-good); }

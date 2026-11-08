@@ -457,7 +457,10 @@ public class MemberOnboardingService(
             HolderName = o.EmiratesIdHolderName,
             Nationality = o.EmiratesIdNationality,
             ExpiryDate = o.EmiratesIdExpiryDate,
-            OriginalFileName = o.EmiratesIdBlobId is null ? null : "Emirates ID (from onboarding)",
+            // With the extension on it. The preview works out what a file is from its media type
+            // now, but the name is also what the member is shown, and "Emirates ID (from
+            // onboarding)" with no extension told them nothing about what would open.
+            OriginalFileName = o.EmiratesIdBlobId is null ? null : "Emirates ID.pdf",
             UploadedAtUtc = DateTime.UtcNow,
         });
     }

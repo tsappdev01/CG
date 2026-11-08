@@ -38,7 +38,46 @@ public partial class Onboarding
 
     private Member? _member;
     private MemberOnboarding? _record;
+    /// <summary>The furthest the record allows: always recomputed from what has been written.</summary>
     private OnboardingStep _step = OnboardingStep.Welcome;
+
+    /// <summary>A step the member has gone back to look at, overriding the one the record puts
+    /// them on. Null when they are simply going forwards.
+    ///
+    /// Kept apart from _step rather than assigned over it so going back cannot make the flow
+    /// think a step is unanswered: the record still decides what has been settled, and this only
+    /// decides what is on screen.</summary>
+    private OnboardingStep? _viewStep;
+
+    private OnboardingStep CurrentStep => _viewStep ?? _step;
+
+    private static readonly (OnboardingStep Step, string Label)[] Rail =
+    [
+        (OnboardingStep.EmiratesId, "Emirates ID"),
+        (OnboardingStep.Dfm, "DFM / NIN"),
+        (OnboardingStep.Done, "Done"),
+    ];
+
+    /// <summary>Whether the member may jump to a step. Anything up to the furthest they have
+    /// reached, so they can go back and change an answer before finishing -- but nothing ahead of
+    /// it, which would skip a question, and nothing at all once onboarding is complete.</summary>
+    private bool CanGoTo(OnboardingStep step) =>
+        _record is { Status: not OnboardingStatus.Completed }
+        && step != CurrentStep
+        && step <= _step;
+
+    private void GoTo(OnboardingStep step)
+    {
+        if (_busy || !CanGoTo(step)) return;
+
+        // Leaving a half-typed correction behind would put values on a screen that presents them
+        // as the details on file, so the edit is backed out rather than carried along.
+        if (_editingEmiratesId) CancelEmiratesIdEdit();
+        if (_editingDfm) CancelDfmEdit();
+
+        _editNote = null;
+        _viewStep = step == _step ? null : step;
+    }
 
     private bool _editingEmiratesId;
     private bool _editingDfm;
@@ -57,7 +96,7 @@ public partial class Onboarding
     /// is asked for but not insisted on: a member who cannot read it off a worn card should not be
     /// stuck on this screen, and the field is editable later in My Workspace.</summary>
     private bool CanSubmitCard =>
-        _record?.EmiratesIdBlobId is not null && !string.IsNullOrWhiteSpace(_record.EmiratesIdNumber);
+        _record?.EmiratesIdBlobId is not null && EmiratesIdNumber.IsValid(_record.EmiratesIdNumber);
 
     protected override async Task OnInitializedAsync()
     {
@@ -99,7 +138,7 @@ public partial class Onboarding
     }
 
     private string StepClass(OnboardingStep step) =>
-        _step == step ? "on" : step < _step ? "done" : string.Empty;
+        CurrentStep == step ? "on" : step < _step ? "done" : string.Empty;
 
     private static string Show(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
 
@@ -147,6 +186,11 @@ public partial class Onboarding
             return;
         }
 
+        // Stored as digits, which is the form the imported records and the bulk-loaded scans
+        // use. A member who typed the separators off the card has the same number, not a
+        // different one, and it has to match to be any use.
+        _record.EmiratesIdNumber = EmiratesIdNumber.Normalise(_record.EmiratesIdNumber);
+
         _editNote = null;
         await Flow.CorrectEmiratesIdAsync(_record, _emiratesIdBefore!, await ActorAsync());
         _editingEmiratesId = false;
@@ -155,7 +199,8 @@ public partial class Onboarding
 
     private Task SubmitEmiratesIdAsync() => RunAsync(async () =>
     {
-        await Flow.SubmitEmiratesIdAsync(_record!, await ActorAsync());
+        _record!.EmiratesIdNumber = EmiratesIdNumber.Normalise(_record.EmiratesIdNumber);
+        await Flow.SubmitEmiratesIdAsync(_record, await ActorAsync());
     });
 
     private Task ConfirmDfmAsync() => RunAsync(async () =>
@@ -229,6 +274,10 @@ public partial class Onboarding
         {
             await action();
             _step = Flow.NextStep(_record);
+
+            // Back where the record says they are. Answering a step they had gone back to should
+            // carry them forward again, not leave them sitting on it.
+            _viewStep = null;
         }
         finally
         {
@@ -300,7 +349,12 @@ public partial class Onboarding
     /// to be able to finish by typing.</summary>
     private async Task<string?> CaptureAsync(byte[] content)
     {
-        if (!DocIntel.IsConfigured) return null;
+        // Silent before. A member uploaded their card, watched nothing happen to the empty boxes
+        // below it, and had no way to tell whether reading had failed or was never switched on.
+        if (!DocIntel.IsConfigured)
+        {
+            return "Automatic reading is not switched on here — please type the details below.";
+        }
 
         try
         {
@@ -314,6 +368,15 @@ public partial class Onboarding
             var name = string.Join(" ", new[] { read.FirstName, read.LastName }
                 .Where(part => !string.IsNullOrWhiteSpace(part)));
             if (!string.IsNullOrWhiteSpace(name)) _record!.EmiratesIdHolderName = name;
+
+            // Only a spelling the list offers, since the field is a dropdown: the reader returns
+            // whatever is printed on the card, and a value that is not an option would show as
+            // nothing chosen and quietly save as blank.
+            if (read.CountryRegion is { Length: > 0 } country
+                && Countries.All.FirstOrDefault(c => string.Equals(c, country.Trim(), StringComparison.OrdinalIgnoreCase)) is { } known)
+            {
+                _record!.EmiratesIdNationality = known;
+            }
 
             return "We filled in what we could read — please check it before continuing.";
         }

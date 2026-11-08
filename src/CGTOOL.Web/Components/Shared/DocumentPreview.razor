@@ -42,6 +42,12 @@
     /// round: the picture is there to check the fields against.</summary>
     [Parameter] public DateTime? Version { get; set; }
 
+    /// <summary>The stored media type, where the caller has it. Preferred over the file name
+    /// because it is what the document actually is rather than what it was called: a document
+    /// seeded from onboarding was named "Emirates ID (from onboarding)", which has no extension,
+    /// so a perfectly displayable PDF fell through to "no preview for this kind of file".</summary>
+    [Parameter] public string? ContentType { get; set; }
+
     /// <summary>The path with the version on it, so a replaced file is a different address. The
     /// query goes before the fragment -- a PDF viewer's "#toolbar=0" is not part of the URL the
     /// server is asked for, and anything after it would not reach the cache key.</summary>
@@ -70,6 +76,11 @@
         }
     }
 
-    private bool IsPdf => Extension == ".pdf";
-    private bool IsImage => Extension is ".png" or ".jpg" or ".jpeg";
+    private string MediaType => (ContentType ?? string.Empty).Trim().ToLowerInvariant();
+
+    private bool IsPdf => MediaType == "application/pdf"
+        || (MediaType.Length == 0 && Extension == ".pdf");
+
+    private bool IsImage => MediaType.StartsWith("image/", StringComparison.Ordinal)
+        || (MediaType.Length == 0 && Extension is ".png" or ".jpg" or ".jpeg");
 }

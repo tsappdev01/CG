@@ -29,7 +29,11 @@ public static class InsiderDetailSheet
                 new("Relatives Have NIN?", d.RelativesHaveNin ? "Yes" : "No"),
                 new($"I / my relatives hold shares in {parentHoldingCompany}?", d.HoldsShares || d.RelativesHoldShares ? "Yes" : "No"),
                 new("Own NIN", d.HasNin && d.NinNumber is { Length: > 0 } ? d.NinNumber : "—"),
-                new("Shares held", d.HoldsShares ? (d.NumberOfSharesHeld ?? 0).ToString("N0") : "—"),
+                // "Shares held" was here and always read 0. InsiderDeclaration.NumberOfSharesHeld
+                // is still loaded and saved but no longer has an input behind it -- the share
+                // figures moved into the transactions grid below, which is where the real numbers
+                // are. A header field reporting zero beside a grid declaring millions is worse
+                // than no field at all.
                 new("Submitted by", d.SubmittedOnBehalfOf is { Length: > 0 }
                     ? $"{d.SubmittedByName} on behalf of {d.SubmittedOnBehalfOf}"
                     : d.SubmittedByName),
@@ -50,13 +54,21 @@ public static class InsiderDetailSheet
 
                 Documents(d),
 
+                // "Shareholding", as the declaration form and its PDF both call it, because the
+                // grid holds the declarant's own holding as well as their relatives' -- the
+                // Functional Spec folds both into one question.
+                //
+                // IsSelf is what says which. The row for the declarant carries a Relationship
+                // that the entity documents as meaningless, and printing it anyway rendered the
+                // enum's zero value: this report had the declarant down as his own Mother, while
+                // the screen he signed and the PDF of it both said Self.
                 new ReportSubTable(
-                    $"Relatives holding {parentHoldingCompany} shares",
-                    [new("Name", 36), new("Relationship", 22), new("NIN", 24), new("Shares", 18, Numeric: true)],
+                    "Shareholding",
+                    [new("Name", 36), new("Held by", 22), new("NIN", 24), new("Shares", 18, Numeric: true)],
                     [.. d.Relatives.Select(r => new[]
                     {
-                        r.RelativeName,
-                        RelationshipLabel(r.Relationship),
+                        r.IsSelf ? row.MemberName : r.RelativeName,
+                        r.IsSelf ? "Self" : RelationshipLabel(r.Relationship),
                         r.NinNumber ?? "—",
                         r.NumberOfShares.ToString(),
                     })],
@@ -140,11 +152,6 @@ public static class InsiderDetailSheet
     }
 
     /// <summary>"FatherInLaw" is how the enum spells it; "Father in law" is how a reader does.</summary>
-    internal static string RelationshipLabel(RelativeRelationship relationship) => relationship switch
-    {
-        RelativeRelationship.InLaws => "In-laws",
-        RelativeRelationship.FatherInLaw => "Father-in-law",
-        RelativeRelationship.MotherInLaw => "Mother-in-law",
-        _ => relationship.ToString(),
-    };
+    internal static string RelationshipLabel(RelativeRelationship relationship) =>
+        RelativeRelationships.Label(relationship);
 }

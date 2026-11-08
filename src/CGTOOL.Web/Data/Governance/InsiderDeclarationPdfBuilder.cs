@@ -111,11 +111,6 @@ public static class InsiderDeclarationPdfBuilder
         _ => "Closing holding",
     };
 
-    private static string RelationshipLabel(RelativeRelationship relationship) => relationship switch
-    {
-        RelativeRelationship.InLaws => "In-Laws",
-        RelativeRelationship.FatherInLaw => "Father-in-Law",
-        RelativeRelationship.MotherInLaw => "Mother-in-Law",
-        _ => relationship.ToString(),
-    };
+    private static string RelationshipLabel(RelativeRelationship relationship) =>
+        RelativeRelationships.Label(relationship);
 }

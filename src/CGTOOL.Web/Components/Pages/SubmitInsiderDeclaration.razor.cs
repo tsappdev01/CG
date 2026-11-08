@@ -347,17 +347,7 @@ public partial class SubmitInsiderDeclaration
 
     // Functional Spec §3.2/§4 "Relatives option set", used consistently by both grids.
     private static readonly (RelativeRelationship Value, string Label)[] RelativeOptions =
-    [
-        (RelativeRelationship.Father, "Father"),
-        (RelativeRelationship.Mother, "Mother"),
-        (RelativeRelationship.Brother, "Brother"),
-        (RelativeRelationship.Sister, "Sister"),
-        (RelativeRelationship.Children, "Children"),
-        (RelativeRelationship.Spouse, "Spouse"),
-        (RelativeRelationship.FatherInLaw, "Father-in-Law"),
-        (RelativeRelationship.MotherInLaw, "Mother-in-Law"),
-        (RelativeRelationship.Stepchildren, "Stepchildren"),
-    ];
+        RelativeRelationships.Options;
 
     private class RelativeRow
     {
@@ -777,8 +767,12 @@ public partial class SubmitInsiderDeclaration
     private async Task RemoveRelativeAsync(RelativeRow row)
     {
         _relatives.Remove(row);
-        var who = row.IsSelf ? "Self" : row.RelativeName;
-        await LogGridChangeAsync($"Removed shareholding grid row: {who} ({RelationshipLabel(row.Relationship)}), NIN {row.NinNumber}.");
+        // Not "Self (Mother)": the relationship on a self row is meaningless and reads as the
+        // enum's zero value.
+        var who = row.IsSelf
+            ? "Self"
+            : $"{row.RelativeName} ({RelativeRelationships.Label(row.Relationship)})";
+        await LogGridChangeAsync($"Removed shareholding grid row: {who}, NIN {row.NinNumber}.");
     }
 
     private async Task AddNinHolderAsync()
@@ -2478,13 +2472,8 @@ public partial class SubmitInsiderDeclaration
             """;
     }
 
-    private static string RelationshipLabel(RelativeRelationship relationship) => relationship switch
-    {
-        RelativeRelationship.InLaws => "In-Laws",
-        RelativeRelationship.FatherInLaw => "Father-in-Law",
-        RelativeRelationship.MotherInLaw => "Mother-in-Law",
-        _ => relationship.ToString(),
-    };
+    private static string RelationshipLabel(RelativeRelationship relationship) =>
+        RelativeRelationships.Label(relationship);
 
     // Functional Spec §2 merge fields {From}/{To}: the calendar quarter the admin explicitly picked
     // for this run in Declarations Setup (DeclarationCycleRun.PeriodYear/PeriodQuarter), not derived

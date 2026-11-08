@@ -53,17 +53,7 @@ public partial class MyRegister : ComponentBase
     private bool IsUploading(int id, string kind) => _uploadingDocs.Contains((id, kind));
 
     private static readonly (RelativeRelationship Value, string Label)[] RelativeOptions =
-    [
-        (RelativeRelationship.Father, "Father"),
-        (RelativeRelationship.Mother, "Mother"),
-        (RelativeRelationship.Brother, "Brother"),
-        (RelativeRelationship.Sister, "Sister"),
-        (RelativeRelationship.Children, "Children"),
-        (RelativeRelationship.Spouse, "Spouse"),
-        (RelativeRelationship.FatherInLaw, "Father-in-Law"),
-        (RelativeRelationship.MotherInLaw, "Mother-in-Law"),
-        (RelativeRelationship.Stepchildren, "Stepchildren"),
-    ];
+        RelativeRelationships.Options;
 
     protected override async Task OnInitializedAsync()
     {
@@ -183,7 +173,7 @@ public partial class MyRegister : ComponentBase
     private void GoToRelativesPage(int page) => _page = Math.Clamp(page, 1, RelativesPages);
 
     private static string RelationLabel(RelativeRelationship relationship) =>
-        RelativeOptions.FirstOrDefault(o => o.Value == relationship).Label ?? relationship.ToString();
+        RelativeRelationships.Label(relationship);
 
     /// <summary>What the "Emirates ID / Passport" column shows. The typed IdentificationNumber is no
     /// longer editable -- the number now comes off the uploaded document -- but rows captured before
@@ -1683,11 +1673,6 @@ public partial class MyRegister : ComponentBase
         }
     }
 
-    private static string RelationshipLabel(RelativeRelationship relationship) => relationship switch
-    {
-        RelativeRelationship.InLaws => "In-Laws",
-        RelativeRelationship.FatherInLaw => "Father-in-Law",
-        RelativeRelationship.MotherInLaw => "Mother-in-Law",
-        _ => relationship.ToString(),
-    };
+    private static string RelationshipLabel(RelativeRelationship relationship) =>
+        RelativeRelationships.Label(relationship);
 }

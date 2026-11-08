@@ -126,7 +126,9 @@ public partial class InsiderReconciliationReport
 
                     var holder = entry.IsSelf
                         ? declarant
-                        : entry.HolderName ?? $"{entry.Relationship} of {declarant}";
+                        // The label, not the enum member: this printed "FatherInLaw of ..." where
+                        // every other screen says "Father-in-Law".
+                        : entry.HolderName ?? $"{RelativeRelationships.Label(entry.Relationship)} of {declarant}";
 
                     declared.TryGetValue(nin, out var running);
 

@@ -336,17 +336,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private const int MaxDocumentsPerRow = 10;
 
     private static readonly (RelativeRelationship Value, string Label)[] RelativeOptions =
-    [
-        (RelativeRelationship.Father, "Father"),
-        (RelativeRelationship.Mother, "Mother"),
-        (RelativeRelationship.Brother, "Brother"),
-        (RelativeRelationship.Sister, "Sister"),
-        (RelativeRelationship.Children, "Children"),
-        (RelativeRelationship.Spouse, "Spouse"),
-        (RelativeRelationship.FatherInLaw, "Father-in-Law"),
-        (RelativeRelationship.MotherInLaw, "Mother-in-Law"),
-        (RelativeRelationship.Stepchildren, "Children of spouse"),
-    ];
+        RelativeRelationships.Options;
 
     // Public (not private): CompanyRowEditor.razor, a sibling component that renders one I.B/I.C/I.D
     // row, binds directly to these types.
@@ -2226,14 +2216,8 @@ public partial class SubmitRelatedPartyCoiDeclaration
         }
     }
 
-    private static string RelationshipLabel(RelativeRelationship relationship) => relationship switch
-    {
-        RelativeRelationship.InLaws => "In-Laws",
-        RelativeRelationship.FatherInLaw => "Father-in-Law",
-        RelativeRelationship.MotherInLaw => "Mother-in-Law",
-        RelativeRelationship.Stepchildren => "Children of spouse",
-        _ => relationship.ToString(),
-    };
+    private static string RelationshipLabel(RelativeRelationship relationship) =>
+        RelativeRelationships.Label(relationship);
 
     private string? RelativeName(Guid? key) => key is null ? null : _relatives.FirstOrDefault(r => r.Key == key)?.Name;
 }

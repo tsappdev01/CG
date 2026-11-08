@@ -242,13 +242,8 @@ public partial class RpCoiDetailReport
         _ => type.ToString(),
     };
 
-    private static string RelationshipLabel(RelativeRelationship relationship) => relationship switch
-    {
-        RelativeRelationship.InLaws => "In-laws",
-        RelativeRelationship.FatherInLaw => "Father-in-law",
-        RelativeRelationship.MotherInLaw => "Mother-in-law",
-        _ => relationship.ToString(),
-    };
+    private static string RelationshipLabel(RelativeRelationship relationship) =>
+        RelativeRelationships.Label(relationship);
 
     private string FilterStatement()
     {

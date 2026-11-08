@@ -179,14 +179,8 @@ public partial class RelatedPartyRegister
         _ => "I.D — Board/executive role",
     };
 
-    private static string RelationshipLabel(RelativeRelationship relationship) => relationship switch
-    {
-        RelativeRelationship.InLaws => "In-Laws",
-        RelativeRelationship.FatherInLaw => "Father-in-Law",
-        RelativeRelationship.MotherInLaw => "Mother-in-Law",
-        RelativeRelationship.Stepchildren => "Children of spouse",
-        _ => relationship.ToString(),
-    };
+    private static string RelationshipLabel(RelativeRelationship relationship) =>
+        RelativeRelationships.Label(relationship);
 
 
     private List<int> AvailableYears() => (_rows ?? [])

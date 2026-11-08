@@ -47,7 +47,6 @@ public partial class UserManagement
     private string _sortColumn = "CreatedOn";
     private bool _sortAscending = false;
     private HashSet<int> _selectedIds = [];
-    private bool? _bulkSetActive;
 
     private bool _bulkNotify;
     private bool _notifying;
@@ -639,9 +638,14 @@ public partial class UserManagement
         await LoadAsync();
     }
 
-    private async Task BulkSetActiveAsync(string justification)
+    /// <summary>Switches every selected member active or inactive.
+    ///
+    /// No typed reason and no confirmation step: the button names the action, the bar beside it
+    /// says how many are selected, and the opposite button undoes it. The audit entry is still
+    /// written for each one.</summary>
+    private async Task BulkSetActiveAsync(bool targetActive)
     {
-        if (_bulkSetActive is not { } targetActive || _members is null) return;
+        if (_members is null) return;
 
         var changed = 0;
         var blocked = new List<string>();
@@ -657,7 +661,7 @@ public partial class UserManagement
                 continue;
             }
 
-            await SetMemberActiveAsync(member, targetActive, justification);
+            await SetMemberActiveAsync(member, targetActive, justification: string.Empty);
             changed++;
         }
 
@@ -667,7 +671,6 @@ public partial class UserManagement
             Toasts.ShowError($"{string.Join(", ", blocked)} {(blocked.Count == 1 ? "is an" : "are an")} approving or delegate authority on an entity. Reassign it on the entity first.");
         }
 
-        _bulkSetActive = null;
         _selectedIds.Clear();
         await LoadAsync();
     }

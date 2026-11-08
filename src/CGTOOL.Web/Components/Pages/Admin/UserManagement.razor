@@ -227,8 +227,8 @@
             @if (_selectedIds.Count > 0)
             {
                 <span class="cg-result-count">@_selectedIds.Count selected</span>
-                <button type="button" class="cg-action-btn cg-critical" @onclick="() => _bulkSetActive = false">Deactivate selected</button>
-                <button type="button" class="cg-action-btn cg-good" @onclick="() => _bulkSetActive = true">Reactivate selected</button>
+                <button type="button" class="cg-action-btn cg-critical" @onclick="() => BulkSetActiveAsync(false)">Deactivate selected</button>
+                <button type="button" class="cg-action-btn cg-good" @onclick="() => BulkSetActiveAsync(true)">Reactivate selected</button>
                 <button type="button" class="cg-action-btn" @onclick="() => _bulkDeclarations = true">Set what they declare</button>
                 <button type="button" class="cg-action-btn cg-good" @onclick="() => _bulkNotify = true">Notify selected</button>
             }
@@ -312,15 +312,6 @@
                     </div>
                 </div>
             </div>
-        }
-
-        @if (_bulkSetActive is not null)
-        {
-            <JustificationPrompt Show="true"
-                                 Label="@($"Why are you {(_bulkSetActive == true ? "reactivating" : "deactivating")} {_selectedIds.Count} user(s)?")"
-                                 Toasts="Toasts"
-                                 OnConfirm="BulkSetActiveAsync"
-                                 OnCancel="() => _bulkSetActive = null" />
         }
 
         <div class="cg-members-layout">

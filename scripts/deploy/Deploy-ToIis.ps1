@@ -3,12 +3,21 @@
     Copies a published build into an IIS site, stopping the app pool for the copy.
 
 .DESCRIPTION
-    Two things in the site folder are NOT the build's to manage, and both are excluded so the
-    mirror does not delete them:
+    Some of the site folder is NOT the build's to manage, and each part is excluded so the
+    mirror neither overwrites nor deletes it:
 
       wwwroot\uploads   Profile pictures, trade licences, signatures and declaration attachments.
                         They are uploaded by users, exist only on this server, and are gitignored,
                         so a plain /MIR would delete every one of them on the first deploy.
+
+      the policy document
+                        wwwroot\assets\policy.pdf is the live Securities Dealing Policy, replaced
+                        by an administrator through Policy Documents, and policy-backups holds the
+                        copy taken each time it is replaced. A copy of policy.pdf is committed so
+                        a brand-new site has one, which meant every deploy put that committed copy
+                        back over whatever had been uploaded since -- silently, because the link
+                        still worked and only the contents were a year out of date. The backups
+                        are only ever written on the server, so /MIR would delete them outright.
 
       appsettings.json  The server's copy holds the real connection string and the Entra client
                         secret. The repository's copy has empty placeholders, so copying it over
@@ -29,7 +38,7 @@ param(
     [int] $RequiredRuntimeMajor = 10,
     # Files the server owns. They are never copied over and never deleted, so whatever is on the
     # server stays there. Add to this list rather than editing the logic below.
-    [string[]] $PreserveFiles = @('appsettings.json', 'appsettings.Development.json'),
+    [string[]] $PreserveFiles = @('appsettings.json', 'appsettings.Development.json', 'wwwroot\assets\policy.pdf'),
     [switch] $OverwriteAppSettings
 )
 
@@ -74,21 +83,31 @@ else {
     Write-Warning "No dotnet host at $dotnet, so the runtime could not be checked before deploying."
 }
 
-$excludeDirs  = @((Join-Path $SitePath 'wwwroot\uploads'))
+$excludeDirs  = @(
+    (Join-Path $SitePath 'wwwroot\uploads'),
+    (Join-Path $SitePath 'wwwroot\assets\policy-backups')
+)
 $excludeFiles = @()
 # Each is excluded only when the server already HAS it. On a brand-new site folder there is
 # nothing to protect, and excluding unconditionally would mean the very first deploy copies no
 # appsettings.json at all -- the app then starts with no connection string, which looks like a
 # broken build rather than a missing file.
 foreach ($name in $PreserveFiles) {
-    if ($OverwriteAppSettings) { break }
+    # The switch is about the settings files and nothing else. It used to break out of the loop
+    # altogether, so deploying a non-secret setting change would have taken the live policy
+    # document with it -- the one failure mode this list exists to prevent.
+    if ($OverwriteAppSettings -and $name -like 'appsettings*') { continue }
+
     $destination = Join-Path $SitePath $name
     if (Test-Path $destination) {
         $excludeFiles += $destination
     }
-    else {
+    elseif ($name -like 'appsettings*') {
         Write-Host "No $name on the server yet, so the build's copy is being deployed if it has one." `
                    "Put the real values in it afterwards -- later deploys will leave it alone."
+    }
+    else {
+        Write-Host "No $name on the server yet, so the build's copy seeds it. Later deploys will leave it alone."
     }
 }
 

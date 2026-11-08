@@ -57,7 +57,13 @@ public sealed record ReportSubTable(
 /// wwwroot and had to contain, because a value out of a database row that reads "../.." should not
 /// open a file on the server. A stored signature is a row in dbo.DocumentBlobs, so the bytes are
 /// fetched by whoever builds the report and handed over, and there is no path left to contain.</summary>
-public sealed record ReportSignature(byte[]? Image, string? ImagePath, string? Name, DateTime? SignedAtUtc);
+/// <summary>The mark a declaration was signed with. Image is the stored bytes and ImagePath only
+/// the address of a signature written before they moved into dbo.DocumentBlobs, so a renderer
+/// reads Image first and treats the path as the fallback -- the screen read the path alone and
+/// showed a broken image for every signature stored since. ContentType comes off the blob rather
+/// than being guessed from the bytes.</summary>
+public sealed record ReportSignature(
+    byte[]? Image, string? ImagePath, string? Name, DateTime? SignedAtUtc, string? ContentType = null);
 
 public sealed record ReportRecord(
     string Title,

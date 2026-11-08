@@ -28,7 +28,7 @@ public partial class RpCoiDetailReport
     /// the render and cannot await, and because the alternative -- reading them during assembly --
     /// would re-read every signature on every re-render, including the ones a filter has just
     /// excluded. A signature is a few kilobytes and there is one per declarant.</summary>
-    private readonly Dictionary<int, byte[]> _signatureImages = [];
+    private readonly Dictionary<int, (byte[] Bytes, string ContentType)> _signatureImages = [];
     private List<Company>? _companies;
     private string _preparedBy = "unknown";
 
@@ -113,7 +113,7 @@ public partial class RpCoiDetailReport
 
             using var buffer = new MemoryStream();
             await document.Stream.CopyToAsync(buffer);
-            _signatureImages[row.Declaration.Id] = buffer.ToArray();
+            _signatureImages[row.Declaration.Id] = (buffer.ToArray(), document.Descriptor.ContentType);
         }
     }
 
@@ -194,10 +194,11 @@ public partial class RpCoiDetailReport
             // says a signature exists; a reviewer checking a declaration wants to see it.
             DocumentUrl.Exists(d.SignatureBlobId, d.SignaturePath)
                 ? new ReportSignature(
-                    _signatureImages.GetValueOrDefault(d.Id),
+                    _signatureImages.TryGetValue(d.Id, out var mark) ? mark.Bytes : null,
                     d.SignaturePath,
                     d.AttestationName,
-                    d.SignedAtUtc)
+                    d.SignedAtUtc,
+                    _signatureImages.TryGetValue(d.Id, out var withType) ? withType.ContentType : null)
                 : null);
     }
 

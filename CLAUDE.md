@@ -48,6 +48,10 @@ Each of these was found from a screenshot, not from the code:
   millions. If a report shows a constant, check whether anything still writes it.
 - **An enum's `_ => value.ToString()` fallback looks deliberate on a page.** "FatherInLaw" is not
   a label; it is a missing one.
+- **A report is described once and rendered several ways** (`ReportDocument`), and the renderings
+  drift one at a time. When signatures moved into the database the PDF writer was taught to read
+  the bytes and the on-screen viewer was left reading a path that is now null, so every signature
+  since showed as a broken image on screen while the PDF of the same report drew it correctly.
 
 ## Consistency checks
 

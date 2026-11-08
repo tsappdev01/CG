@@ -162,7 +162,10 @@
                                     {
                                         <h4>Signature</h4>
                                         <div class="cg-report-signature">
-                                            <img src="@signature.ImagePath" alt="@($"Signature of {signature.Name ?? record.Title}")" />
+                                            @if (SignatureSource(signature) is { Length: > 0 } mark)
+                                            {
+                                                <img src="@mark" alt="@($"Signature of {signature.Name ?? record.Title}")" />
+                                            }
                                             <div class="cg-report-signature-meta">
                                                 <span class="cg-report-signature-name">@(signature.Name is { Length: > 0 } ? signature.Name : record.Title)</span>
                                                 <span class="cg-report-signature-at">@(signature.SignedAtUtc is { } at ? at.ToLocalDisplay("dd/MM/yyyy HH:mm") : "Time not recorded")</span>
@@ -276,6 +279,16 @@
 </div>
 
 @code {
+    /// <summary>What to put in the img. The stored bytes where there are any, inline, because the
+    /// report is also printed and saved as a single file -- an image fetched from an address would
+    /// be missing from both. The path is only for signatures written before they moved into
+    /// dbo.DocumentBlobs; reading it first is what left every signature since showing as a broken
+    /// image here while the PDF of the same report drew it correctly.</summary>
+    private static string? SignatureSource(ReportSignature signature) =>
+        signature.Image is { Length: > 0 } bytes
+            ? $"data:{(string.IsNullOrWhiteSpace(signature.ContentType) ? "image/png" : signature.ContentType)};base64,{Convert.ToBase64String(bytes)}"
+            : signature.ImagePath;
+
     /// <summary>The site's address, printed in the footer of every exported page. Was the literal
     /// cg.dubaiinvestments.com, which this deployment has moved off -- so every report anyone
     /// printed or exported told the reader to go to the wrong place.</summary>

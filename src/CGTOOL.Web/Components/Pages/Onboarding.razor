@@ -72,7 +72,7 @@ else
             <h2>Step 1 — Check your Emirates ID</h2>
             <p>Please check these details and confirm they are correct.</p>
 
-            @if (_record.EmiratesIdFrontBlobId is int cardBlob)
+            @if (_record.EmiratesIdBlobId is int cardBlob)
             {
                 <div class="cg-onboarding-source">
                     <span>📄</span>
@@ -137,18 +137,19 @@ else
             <p>We do not have your Emirates ID on file. Please upload a copy to continue.</p>
 
             <label class="cg-field">
-                <span>Emirates ID — front</span>
-                <InputFile OnChange="@(e => UploadCardAsync(e, front: true))" accept=".pdf,.jpg,.jpeg,.png" disabled="@_busy" />
-                @if (_record!.EmiratesIdFrontBlobId is not null) { <p class="cg-hint">Uploaded.</p> }
+                <span>Your Emirates ID</span>
+                <InputFile OnChange="UploadCardAsync" accept=".pdf" disabled="@_busy" />
+                <p class="cg-hint">
+                    @if (_record!.EmiratesIdBlobId is not null)
+                    {
+                        <span>Uploaded.</span>
+                    }
+                    else
+                    {
+                        <span>One PDF containing both sides of the card, up to 5 MB.</span>
+                    }
+                </p>
             </label>
-
-            <label class="cg-field">
-                <span>Emirates ID — back</span>
-                <InputFile OnChange="@(e => UploadCardAsync(e, front: false))" accept=".pdf,.jpg,.jpeg,.png" disabled="@_busy" />
-                @if (_record.EmiratesIdBackBlobId is not null) { <p class="cg-hint">Uploaded.</p> }
-            </label>
-
-            <p class="cg-hint">PDF, JPG or PNG, up to 5 MB each.</p>
 
             <label class="cg-field">
                 <span>Name as it appears on the card</span>

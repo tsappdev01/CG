@@ -116,7 +116,7 @@ public class MemberOnboardingService(
             onboarding.EmiratesIdNumber = refreshed.EmiratesIdNumber;
             onboarding.EmiratesIdHolderName = refreshed.EmiratesIdHolderName;
             onboarding.EmiratesIdNationality = refreshed.EmiratesIdNationality;
-            onboarding.EmiratesIdFrontBlobId = refreshed.EmiratesIdFrontBlobId;
+            onboarding.EmiratesIdBlobId = refreshed.EmiratesIdBlobId;
             onboarding.EmiratesIdStatus = EmiratesIdOnboardingStatus.PendingConfirmation;
         }
 
@@ -157,7 +157,7 @@ public class MemberOnboardingService(
 
             // The scan, where one was loaded in bulk. The member sees the card they are being
             // asked about rather than just its number.
-            onboarding.EmiratesIdFrontBlobId = card.BlobId;
+            onboarding.EmiratesIdBlobId = card.BlobId;
             onboarding.EmiratesIdStatus = EmiratesIdOnboardingStatus.PendingConfirmation;
         }
 
@@ -302,7 +302,7 @@ public class MemberOnboardingService(
     /// it with something it believes more.</summary>
     private async Task SeedWorkspaceAsync(MemberOnboarding o, Member member, CancellationToken ct)
     {
-        if (o.EmiratesIdNumber is null && o.EmiratesIdFrontBlobId is null) return;
+        if (o.EmiratesIdNumber is null && o.EmiratesIdBlobId is null) return;
 
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var existing = await db.MemberDocuments.AsNoTracking()
@@ -327,9 +327,9 @@ public class MemberOnboardingService(
             {
                 existing.ExpiryDate = o.EmiratesIdExpiryDate; changed = true;
             }
-            if (existing.BlobId is null && o.EmiratesIdFrontBlobId is not null)
+            if (existing.BlobId is null && o.EmiratesIdBlobId is not null)
             {
-                existing.BlobId = o.EmiratesIdFrontBlobId; changed = true;
+                existing.BlobId = o.EmiratesIdBlobId; changed = true;
             }
 
             if (changed) await documentWriter.UpdateAsync(existing);
@@ -341,12 +341,12 @@ public class MemberOnboardingService(
             MemberId = member.Id,
             Kind = MemberDocumentKind.EmiratesId,
             // The front of the card is the document; the back is kept on the onboarding record.
-            BlobId = o.EmiratesIdFrontBlobId,
+            BlobId = o.EmiratesIdBlobId,
             DocumentNumber = o.EmiratesIdNumber,
             HolderName = o.EmiratesIdHolderName,
             Nationality = o.EmiratesIdNationality,
             ExpiryDate = o.EmiratesIdExpiryDate,
-            OriginalFileName = o.EmiratesIdFrontBlobId is null ? null : "Emirates ID (from onboarding)",
+            OriginalFileName = o.EmiratesIdBlobId is null ? null : "Emirates ID (from onboarding)",
             UploadedAtUtc = DateTime.UtcNow,
         });
     }

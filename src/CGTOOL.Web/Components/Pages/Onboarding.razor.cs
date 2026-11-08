@@ -50,7 +50,7 @@ public partial class Onboarding
     /// is asked for but not insisted on: a member who cannot read it off a worn card should not be
     /// stuck on this screen, and the field is editable later in My Workspace.</summary>
     private bool CanSubmitCard =>
-        _record?.EmiratesIdFrontBlobId is not null && !string.IsNullOrWhiteSpace(_record.EmiratesIdNumber);
+        _record?.EmiratesIdBlobId is not null && !string.IsNullOrWhiteSpace(_record.EmiratesIdNumber);
 
     protected override async Task OnInitializedAsync()
     {
@@ -171,33 +171,36 @@ public partial class Onboarding
 
     // ---------------------------------------------------------------- uploads
 
-    private async Task UploadCardAsync(InputFileChangeEventArgs e, bool front)
+    /// <summary>Takes the member's Emirates ID as one PDF.
+    ///
+    /// One file, not a front and a back. The scans the organisation already holds are a single PDF
+    /// per person with both sides in it, so asking a member for two would store their card in a
+    /// shape nothing else here uses -- and leave whoever checks it wondering which of the two the
+    /// bulk-loaded ones correspond to.</summary>
+    private async Task UploadCardAsync(InputFileChangeEventArgs e)
     {
         if (_record is null) return;
 
         var file = e.File;
-        var contentType = file.ContentType switch
-        {
-            "image/png" => "image/png",
-            "image/jpeg" => "image/jpeg",
-            "application/pdf" => "application/pdf",
-            _ => null,
-        };
 
-        if (contentType is null)
+        // PDF only, and checked on the name as well as the type: a browser that reports nothing
+        // useful for ContentType would otherwise have the upload refused for the wrong reason.
+        var isPdf = file.ContentType == "application/pdf"
+            || file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
+        if (!isPdf)
         {
-            _captureNote = "Only PDF, JPG or PNG files can be uploaded.";
+            _captureNote = "Please upload the card as a PDF.";
             return;
         }
 
         if (file.Size > MaxCardBytes)
         {
-            _captureNote = "That file is larger than 5 MB.";
+            _captureNote = $"That file is {file.Size / (1024 * 1024)} MB. The limit is 5 MB.";
             return;
         }
 
         _busy = true;
-        _captureNote = front ? "Reading the front of the card…" : "Saving…";
+        _captureNote = "Reading the card…";
         StateHasChanged();
         try
         {
@@ -208,13 +211,10 @@ public partial class Onboarding
             }
 
             var content = buffer.ToArray();
-            var blobId = await Documents.SaveAsync(content, file.Name, contentType, Client.IpAddress);
+            _record.EmiratesIdBlobId = await Documents.SaveAsync(
+                content, file.Name, "application/pdf", Client.IpAddress);
 
-            if (front) _record.EmiratesIdFrontBlobId = blobId;
-            else _record.EmiratesIdBackBlobId = blobId;
-
-            // Only the front carries the printed details worth reading.
-            _captureNote = front ? await CaptureAsync(content) : null;
+            _captureNote = await CaptureAsync(content);
         }
         catch (Exception ex)
         {

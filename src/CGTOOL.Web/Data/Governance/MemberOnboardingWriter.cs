@@ -32,8 +32,7 @@ public class MemberOnboardingWriter(IStoredProcedureExecutor sp) : IMemberOnboar
         new("@EmiratesIdConfirmedAtUtc", (object?)o.EmiratesIdConfirmedAtUtc ?? DBNull.Value),
         new("@EmiratesIdReportedIssue", (object?)o.EmiratesIdReportedIssue ?? DBNull.Value),
         new("@EmiratesIdReportedAtUtc", (object?)o.EmiratesIdReportedAtUtc ?? DBNull.Value),
-        new("@EmiratesIdFrontBlobId", (object?)o.EmiratesIdFrontBlobId ?? DBNull.Value),
-        new("@EmiratesIdBackBlobId", (object?)o.EmiratesIdBackBlobId ?? DBNull.Value),
+        new("@EmiratesIdBlobId", (object?)o.EmiratesIdBlobId ?? DBNull.Value),
         new("@EmiratesIdVerifiedAtUtc", (object?)o.EmiratesIdVerifiedAtUtc ?? DBNull.Value),
         new("@EmiratesIdVerifiedByName", (object?)o.EmiratesIdVerifiedByName ?? DBNull.Value),
 

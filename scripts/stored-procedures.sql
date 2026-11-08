@@ -2614,8 +2614,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_MemberOnboarding_Insert
     @EmiratesIdConfirmedAtUtc datetime2 = NULL,
     @EmiratesIdReportedIssue nvarchar(1000) = NULL,
     @EmiratesIdReportedAtUtc datetime2 = NULL,
-    @EmiratesIdFrontBlobId int = NULL,
-    @EmiratesIdBackBlobId int = NULL,
+    @EmiratesIdBlobId int = NULL,
     @EmiratesIdVerifiedAtUtc datetime2 = NULL,
     @EmiratesIdVerifiedByName nvarchar(160) = NULL,
     @DfmStatus int = NULL,
@@ -2635,8 +2634,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.MemberOnboardings (MemberId, Status, StartedAtUtc, CompletedAtUtc, EmiratesIdStatus, EmiratesIdSource, EmiratesIdNumber, EmiratesIdHolderName, EmiratesIdHolderNameArabic, EmiratesIdNationality, EmiratesIdExpiryDate, EmiratesIdConfirmedAtUtc, EmiratesIdReportedIssue, EmiratesIdReportedAtUtc, EmiratesIdFrontBlobId, EmiratesIdBackBlobId, EmiratesIdVerifiedAtUtc, EmiratesIdVerifiedByName, DfmStatus, DfmSource, NinResponse, NinNumber, NinRegisteredName, DfmOtherInformation, DfmConfirmedAtUtc, DfmReportedIssue, DfmReportedAtUtc, NinDocumentBlobId, DfmVerifiedAtUtc, DfmVerifiedByName)
-    VALUES (@MemberId, @Status, @StartedAtUtc, @CompletedAtUtc, @EmiratesIdStatus, @EmiratesIdSource, @EmiratesIdNumber, @EmiratesIdHolderName, @EmiratesIdHolderNameArabic, @EmiratesIdNationality, @EmiratesIdExpiryDate, @EmiratesIdConfirmedAtUtc, @EmiratesIdReportedIssue, @EmiratesIdReportedAtUtc, @EmiratesIdFrontBlobId, @EmiratesIdBackBlobId, @EmiratesIdVerifiedAtUtc, @EmiratesIdVerifiedByName, @DfmStatus, @DfmSource, @NinResponse, @NinNumber, @NinRegisteredName, @DfmOtherInformation, @DfmConfirmedAtUtc, @DfmReportedIssue, @DfmReportedAtUtc, @NinDocumentBlobId, @DfmVerifiedAtUtc, @DfmVerifiedByName);
+    INSERT INTO dbo.MemberOnboardings (MemberId, Status, StartedAtUtc, CompletedAtUtc, EmiratesIdStatus, EmiratesIdSource, EmiratesIdNumber, EmiratesIdHolderName, EmiratesIdHolderNameArabic, EmiratesIdNationality, EmiratesIdExpiryDate, EmiratesIdConfirmedAtUtc, EmiratesIdReportedIssue, EmiratesIdReportedAtUtc, EmiratesIdBlobId, EmiratesIdVerifiedAtUtc, EmiratesIdVerifiedByName, DfmStatus, DfmSource, NinResponse, NinNumber, NinRegisteredName, DfmOtherInformation, DfmConfirmedAtUtc, DfmReportedIssue, DfmReportedAtUtc, NinDocumentBlobId, DfmVerifiedAtUtc, DfmVerifiedByName)
+    VALUES (@MemberId, @Status, @StartedAtUtc, @CompletedAtUtc, @EmiratesIdStatus, @EmiratesIdSource, @EmiratesIdNumber, @EmiratesIdHolderName, @EmiratesIdHolderNameArabic, @EmiratesIdNationality, @EmiratesIdExpiryDate, @EmiratesIdConfirmedAtUtc, @EmiratesIdReportedIssue, @EmiratesIdReportedAtUtc, @EmiratesIdBlobId, @EmiratesIdVerifiedAtUtc, @EmiratesIdVerifiedByName, @DfmStatus, @DfmSource, @NinResponse, @NinNumber, @NinRegisteredName, @DfmOtherInformation, @DfmConfirmedAtUtc, @DfmReportedIssue, @DfmReportedAtUtc, @NinDocumentBlobId, @DfmVerifiedAtUtc, @DfmVerifiedByName);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -2657,8 +2656,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_MemberOnboarding_Update
     @EmiratesIdConfirmedAtUtc datetime2 = NULL,
     @EmiratesIdReportedIssue nvarchar(1000) = NULL,
     @EmiratesIdReportedAtUtc datetime2 = NULL,
-    @EmiratesIdFrontBlobId int = NULL,
-    @EmiratesIdBackBlobId int = NULL,
+    @EmiratesIdBlobId int = NULL,
     @EmiratesIdVerifiedAtUtc datetime2 = NULL,
     @EmiratesIdVerifiedByName nvarchar(160) = NULL,
     @DfmStatus int = NULL,
@@ -2692,8 +2690,7 @@ BEGIN
         EmiratesIdConfirmedAtUtc = @EmiratesIdConfirmedAtUtc,
         EmiratesIdReportedIssue = @EmiratesIdReportedIssue,
         EmiratesIdReportedAtUtc = @EmiratesIdReportedAtUtc,
-        EmiratesIdFrontBlobId = @EmiratesIdFrontBlobId,
-        EmiratesIdBackBlobId = @EmiratesIdBackBlobId,
+        EmiratesIdBlobId = @EmiratesIdBlobId,
         EmiratesIdVerifiedAtUtc = @EmiratesIdVerifiedAtUtc,
         EmiratesIdVerifiedByName = @EmiratesIdVerifiedByName,
         DfmStatus = @DfmStatus,

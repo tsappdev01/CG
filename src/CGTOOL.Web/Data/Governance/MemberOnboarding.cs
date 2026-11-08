@@ -104,10 +104,11 @@ public class MemberOnboarding
 
     public DateTime? EmiratesIdReportedAtUtc { get; set; }
 
-    /// <summary>The front and back of the card, when the member had to supply one.</summary>
-    public int? EmiratesIdFrontBlobId { get; set; }
-
-    public int? EmiratesIdBackBlobId { get; set; }
+    /// <summary>The card, as one PDF. Either the copy already held for this member, or the one
+    /// they supplied. Not a front and a back: the scans the organisation holds are a single file
+    /// per person with both sides in it, and storing a member's in two pieces would leave whoever
+    /// checks them unable to compare the two sources.</summary>
+    public int? EmiratesIdBlobId { get; set; }
 
     /// <summary>Set only by a person with the authority to say so. Uploading a card or confirming
     /// a record does not set it.</summary>

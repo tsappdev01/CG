@@ -697,15 +697,12 @@ public partial class MyRegister : ComponentBase
                 _documents.Add(document);
             }
 
-            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", UploadFolder, "documents");
-            Directory.CreateDirectory(uploadsDir);
-            foreach (var stale in Directory.GetFiles(uploadsDir, $"{document.Id}-*.*")) File.Delete(stale);
-
-            var fileName = $"{document.Id}-{kind.ToString().ToLowerInvariant()}{extension}";
-            var filePath = Path.Combine(uploadsDir, fileName);
-            File.Move(temporaryFile, filePath, overwrite: true);
-
-            document.FilePath = $"/uploads/{UploadFolder}/documents/{fileName}";
+            // The temporary file stays where it is and is deleted in the finally below: the bytes
+            // go to the database, and the capture service further down reads the same array rather
+            // than re-opening anything.
+            var content = await File.ReadAllBytesAsync(temporaryFile);
+            document.BlobId = await Documents.SaveAsync(content, e.File.Name, e.File.ContentType, Client.IpAddress);
+            document.FilePath = null;
             document.OriginalFileName = e.File.Name;
             document.UploadedAtUtc = DateTime.UtcNow;
 
@@ -716,7 +713,7 @@ public partial class MyRegister : ComponentBase
                 await SetUploadPhaseAsync(kind, documentTypeId, "Reading the details off it…");
             }
 
-            var captured = await CaptureDocumentAsync(document, filePath);
+            var captured = await CaptureDocumentAsync(document, content);
             await SetUploadPhaseAsync(kind, documentTypeId, "Finishing…");
 
             await DocumentWriter.UpdateAsync(document);
@@ -753,13 +750,13 @@ public partial class MyRegister : ComponentBase
     /// <summary>Reads what the document says into the fields beside it, with the model that suits
     /// the kind. Returns what it read, for the audit line. Nothing is read for an Other document:
     /// there is no telling what it is, so there is no model to ask.</summary>
-    private async Task<string> CaptureDocumentAsync(MemberDocument document, string filePath)
+    private async Task<string> CaptureDocumentAsync(MemberDocument document, byte[] content)
     {
         if (!DocIntel.IsConfigured) return "Document capture is not configured; the details are typed in.";
 
         if (document.Kind == MemberDocumentKind.TradeLicence)
         {
-            var licence = await ReadTradeLicenceAsync(filePath);
+            var licence = await ReadTradeLicenceAsync(content);
             if (licence is null) return "No details were read from it.";
 
             if (!string.IsNullOrWhiteSpace(licence.LicenceNumber)) document.DocumentNumber = licence.LicenceNumber;
@@ -770,7 +767,7 @@ public partial class MyRegister : ComponentBase
 
         if (document.Kind == MemberDocumentKind.Other) return "Other documents are not read automatically.";
 
-        var id = await ReadIdDocumentAsync(filePath);
+        var id = await ReadIdDocumentAsync(content);
         if (id is null) return "No details were read from it.";
 
         if (!string.IsNullOrWhiteSpace(id.DocumentNumber)) document.DocumentNumber = id.DocumentNumber;
@@ -1068,24 +1065,21 @@ public partial class MyRegister : ComponentBase
         StateHasChanged();
         try
         {
-            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", UploadFolder, "holdings");
-            Directory.CreateDirectory(uploadsDir);
+            var content = await File.ReadAllBytesAsync(temporaryFile);
 
-            var fileName = $"{Guid.NewGuid():N}{extension}";
-            var filePath = Path.Combine(uploadsDir, fileName);
-            File.Move(temporaryFile, filePath, overwrite: true);
-
-            // Replacing a licence leaves no orphan behind.
+            // Replacing a licence leaves no orphan behind. The old file, if this holding still has
+            // one from before the move to the database, goes with it.
             if (!string.IsNullOrWhiteSpace(holding.TradeLicencePath))
             {
                 var previous = Path.Combine(Env.WebRootPath, holding.TradeLicencePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
                 if (File.Exists(previous)) File.Delete(previous);
             }
 
-            holding.TradeLicencePath = $"/uploads/{UploadFolder}/holdings/{fileName}";
+            holding.TradeLicenceBlobId = await Documents.SaveAsync(content, e.File.Name, e.File.ContentType, Client.IpAddress);
+            holding.TradeLicencePath = null;
             holding.TradeLicenceFileName = e.File.Name;
 
-            var captured = await ReadTradeLicenceAsync(filePath);
+            var captured = await ReadTradeLicenceAsync(content);
 
             if (!string.IsNullOrWhiteSpace(captured?.LicenceNumber)) holding.TradeLicenceNumber = captured.LicenceNumber;
             if (captured?.ExpiryDate is not null) holding.TradeLicenceExpiryDate = captured.ExpiryDate;
@@ -1461,13 +1455,13 @@ public partial class MyRegister : ComponentBase
     /// model, so the service pattern-matches labels over the OCR text (see
     /// DocumentIntelligenceService). Whatever it returns lands in fields the member can correct, and
     /// a failure -- or an unconfigured service -- never blocks the upload itself.</summary>
-    private async Task<TradeLicenceExtraction?> ReadTradeLicenceAsync(string filePath)
+    private async Task<TradeLicenceExtraction?> ReadTradeLicenceAsync(byte[] content)
     {
         if (!DocIntel.IsConfigured) return null;
 
         try
         {
-            await using var stream = File.OpenRead(filePath);
+            using var stream = new MemoryStream(content, writable: false);
             return await DocIntel.AnalyzeTradeLicenceAsync(stream);
         }
         catch (Exception ex)
@@ -1480,13 +1474,13 @@ public partial class MyRegister : ComponentBase
     /// <summary>Same best-effort contract as the trade licence read: prebuilt-idDocument is a
     /// purpose-built model and stronger than the licence's label matching, but an Emirates ID's
     /// bilingual layout still defeats it often enough that every field it fills stays editable.</summary>
-    private async Task<IdDocumentExtraction?> ReadIdDocumentAsync(string filePath)
+    private async Task<IdDocumentExtraction?> ReadIdDocumentAsync(byte[] content)
     {
         if (!DocIntel.IsConfigured) return null;
 
         try
         {
-            await using var stream = File.OpenRead(filePath);
+            using var stream = new MemoryStream(content, writable: false);
             return await DocIntel.AnalyzeIdDocumentAsync(stream);
         }
         catch (Exception ex)
@@ -1522,38 +1516,37 @@ public partial class MyRegister : ComponentBase
         StateHasChanged();
         try
         {
-            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", UploadFolder, "family");
-            Directory.CreateDirectory(uploadsDir);
-            foreach (var existing in Directory.GetFiles(uploadsDir, $"{target.Id}-{kind}.*")) File.Delete(existing);
-
-            var fileName = $"{target.Id}-{kind}{extension}";
-            var filePath = Path.Combine(uploadsDir, fileName);
+            using var buffer = new MemoryStream();
             await using (var stream = e.File.OpenReadStream(MaxIdUploadBytes))
-            await using (var file = File.Create(filePath))
             {
-                await stream.CopyToAsync(file);
+                await stream.CopyToAsync(buffer);
             }
 
-            var path = $"/uploads/{UploadFolder}/family/{fileName}";
+            var content = buffer.ToArray();
+            var blobId = await Documents.SaveAsync(content, e.File.Name, e.File.ContentType, Client.IpAddress);
+
             TradeLicenceExtraction? captured = null;
             IdDocumentExtraction? capturedId = null;
             switch (kind)
             {
                 case "emirates-id":
-                    target.EmiratesIdPath = path;
-                    capturedId = await ReadIdDocumentAsync(filePath);
+                    target.EmiratesIdBlobId = blobId;
+                    target.EmiratesIdPath = null;
+                    capturedId = await ReadIdDocumentAsync(content);
                     if (!string.IsNullOrWhiteSpace(capturedId?.DocumentNumber)) target.EmiratesIdNumber = capturedId.DocumentNumber;
                     if (capturedId?.DateOfExpiration is not null) target.EmiratesIdExpiryDate = capturedId.DateOfExpiration;
                     break;
                 case "passport":
-                    target.PassportPath = path;
-                    capturedId = await ReadIdDocumentAsync(filePath);
+                    target.PassportBlobId = blobId;
+                    target.PassportPath = null;
+                    capturedId = await ReadIdDocumentAsync(content);
                     if (!string.IsNullOrWhiteSpace(capturedId?.DocumentNumber)) target.PassportNumber = capturedId.DocumentNumber;
                     if (capturedId?.DateOfExpiration is not null) target.PassportExpiryDate = capturedId.DateOfExpiration;
                     break;
                 case "trade-licence":
-                    target.TradeLicencePath = path;
-                    captured = await ReadTradeLicenceAsync(filePath);
+                    target.TradeLicenceBlobId = blobId;
+                    target.TradeLicencePath = null;
+                    captured = await ReadTradeLicenceAsync(content);
                     if (!string.IsNullOrWhiteSpace(captured?.LicenceNumber)) target.TradeLicenceNumber = captured.LicenceNumber;
                     if (!string.IsNullOrWhiteSpace(captured?.BusinessName)) target.TradeLicenceLegalName = captured.BusinessName;
                     if (captured?.ExpiryDate is not null) target.TradeLicenceExpiryDate = captured.ExpiryDate;
@@ -1578,7 +1571,7 @@ public partial class MyRegister : ComponentBase
             }
 
             var actorName = await CurrentActorNameAsync();
-            var detail = $"Attached {label} to related party {target.Name}: {fileName}";
+            var detail = $"Attached {label} to related party {target.Name}: {e.File.Name}";
             if (DocIntel.IsConfigured)
             {
                 if (kind == "trade-licence") detail += $" {CapturedNote(captured)}";
@@ -1613,31 +1606,28 @@ public partial class MyRegister : ComponentBase
         StateHasChanged();
         try
         {
-            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", UploadFolder, "companies");
-            Directory.CreateDirectory(uploadsDir);
-            foreach (var existing in Directory.GetFiles(uploadsDir, $"{target.Id}-{kind}.*")) File.Delete(existing);
-
-            var fileName = $"{target.Id}-{kind}{extension}";
-            var filePath = Path.Combine(uploadsDir, fileName);
+            using var buffer = new MemoryStream();
             await using (var stream = e.File.OpenReadStream(MaxCompanyDocUploadBytes))
-            await using (var file = File.Create(filePath))
             {
-                await stream.CopyToAsync(file);
+                await stream.CopyToAsync(buffer);
             }
 
-            var path = $"/uploads/{UploadFolder}/companies/{fileName}";
+            var content = buffer.ToArray();
+            var blobId = await Documents.SaveAsync(content, e.File.Name, e.File.ContentType, Client.IpAddress);
+
             TradeLicenceExtraction? captured = null;
             switch (kind)
             {
                 case "trade-license":
-                    target.TradeLicensePath = path;
-                    captured = await ReadTradeLicenceAsync(filePath);
+                    target.TradeLicenseBlobId = blobId;
+                    target.TradeLicensePath = null;
+                    captured = await ReadTradeLicenceAsync(content);
                     if (!string.IsNullOrWhiteSpace(captured?.LicenceNumber)) target.TradeLicenceNumber = captured.LicenceNumber;
                     if (!string.IsNullOrWhiteSpace(captured?.BusinessName)) target.TradeLicenceLegalName = captured.BusinessName;
                     if (captured?.ExpiryDate is not null) target.TradeLicenceExpiryDate = captured.ExpiryDate;
                     break;
-                case "moa": target.MoaPath = path; break;
-                default: target.PoaPath = path; break;
+                case "moa": target.MoaBlobId = blobId; target.MoaPath = null; break;
+                default: target.PoaBlobId = blobId; target.PoaPath = null; break;
             }
 
             await CompanyWriter.UpdateAsync(target);
@@ -1648,13 +1638,16 @@ public partial class MyRegister : ComponentBase
                 copy.TradeLicensePath = target.TradeLicensePath;
                 copy.MoaPath = target.MoaPath;
                 copy.PoaPath = target.PoaPath;
+                copy.TradeLicenseBlobId = target.TradeLicenseBlobId;
+                copy.MoaBlobId = target.MoaBlobId;
+                copy.PoaBlobId = target.PoaBlobId;
                 copy.TradeLicenceNumber = target.TradeLicenceNumber;
                 copy.TradeLicenceLegalName = target.TradeLicenceLegalName;
                 copy.TradeLicenceExpiryDate = target.TradeLicenceExpiryDate;
             }
 
             var actorName = await CurrentActorNameAsync();
-            var detail = $"Attached {label} to company {target.CompanyName}: {fileName}";
+            var detail = $"Attached {label} to company {target.CompanyName}: {e.File.Name}";
             if (kind == "trade-license" && DocIntel.IsConfigured) detail += $" {CapturedNote(captured)}";
             await AuditLog.LogAsync(actorName, AuditAction.Update, nameof(OwnedCompany), target.Id.ToString(), detail);
 

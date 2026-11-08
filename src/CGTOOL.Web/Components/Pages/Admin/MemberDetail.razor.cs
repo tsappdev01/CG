@@ -242,24 +242,15 @@ public partial class MemberDetail
         var user = await UserManager.FindByIdAsync(_editing.ApplicationUserId);
         if (user is null) return;
 
-        var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "profile-pictures");
-        Directory.CreateDirectory(uploadsDir);
-
-        foreach (var existing in Directory.GetFiles(uploadsDir, $"{user.Id}.*"))
-        {
-            File.Delete(existing);
-        }
-
-        var fileName = $"{user.Id}{extension}";
-        var filePath = Path.Combine(uploadsDir, fileName);
-
+        using var buffer = new MemoryStream();
         await using (var stream = file.OpenReadStream(MaxProfilePictureBytes))
-        await using (var target = File.Create(filePath))
         {
-            await stream.CopyToAsync(target);
+            await stream.CopyToAsync(buffer);
         }
 
-        user.ProfilePicturePath = $"/uploads/profile-pictures/{fileName}";
+        user.ProfilePictureBlobId = await Documents.SaveAsync(
+            buffer.ToArray(), file.Name, file.ContentType, Client.IpAddress);
+        user.ProfilePicturePath = null;
         var result = await UserManager.UpdateAsync(user);
         if (!result.Succeeded)
         {
@@ -270,9 +261,16 @@ public partial class MemberDetail
         // Keep the page's in-memory snapshot consistent with what was just persisted, in case
         // anything else on this page re-reads _users before the next full reload.
         var cachedUser = _users!.FirstOrDefault(u => u.Id == user.Id);
-        if (cachedUser is not null) cachedUser.ProfilePicturePath = user.ProfilePicturePath;
+        if (cachedUser is not null)
+        {
+            cachedUser.ProfilePicturePath = user.ProfilePicturePath;
+            cachedUser.ProfilePictureBlobId = user.ProfilePictureBlobId;
+        }
 
-        _profilePicturePath = $"{user.ProfilePicturePath}?v={DateTime.UtcNow.Ticks}";
+        // No cache-busting suffix is needed any more: a replacement picture is a new blob with a
+        // new id, so the URL changes on its own. The suffix existed because the old path stayed
+        // the same while the file behind it changed, which is what browsers cache wrongly.
+        _profilePicturePath = DocumentUrl.For(user.ProfilePictureBlobId, user.ProfilePicturePath);
 
         await AuditLog.LogAsync(await CurrentActorAsync(), AuditAction.Update, nameof(ApplicationUser), user.Id, "Profile picture updated");
         Toasts.ShowSuccess("Profile picture updated.");

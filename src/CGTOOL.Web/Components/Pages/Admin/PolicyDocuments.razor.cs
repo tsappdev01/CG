@@ -62,16 +62,21 @@ public partial class PolicyDocuments
 
             var policyPath = Path.Combine(Env.WebRootPath, PolicyDocumentRelativePath);
             var hadExisting = File.Exists(policyPath);
-            string? backupRelativePath = null;
+            int? backupBlobId = null;
 
+            // The copy that is about to be overwritten goes to the database, not to a backups
+            // folder. The live document stays where it is: /assets/policy.pdf is a stable link
+            // referenced from several places and from outside the app, and it is a corporate
+            // document everyone is meant to read -- so it gains nothing from being behind an
+            // authorised endpoint. Its superseded versions are history, read only from the
+            // version list here, and have no reason to be files at all.
             if (hadExisting)
             {
-                var backupDir = Path.Combine(Env.WebRootPath, PolicyBackupRelativeDir);
-                Directory.CreateDirectory(backupDir);
-
-                var backupFileName = $"policy-{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
-                File.Copy(policyPath, Path.Combine(backupDir, backupFileName), overwrite: true);
-                backupRelativePath = $"/{PolicyBackupRelativeDir}/{backupFileName}";
+                backupBlobId = await Documents.SaveAsync(
+                    await File.ReadAllBytesAsync(policyPath),
+                    $"policy-{DateTime.UtcNow:yyyyMMddHHmmss}.pdf",
+                    "application/pdf",
+                    Client.IpAddress);
             }
 
             await using (var stream = file.OpenReadStream(MaxPolicyDocumentBytes))
@@ -83,11 +88,12 @@ public partial class PolicyDocuments
             var actorName = await CurrentActorAsync();
             var actorFullName = await CurrentActorFullNameAsync(actorName);
 
-            if (backupRelativePath is not null)
+            if (backupBlobId is not null)
             {
                 await VersionWriter.InsertAsync(new PolicyDocumentVersion
                 {
-                    FilePath = backupRelativePath,
+                    FilePath = string.Empty,
+                    BlobId = backupBlobId,
                     OriginalFileName = file.Name,
                     UploadedByName = actorFullName,
                 });
@@ -95,7 +101,7 @@ public partial class PolicyDocuments
 
             await AuditLog.LogAsync(actorName, AuditAction.Update, nameof(PolicyDocumentVersion), null,
                 hadExisting
-                    ? $"Policy document replaced with '{file.Name}' (previous version backed up to {backupRelativePath})"
+                    ? $"Policy document replaced with '{file.Name}' (previous version kept as document {backupBlobId})"
                     : $"Policy document uploaded for the first time ('{file.Name}')");
 
             Toasts.ShowSuccess("Policy document updated.");

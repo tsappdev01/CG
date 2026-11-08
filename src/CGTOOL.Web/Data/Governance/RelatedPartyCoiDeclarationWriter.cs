@@ -49,6 +49,7 @@ public class RelatedPartyCoiDeclarationWriter(IStoredProcedureExecutor sp) : IRe
         new SqlParameter("@AttestationName", declaration.AttestationName),
         new SqlParameter("@AttestationConfirmed", declaration.AttestationConfirmed),
         new SqlParameter("@SignaturePath", (object?)declaration.SignaturePath ?? DBNull.Value),
+        new SqlParameter("@SignatureBlobId", (object?)declaration.SignatureBlobId ?? DBNull.Value),
         new SqlParameter("@SignedAtUtc", (object?)declaration.SignedAtUtc ?? DBNull.Value),
         new SqlParameter("@SubmittedByName", declaration.SubmittedByName),
         new SqlParameter("@SubmittedOnBehalfOf", (object?)declaration.SubmittedOnBehalfOf ?? DBNull.Value));
@@ -65,6 +66,7 @@ public class RelatedPartyCoiDeclarationWriter(IStoredProcedureExecutor sp) : IRe
         new SqlParameter("@AttestationName", declaration.AttestationName),
         new SqlParameter("@AttestationConfirmed", declaration.AttestationConfirmed),
         new SqlParameter("@SignaturePath", (object?)declaration.SignaturePath ?? DBNull.Value),
+        new SqlParameter("@SignatureBlobId", (object?)declaration.SignatureBlobId ?? DBNull.Value),
         new SqlParameter("@SignedAtUtc", (object?)declaration.SignedAtUtc ?? DBNull.Value),
         new SqlParameter("@SubmittedByName", declaration.SubmittedByName),
         new SqlParameter("@SubmittedOnBehalfOf", (object?)declaration.SubmittedOnBehalfOf ?? DBNull.Value));
@@ -81,6 +83,7 @@ public class RelatedPartyCoiDeclarationWriter(IStoredProcedureExecutor sp) : IRe
         new SqlParameter("@RelatedPartyCoiDeclarationId", declarationId),
         new SqlParameter("@DocumentTypeId", document.DocumentTypeId),
         new SqlParameter("@FilePath", (object?)document.FilePath ?? DBNull.Value),
+        new SqlParameter("@BlobId", (object?)document.BlobId ?? DBNull.Value),
         new SqlParameter("@OriginalFileName", (object?)document.OriginalFileName ?? DBNull.Value),
         new SqlParameter("@DocumentNumber", (object?)document.DocumentNumber ?? DBNull.Value),
         new SqlParameter("@ExpiryDate", (object?)document.ExpiryDate ?? DBNull.Value));
@@ -119,6 +122,7 @@ public class RelatedPartyCoiDeclarationWriter(IStoredProcedureExecutor sp) : IRe
         "dbo.usp_CoiTradeLicenseDocument_Insert",
         new SqlParameter("@CoiCompanyEntryId", companyEntryId),
         new SqlParameter("@FilePath", document.FilePath),
+        new SqlParameter("@BlobId", (object?)document.BlobId ?? DBNull.Value),
         new SqlParameter("@FileName", document.FileName));
 
     public Task<int> InsertConflictAsync(int declarationId, CoiConflictEntry conflict) => sp.InsertAsync(

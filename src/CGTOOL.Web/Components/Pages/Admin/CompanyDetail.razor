@@ -3,6 +3,8 @@
 @rendermode InteractiveServer
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject ICompanyWriter CompanyWriter
+@inject IDocumentStore Documents
+@inject ClientContext Client
 @inject IAuditLogger AuditLog
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav

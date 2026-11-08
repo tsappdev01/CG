@@ -5,7 +5,7 @@ namespace CGTOOL.Web.Data.Governance;
 
 public interface IShareholderRegisterWriter
 {
-    Task<int> InsertUploadAsync(DateOnly asOnDate, string fileName, string? filePath, int recordCount, string uploadedByName);
+    Task<int> InsertUploadAsync(DateOnly asOnDate, string fileName, string? filePath, int? blobId, int recordCount, string uploadedByName);
 
     Task BulkInsertRecordsAsync(int uploadId, IReadOnlyList<ShareholderRecord> records);
 }
@@ -15,11 +15,12 @@ public interface IShareholderRegisterWriter
 /// tens of thousands of rows, and a round trip per row at that scale would take minutes.</summary>
 public class ShareholderRegisterWriter(IStoredProcedureExecutor sp) : IShareholderRegisterWriter
 {
-    public Task<int> InsertUploadAsync(DateOnly asOnDate, string fileName, string? filePath, int recordCount, string uploadedByName) => sp.InsertAsync(
+    public Task<int> InsertUploadAsync(DateOnly asOnDate, string fileName, string? filePath, int? blobId, int recordCount, string uploadedByName) => sp.InsertAsync(
         "dbo.usp_ShareholderRegisterUpload_Insert",
         DateParam("@AsOnDate", asOnDate),
         new SqlParameter("@FileName", fileName),
         new SqlParameter("@FilePath", (object?)filePath ?? DBNull.Value),
+        new SqlParameter("@BlobId", (object?)blobId ?? DBNull.Value),
         new SqlParameter("@RecordCount", recordCount),
         new SqlParameter("@UploadedByName", uploadedByName));
 

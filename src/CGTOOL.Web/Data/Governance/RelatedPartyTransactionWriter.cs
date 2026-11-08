@@ -101,6 +101,7 @@ public class RelatedPartyTransactionWriter(IStoredProcedureExecutor sp) : IRelat
         "dbo.usp_RelatedPartyTransactionDocument_Insert",
         new SqlParameter("@RelatedPartyTransactionId", transactionId),
         new SqlParameter("@FilePath", document.FilePath),
+        new SqlParameter("@BlobId", (object?)document.BlobId ?? DBNull.Value),
         new SqlParameter("@FileName", document.FileName),
         new SqlParameter("@Kind", (int)document.Kind));
 

@@ -293,8 +293,8 @@ public partial class ShareholderRegisterPage
         try
         {
             var actor = await CurrentActorAsync();
-            var filePath = await KeepUploadedFileAsync();
-            var uploadId = await Writer.InsertUploadAsync(_uploadAsOnDate, _parsedFileName, filePath, _parsedRecords.Count, actor);
+            var blobId = await KeepUploadedFileAsync();
+            var uploadId = await Writer.InsertUploadAsync(_uploadAsOnDate, _parsedFileName, null, blobId, _parsedRecords.Count, actor);
             _saveProgress = 40;
             StateHasChanged();
 
@@ -344,22 +344,17 @@ public partial class ShareholderRegisterPage
     /// Returns null, rather than failing the upload, if the file cannot be written. The rows are
     /// the register; the copy is evidence, and losing the evidence is not a reason to lose the
     /// register with it -- the audit entry says it happened.</summary>
-    private async Task<string?> KeepUploadedFileAsync()
+    private async Task<int?> KeepUploadedFileAsync()
     {
         if (_parsedBytes is null || _parsedFileName is null) return null;
 
         try
         {
-            var directory = Path.Combine(Env.WebRootPath, "uploads", "investor-relations", "share-register");
-            Directory.CreateDirectory(directory);
-
-            // The member's own file name is not used on disk: it comes from their machine and two
-            // uploads a month apart are both called "SHARE REGISTERED.xlsx". The original name is
-            // on the history row beside the link.
-            var fileName = $"{_uploadAsOnDate:yyyy-MM-dd}-{Guid.NewGuid():N}.xlsx";
-            await File.WriteAllBytesAsync(Path.Combine(directory, fileName), _parsedBytes);
-
-            return $"/uploads/investor-relations/share-register/{fileName}";
+            return await Documents.SaveAsync(
+                _parsedBytes,
+                _parsedFileName,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                Client.IpAddress);
         }
         catch (Exception ex)
         {

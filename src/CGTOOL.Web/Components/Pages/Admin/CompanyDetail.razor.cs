@@ -109,25 +109,24 @@ public partial class CompanyDetail
             return;
         }
 
-        var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "company-logos");
-        Directory.CreateDirectory(uploadsDir);
-
-        foreach (var existing in Directory.GetFiles(uploadsDir, $"{_editing.Id}.*"))
-        {
-            File.Delete(existing);
-        }
-
-        var fileName = $"{_editing.Id}{extension}";
-        var filePath = Path.Combine(uploadsDir, fileName);
-
+        // Read through a bounded stream rather than trusting the browser's reported size, then
+        // store the bytes. Nothing is written to disk: the logo is a row in dbo.DocumentBlobs and
+        // is served from /documents/{id}.
+        using var buffer = new MemoryStream();
         await using (var stream = file.OpenReadStream(MaxLogoBytes))
-        await using (var target = File.Create(filePath))
         {
-            await stream.CopyToAsync(target);
+            await stream.CopyToAsync(buffer);
         }
 
-        await CompanyWriter.SetLogoPathAsync(_editing.Id, $"/uploads/company-logos/{fileName}");
-        _editing.LogoPath = $"/uploads/company-logos/{fileName}?v={DateTime.UtcNow.Ticks}";
+        var blobId = await Documents.SaveAsync(
+            buffer.ToArray(), file.Name, file.ContentType, Client.IpAddress);
+
+        // The path is cleared at the same time. Leaving the old one set would mean a company whose
+        // logo was replaced still has a path to a file nobody serves any more, and DocumentUrl
+        // prefers the blob anyway -- so it would be dead data that reads like a fallback.
+        await CompanyWriter.SetLogoAsync(_editing.Id, null, blobId);
+        _editing.LogoPath = null;
+        _editing.LogoBlobId = blobId;
 
         await AuditLog.LogAsync(await CurrentActorAsync(), AuditAction.Update, nameof(Company), _editing.Id.ToString(), "Logo updated");
         Toasts.ShowSuccess("Logo updated.");

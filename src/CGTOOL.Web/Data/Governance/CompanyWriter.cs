@@ -7,7 +7,7 @@ public interface ICompanyWriter
     Task<int> InsertAsync(Company company);
     Task UpdateAsync(Company company);
     Task SetActiveAsync(int id, bool active);
-    Task SetLogoPathAsync(int id, string? logoPath);
+    Task SetLogoAsync(int id, string? logoPath, int? logoBlobId);
 }
 
 public class CompanyWriter(IStoredProcedureExecutor sp) : ICompanyWriter
@@ -20,8 +20,10 @@ public class CompanyWriter(IStoredProcedureExecutor sp) : ICompanyWriter
     public Task SetActiveAsync(int id, bool active) => sp.ExecuteAsync("dbo.usp_Company_SetActive",
         new SqlParameter("@Id", id), new SqlParameter("@Active", active));
 
-    public Task SetLogoPathAsync(int id, string? logoPath) => sp.ExecuteAsync("dbo.usp_Company_SetLogoPath",
-        new SqlParameter("@Id", id), new SqlParameter("@LogoPath", (object?)logoPath ?? DBNull.Value));
+    public Task SetLogoAsync(int id, string? logoPath, int? logoBlobId) => sp.ExecuteAsync("dbo.usp_Company_SetLogoPath",
+        new SqlParameter("@Id", id),
+        new SqlParameter("@LogoPath", (object?)logoPath ?? DBNull.Value),
+        new SqlParameter("@LogoBlobId", (object?)logoBlobId ?? DBNull.Value));
 
     private static SqlParameter[] Params(Company c) =>
     [

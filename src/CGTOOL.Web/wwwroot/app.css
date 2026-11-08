@@ -4271,12 +4271,12 @@ button.cg-appbar-user {
 }
 
 .cg-onboarding-brand {
-    padding: 20px 24px;
-    background: var(--cg-surface, #FFFFFF);
-    border-bottom: 1px solid var(--cg-line);
+    padding: 18px 28px;
+    background: var(--cg-navy);
 }
 
-.cg-onboarding-brand img { height: 38px; }
+/* 38px, the same mark at the same size as the sidebar and the sign-in screen. */
+.cg-onboarding-brand img { height: 38px; display: block; }
 
 .cg-onboarding-main {
     flex: 1;

@@ -62,7 +62,7 @@ else
             </p>
 
             <div class="cg-onboarding-actions">
-                <button type="button" class="cg-action-btn cg-primary" disabled="@_busy" @onclick="StartAsync">
+                <button type="button" class="cg-action-btn cg-good" disabled="@_busy" @onclick="StartAsync">
                     Start onboarding
                 </button>
             </div>
@@ -102,7 +102,7 @@ else
 
             <p><strong>Is the above correct?</strong></p>
             <div class="cg-onboarding-actions">
-                <button type="button" class="cg-action-btn cg-primary" disabled="@_busy" @onclick="ConfirmEmiratesIdAsync">
+                <button type="button" class="cg-action-btn cg-good" disabled="@_busy" @onclick="ConfirmEmiratesIdAsync">
                     Yes, confirm
                 </button>
                 <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="() => _reportingEmiratesId = true">
@@ -122,7 +122,7 @@ else
                 <textarea class="cg-input" rows="4" maxlength="1000" @bind="_issueText"></textarea>
             </label>
             <div class="cg-onboarding-actions">
-                <button type="button" class="cg-action-btn cg-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_issueText))"
+                <button type="button" class="cg-action-btn cg-good" disabled="@(_busy || string.IsNullOrWhiteSpace(_issueText))"
                         @onclick="ReportEmiratesIdAsync">
                     Send and continue
                 </button>
@@ -166,7 +166,7 @@ else
             @if (_captureNote is not null) { <p class="cg-hint">@_captureNote</p> }
 
             <div class="cg-onboarding-actions">
-                <button type="button" class="cg-action-btn cg-primary" disabled="@(_busy || !CanSubmitCard)" @onclick="SubmitEmiratesIdAsync">
+                <button type="button" class="cg-action-btn cg-good" disabled="@(_busy || !CanSubmitCard)" @onclick="SubmitEmiratesIdAsync">
                     Submit and continue
                 </button>
             </div>
@@ -189,7 +189,7 @@ else
 
             <p><strong>Is the above correct?</strong></p>
             <div class="cg-onboarding-actions">
-                <button type="button" class="cg-action-btn cg-primary" disabled="@_busy" @onclick="ConfirmDfmAsync">
+                <button type="button" class="cg-action-btn cg-good" disabled="@_busy" @onclick="ConfirmDfmAsync">
                     Yes, confirm
                 </button>
                 <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="() => _reportingDfm = true">
@@ -206,7 +206,7 @@ else
                 <textarea class="cg-input" rows="4" maxlength="1000" @bind="_issueText"></textarea>
             </label>
             <div class="cg-onboarding-actions">
-                <button type="button" class="cg-action-btn cg-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_issueText))"
+                <button type="button" class="cg-action-btn cg-good" disabled="@(_busy || string.IsNullOrWhiteSpace(_issueText))"
                         @onclick="ReportDfmAsync">
                     Send and continue
                 </button>
@@ -222,11 +222,11 @@ else
             <p><strong>Do you have a National Investor Number (NIN) registered with DFM?</strong></p>
 
             <div class="cg-onboarding-actions">
-                <button type="button" class="cg-action-btn @(_hasNin == true ? "cg-primary" : "")" disabled="@_busy"
+                <button type="button" class="cg-action-btn @(_hasNin == true ? "cg-good" : "")" disabled="@_busy"
                         @onclick="() => _hasNin = true">
                     Yes, I have a NIN
                 </button>
-                <button type="button" class="cg-action-btn @(_hasNin == false ? "cg-primary" : "")" disabled="@_busy"
+                <button type="button" class="cg-action-btn @(_hasNin == false ? "cg-good" : "")" disabled="@_busy"
                         @onclick="() => _hasNin = false">
                     No, I do not
                 </button>
@@ -250,7 +250,7 @@ else
                     </label>
 
                     <div class="cg-onboarding-actions">
-                        <button type="button" class="cg-action-btn cg-primary"
+                        <button type="button" class="cg-action-btn cg-good"
                                 disabled="@(_busy || string.IsNullOrWhiteSpace(_record.NinNumber))" @onclick="SubmitNinAsync">
                             Submit and continue
                         </button>
@@ -262,7 +262,7 @@ else
                 <div style="margin-top:22px;">
                     <p>We will record that you do not have a NIN. You can tell us later if that changes.</p>
                     <div class="cg-onboarding-actions">
-                        <button type="button" class="cg-action-btn cg-primary" disabled="@_busy" @onclick="RecordNoNinAsync">
+                        <button type="button" class="cg-action-btn cg-good" disabled="@_busy" @onclick="RecordNoNinAsync">
                             Continue
                         </button>
                     </div>
@@ -275,7 +275,7 @@ else
             <h1>That is everything</h1>
             <p class="cg-onboarding-lead">Thank you for checking your details.</p>
             <div class="cg-onboarding-actions">
-                <button type="button" class="cg-action-btn cg-primary" disabled="@_busy" @onclick="CompleteAsync">
+                <button type="button" class="cg-action-btn cg-good" disabled="@_busy" @onclick="CompleteAsync">
                     Finish onboarding
                 </button>
             </div>
@@ -292,7 +292,7 @@ else
             </p>
             <p>You can now go to your dashboard and complete the declarations assigned to you.</p>
             <div class="cg-onboarding-actions">
-                <a class="cg-action-btn cg-primary" href="@ReturnTarget">@ReturnLabel</a>
+                <a class="cg-action-btn cg-good" href="@ReturnTarget">@ReturnLabel</a>
             </div>
             break;
     }

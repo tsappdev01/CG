@@ -1,15 +1,21 @@
+using Microsoft.Extensions.Configuration;
+
 namespace CGTOOL.Web.Data.Governance;
 
 /// <summary>FRD §2.3 new-user notification email content, shared by every IMemberWelcomeEmailSender
 /// implementation regardless of which SMTP transport actually sends it.</summary>
 internal static class WelcomeEmailTemplate
 {
-    public const string DeclarationsLink = "https://cg.dubaiinvestments.com/";
+    /// <summary>Where the "submit your declarations" link points. Was a constant naming a host
+    /// this deployment has moved off, so every one of these emails sent people to the wrong
+    /// site.</summary>
+    public static string DeclarationsLinkFor(IConfiguration? configuration) =>
+        Branding.PublicBaseUrlOf(configuration) + "/";
 
     public const string Subject = "Corporate Governance – Insider Declaration and Related Party & COI Submission Required";
 
     // Body text follows the confirmed Corporate Affairs template as closely as HTML formatting allows.
-    public static string BuildHtml(Member member, string logoTag, string parentHoldingCompany) => $$"""
+    public static string BuildHtml(Member member, string logoTag, string parentHoldingCompany, string declarationsLink) => $$"""
         <!DOCTYPE html>
         <html>
         <body style="margin:0;padding:0;background-color:#EEF0F3;font-family:Segoe UI,Arial,sans-serif;">
@@ -32,7 +38,7 @@ internal static class WelcomeEmailTemplate
                       </p>
                       <p>
                         Please submit your declarations using this link
-                        (<a href="{{DeclarationsLink}}" style="color:#A8790C;">{{DeclarationsLink}}</a>).
+                        (<a href="{{declarationsLink}}" style="color:#A8790C;">{{declarationsLink}}</a>).
                       </p>
                       <p>
                         Should you have any queries on this matter, please contact the Corporate Affairs Office.

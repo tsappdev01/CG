@@ -73,8 +73,12 @@ public class SqlDbMailMemberWelcomeEmailSender(SqlDbMailSender mail, Branding br
         if (string.IsNullOrWhiteSpace(member.Email)) return false;
 
         var company = branding.ParentHoldingCompany;
-        var logoTag = $"<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"{company}\" height=\"48\" style=\"display:block;\" />";
-        var html = WelcomeEmailTemplate.BuildHtml(member, logoTag, company);
+
+        // Absolute, and from configuration. A mail client is not this application, so a relative
+        // src renders as the broken-image box these emails have been showing.
+        var baseUrl = branding.PublicBaseUrl;
+        var logoTag = $"<img src=\"{baseUrl}/images/di-logo.jpg\" alt=\"{company}\" height=\"48\" style=\"display:block;\" />";
+        var html = WelcomeEmailTemplate.BuildHtml(member, logoTag, company, baseUrl + "/");
         await mail.SendAsync(member.Email, WelcomeEmailTemplate.Subject, html, ct);
         return true;
     }

@@ -4,8 +4,12 @@ namespace CGTOOL.Web.Data.Governance;
 
 /// <summary>Sends a weekly reminder email for each open Insider Declaration / Related Party &amp; COI
 /// declaration period, to members who haven't submitted yet, until the period's due date.</summary>
-public class DeclarationReminderHostedService(IServiceScopeFactory scopeFactory, ILogger<DeclarationReminderHostedService> logger) : BackgroundService
+public class DeclarationReminderHostedService(
+    IServiceScopeFactory scopeFactory,
+    IConfiguration configuration,
+    ILogger<DeclarationReminderHostedService> logger) : BackgroundService
 {
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -16,7 +20,8 @@ public class DeclarationReminderHostedService(IServiceScopeFactory scopeFactory,
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var emailSender = scope.ServiceProvider.GetRequiredService<IActivityEmailSender>();
                 var setupWriter = scope.ServiceProvider.GetRequiredService<IDeclarationSetupWriter>();
-                await RunOnceAsync(db, emailSender, setupWriter, DateOnly.FromDateTime(DateTime.UtcNow), stoppingToken);
+                await RunOnceAsync(db, emailSender, setupWriter, DateOnly.FromDateTime(DateTime.UtcNow), stoppingToken,
+                    Branding.PublicBaseUrlOf(configuration));
             }
             catch (Exception ex)
             {
@@ -37,7 +42,7 @@ public class DeclarationReminderHostedService(IServiceScopeFactory scopeFactory,
         }
     }
 
-    public static async Task RunOnceAsync(ApplicationDbContext db, IActivityEmailSender emailSender, IDeclarationSetupWriter setupWriter, DateOnly today, CancellationToken ct = default)
+    public static async Task RunOnceAsync(ApplicationDbContext db, IActivityEmailSender emailSender, IDeclarationSetupWriter setupWriter, DateOnly today, CancellationToken ct = default, string? baseUrl = null)
     {
         var setups = await db.DeclarationSetups
             .Where(s => s.Active && s.Date <= today && s.DueDate >= today)
@@ -63,7 +68,8 @@ public class DeclarationReminderHostedService(IServiceScopeFactory scopeFactory,
                 await emailSender.SendAsync(
                     email,
                     $"{label} — declaration reminder",
-                    $"This is a reminder that your {label} is due on {setup.DueDate:yyyy-MM-dd}. Please submit it at https://cg.dubaiinvestments.com/.",
+                    $"This is a reminder that your {label} is due on {setup.DueDate:yyyy-MM-dd}. " +
+                    $"Please submit it at {baseUrl ?? Branding.DefaultPublicBaseUrl}/.",
                     ct);
             }
 

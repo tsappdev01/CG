@@ -236,7 +236,7 @@
 
                     <footer class="cg-report-foot">
                         <span>Confidential · For internal compliance use only</span>
-                        <span>cg.dubaiinvestments.com</span>
+                        <span>@FooterHost</span>
                         <span class="cg-report-page-no">Page @pageNumber of @PageCount</span>
                     </footer>
                 </section>
@@ -276,6 +276,14 @@
 </div>
 
 @code {
+    /// <summary>The site's address, printed in the footer of every exported page. Was the literal
+    /// cg.dubaiinvestments.com, which this deployment has moved off -- so every report anyone
+    /// printed or exported told the reader to go to the wrong place.</summary>
+    private string FooterHost => Branding.PublicBaseUrl
+        .Replace("https://", string.Empty, StringComparison.OrdinalIgnoreCase)
+        .Replace("http://", string.Empty, StringComparison.OrdinalIgnoreCase)
+        .TrimEnd('/');
+
     [Parameter, EditorRequired] public ReportDocument Report { get; set; } = default!;
 
     /// <summary>The report's own filter controls, which differ per report -- a year and a quarter

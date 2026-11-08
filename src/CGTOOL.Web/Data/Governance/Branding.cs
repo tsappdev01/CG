@@ -17,10 +17,28 @@ public class Branding(IConfiguration configuration)
 {
     public const string DefaultParentHoldingCompany = "DIP Holding PLC";
 
+    /// <summary>Where the site answers, when nothing is configured.
+    ///
+    /// This matters more than it looks. A mail client is not this application, so every link and
+    /// the logo in an email need an absolute URL, and the address was written into five places by
+    /// hand as cg.dubaiinvestments.com -- a host this deployment moved off. Every declaration email
+    /// sent carried a link to the wrong site and a logo that did not load.</summary>
+    public const string DefaultPublicBaseUrl = "https://cg.dipark.com";
+
     /// <summary>Branding:ParentHoldingCompany. Whitespace counts as unset -- a key someone emptied
     /// while editing should fall back to the default, not blank every form in the application.</summary>
     public string ParentHoldingCompany =>
         configuration["Branding:ParentHoldingCompany"] is { } configured && !string.IsNullOrWhiteSpace(configured)
             ? configured.Trim()
             : DefaultParentHoldingCompany;
+
+    /// <summary>Branding:PublicBaseUrl, without a trailing slash. The address emails point at.</summary>
+    public string PublicBaseUrl => PublicBaseUrlOf(configuration);
+
+    /// <summary>The same value where there is no Branding to inject -- a background service, or a
+    /// static template builder.</summary>
+    public static string PublicBaseUrlOf(IConfiguration? configuration) =>
+        configuration?["Branding:PublicBaseUrl"] is { } configured && !string.IsNullOrWhiteSpace(configured)
+            ? configured.Trim().TrimEnd('/')
+            : DefaultPublicBaseUrl;
 }

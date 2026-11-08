@@ -2406,7 +2406,7 @@ public partial class SubmitInsiderDeclaration
     // SqlMail.AttachmentFolderConfigured -- see SqlDbMailSender for why that's conditional).
     private string BuildConfirmationEmail(string summary, bool attached)
     {
-        const string logoTag = "<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"DIP Holding PLC\" height=\"44\" style=\"display:block;\" />";
+        var logoTag = $"<img src=\"{Branding.PublicBaseUrl}/images/di-logo.jpg\" alt=\"{Branding.ParentHoldingCompany}\" height=\"44\" style=\"display:block;\" />";
         var rows = string.Join("", summary.Split("; ").Select(row =>
         {
             var parts = row.Split(':', 2);

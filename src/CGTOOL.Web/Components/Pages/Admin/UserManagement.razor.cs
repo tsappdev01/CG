@@ -49,6 +49,17 @@ public partial class UserManagement
     private HashSet<int> _selectedIds = [];
     private bool? _bulkSetActive;
 
+    private bool _bulkNotify;
+    private bool _notifying;
+    private string? _notifyProgress;
+
+    /// <summary>The selected members who can actually be emailed. Counted up front so the dialog
+    /// can say how many will be sent rather than discovering it halfway through.</summary>
+    private List<Member> _notifiable =>
+        _members is null
+            ? []
+            : [.. _members.Where(m => _selectedIds.Contains(m.Id) && !string.IsNullOrWhiteSpace(m.Email))];
+
     private bool _bulkDeclarations;
     private bool _bulkInsider;
     private bool _bulkCoi;
@@ -530,6 +541,60 @@ public partial class UserManagement
     /// record as it was. The alternative -- applying the dialog's state wholesale -- means one
     /// person opening it to add Insider Trading silently strips Conflict of Interest from
     /// everybody who already had it, and nothing on screen would say so.</summary>
+    /// <summary>Sends the declaration email to everyone selected.
+    ///
+    /// One at a time with the count on screen, not a fan-out: Database Mail takes these one call
+    /// at a time anyway, and a silent pause on a few thousand people reads as a hung page.</summary>
+    private async Task BulkNotifyAsync()
+    {
+        if (_notifying) return;
+
+        _notifying = true;
+        var targets = _notifiable;
+        var sent = 0;
+        var failed = new List<string>();
+
+        try
+        {
+            foreach (var member in targets)
+            {
+                _notifyProgress = $"Sending {sent + failed.Count + 1} of {targets.Count}: {member.FullName}";
+                StateHasChanged();
+                await Task.Yield();
+
+                try
+                {
+                    if (await WelcomeEmailSender.SendWelcomeEmailAsync(member)) sent++;
+                    else failed.Add(member.FullName);
+                }
+                catch (Exception)
+                {
+                    // One address that bounces must not stop the rest of the run. The name goes
+                    // on screen afterwards, which is where whoever pressed Send is looking.
+                    failed.Add(member.FullName);
+                }
+            }
+
+            await AuditLog.LogAsync(await CurrentActorAsync(), AuditAction.Update, nameof(Member), null,
+                $"Declaration email sent to {sent} member(s) in bulk" +
+                (failed.Count > 0 ? $"; {failed.Count} could not be sent." : "."));
+
+            Toasts.ShowSuccess($"{sent} email(s) sent.");
+            if (failed.Count > 0)
+            {
+                Toasts.ShowWarning($"{failed.Count} could not be sent: {string.Join(", ", failed.Take(5))}" +
+                    (failed.Count > 5 ? "…" : ""));
+            }
+        }
+        finally
+        {
+            _notifying = false;
+            _notifyProgress = null;
+            _bulkNotify = false;
+            _selectedIds.Clear();
+        }
+    }
+
     private async Task BulkSetDeclarationsAsync()
     {
         if (_members is null) return;

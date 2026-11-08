@@ -1,12 +1,23 @@
-@* FRD §2.2 — shown after saving a new user record. *@
+@* FRD §2.2 -- asked after saving a user record.
+
+   A modal rather than a panel appended to the page. It used to sit at the bottom, below the Save
+   button, the Active toggle and the print preview, which on a full member record is off the
+   screen: the question was asked where the person who had just pressed Save was not looking, and
+   the answer silently defaulted to nothing being sent. *@
 @if (Show)
 {
-    <div class="cg-justify-prompt">
-        <p>Do you want to notify <strong>@UserName</strong>?</p>
-        <div class="cg-actions">
-            <button type="button" class="cg-action-btn cg-good" @onclick="() => Choose(NotifyChoice.Now)">Notify Now</button>
-            <button type="button" class="cg-action-btn" @onclick="() => Choose(NotifyChoice.Later)">Send Message Later</button>
-            <button type="button" class="cg-action-btn cg-critical" @onclick="() => Choose(NotifyChoice.No)">No</button>
+    <div class="cg-print-overlay">
+        <div class="cg-confirm-modal">
+            <h3>Notify @UserName?</h3>
+            <p>
+                They will be emailed the link to submit their declarations. Nothing is sent unless
+                you choose to send it.
+            </p>
+            <div class="cg-actions">
+                <button type="button" class="cg-action-btn cg-good" @onclick="() => Choose(NotifyChoice.Now)">Notify now</button>
+                <button type="button" class="cg-action-btn" @onclick="() => Choose(NotifyChoice.Later)">Send later</button>
+                <button type="button" class="cg-action-btn cg-critical" @onclick="() => Choose(NotifyChoice.No)">Do not notify</button>
+            </div>
         </div>
     </div>
 }

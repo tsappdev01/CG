@@ -2092,7 +2092,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     // happened -- a PDF really attached, or the app to go and read it in.
     private string BuildConfirmationEmail(bool attached)
     {
-        const string logoTag = "<img src=\"https://cg.dubaiinvestments.com/images/di-logo.jpg\" alt=\"DIP Holding PLC\" height=\"44\" style=\"display:block;\" />";
+        var logoTag = $"<img src=\"{Branding.PublicBaseUrl}/images/di-logo.jpg\" alt=\"{Branding.ParentHoldingCompany}\" height=\"44\" style=\"display:block;\" />";
         var rows = string.Join("", BuildSummary().Split("; ").Select(row =>
         {
             var parts = row.Split(':', 2);

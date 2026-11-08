@@ -15,6 +15,7 @@
 @inject IEntraDirectorySync EntraSync
 @inject IDirectoryImporter DirectoryImporter
 @inject Branding Branding
+@inject IMemberWelcomeEmailSender WelcomeEmailSender
 
 <PageTitle>User Management</PageTitle>
 
@@ -229,8 +230,48 @@
                 <button type="button" class="cg-action-btn cg-critical" @onclick="() => _bulkSetActive = false">Deactivate selected</button>
                 <button type="button" class="cg-action-btn cg-good" @onclick="() => _bulkSetActive = true">Reactivate selected</button>
                 <button type="button" class="cg-action-btn" @onclick="() => _bulkDeclarations = true">Set what they declare</button>
+                <button type="button" class="cg-action-btn cg-good" @onclick="() => _bulkNotify = true">Notify selected</button>
             }
         </div>
+
+        @if (_bulkNotify)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-confirm-modal">
+                    <h3>Email @_notifiable.Count of these @_selectedIds.Count people?</h3>
+                    <p>
+                        They are sent the link to submit their declarations. This is the same email a
+                        new user gets, and it can be sent again later if someone misses it.
+                    </p>
+                    @if (_notifiable.Count < _selectedIds.Count)
+                    {
+                        <p class="cg-hint">
+                            @(_selectedIds.Count - _notifiable.Count) of the selected have no email
+                            address on their record and are skipped.
+                        </p>
+                    }
+                    <p class="cg-hint">
+                        The link points at <b>@Branding.PublicBaseUrl</b>. If that is not where this site
+                        answers, set <code>Branding:PublicBaseUrl</code> before sending.
+                    </p>
+
+                    @if (_notifyProgress is not null)
+                    {
+                        <p class="cg-hint">@_notifyProgress</p>
+                    }
+
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn cg-good"
+                                disabled="@(_notifying || _notifiable.Count == 0)" @onclick="BulkNotifyAsync">
+                            Send @_notifiable.Count email(s)
+                        </button>
+                        <button type="button" class="cg-action-btn" disabled="@_notifying" @onclick="() => _bulkNotify = false">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
 
         @if (_bulkDeclarations)
         {

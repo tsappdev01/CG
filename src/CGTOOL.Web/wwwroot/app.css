@@ -4387,3 +4387,22 @@ button.cg-appbar-user {
     .cg-onboarding-card { padding: 22px 18px; }
     .cg-onboarding-actions { flex-direction: column; }
 }
+
+/* A checkbox and its label on one line, for the "what do they declare" dialog. Its own class
+   because the form fields elsewhere stack label above control, which reads wrong for a tick. */
+.cg-check-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 2px;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.cg-check-row input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    accent-color: var(--cg-accent);
+    cursor: pointer;
+    flex: none;
+}

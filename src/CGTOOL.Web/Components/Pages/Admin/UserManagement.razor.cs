@@ -19,6 +19,10 @@ public partial class UserManagement
     private static readonly int[] RecentWindowOptions = [7, 30];
 
     private List<Member>? _members;
+
+    /// <summary>Onboarding state by member, so the list can show where each person has got to
+    /// without a query per row.</summary>
+    private Dictionary<int, MemberOnboarding> _onboarding = [];
     private List<ApplicationUser>? _users;
     private List<IdentityRole>? _roles;
     private List<Company>? _companies;
@@ -44,6 +48,12 @@ public partial class UserManagement
     private bool _sortAscending = false;
     private HashSet<int> _selectedIds = [];
     private bool? _bulkSetActive;
+
+    private bool _bulkDeclarations;
+    private bool _bulkInsider;
+    private bool _bulkCoi;
+    private bool _bulkRpRegister;
+    private bool _bulkRpTransactions;
     private Member? _pendingJustify;
     private Member? _printSingleRecord;
     private bool _syncing;
@@ -77,6 +87,61 @@ public partial class UserManagement
 
     /// <summary>A render per 64 KB chunk would be thousands of round trips over the circuit for one
     /// file and would itself slow the upload down. Ten a second is smooth to watch and cheap.</summary>
+    private MemberOnboarding? OnboardingOf(Member member) =>
+        _onboarding.TryGetValue(member.Id, out var row) ? row : null;
+
+    /// <summary>What the list says about a person's onboarding.
+    ///
+    /// "Not required" is a real answer rather than a blank: somebody turned the flag off for that
+    /// member, and a blank cell reads as "nobody has looked at this yet", which is the opposite.</summary>
+    private string OnboardingLabel(MemberOnboarding? row)
+    {
+        if (row is null) return "Not started";
+
+        return row.Status switch
+        {
+            OnboardingStatus.Completed when NeedsVerification(row) => "Needs checking",
+            OnboardingStatus.Completed => "Done",
+            OnboardingStatus.InProgress => "In progress",
+            _ => "Not started",
+        };
+    }
+
+    private string OnboardingPillClass(MemberOnboarding? row) => row?.Status switch
+    {
+        OnboardingStatus.Completed when NeedsVerification(row) => "cg-pill-warn",
+        OnboardingStatus.Completed => "cg-pill-done",
+        OnboardingStatus.InProgress => "cg-pill-status",
+        _ => "",
+    };
+
+    /// <summary>The hover text, which is where the detail goes: the pill has room for two words
+    /// and the thing an administrator actually wants to know is what is outstanding.</summary>
+    private string OnboardingTitle(MemberOnboarding? row)
+    {
+        if (row is null) return "This member has not started onboarding.";
+
+        var parts = new List<string>();
+        if (row.EmiratesIdConfirmedAtUtc is { } eid) parts.Add($"Emirates ID confirmed {eid.ToLocalDisplay("dd/MM/yyyy HH:mm")}");
+        if (row.EmiratesIdStatus == EmiratesIdOnboardingStatus.PendingVerification) parts.Add("Emirates ID supplied by the member, not yet checked");
+        if (row.EmiratesIdReportedAtUtc is not null) parts.Add("Reported a problem with the Emirates ID on file");
+        if (row.DfmConfirmedAtUtc is { } dfm) parts.Add($"DFM confirmed {dfm.ToLocalDisplay("dd/MM/yyyy HH:mm")}");
+        if (row.DfmStatus == DfmOnboardingStatus.PendingVerification) parts.Add("NIN supplied by the member, not yet checked");
+        if (row.NinResponse == NinResponse.NoNin) parts.Add("States they have no NIN");
+        if (row.DfmReportedAtUtc is not null) parts.Add("Reported a problem with the DFM details on file");
+        if (row.CompletedAtUtc is { } done) parts.Add($"Finished {done.ToLocalDisplay("dd/MM/yyyy HH:mm")}");
+
+        return parts.Count == 0 ? "Onboarding started but nothing answered yet." : string.Join(". ", parts) + ".";
+    }
+
+    /// <summary>Whether anything the member supplied is still waiting for somebody to check it.
+    /// Confirming what was already on file is not that; supplying something new is.</summary>
+    private static bool NeedsVerification(MemberOnboarding row) =>
+        (row.EmiratesIdStatus == EmiratesIdOnboardingStatus.PendingVerification && row.EmiratesIdVerifiedAtUtc is null)
+        || (row.DfmStatus == DfmOnboardingStatus.PendingVerification && row.DfmVerifiedAtUtc is null)
+        || (row.EmiratesIdReportedAtUtc is not null && row.EmiratesIdVerifiedAtUtc is null)
+        || (row.DfmReportedAtUtc is not null && row.DfmVerifiedAtUtc is null);
+
     private async Task ThrottledRenderAsync()
     {
         var now = DateTime.UtcNow;
@@ -250,6 +315,9 @@ public partial class UserManagement
         await using var db = await DbFactory.CreateDbContextAsync();
 
         _members = await db.Members.Include(m => m.Company).Include(m => m.Department).OrderBy(m => m.FullName).ToListAsync();
+
+        // One query for the whole page rather than one per row.
+        _onboarding = await db.MemberOnboardings.AsNoTracking().ToDictionaryAsync(o => o.MemberId);
         _users = await UserManager.Users.OrderBy(u => u.Email).ToListAsync();
         _roles = await RoleManager.Roles.OrderBy(r => r.Name).ToListAsync();
         _companies = await db.Companies.OrderBy(c => c.Name).ToListAsync();
@@ -435,6 +503,57 @@ public partial class UserManagement
             .OrderBy(c => c.Name)
             .Select(c => c.Name)
             .ToListAsync();
+    }
+
+    /// <summary>Turns declarations on for every selected member.
+    ///
+    /// Additive on purpose: a tick switches that declaration on, and an empty box leaves each
+    /// record as it was. The alternative -- applying the dialog's state wholesale -- means one
+    /// person opening it to add Insider Trading silently strips Conflict of Interest from
+    /// everybody who already had it, and nothing on screen would say so.</summary>
+    private async Task BulkSetDeclarationsAsync()
+    {
+        if (_members is null) return;
+
+        var changed = 0;
+        foreach (var id in _selectedIds.ToList())
+        {
+            var member = _members.FirstOrDefault(m => m.Id == id);
+            if (member is null) continue;
+
+            var before = (member.InsiderTradingAccess, member.ConflictOfInterestAccess,
+                          member.RelatedPartyRegisterAccess, member.RelatedPartyTransactionAccess);
+
+            if (_bulkInsider) member.InsiderTradingAccess = true;
+            if (_bulkCoi) member.ConflictOfInterestAccess = true;
+            if (_bulkRpRegister) member.RelatedPartyRegisterAccess = true;
+            if (_bulkRpTransactions) member.RelatedPartyTransactionAccess = true;
+
+            var after = (member.InsiderTradingAccess, member.ConflictOfInterestAccess,
+                         member.RelatedPartyRegisterAccess, member.RelatedPartyTransactionAccess);
+            if (before == after) continue;
+
+            await MemberWriter.UpdateAsync(member);
+            changed++;
+        }
+
+        var ticked = new List<string>();
+        if (_bulkInsider) ticked.Add("Insider Trading");
+        if (_bulkCoi) ticked.Add("Conflict of Interest");
+        if (_bulkRpRegister) ticked.Add("Related Party Register");
+        if (_bulkRpTransactions) ticked.Add("Related Party Transactions");
+
+        await AuditLog.LogAsync(await CurrentActorAsync(), AuditAction.Update, nameof(Member), null,
+            $"Set {string.Join(" and ", ticked)} on {changed} member(s) in bulk.");
+
+        Toasts.ShowSuccess(changed == 0
+            ? "Every selected member already had those."
+            : $"{changed} member(s) updated.");
+
+        _bulkDeclarations = false;
+        _bulkInsider = _bulkCoi = _bulkRpRegister = _bulkRpTransactions = false;
+        _selectedIds.Clear();
+        await LoadAsync();
     }
 
     private async Task BulkSetActiveAsync(string justification)

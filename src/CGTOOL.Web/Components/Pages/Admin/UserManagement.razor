@@ -219,8 +219,50 @@
                 <span class="cg-result-count">@_selectedIds.Count selected</span>
                 <button type="button" class="cg-action-btn cg-critical" @onclick="() => _bulkSetActive = false">Deactivate selected</button>
                 <button type="button" class="cg-action-btn cg-good" @onclick="() => _bulkSetActive = true">Reactivate selected</button>
+                <button type="button" class="cg-action-btn" @onclick="() => _bulkDeclarations = true">Set what they declare</button>
             }
         </div>
+
+        @if (_bulkDeclarations)
+        {
+            <div class="cg-print-overlay">
+                <div class="cg-confirm-modal">
+                    <h3>What should these @_selectedIds.Count people declare?</h3>
+                    <p>
+                        Ticking a box turns that declaration on for all of them. Leaving one unticked
+                        leaves it exactly as it is on each record &mdash; nothing is switched off here.
+                    </p>
+
+                    <label class="cg-check-row">
+                        <input type="checkbox" @bind="_bulkInsider" /> Insider Trading
+                    </label>
+                    <label class="cg-check-row">
+                        <input type="checkbox" @bind="_bulkCoi" /> Conflict of Interest
+                    </label>
+                    <label class="cg-check-row">
+                        <input type="checkbox" @bind="_bulkRpRegister" /> Related Party Register
+                    </label>
+                    <label class="cg-check-row">
+                        <input type="checkbox" @bind="_bulkRpTransactions" /> Related Party Transactions
+                    </label>
+
+                    <p class="cg-hint">
+                        This does not decide who receives the declaration email &mdash; that goes to every
+                        active member with an address. It decides what is waiting for them when they
+                        follow the link.
+                    </p>
+
+                    <div class="cg-actions">
+                        <button type="button" class="cg-action-btn cg-primary"
+                                disabled="@(!_bulkInsider && !_bulkCoi && !_bulkRpRegister && !_bulkRpTransactions)"
+                                @onclick="BulkSetDeclarationsAsync">
+                            Apply to @_selectedIds.Count selected
+                        </button>
+                        <button type="button" class="cg-action-btn" @onclick="() => _bulkDeclarations = false">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        }
 
         @if (_bulkSetActive is not null)
         {
@@ -247,6 +289,7 @@
                             {
                                 <th>Recency</th>
                             }
+                            <th>Onboarding</th>
                             <SortableHeader Label="Status" Column="Active" CurrentColumn="@_sortColumn" Ascending="_sortAscending" OnSort="Sort" />
                             <th>Actions</th>
                         </tr>
@@ -296,6 +339,12 @@
                                 {
                                     <td class="mono">@RecencyLabel(m)</td>
                                 }
+                                <td>
+                                    @{ var onboarding = OnboardingOf(m); }
+                                    <span class="cg-pill @OnboardingPillClass(onboarding)" title="@OnboardingTitle(onboarding)">
+                                        @OnboardingLabel(onboarding)
+                                    </span>
+                                </td>
                                 <td>
                                     <span class="cg-status-cell">
                                         <ToggleSwitch Value="m.Active" ValueChanged="() => _pendingJustify = m" />

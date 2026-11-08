@@ -311,6 +311,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_Member_Insert
     @ReportingManagerId int = NULL,
     @ApplicationUserId nvarchar(450) = NULL,
     @DeclarationType int = NULL,
+    @OnboardingRequired bit = 1,
     @IsBoardMember bit = 0,
     @IsManualEntry bit = 0,
     @IsExternalMember bit = 0,
@@ -332,12 +333,12 @@ BEGIN
 
     INSERT INTO dbo.Members
         (CompanyId, FullName, JobTitle, DepartmentId, Email, AzureAdObjectId, Signature, ReportingManagerId,
-         ApplicationUserId, DeclarationType, IsBoardMember, IsManualEntry, IsExternalMember, IsExecutiveManagement, Active,
+         ApplicationUserId, DeclarationType, OnboardingRequired, IsBoardMember, IsManualEntry, IsExternalMember, IsExecutiveManagement, Active,
          InsiderTradingAccess, ConflictOfInterestAccess, RelatedPartyRegisterAccess, RelatedPartyTransactionAccess, RpTransactionRole, CanBeImpersonated,
          CreatedAtUtc, ModifiedAtUtc)
     VALUES
         (@CompanyId, @FullName, @JobTitle, @DepartmentId, @Email, @AzureAdObjectId, @Signature, @ReportingManagerId,
-         @ApplicationUserId, @DeclarationType, @IsBoardMember, @IsManualEntry, @IsExternalMember, @IsExecutiveManagement, @Active,
+         @ApplicationUserId, @DeclarationType, @OnboardingRequired, @IsBoardMember, @IsManualEntry, @IsExternalMember, @IsExecutiveManagement, @Active,
          @InsiderTradingAccess, @ConflictOfInterestAccess, @RelatedPartyRegisterAccess, @RelatedPartyTransactionAccess, @RpTransactionRole, @CanBeImpersonated,
          SYSUTCDATETIME(), SYSUTCDATETIME());
 
@@ -357,6 +358,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_Member_Update
     @ReportingManagerId int = NULL,
     @ApplicationUserId nvarchar(450) = NULL,
     @DeclarationType int = NULL,
+    @OnboardingRequired bit = 1,
     @IsBoardMember bit = 0,
     @IsManualEntry bit = 0,
     @IsExternalMember bit = 0,
@@ -408,6 +410,7 @@ BEGIN
         ReportingManagerId = @ReportingManagerId,
         ApplicationUserId = @ApplicationUserId,
         DeclarationType = @DeclarationType,
+        OnboardingRequired = @OnboardingRequired,
         IsBoardMember = @IsBoardMember,
         IsManualEntry = @IsManualEntry,
         IsExternalMember = @IsExternalMember,

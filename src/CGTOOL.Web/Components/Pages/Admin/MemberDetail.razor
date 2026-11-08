@@ -110,6 +110,15 @@
                         <p class="cg-hint">The capacity they declare in.</p>
                     </label>
 
+                    <div class="cg-field">
+                        <span>Onboarding required</span>
+                        <div class="cg-toggle-field">
+                            <ToggleSwitch @bind-Value="_editing.OnboardingRequired" />
+                            <span class="cg-toggle-label">@(_editing.OnboardingRequired ? "Yes" : "No")</span>
+                        </div>
+                        <p class="cg-hint">Whether this person still has to go through onboarding.</p>
+                    </div>
+
                     <label class="cg-field cg-field-wide">
                         <span>Email address</span>
                         <InputText class="cg-input" @bind-Value="_editing.Email" maxlength="160" placeholder="name@dubaiinvestments.com" />
@@ -497,6 +506,7 @@
                                 <tr><th>Department</th><td>@(_departments?.FirstOrDefault(d => d.Id == _editing.DepartmentId)?.Name ?? "—")</td></tr>
                                 <tr><th>Job title</th><td>@(_editing.JobTitle ?? "—")</td></tr>
                                 <tr><th>Declaration type</th><td>@MemberDeclarationTypes.Label(_editing.DeclarationType, Branding.ParentHoldingCompany)</td></tr>
+                                <tr><th>Onboarding required</th><td>@(_editing.OnboardingRequired ? "Yes" : "No")</td></tr>
                                 <tr><th>Email</th><td>@(_editing.Email ?? "—")</td></tr>
                                 <tr><th>Login account</th><td>@(_users?.FirstOrDefault(u => u.Id == _editing.ApplicationUserId)?.Email ?? "Not linked")</td></tr>
                                 <tr><th>Reporting manager</th><td>@(_members?.FirstOrDefault(m => m.Id == _editing.ReportingManagerId)?.FullName ?? "None")</td></tr>

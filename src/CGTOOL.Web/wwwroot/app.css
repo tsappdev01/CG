@@ -4238,3 +4238,20 @@ button.cg-appbar-user {
     .cg-template-split.has-preview { grid-template-columns: minmax(0, 1fr); }
     .cg-mail-preview { position: static; }
 }
+
+/* ---------- Toggle used as a form field, with its Yes/No beside it ----------
+   A .cg-field lays its label, control and hint out in a column; the switch is
+   22px tall against inputs that are not, so it needs a row of its own to sit
+   on to keep its baseline with the field next to it. */
+.cg-toggle-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 42px;
+}
+
+.cg-toggle-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--cg-ink);
+}

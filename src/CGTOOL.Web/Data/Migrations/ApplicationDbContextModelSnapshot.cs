@@ -1410,6 +1410,9 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<DateTime>("ModifiedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("OnboardingRequired")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("RelatedPartyRegisterAccess")
                         .HasColumnType("bit");
 

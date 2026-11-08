@@ -61,6 +61,14 @@ public class Member
     /// nobody chose.</summary>
     public MemberDeclarationType? DeclarationType { get; set; }
 
+    /// <summary>Whether this person still has to go through onboarding.
+    ///
+    /// Defaults to true, for new records and for every record that existed before the field did:
+    /// "has not been onboarded yet" is the safe reading of a member nobody has made a decision
+    /// about, and someone who is already through it can be switched off in one click. The opposite
+    /// default would quietly mark the whole existing population as done.</summary>
+    public bool OnboardingRequired { get; set; } = true;
+
     public bool IsBoardMember { get; set; }
 
     /// <summary>True when the person was added manually because the entity's AD isn't synced with the DI data center.</summary>

@@ -1,4 +1,16 @@
-<label class="cg-toggle @(Disabled ? "cg-toggle-disabled" : "")" title="@(Value ? "On" : "Off")">
+@* How it looks is driven by Value, through the "on" class, rather than by the checkbox's own
+   :checked state.
+
+   A checkbox is an uncontrolled DOM element: the browser flips it the moment it is clicked. If the
+   handler then leaves Value as it was -- the change was refused, the save failed, the member holds
+   an authority that blocks it -- Blazor re-renders, sees checked="@Value" is the same as last
+   time, and leaves the DOM alone. The browser's flip stays on screen and the switch now disagrees
+   with the data behind it. That is what showed as a user whose switch read off beside a status
+   reading Active.
+
+   Driving the paint from Value instead makes the two impossible to separate: the class is
+   recomputed on every render, so a refused change snaps straight back. *@
+<label class="cg-toggle @(Value ? "on" : "") @(Disabled ? "cg-toggle-disabled" : "")" title="@(Value ? "On" : "Off")">
     <input type="checkbox" checked="@Value" disabled="@Disabled" @onchange="OnChangeAsync" />
     <span class="cg-toggle-track"><span class="cg-toggle-thumb"></span></span>
 </label>

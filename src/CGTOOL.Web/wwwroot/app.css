@@ -1358,12 +1358,29 @@ h1:focus {
     transition: transform 0.15s ease;
 }
 
-.cg-toggle input:checked ~ .cg-toggle-track {
+/* Painted from the "on" class the component sets from its Value -- never from the checkbox's own
+   :checked state. See ToggleSwitch.razor for why.
+
+   The :checked selectors that used to be here are gone rather than kept alongside: they carry an
+   extra element in the selector, so they outrank these wherever the two disagree, which is the
+   one case that matters. Only ToggleSwitch renders these classes, so there is nothing left
+   relying on them. */
+.cg-toggle.on .cg-toggle-track {
     background: var(--cg-good);
 }
 
-.cg-toggle input:checked ~ .cg-toggle-track .cg-toggle-thumb {
+.cg-toggle.on .cg-toggle-track .cg-toggle-thumb {
     transform: translateX(20px);
+}
+
+/* Off is painted rather than merely left as the default, so the two states are symmetrical and
+   neither depends on which rule happens to come last. */
+.cg-toggle:not(.on) .cg-toggle-track {
+    background: var(--cg-line-strong);
+}
+
+.cg-toggle:not(.on) .cg-toggle-track .cg-toggle-thumb {
+    transform: none;
 }
 
 .cg-toggle.cg-toggle-disabled {
@@ -1644,14 +1661,7 @@ select.cg-input {
 }
 
 /* ---------- toggle ---------- */
-.cg-toggle-track {
-    background: var(--cg-line-strong);
-    border-radius: 999px;
-}
-.cg-toggle input:checked + .cg-toggle-track,
-.cg-toggle-track.on {
-    background: var(--cg-good);
-}
+.cg-toggle-track { border-radius: 999px; }
 
 /* ---------- icon buttons ---------- */
 .cg-icon-btn {

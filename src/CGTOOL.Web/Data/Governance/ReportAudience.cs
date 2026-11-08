@@ -23,6 +23,42 @@ public interface IReportAudience
 /// </summary>
 public class ReportAudience(IDbContextFactory<ApplicationDbContext> dbFactory) : IReportAudience
 {
+    /// <summary>One "reports to" link: a member and the manager set on their record.</summary>
+    public readonly record struct ReportingLink(int MemberId, int ManagerId);
+
+    /// <summary>A member and everyone beneath them in the reporting line.
+    ///
+    /// Breadth-first from the member rather than by recursion, so depth costs memory it can see
+    /// rather than stack it cannot. Nothing stops an administrator making two people each other's
+    /// manager in User Management, by accident or through a swap done in the wrong order, and a
+    /// walk that trusted the data to be a tree would hang the report rather than show it -- so
+    /// the visited set is what both collects the answer and ends the walk.</summary>
+    public static HashSet<int> TreeFrom(int rootMemberId, IEnumerable<ReportingLink> links)
+    {
+        ArgumentNullException.ThrowIfNull(links);
+
+        var reportsTo = links
+            .GroupBy(link => link.ManagerId)
+            .ToDictionary(group => group.Key, group => group.Select(link => link.MemberId).ToArray());
+
+        var seen = new HashSet<int> { rootMemberId };
+        var pending = new Queue<int>([rootMemberId]);
+
+        while (pending.Count > 0)
+        {
+            if (!reportsTo.TryGetValue(pending.Dequeue(), out var directReports)) continue;
+
+            foreach (var id in directReports)
+            {
+                // Add is false for anyone already counted, which is what stops a cycle: a member
+                // reachable twice is enqueued once.
+                if (seen.Add(id)) pending.Enqueue(id);
+            }
+        }
+
+        return seen;
+    }
+
     public async Task<HashSet<int>?> VisibleMemberIdsAsync(ClaimsPrincipal user, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(user);
@@ -45,17 +81,18 @@ public class ReportAudience(IDbContextFactory<ApplicationDbContext> dbFactory) :
         // Signed in but not a member of the governance register: no rows rather than all rows.
         if (me is not { } memberId) return [];
 
-        // Themselves, and the people whose Reporting Manager is set to them in User Management.
-        // Direct reports only, which is what the requirement says in as many words -- "who are
-        // reporting to the employee as defined in User management". Widening this to the whole
-        // tree beneath them is a change to the Where below and nothing else, but it is a decision
-        // about who may read whose declarations, so it is not one to make in passing.
-        var reports = await db.Members.AsNoTracking()
-            .Where(m => m.ReportingManagerId == memberId)
-            .Select(m => m.Id)
+        // Themselves, and everyone below them in the reporting line however many levels down --
+        // a department head sees their managers' people too, not only the managers.
+        //
+        // Every reporting link in one query and the walk done here, rather than a query per level
+        // or a recursive CTE: the table is a few thousand rows, the shape is a tree nobody builds
+        // deliberately deep, and one round trip beats an unbounded number of them.
+        var edges = await db.Members.AsNoTracking()
+            .Where(m => m.ReportingManagerId != null)
+            .Select(m => new ReportingLink(m.Id, m.ReportingManagerId!.Value))
             .ToListAsync(ct);
 
-        return [memberId, .. reports];
+        return TreeFrom(memberId, edges);
     }
 }
 

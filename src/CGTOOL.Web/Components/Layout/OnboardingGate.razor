@@ -1,0 +1,55 @@
+@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
+@inject IMemberOnboardingService Onboarding
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ActingAsCookie ActingAs
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject IHttpContextAccessor HttpContextAccessor
+
+@* Renders nothing. It exists to send a member who has not onboarded to the onboarding screen
+   before the page they asked for draws.
+
+   Statically rendered on purpose: a redirect decided inside a circuit happens after the page has
+   already been sent and drawn, which is a visible flash of a screen they are not allowed to be on
+   yet. Here, NavigateTo during the static pass is a real HTTP redirect.
+
+   It cannot loop: the onboarding page uses OnboardingLayout, which this is not part of. *@
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var context = HttpContextAccessor.HttpContext;
+
+        // Only on a real page request. During the interactive render there is no response left to
+        // redirect, and the static pass has already decided.
+        if (context is null || context.Response.HasStarted) return;
+
+        var state = await AuthState.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated != true) return;
+
+        // An administrator acting as somebody is still that person for this purpose: finishing
+        // their onboarding on their behalf is a thing an assistant legitimately does.
+        int? memberId = ActingAs.Read(context)?.MemberId;
+        if (memberId is null)
+        {
+            var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId is null) return;
+
+            await using var db = await DbFactory.CreateDbContextAsync();
+            memberId = await db.Members.AsNoTracking()
+                .Where(m => m.ApplicationUserId == userId)
+                .Select(m => (int?)m.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        // Somebody signed in with no member record -- an administrator account, say. There is
+        // nothing to onboard and nothing to block.
+        if (memberId is null) return;
+
+        if (await Onboarding.IsRequiredAsync(memberId.Value))
+        {
+            Nav.NavigateTo("/onboarding", forceLoad: false);
+        }
+    }
+}

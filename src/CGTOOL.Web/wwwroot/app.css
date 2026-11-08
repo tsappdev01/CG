@@ -4363,6 +4363,13 @@ button.cg-appbar-user {
 .cg-onboarding-actions { display: flex; gap: 12px; margin-top: 24px; }
 .cg-onboarding-actions > * { flex: 1; }
 
+/* The last step's action is a link, not a button -- .cg-action-btn sets no text-decoration, so
+   without this it is a button with an underline through its label. */
+.cg-onboarding-actions a.cg-action-btn {
+    text-decoration: none;
+    justify-content: center;
+}
+
 .cg-onboarding-note {
     margin-top: 20px;
     font-size: 0.8rem;

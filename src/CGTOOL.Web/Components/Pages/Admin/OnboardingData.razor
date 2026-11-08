@@ -1,0 +1,152 @@
+@page "/admin/onboarding-data"
+@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@rendermode InteractiveServer
+@inject IMemberIdentityImporter Importer
+@inject IEmiratesIdBulkAttach Attacher
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthState
+@inject ClientContext Client
+@inject ToastService Toasts
+
+<PageTitle>Onboarding data</PageTitle>
+
+<div class="cg-shell">
+    <h1 data-icon="upload">Onboarding data</h1>
+    <p class="cg-subtitle">
+        What members are asked to confirm the first time they sign in. Loaded once from the
+        employee spreadsheet and the folder of Emirates ID scans; nothing a member answers during
+        onboarding is written back here.
+    </p>
+
+    <div class="cg-member-form" style="max-width:860px;">
+        <h2>1 &middot; Employee spreadsheet</h2>
+        <p class="cg-subtitle">
+            Columns: <code>EmailAddress</code>, <code>Name</code>, <code>Company</code>,
+            <code>NIN</code>, <code>NameOnEmiratesID</code>, <code>EmiratesID</code>,
+            <code>Nationality</code>. Matched on email, so loading a corrected file again updates
+            rather than duplicates. Rows with neither an Emirates ID nor a NIN are skipped: they
+            carry nothing for a member to confirm.
+        </p>
+
+        <p class="cg-hint">
+            Left out of the import: <strong>@string.Join(", ", Importer.ExcludedDomains)</strong>.
+            Change with <code>Onboarding:ExcludedEmailDomains</code>.
+        </p>
+
+        <div class="cg-upload-row">
+            <InputFile OnChange="OnSpreadsheetAsync" accept=".xlsx" disabled="@_busy" />
+            @if (_parsed is not null)
+            {
+                <span class="cg-pill">@_parsed.Count rows ready</span>
+            }
+        </div>
+
+        @if (_parsed is not null)
+        {
+            <div class="cg-actions" style="margin-top:14px;">
+                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="() => RunImportAsync(dryRun: true)">
+                    Dry run
+                </button>
+                <button type="button" class="cg-action-btn cg-primary" disabled="@_busy" @onclick="() => RunImportAsync(dryRun: false)">
+                    Load into the database
+                </button>
+            </div>
+        }
+
+        @if (_import is not null)
+        {
+            <table class="cg-table" style="margin-top:18px;">
+                <tbody>
+                    <tr><th>Rows read</th><td>@_import.RowsRead</td></tr>
+                    <tr><th>Skipped (no Emirates ID and no NIN)</th><td>@_import.Skipped</td></tr>
+                    <tr><th>Reference rows added</th><td>@_import.ReferencesInserted</td></tr>
+                    <tr><th>Reference rows updated</th><td>@_import.ReferencesUpdated</td></tr>
+                    <tr><th>Matched to an existing member</th><td>@_import.MembersMatched</td></tr>
+                    <tr><th>No member record</th><td>@_import.MembersMissing</td></tr>
+                </tbody>
+            </table>
+            @if (_import.DryRun)
+            {
+                <p class="cg-hint">Nothing was written — this was a dry run.</p>
+            }
+            @if (_import.Problems.Count > 0)
+            {
+                <details style="margin-top:10px;">
+                    <summary>@_import.Problems.Count notes</summary>
+                    <ul class="cg-hint">
+                        @foreach (var problem in _import.Problems.Take(50)) { <li>@problem</li> }
+                    </ul>
+                </details>
+            }
+        }
+
+        @if (_parseProblems is { Count: > 0 })
+        {
+            <details style="margin-top:10px;">
+                <summary>@_parseProblems.Count notes from reading the file</summary>
+                <ul class="cg-hint">
+                    @foreach (var problem in _parseProblems.Take(50)) { <li>@problem</li> }
+                </ul>
+            </details>
+        }
+
+        <hr />
+
+        <h2>2 &middot; Emirates ID scans</h2>
+        <p class="cg-subtitle">
+            Each file is attached to the person whose Emirates ID number it is named after, so no
+            mapping is needed. A file whose name does not carry exactly one 15-digit number
+            beginning 784, or whose number nobody is on file under, is reported and left alone.
+            Load the spreadsheet above first.
+        </p>
+
+        <div class="cg-upload-row">
+            <InputFile OnChange="OnScansAsync" accept=".pdf,.jpg,.jpeg,.png" multiple disabled="@_busy" />
+        </div>
+
+        @if (_scanProgress is not null)
+        {
+            <p class="cg-hint">@_scanProgress</p>
+        }
+
+        @if (_scanResults is { Count: > 0 })
+        {
+            var attached = _scanResults.Count(r => r.Attached);
+            <table class="cg-table" style="margin-top:14px;">
+                <tbody>
+                    <tr><th>Files read</th><td>@_scanResults.Count</td></tr>
+                    <tr><th>Attached</th><td>@attached</td></tr>
+                    <tr><th>Not attached</th><td>@(_scanResults.Count - attached)</td></tr>
+                </tbody>
+            </table>
+
+            @if (_scanResults.Any(r => !r.Attached))
+            {
+                <details style="margin-top:10px;" open>
+                    <summary>@_scanResults.Count(r => !r.Attached) not attached</summary>
+                    <table class="cg-table">
+                        <thead><tr><th>File</th><th>Number</th><th>Why not</th></tr></thead>
+                        <tbody>
+                            @foreach (var row in _scanResults.Where(r => !r.Attached).Take(100))
+                            {
+                                <tr><td>@row.FileName</td><td>@(row.Number ?? "—")</td><td>@row.Problem</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </details>
+            }
+        }
+
+        <hr />
+
+        <h2>3 &middot; What is loaded now</h2>
+        <table class="cg-table">
+            <tbody>
+                <tr><th>People on file</th><td>@_referenceCount</td></tr>
+                <tr><th>&nbsp;&nbsp;with an Emirates ID number</th><td>@_withEmiratesId</td></tr>
+                <tr><th>&nbsp;&nbsp;with a scan attached</th><td>@_withScan</td></tr>
+                <tr><th>&nbsp;&nbsp;with a NIN</th><td>@_withNin</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -26,6 +26,9 @@ public sealed record IdentityImportResult(
 
 public interface IMemberIdentityImporter
 {
+    /// <summary>Email domains left out of the import.</summary>
+    IReadOnlyList<string> ExcludedDomains { get; }
+
     IReadOnlyList<IdentityImportRow> Parse(Stream workbook, out IReadOnlyList<string> problems);
 
     Task<IdentityImportResult> ImportAsync(
@@ -50,8 +53,31 @@ public interface IMemberIdentityImporter
 public class MemberIdentityImporter(
     IDbContextFactory<ApplicationDbContext> dbFactory,
     IAuditLogger auditLog,
+    IConfiguration configuration,
     ILogger<MemberIdentityImporter> logger) : IMemberIdentityImporter
 {
+    /// <summary>Email domains whose people are left out of the import entirely.
+    ///
+    /// The spreadsheet is an employee list for the whole group, and not every company in it has
+    /// anyone who declares. Loading those people would put identity records in the system for
+    /// people onboarding will never ask about, which is data held for no reason.
+    ///
+    /// Configuration rather than a constant, because which companies are in scope is a decision
+    /// that changes without the code needing to. The default is the one known today.</summary>
+    public IReadOnlyList<string> ExcludedDomains =>
+        configuration.GetSection("Onboarding:ExcludedEmailDomains").Get<string[]>() is { Length: > 0 } configured
+            ? configured
+            : ["saglass.com"];
+
+    private bool IsExcluded(string email)
+    {
+        var at = email.LastIndexOf('@');
+        if (at < 0) return false;
+
+        var domain = email[(at + 1)..];
+        return ExcludedDomains.Any(d => domain.Equals(d, StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>The columns the file is expected to have, by header name. Matched on a normalised
     /// header rather than position, so a reordered or re-exported file still loads -- and a file
     /// that is missing one says which.</summary>
@@ -114,12 +140,15 @@ public class MemberIdentityImporter(
         }
 
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var excluded = 0;
         foreach (var row in used.RowsUsed().Skip(1))
         {
             var email = Value(row, columns, "email");
             if (string.IsNullOrWhiteSpace(email)) continue;
 
             email = email.Trim();
+
+            if (IsExcluded(email)) { excluded++; continue; }
             if (!seen.Add(email))
             {
                 // The last row for an address would otherwise silently win. Saying so is cheap and
@@ -136,6 +165,11 @@ public class MemberIdentityImporter(
                 Value(row, columns, "nameonid"),
                 Value(row, columns, "emiratesid"),
                 Value(row, columns, "nationality")));
+        }
+
+        if (excluded > 0)
+        {
+            found.Insert(0, $"{excluded} rows left out: {string.Join(", ", ExcludedDomains)}.");
         }
 
         problems = found;
@@ -176,13 +210,12 @@ public class MemberIdentityImporter(
 
             if (row.EmiratesIdNumber is { Length: > 0 } && !LooksLikeEmiratesId(row.EmiratesIdNumber))
             {
-                // Loaded anyway -- it is what is held for that person, and the confirmation step is
-                // exactly where a wrong one should surface. Worth saying out loud, though: a number
-                // in this shape will never match one of the bulk-uploaded scans, which are named
-                // after fifteen-digit numbers.
+                // A residence number rather than an Emirates ID card number. Perfectly good data
+                // and loaded as it stands -- the only consequence worth saying out loud is that no
+                // bulk-uploaded scan will match it, because those are named after card numbers.
                 problems.Add(
-                    $"{row.Email}: '{row.EmiratesIdNumber}' is not a 15-digit Emirates ID beginning 784. " +
-                    "It is loaded, but no uploaded card will match it.");
+                    $"{row.Email}: '{row.EmiratesIdNumber}' is not in Emirates ID card format " +
+                    "(15 digits beginning 784), so no uploaded scan will match it.");
             }
 
             if (existingRefs.TryGetValue(row.Email, out var id))
@@ -270,10 +303,9 @@ public class MemberIdentityImporter(
         return raw.Equals("NULL", StringComparison.OrdinalIgnoreCase) ? null : raw;
     }
 
-    /// <summary>Whether a value looks like an Emirates ID number: fifteen digits beginning 784.
-    /// Used to report the ones that do not rather than to refuse them -- the number is still what
-    /// is on file for that person, and onboarding asking them to confirm it is how a wrong one
-    /// gets found.</summary>
+    /// <summary>Whether a value is in Emirates ID card format: fifteen digits beginning 784.
+    /// Used only to say which rows no uploaded scan can match -- a residence number in this column
+    /// is valid data and is loaded as it stands.</summary>
     private static bool LooksLikeEmiratesId(string? value) =>
         value is { Length: 15 } && value.All(char.IsDigit) && value.StartsWith("784", StringComparison.Ordinal);
 

@@ -1,0 +1,300 @@
+@page "/onboarding"
+@attribute [Authorize]
+@layout OnboardingLayout
+@rendermode InteractiveServer
+@using CGTOOL.Web.Components.Layout
+@inject IMemberOnboardingService Flow
+@inject IDocumentStore Documents
+@inject IDocumentIntelligenceService DocIntel
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthState
+@inject ActingAsCookie ActingAs
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ClientContext Client
+@inject Branding Branding
+@inject NavigationManager Nav
+
+<PageTitle>Welcome</PageTitle>
+
+<div class="cg-onboarding-card">
+@if (_loading)
+{
+    <p class="cg-onboarding-lead">Loading…</p>
+}
+else if (_member is null)
+{
+    <h1>We could not find your record</h1>
+    <p class="cg-onboarding-lead">
+        You are signed in, but there is no member record for this account yet. Contact an
+        administrator and they will set one up.
+    </p>
+}
+else
+{
+    @if (_step != OnboardingStep.Welcome)
+    {
+        <ol class="cg-onboarding-steps">
+            <li class="@StepClass(OnboardingStep.EmiratesId)">Emirates ID</li>
+            <li class="@StepClass(OnboardingStep.Dfm)">DFM / NIN</li>
+            <li class="@StepClass(OnboardingStep.Done)">Done</li>
+        </ol>
+    }
+
+    @switch (_step)
+    {
+        case OnboardingStep.Welcome:
+            <svg class="cg-onboarding-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <path d="M12 2.5 4 6v6c0 4.6 3.2 8.6 8 9.5 4.8-.9 8-4.9 8-9.5V6l-8-3.5Z" />
+                <path d="m8.8 12 2.2 2.2 4.2-4.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <h1>Welcome to @Branding.ParentHoldingCompany</h1>
+            <p class="cg-onboarding-lead">Corporate Governance System</p>
+
+            <p>Welcome, @_member.FullName.</p>
+            <p>
+                Before you start your declarations, we need a few minutes to complete your initial
+                onboarding.
+            </p>
+            <p>
+                It takes no more than <strong>five minutes</strong> and involves checking the
+                Emirates ID and Dubai Financial Market details we already hold for you — or giving
+                them to us if we do not have them.
+            </p>
+
+            <div class="cg-onboarding-actions">
+                <button type="button" class="cg-action-btn cg-primary" disabled="@_busy" @onclick="StartAsync">
+                    Start onboarding
+                </button>
+            </div>
+            break;
+
+        case OnboardingStep.EmiratesId when _record!.EmiratesIdSource == OnboardingSource.Reference && !_reportingEmiratesId:
+            <h2>Step 1 — Check your Emirates ID</h2>
+            <p>Please check these details and confirm they are correct.</p>
+
+            @if (_record.EmiratesIdFrontBlobId is int cardBlob)
+            {
+                <div class="cg-onboarding-source">
+                    <span>📄</span>
+                    <div>
+                        <strong>The copy we hold</strong><br />
+                        <a href="@DocumentUrl.For(cardBlob, null)" target="_blank" rel="noopener">Open it</a>
+                    </div>
+                </div>
+            }
+
+            <dl class="cg-onboarding-readback">
+                <dt>Name on the card</dt>
+                <dd>@Show(_record.EmiratesIdHolderName)</dd>
+                <dt>Emirates ID number</dt>
+                <dd>@Show(_record.EmiratesIdNumber)</dd>
+                @if (!string.IsNullOrWhiteSpace(_record.EmiratesIdNationality))
+                {
+                    <dt>Nationality</dt>
+                    <dd>@_record.EmiratesIdNationality</dd>
+                }
+                @if (_record.EmiratesIdExpiryDate is { } expiry)
+                {
+                    <dt>Expiry date</dt>
+                    <dd>@expiry.ToString("dd/MM/yyyy")</dd>
+                }
+            </dl>
+
+            <p><strong>Is the above correct?</strong></p>
+            <div class="cg-onboarding-actions">
+                <button type="button" class="cg-action-btn cg-primary" disabled="@_busy" @onclick="ConfirmEmiratesIdAsync">
+                    Yes, confirm
+                </button>
+                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="() => _reportingEmiratesId = true">
+                    No, report a problem
+                </button>
+            </div>
+            break;
+
+        case OnboardingStep.EmiratesId when _reportingEmiratesId:
+            <h2>What is wrong with it?</h2>
+            <p>
+                Tell us what is incorrect and we will have it checked. Nothing you write here
+                changes the record — it is passed on for someone to look at.
+            </p>
+            <label class="cg-field">
+                <span>What should it say?</span>
+                <textarea class="cg-input" rows="4" maxlength="1000" @bind="_issueText"></textarea>
+            </label>
+            <div class="cg-onboarding-actions">
+                <button type="button" class="cg-action-btn cg-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_issueText))"
+                        @onclick="ReportEmiratesIdAsync">
+                    Send and continue
+                </button>
+                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="() => _reportingEmiratesId = false">
+                    Back
+                </button>
+            </div>
+            break;
+
+        case OnboardingStep.EmiratesId:
+            <h2>Step 1 — Your Emirates ID</h2>
+            <p>We do not have your Emirates ID on file. Please upload a copy to continue.</p>
+
+            <label class="cg-field">
+                <span>Emirates ID — front</span>
+                <InputFile OnChange="@(e => UploadCardAsync(e, front: true))" accept=".pdf,.jpg,.jpeg,.png" disabled="@_busy" />
+                @if (_record!.EmiratesIdFrontBlobId is not null) { <p class="cg-hint">Uploaded.</p> }
+            </label>
+
+            <label class="cg-field">
+                <span>Emirates ID — back</span>
+                <InputFile OnChange="@(e => UploadCardAsync(e, front: false))" accept=".pdf,.jpg,.jpeg,.png" disabled="@_busy" />
+                @if (_record.EmiratesIdBackBlobId is not null) { <p class="cg-hint">Uploaded.</p> }
+            </label>
+
+            <p class="cg-hint">PDF, JPG or PNG, up to 5 MB each.</p>
+
+            <label class="cg-field">
+                <span>Name as it appears on the card</span>
+                <input class="cg-input" maxlength="200" @bind="_record.EmiratesIdHolderName" />
+            </label>
+            <label class="cg-field">
+                <span>Emirates ID number</span>
+                <input class="cg-input" maxlength="100" @bind="_record.EmiratesIdNumber" />
+            </label>
+            <label class="cg-field">
+                <span>Expiry date</span>
+                <input type="date" class="cg-input" @bind="_record.EmiratesIdExpiryDate" />
+            </label>
+
+            @if (_captureNote is not null) { <p class="cg-hint">@_captureNote</p> }
+
+            <div class="cg-onboarding-actions">
+                <button type="button" class="cg-action-btn cg-primary" disabled="@(_busy || !CanSubmitCard)" @onclick="SubmitEmiratesIdAsync">
+                    Submit and continue
+                </button>
+            </div>
+            <p class="cg-onboarding-note">
+                What you give us is recorded as yours and marked for checking. It does not replace
+                anything already held.
+            </p>
+            break;
+
+        case OnboardingStep.Dfm when _record!.DfmSource == OnboardingSource.Reference && !_reportingDfm:
+            <h2>Step 2 — Check your DFM details</h2>
+            <p>Please check your Dubai Financial Market registration details.</p>
+
+            <dl class="cg-onboarding-readback">
+                <dt>National Investor Number (NIN)</dt>
+                <dd>@Show(_record.NinNumber)</dd>
+                <dt>Registered name</dt>
+                <dd>@Show(_record.NinRegisteredName)</dd>
+            </dl>
+
+            <p><strong>Is the above correct?</strong></p>
+            <div class="cg-onboarding-actions">
+                <button type="button" class="cg-action-btn cg-primary" disabled="@_busy" @onclick="ConfirmDfmAsync">
+                    Yes, confirm
+                </button>
+                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="() => _reportingDfm = true">
+                    No, report a problem
+                </button>
+            </div>
+            break;
+
+        case OnboardingStep.Dfm when _reportingDfm:
+            <h2>What is wrong with it?</h2>
+            <p>Tell us what is incorrect. The record is not changed from here.</p>
+            <label class="cg-field">
+                <span>What should it say?</span>
+                <textarea class="cg-input" rows="4" maxlength="1000" @bind="_issueText"></textarea>
+            </label>
+            <div class="cg-onboarding-actions">
+                <button type="button" class="cg-action-btn cg-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_issueText))"
+                        @onclick="ReportDfmAsync">
+                    Send and continue
+                </button>
+                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="() => _reportingDfm = false">
+                    Back
+                </button>
+            </div>
+            break;
+
+        case OnboardingStep.Dfm:
+            <h2>Step 2 — Your DFM details</h2>
+            <p>We could not find Dubai Financial Market registration details for you.</p>
+            <p><strong>Do you have a National Investor Number (NIN) registered with DFM?</strong></p>
+
+            <div class="cg-onboarding-actions">
+                <button type="button" class="cg-action-btn @(_hasNin == true ? "cg-primary" : "")" disabled="@_busy"
+                        @onclick="() => _hasNin = true">
+                    Yes, I have a NIN
+                </button>
+                <button type="button" class="cg-action-btn @(_hasNin == false ? "cg-primary" : "")" disabled="@_busy"
+                        @onclick="() => _hasNin = false">
+                    No, I do not
+                </button>
+            </div>
+
+            @if (_hasNin == true)
+            {
+                <div style="margin-top:22px;">
+                    <label class="cg-field">
+                        <span>National Investor Number (NIN)</span>
+                        <input class="cg-input" maxlength="100" @bind="_record!.NinNumber" />
+                    </label>
+                    <label class="cg-field">
+                        <span>Registered name with DFM</span>
+                        <input class="cg-input" maxlength="200" @bind="_record.NinRegisteredName" />
+                    </label>
+                    <label class="cg-field">
+                        <span>NIN confirmation or DFM statement <em>(optional)</em></span>
+                        <InputFile OnChange="UploadNinDocumentAsync" accept=".pdf,.jpg,.jpeg,.png" disabled="@_busy" />
+                        @if (_record.NinDocumentBlobId is not null) { <p class="cg-hint">Uploaded.</p> }
+                    </label>
+
+                    <div class="cg-onboarding-actions">
+                        <button type="button" class="cg-action-btn cg-primary"
+                                disabled="@(_busy || string.IsNullOrWhiteSpace(_record.NinNumber))" @onclick="SubmitNinAsync">
+                            Submit and continue
+                        </button>
+                    </div>
+                </div>
+            }
+            else if (_hasNin == false)
+            {
+                <div style="margin-top:22px;">
+                    <p>We will record that you do not have a NIN. You can tell us later if that changes.</p>
+                    <div class="cg-onboarding-actions">
+                        <button type="button" class="cg-action-btn cg-primary" disabled="@_busy" @onclick="RecordNoNinAsync">
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            }
+            break;
+
+        case OnboardingStep.Done when _record!.Status != OnboardingStatus.Completed:
+            <span class="cg-onboarding-done-mark">🎉</span>
+            <h1>That is everything</h1>
+            <p class="cg-onboarding-lead">Thank you for checking your details.</p>
+            <div class="cg-onboarding-actions">
+                <button type="button" class="cg-action-btn cg-primary" disabled="@_busy" @onclick="CompleteAsync">
+                    Finish onboarding
+                </button>
+            </div>
+            break;
+
+        default:
+            <span class="cg-onboarding-done-mark">🎉</span>
+            <h1>Congratulations</h1>
+            <p class="cg-onboarding-lead">Your onboarding is complete.</p>
+            <p>
+                Your Emirates ID and Dubai Financial Market details have been recorded in the
+                @Branding.ParentHoldingCompany Corporate Governance System, and added to your
+                My&nbsp;Workspace so you will not be asked for them again.
+            </p>
+            <p>You can now go to your dashboard and complete the declarations assigned to you.</p>
+            <div class="cg-onboarding-actions">
+                <a class="cg-action-btn cg-primary" href="/">Go to my dashboard</a>
+            </div>
+            break;
+    }
+}
+</div>

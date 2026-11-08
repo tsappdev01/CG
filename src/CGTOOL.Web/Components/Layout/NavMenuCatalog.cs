@@ -28,6 +28,7 @@ public static class NavMenuCatalog
         new("AdminPanel.JobTitle", "Job Title", "AdminPanel"),
         new("AdminPanel.PolicyDocuments", "Policy Documents", "AdminPanel"),
         new("AdminPanel.DocumentCenter", "Document Center", "AdminPanel"),
+        new("AdminPanel.OnboardingData", "Onboarding Data", "AdminPanel"),
         new("AdminPanel.DoaMatrix", "Delegation of Authority", "AdminPanel"),
         new("AdminPanel.Settings", "Settings", "AdminPanel"),
         new("AdminPanel.AuditLogs", "Audit Logs", "AdminPanel"),

@@ -27,7 +27,7 @@ pool:
   name: Default
 
 variables:
-  projectPath: 'src/CGTOOL.Web/CGTOOL.Web.csproj'
+  checksPath: 'src/CGTOOL.Checks/CGTOOL.Checks.csproj'
   buildConfiguration: 'Release'
 
 steps:
@@ -37,13 +37,23 @@ steps:
       packageType: 'sdk'
       useGlobalJson: true
 
-  - script: dotnet restore "$(projectPath)"
+  - script: dotnet restore "$(checksPath)"
     displayName: 'Restore'
 
   # Release, matching the deploy, because a Debug build can compile where a Release one does not --
   # anything behind #if DEBUG, and analyzers that only run in Release.
-  - script: dotnet build "$(projectPath)" --configuration $(buildConfiguration) --no-restore
+  # Building the checks project builds the web project it references, so this is still one
+  # compile of everything.
+  - script: dotnet build "$(checksPath)" --configuration $(buildConfiguration) --no-restore
     displayName: 'Build'
+
+  # Things two places have to agree about, where nothing would notice if they stopped. A
+  # submission report once had a declarant down as his own mother, and the same relative read
+  # "Father-in-Law" on the form and "Father-in-law" on the report about it, because how a
+  # relationship is named had been written out twelve times and the copies drifted. These walk
+  # the built assembly, so a surface added tomorrow is checked without anyone adding it to a list.
+  - script: dotnet run --project "$(checksPath)" --configuration $(buildConfiguration) --no-build
+    displayName: 'Consistency checks'
 
   # The generated e-mail templates and the SQL that loads them are produced by a script. If someone
   # edits the HTML or the SQL by hand, regenerating here makes the working tree dirty and this

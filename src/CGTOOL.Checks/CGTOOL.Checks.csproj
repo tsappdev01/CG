@@ -1,0 +1,22 @@
+<!-- Consistency checks, run by azure-pipelines-ci.yml after the build.
+
+     A console program rather than a test framework, and deliberately: the build agent is
+     self-hosted, shares a disk that the deploy pipeline already notes is at 95%, and has no test
+     packages cached. This needs no restore beyond the project it checks, runs in under a second,
+     and returns a non-zero exit code when something is wrong, which is all CI asks of it.
+
+     What belongs here is anything that two places have to agree about and nothing would notice
+     if they stopped: the same reason the pipeline regenerates the e-mail templates and fails
+     when the working tree moves. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>CGTOOL.Checks</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../CGTOOL.Web/CGTOOL.Web.csproj" />
+  </ItemGroup>
+</Project>

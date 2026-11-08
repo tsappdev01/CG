@@ -117,12 +117,20 @@ public static class ReportPdfBuilder
 
         writer.SectionHeading("Signature");
 
-        var path = LocalPathOf(signature.ImagePath, logoFilePath);
-        if (path is not null && File.Exists(path))
+        var bytes = signature.Image;
+        if (bytes is null && signature.ImagePath is { Length: > 0 } legacyPath)
+        {
+            // A declaration signed before signatures moved into the database still points at a file.
+            var path = LocalPathOf(legacyPath, logoFilePath);
+            if (path is not null && File.Exists(path)) bytes = File.ReadAllBytes(path);
+        }
+
+        if (bytes is { Length: > 0 })
         {
             try
             {
-                using var image = XImage.FromFile(path);
+                using var stream = new MemoryStream(bytes, writable: false);
+                using var image = XImage.FromStream(stream);
                 writer.Signature(image, 180, 60);
             }
             catch (Exception)

@@ -41,9 +41,9 @@ public static class InsiderDeclarationPdfBuilder
             ("Holds a NIN", d.HasNin ? $"Yes ({d.NinNumber})" : "No"),
             ("Relatives have a NIN", d.RelativesHaveNin ? "Yes" : "No"),
             ($"Holds shares in {parentHoldingCompany} (self or relatives)", d.HoldsShares ? "Yes" : "No"),
-            ("Emirates ID", string.IsNullOrEmpty(d.EmiratesIdPath) ? "—" : $"{d.EmiratesIdNumber} — {d.EmiratesIdNameOnCard}, expires {d.EmiratesIdExpiryDate:dd MMM yyyy}"),
-            ("Passport", string.IsNullOrEmpty(d.PassportPath) ? "—" : $"{d.PassportNumber} ({d.PassportIssuingCountry}), expires {d.PassportExpiryDate:dd MMM yyyy}"),
-            .. string.IsNullOrEmpty(d.TradeLicencePath)
+            ("Emirates ID", !DocumentUrl.Exists(d.EmiratesIdBlobId, d.EmiratesIdPath) ? "—" : $"{d.EmiratesIdNumber} — {d.EmiratesIdNameOnCard}, expires {d.EmiratesIdExpiryDate:dd MMM yyyy}"),
+            ("Passport", !DocumentUrl.Exists(d.PassportBlobId, d.PassportPath) ? "—" : $"{d.PassportNumber} ({d.PassportIssuingCountry}), expires {d.PassportExpiryDate:dd MMM yyyy}"),
+            .. !DocumentUrl.Exists(d.TradeLicenceBlobId, d.TradeLicencePath)
                 ? Array.Empty<(string, string)>()
                 : [("Trade Licence", $"{d.TradeLicenceNumber} — {d.TradeLicenceLegalName}" +
                     (d.TradeLicenceExpiryDate is null ? "" : $", expires {d.TradeLicenceExpiryDate:dd MMM yyyy}"))],

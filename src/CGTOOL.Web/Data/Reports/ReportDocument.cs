@@ -51,7 +51,13 @@ public sealed record ReportSubTable(
 /// <param name="ImagePath">Where the signature image is kept, under wwwroot.</param>
 /// <param name="Name">The name it was signed under.</param>
 /// <param name="SignedAtUtc">When, to the minute.</param>
-public sealed record ReportSignature(string ImagePath, string? Name, DateTime? SignedAtUtc);
+/// <summary>The signature on a report.
+///
+/// The image, not a path to it. It used to be a path, which the PDF builder resolved against
+/// wwwroot and had to contain, because a value out of a database row that reads "../.." should not
+/// open a file on the server. A stored signature is a row in dbo.DocumentBlobs, so the bytes are
+/// fetched by whoever builds the report and handed over, and there is no path left to contain.</summary>
+public sealed record ReportSignature(byte[]? Image, string? ImagePath, string? Name, DateTime? SignedAtUtc);
 
 public sealed record ReportRecord(
     string Title,

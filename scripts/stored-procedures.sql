@@ -2589,3 +2589,187 @@ BEGIN
     DELETE FROM dbo.DocumentBlobs WHERE Id = @Id;
 END
 GO
+
+
+-- ---------------------------------------------------------------------------------------------
+-- Member onboarding (dbo.MemberOnboardings)
+--
+-- The one-time verification a member goes through before their first declaration. Every field
+-- that records what they were shown has a companion saying where it came from and whether anyone
+-- has checked it -- confirming an IPO record, supplying a new document, and verification by an
+-- authorised person are three different things and are written separately.
+-- ---------------------------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE dbo.usp_MemberOnboarding_Insert
+    @MemberId int,
+    @Status int = NULL,
+    @StartedAtUtc datetime2 = NULL,
+    @CompletedAtUtc datetime2 = NULL,
+    @EmiratesIdStatus int = NULL,
+    @EmiratesIdSource int = NULL,
+    @EmiratesIdNumber nvarchar(100) = NULL,
+    @EmiratesIdHolderName nvarchar(200) = NULL,
+    @EmiratesIdHolderNameArabic nvarchar(200) = NULL,
+    @EmiratesIdNationality nvarchar(80) = NULL,
+    @EmiratesIdExpiryDate datetime2 = NULL,
+    @EmiratesIdConfirmedAtUtc datetime2 = NULL,
+    @EmiratesIdReportedIssue nvarchar(1000) = NULL,
+    @EmiratesIdReportedAtUtc datetime2 = NULL,
+    @EmiratesIdFrontBlobId int = NULL,
+    @EmiratesIdBackBlobId int = NULL,
+    @EmiratesIdVerifiedAtUtc datetime2 = NULL,
+    @EmiratesIdVerifiedByName nvarchar(160) = NULL,
+    @DfmStatus int = NULL,
+    @DfmSource int = NULL,
+    @NinResponse int = NULL,
+    @NinNumber nvarchar(100) = NULL,
+    @NinRegisteredName nvarchar(200) = NULL,
+    @DfmOtherInformation nvarchar(500) = NULL,
+    @DfmConfirmedAtUtc datetime2 = NULL,
+    @DfmReportedIssue nvarchar(1000) = NULL,
+    @DfmReportedAtUtc datetime2 = NULL,
+    @NinDocumentBlobId int = NULL,
+    @DfmVerifiedAtUtc datetime2 = NULL,
+    @DfmVerifiedByName nvarchar(160) = NULL,
+    @NewId int OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO dbo.MemberOnboardings (MemberId, Status, StartedAtUtc, CompletedAtUtc, EmiratesIdStatus, EmiratesIdSource, EmiratesIdNumber, EmiratesIdHolderName, EmiratesIdHolderNameArabic, EmiratesIdNationality, EmiratesIdExpiryDate, EmiratesIdConfirmedAtUtc, EmiratesIdReportedIssue, EmiratesIdReportedAtUtc, EmiratesIdFrontBlobId, EmiratesIdBackBlobId, EmiratesIdVerifiedAtUtc, EmiratesIdVerifiedByName, DfmStatus, DfmSource, NinResponse, NinNumber, NinRegisteredName, DfmOtherInformation, DfmConfirmedAtUtc, DfmReportedIssue, DfmReportedAtUtc, NinDocumentBlobId, DfmVerifiedAtUtc, DfmVerifiedByName)
+    VALUES (@MemberId, @Status, @StartedAtUtc, @CompletedAtUtc, @EmiratesIdStatus, @EmiratesIdSource, @EmiratesIdNumber, @EmiratesIdHolderName, @EmiratesIdHolderNameArabic, @EmiratesIdNationality, @EmiratesIdExpiryDate, @EmiratesIdConfirmedAtUtc, @EmiratesIdReportedIssue, @EmiratesIdReportedAtUtc, @EmiratesIdFrontBlobId, @EmiratesIdBackBlobId, @EmiratesIdVerifiedAtUtc, @EmiratesIdVerifiedByName, @DfmStatus, @DfmSource, @NinResponse, @NinNumber, @NinRegisteredName, @DfmOtherInformation, @DfmConfirmedAtUtc, @DfmReportedIssue, @DfmReportedAtUtc, @NinDocumentBlobId, @DfmVerifiedAtUtc, @DfmVerifiedByName);
+
+    SET @NewId = SCOPE_IDENTITY();
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_MemberOnboarding_Update
+    @Id int,
+    @Status int = NULL,
+    @StartedAtUtc datetime2 = NULL,
+    @CompletedAtUtc datetime2 = NULL,
+    @EmiratesIdStatus int = NULL,
+    @EmiratesIdSource int = NULL,
+    @EmiratesIdNumber nvarchar(100) = NULL,
+    @EmiratesIdHolderName nvarchar(200) = NULL,
+    @EmiratesIdHolderNameArabic nvarchar(200) = NULL,
+    @EmiratesIdNationality nvarchar(80) = NULL,
+    @EmiratesIdExpiryDate datetime2 = NULL,
+    @EmiratesIdConfirmedAtUtc datetime2 = NULL,
+    @EmiratesIdReportedIssue nvarchar(1000) = NULL,
+    @EmiratesIdReportedAtUtc datetime2 = NULL,
+    @EmiratesIdFrontBlobId int = NULL,
+    @EmiratesIdBackBlobId int = NULL,
+    @EmiratesIdVerifiedAtUtc datetime2 = NULL,
+    @EmiratesIdVerifiedByName nvarchar(160) = NULL,
+    @DfmStatus int = NULL,
+    @DfmSource int = NULL,
+    @NinResponse int = NULL,
+    @NinNumber nvarchar(100) = NULL,
+    @NinRegisteredName nvarchar(200) = NULL,
+    @DfmOtherInformation nvarchar(500) = NULL,
+    @DfmConfirmedAtUtc datetime2 = NULL,
+    @DfmReportedIssue nvarchar(1000) = NULL,
+    @DfmReportedAtUtc datetime2 = NULL,
+    @NinDocumentBlobId int = NULL,
+    @DfmVerifiedAtUtc datetime2 = NULL,
+    @DfmVerifiedByName nvarchar(160) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.MemberOnboardings
+    SET
+        Status = @Status,
+        StartedAtUtc = @StartedAtUtc,
+        CompletedAtUtc = @CompletedAtUtc,
+        EmiratesIdStatus = @EmiratesIdStatus,
+        EmiratesIdSource = @EmiratesIdSource,
+        EmiratesIdNumber = @EmiratesIdNumber,
+        EmiratesIdHolderName = @EmiratesIdHolderName,
+        EmiratesIdHolderNameArabic = @EmiratesIdHolderNameArabic,
+        EmiratesIdNationality = @EmiratesIdNationality,
+        EmiratesIdExpiryDate = @EmiratesIdExpiryDate,
+        EmiratesIdConfirmedAtUtc = @EmiratesIdConfirmedAtUtc,
+        EmiratesIdReportedIssue = @EmiratesIdReportedIssue,
+        EmiratesIdReportedAtUtc = @EmiratesIdReportedAtUtc,
+        EmiratesIdFrontBlobId = @EmiratesIdFrontBlobId,
+        EmiratesIdBackBlobId = @EmiratesIdBackBlobId,
+        EmiratesIdVerifiedAtUtc = @EmiratesIdVerifiedAtUtc,
+        EmiratesIdVerifiedByName = @EmiratesIdVerifiedByName,
+        DfmStatus = @DfmStatus,
+        DfmSource = @DfmSource,
+        NinResponse = @NinResponse,
+        NinNumber = @NinNumber,
+        NinRegisteredName = @NinRegisteredName,
+        DfmOtherInformation = @DfmOtherInformation,
+        DfmConfirmedAtUtc = @DfmConfirmedAtUtc,
+        DfmReportedIssue = @DfmReportedIssue,
+        DfmReportedAtUtc = @DfmReportedAtUtc,
+        NinDocumentBlobId = @NinDocumentBlobId,
+        DfmVerifiedAtUtc = @DfmVerifiedAtUtc,
+        DfmVerifiedByName = @DfmVerifiedByName
+    WHERE Id = @Id;
+END
+GO
+
+-- ---------------------------------------------------------------------------------------------
+-- Identity reference data (dbo.MemberIdentityReferences)
+--
+-- Loaded once from the employee spreadsheet and matched on email. Onboarding reads it to show a
+-- member what is already held about them; nothing a member answers is written back here, which is
+-- what keeps "the reference says X" and "the employee says Y" separate.
+-- ---------------------------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE dbo.usp_MemberIdentityReference_Upsert
+    @Email nvarchar(320),
+    @FullName nvarchar(200) = NULL,
+    @CompanyName nvarchar(200) = NULL,
+    @Nin nvarchar(100) = NULL,
+    @NameOnEmiratesId nvarchar(200) = NULL,
+    @EmiratesIdNumber nvarchar(100) = NULL,
+    @Nationality nvarchar(80) = NULL,
+    @SourceFileName nvarchar(260) = NULL,
+    @ImportedAtUtc datetime2
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.MemberIdentityReferences
+    SET FullName = @FullName,
+        CompanyName = @CompanyName,
+        Nin = @Nin,
+        NameOnEmiratesId = @NameOnEmiratesId,
+        EmiratesIdNumber = @EmiratesIdNumber,
+        Nationality = @Nationality,
+        SourceFileName = @SourceFileName,
+        ImportedAtUtc = @ImportedAtUtc
+    WHERE Email = @Email;
+
+    IF @@ROWCOUNT = 0
+    BEGIN
+        INSERT INTO dbo.MemberIdentityReferences
+            (Email, FullName, CompanyName, Nin, NameOnEmiratesId, EmiratesIdNumber, Nationality, SourceFileName, ImportedAtUtc)
+        VALUES
+            (@Email, @FullName, @CompanyName, @Nin, @NameOnEmiratesId, @EmiratesIdNumber, @Nationality, @SourceFileName, @ImportedAtUtc);
+    END
+END
+GO
+
+-- Attaches a bulk-uploaded Emirates ID scan to the row whose number matches the file's name.
+-- The reference rows are never created here: a file for a number nobody holds is reported, not
+-- turned into a record with no person attached to it.
+CREATE OR ALTER PROCEDURE dbo.usp_MemberIdentityReference_SetEmiratesIdDocument
+    @EmiratesIdNumber nvarchar(100),
+    @BlobId int,
+    @FileName nvarchar(260) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.MemberIdentityReferences
+    SET EmiratesIdBlobId = @BlobId,
+        EmiratesIdFileName = @FileName
+    WHERE EmiratesIdNumber = @EmiratesIdNumber;
+
+    SELECT @@ROWCOUNT;
+END
+GO

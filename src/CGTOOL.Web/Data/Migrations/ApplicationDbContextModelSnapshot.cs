@@ -1551,6 +1551,62 @@ namespace CGTOOL.Web.Data.Migrations
                     b.ToTable("MemberDocuments");
                 });
 
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.MemberIdentityReference", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CompanyName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<int?>("EmiratesIdBlobId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EmiratesIdFileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<string>("EmiratesIdNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FullName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("ImportedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NameOnEmiratesId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Nationality")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("Nin")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SourceFileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MemberIdentityReferences");
+                });
+
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.MemberImpersonationApproval", b =>
                 {
                     b.Property<int>("Id")
@@ -1607,6 +1663,122 @@ namespace CGTOOL.Web.Data.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("MemberNotifications");
+                });
+
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.MemberOnboarding", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DfmConfirmedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DfmOtherInformation")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("DfmReportedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DfmReportedIssue")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("DfmSource")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DfmStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DfmVerifiedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DfmVerifiedByName")
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<int?>("EmiratesIdBackBlobId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EmiratesIdConfirmedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EmiratesIdExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("EmiratesIdFrontBlobId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EmiratesIdHolderName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EmiratesIdHolderNameArabic")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EmiratesIdNationality")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("EmiratesIdNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("EmiratesIdReportedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EmiratesIdReportedIssue")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("EmiratesIdSource")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EmiratesIdStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EmiratesIdVerifiedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EmiratesIdVerifiedByName")
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<int>("MemberId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NinDocumentBlobId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NinNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("NinRegisteredName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("NinResponse")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("StartedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberId");
+
+                    b.ToTable("MemberOnboardings");
                 });
 
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.NavMenuItemLabel", b =>
@@ -2922,6 +3094,17 @@ namespace CGTOOL.Web.Data.Migrations
                 });
 
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.MemberNotification", b =>
+                {
+                    b.HasOne("CGTOOL.Web.Data.Governance.Member", "Member")
+                        .WithMany()
+                        .HasForeignKey("MemberId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Member");
+                });
+
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.MemberOnboarding", b =>
                 {
                     b.HasOne("CGTOOL.Web.Data.Governance.Member", "Member")
                         .WithMany()

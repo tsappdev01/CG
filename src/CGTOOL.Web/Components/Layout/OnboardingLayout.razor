@@ -1,0 +1,21 @@
+@inherits LayoutComponentBase
+@inject Branding Branding
+
+@* No nav, no top bar. Onboarding is the one thing the member can do until it is finished, and a
+   menu full of pages the gate will bounce them off is an invitation to try. It is also why the
+   gate in MainLayout cannot loop: the onboarding page is not inside it. *@
+<div class="cg-onboarding-shell">
+    <header class="cg-onboarding-brand">
+        <img src="/images/di-logo-en-transparent.png" alt="@Branding.ParentHoldingCompany" />
+    </header>
+
+    <main class="cg-onboarding-main">
+        @Body
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>

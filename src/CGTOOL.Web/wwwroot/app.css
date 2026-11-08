@@ -4255,3 +4255,128 @@ button.cg-appbar-user {
     font-weight: 600;
     color: var(--cg-ink);
 }
+
+/* =====================================================================================
+   One-time employee onboarding
+   -------------------------------------------------------------------------------------
+   A single centred column with no nav around it. The member has one thing to do and
+   five minutes to do it in, so the screen holds one question at a time and nothing to
+   wander off into.
+   ===================================================================================== */
+.cg-onboarding-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--cg-surface-sunken, #F4F6F8);
+}
+
+.cg-onboarding-brand {
+    padding: 20px 24px;
+    background: var(--cg-surface, #FFFFFF);
+    border-bottom: 1px solid var(--cg-line);
+}
+
+.cg-onboarding-brand img { height: 38px; }
+
+.cg-onboarding-main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 32px 16px 64px;
+}
+
+.cg-onboarding-card {
+    width: 100%;
+    max-width: 640px;
+    background: var(--cg-surface, #FFFFFF);
+    border: 1px solid var(--cg-line);
+    border-radius: 14px;
+    padding: 32px;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+}
+
+.cg-onboarding-card h1 { font-size: 1.5rem; margin: 0 0 4px; text-align: center; }
+.cg-onboarding-card h2 { font-size: 1.05rem; margin: 0 0 16px; }
+
+.cg-onboarding-lead {
+    text-align: center;
+    color: var(--cg-ink-muted, #5A6B7B);
+    margin: 0 0 24px;
+}
+
+.cg-onboarding-mark {
+    display: block;
+    margin: 0 auto 14px;
+    width: 46px;
+    height: 46px;
+    color: var(--cg-accent);
+}
+
+/* The steps along the top, so five minutes has a visible end to it. */
+.cg-onboarding-steps {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 24px;
+}
+
+.cg-onboarding-steps li {
+    flex: 1;
+    list-style: none;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--cg-ink-muted, #8494A3);
+    padding-top: 8px;
+    border-top: 3px solid var(--cg-line);
+}
+
+.cg-onboarding-steps li.on { color: var(--cg-accent); border-top-color: var(--cg-accent); }
+.cg-onboarding-steps li.done { color: var(--cg-good); border-top-color: var(--cg-good); }
+
+/* A value read back to the member for confirmation: large enough to actually check. */
+.cg-onboarding-readback { margin: 0 0 18px; }
+.cg-onboarding-readback dt {
+    font-size: 0.75rem;
+    color: var(--cg-ink-muted, #8494A3);
+    margin-bottom: 2px;
+}
+.cg-onboarding-readback dd {
+    margin: 0 0 14px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--cg-ink);
+}
+
+.cg-onboarding-source {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    background: var(--cg-surface-sunken, #F4F6F8);
+    border-radius: 10px;
+    font-size: 0.85rem;
+}
+
+.cg-onboarding-actions { display: flex; gap: 12px; margin-top: 24px; }
+.cg-onboarding-actions > * { flex: 1; }
+
+.cg-onboarding-note {
+    margin-top: 20px;
+    font-size: 0.8rem;
+    color: var(--cg-ink-muted, #8494A3);
+}
+
+.cg-onboarding-done-mark {
+    display: block;
+    font-size: 2.6rem;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+@media (max-width: 560px) {
+    .cg-onboarding-card { padding: 22px 18px; }
+    .cg-onboarding-actions { flex-direction: column; }
+}

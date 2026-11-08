@@ -108,10 +108,10 @@ public static class InsiderDetailSheet
     {
         var files = new List<(string Kind, string? Number, DateTime? Expiry, string? Path)>
         {
-            ("Emirates ID", d.EmiratesIdNumber, d.EmiratesIdExpiryDate, d.EmiratesIdPath),
-            ("Passport", d.PassportNumber, d.PassportExpiryDate, d.PassportPath),
-            ("Trade Licence", d.TradeLicenceNumber, d.TradeLicenceExpiryDate, d.TradeLicencePath),
-            ("Other document", null, null, d.OtherDocumentPath),
+            ("Emirates ID", d.EmiratesIdNumber, d.EmiratesIdExpiryDate, DocumentUrl.For(d.EmiratesIdBlobId, d.EmiratesIdPath)),
+            ("Passport", d.PassportNumber, d.PassportExpiryDate, DocumentUrl.For(d.PassportBlobId, d.PassportPath)),
+            ("Trade Licence", d.TradeLicenceNumber, d.TradeLicenceExpiryDate, DocumentUrl.For(d.TradeLicenceBlobId, d.TradeLicencePath)),
+            ("Other document", null, null, DocumentUrl.For(d.OtherDocumentBlobId, d.OtherDocumentPath)),
         };
 
         var filed = files.Where(f => f.Path is { Length: > 0 }).ToList();

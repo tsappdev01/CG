@@ -50,6 +50,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     /// Workspace draws the lot on load) and must not drag megabytes of scan along with it. Load a
     /// blob only when one is being delivered, through DocumentStore.</summary>
     public DbSet<DocumentBlob> DocumentBlobs => Set<DocumentBlob>();
+
+    /// <summary>The one-time onboarding each member goes through before their first declaration.</summary>
+    public DbSet<MemberOnboarding> MemberOnboardings => Set<MemberOnboarding>();
+
+    /// <summary>What is already held about each person's Emirates ID and DFM registration, loaded
+    /// once from the employee spreadsheet. Read by onboarding, never written by it.</summary>
+    public DbSet<MemberIdentityReference> MemberIdentityReferences => Set<MemberIdentityReference>();
     public DbSet<MemberDfmProfile> MemberDfmProfiles => Set<MemberDfmProfile>();
     public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
     public DbSet<DocumentTypeRequirement> DocumentTypeRequirements => Set<DocumentTypeRequirement>();

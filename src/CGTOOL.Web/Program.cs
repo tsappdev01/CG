@@ -168,6 +168,16 @@ builder.Services.AddScoped<IStoredProcedureExecutor, StoredProcedureExecutor>();
 builder.Services.AddScoped<IDocumentStore, DocumentStore>();
 builder.Services.AddScoped<IDocumentAccess, DocumentAccess>();
 
+// One-time employee onboarding. What a member is shown for confirmation comes from
+// MemberIdentityReferences, loaded once from the employee spreadsheet; a person with no row there
+// is simply asked for their details instead.
+builder.Services.AddScoped<IMemberOnboardingWriter, MemberOnboardingWriter>();
+builder.Services.AddScoped<IMemberIdentityLookup, MemberIdentityLookup>();
+builder.Services.AddScoped<IMemberIdentityImporter, MemberIdentityImporter>();
+builder.Services.AddScoped<IEmiratesIdBulkAttach, EmiratesIdBulkAttach>();
+builder.Services.AddScoped<IMemberOnboardingService, MemberOnboardingService>();
+builder.Services.AddScoped<IDocumentBackfill, DocumentBackfill>();
+
 // Whether a stored document is encrypted. Off by default, which stores the file as uploaded and
 // matches how the IPO system's dbo.EmiratesIdDocuments holds its content.
 //

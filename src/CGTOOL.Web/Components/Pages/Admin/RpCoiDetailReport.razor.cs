@@ -17,8 +17,17 @@ public partial class RpCoiDetailReport
 {
     [Inject] private IDbContextFactory<ApplicationDbContext> DbFactory { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthState { get; set; } = default!;
+    [Inject] private IDocumentStore DocumentStore { get; set; } = default!;
 
     private List<DeclarationSubmissionRow<RelatedPartyCoiDeclaration>>? _rows;
+
+    /// <summary>Signature images by declaration, read once when the rows load.
+    ///
+    /// They are fetched here rather than where the report is assembled because Build() runs inside
+    /// the render and cannot await, and because the alternative -- reading them during assembly --
+    /// would re-read every signature on every re-render, including the ones a filter has just
+    /// excluded. A signature is a few kilobytes and there is one per declarant.</summary>
+    private readonly Dictionary<int, byte[]> _signatureImages = [];
     private List<Company>? _companies;
     private string _preparedBy = "unknown";
 
@@ -54,6 +63,7 @@ public partial class RpCoiDetailReport
 
         await using var db = await DbFactory.CreateDbContextAsync();
         _rows = await DeclarationSubmissionSource.RelatedPartyCoiAsync(db);
+        await LoadSignatureImagesAsync();
         _companies = await db.Companies.AsNoTracking().OrderBy(c => c.Name).ToListAsync();
 
         var newest = _rows.OrderByDescending(r => r.Year).ThenByDescending(r => r.Quarter).FirstOrDefault();
@@ -87,6 +97,24 @@ public partial class RpCoiDetailReport
         return [.. rows];
     }
 
+    /// <summary>Reads the signature image for each declaration that has one.</summary>
+    private async Task LoadSignatureImagesAsync()
+    {
+        _signatureImages.Clear();
+
+        foreach (var row in _rows ?? [])
+        {
+            if (row.Declaration?.SignatureBlobId is not int blobId) continue;
+
+            await using var document = await DocumentStore.OpenAsync(blobId);
+            if (document is null) continue;
+
+            using var buffer = new MemoryStream();
+            await document.Stream.CopyToAsync(buffer);
+            _signatureImages[row.Declaration.Id] = buffer.ToArray();
+        }
+    }
+
     private ReportDocument Build()
     {
         var rows = Filtered();
@@ -107,7 +135,7 @@ public partial class RpCoiDetailReport
         };
     }
 
-    private static ReportRecord Record(DeclarationSubmissionRow<RelatedPartyCoiDeclaration> row)
+    private ReportRecord Record(DeclarationSubmissionRow<RelatedPartyCoiDeclaration> row)
     {
         var d = row.Declaration!;
 
@@ -162,8 +190,12 @@ public partial class RpCoiDetailReport
             ],
             // The mark itself, under the sheet it signs. "Signed 07/11/2026 23:30" in the facts
             // says a signature exists; a reviewer checking a declaration wants to see it.
-            d.SignaturePath is { Length: > 0 } signature
-                ? new ReportSignature(signature, d.AttestationName, d.SignedAtUtc)
+            DocumentUrl.Exists(d.SignatureBlobId, d.SignaturePath)
+                ? new ReportSignature(
+                    _signatureImages.GetValueOrDefault(d.Id),
+                    d.SignaturePath,
+                    d.AttestationName,
+                    d.SignedAtUtc)
                 : null);
     }
 

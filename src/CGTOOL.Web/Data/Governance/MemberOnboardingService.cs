@@ -75,17 +75,66 @@ public class MemberOnboardingService(
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var existing = await db.MemberOnboardings.AsNoTracking()
             .FirstOrDefaultAsync(o => o.MemberId == member.Id, ct);
-        if (existing is not null) return existing;
+
+        if (existing is not null)
+        {
+            await FillWhatIsStillUnansweredAsync(existing, member, ct);
+            return existing;
+        }
 
         var onboarding = new MemberOnboarding { MemberId = member.Id };
-
-        // Read once, when the record is created, not on every page load: this is what the member
-        // is about to be shown and asked to confirm, and re-reading it mid-flow could change the
-        // question under them between the screen and the answer.
         await PrefillFromReferenceAsync(onboarding, member, ct);
 
         onboarding.Id = await writer.InsertAsync(onboarding);
         return onboarding;
+    }
+
+    /// <summary>Picks up reference data that arrived after this member started.
+    ///
+    /// The prefill used to run only when the record was created, on the reasoning that the member
+    /// should not have the question change under them between the screen and the answer. That is
+    /// right for a step they are part-way through and wrong for one they have not reached: a
+    /// member who opened onboarding before their spreadsheet was loaded was put on the "supply
+    /// your own" path and stayed there permanently, even once their details were on file.
+    ///
+    /// So it fills only what is still both blank and unanswered. A step the member has confirmed,
+    /// reported a problem with, or supplied something for is left exactly as it is.</summary>
+    private async Task FillWhatIsStillUnansweredAsync(MemberOnboarding onboarding, Member member, CancellationToken ct)
+    {
+        var emiratesIdOpen = onboarding.EmiratesIdSource == OnboardingSource.None && !onboarding.EmiratesIdSettled;
+        var dfmOpen = onboarding.DfmSource == OnboardingSource.None && !onboarding.DfmSettled;
+        if (!emiratesIdOpen && !dfmOpen) return;
+
+        var before = (onboarding.EmiratesIdSource, onboarding.DfmSource);
+
+        var refreshed = new MemberOnboarding { MemberId = member.Id };
+        await PrefillFromReferenceAsync(refreshed, member, ct);
+
+        if (emiratesIdOpen && refreshed.EmiratesIdSource == OnboardingSource.Reference)
+        {
+            onboarding.EmiratesIdSource = refreshed.EmiratesIdSource;
+            onboarding.EmiratesIdNumber = refreshed.EmiratesIdNumber;
+            onboarding.EmiratesIdHolderName = refreshed.EmiratesIdHolderName;
+            onboarding.EmiratesIdNationality = refreshed.EmiratesIdNationality;
+            onboarding.EmiratesIdFrontBlobId = refreshed.EmiratesIdFrontBlobId;
+            onboarding.EmiratesIdStatus = EmiratesIdOnboardingStatus.PendingConfirmation;
+        }
+
+        if (dfmOpen && refreshed.DfmSource == OnboardingSource.Reference)
+        {
+            onboarding.DfmSource = refreshed.DfmSource;
+            onboarding.NinNumber = refreshed.NinNumber;
+            onboarding.NinRegisteredName = refreshed.NinRegisteredName;
+            onboarding.DfmStatus = DfmOnboardingStatus.PendingConfirmation;
+        }
+
+        if (before != (onboarding.EmiratesIdSource, onboarding.DfmSource))
+        {
+            await writer.UpdateAsync(onboarding);
+            logger.LogInformation(
+                "Onboarding for member {MemberId}: details loaded after they started are now on their screen.",
+                member.Id);
+        }
     }
 
     private async Task PrefillFromReferenceAsync(MemberOnboarding onboarding, Member member, CancellationToken ct)

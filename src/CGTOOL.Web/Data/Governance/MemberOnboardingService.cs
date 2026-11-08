@@ -139,7 +139,7 @@ public class MemberOnboardingService(
         }
 
         var onboarding = new MemberOnboarding { MemberId = member.Id };
-        await PrefillFromReferenceAsync(onboarding, member, ct);
+        await PrefillFromWhatWeHoldAsync(onboarding, member, ct);
 
         onboarding.Id = await writer.InsertAsync(onboarding);
         return onboarding;
@@ -164,7 +164,7 @@ public class MemberOnboardingService(
         var before = (onboarding.EmiratesIdSource, onboarding.DfmSource);
 
         var refreshed = new MemberOnboarding { MemberId = member.Id };
-        await PrefillFromReferenceAsync(refreshed, member, ct);
+        await PrefillFromWhatWeHoldAsync(refreshed, member, ct);
 
         if (emiratesIdOpen && refreshed.EmiratesIdSource == OnboardingSource.Reference)
         {
@@ -193,18 +193,27 @@ public class MemberOnboardingService(
         }
     }
 
-    private async Task PrefillFromReferenceAsync(MemberOnboarding onboarding, Member member, CancellationToken ct)
+    /// <summary>Fills in what the organisation already holds for this member, so onboarding asks
+    /// them to check it rather than to supply it again.
+    ///
+    /// Two places are looked at, and it used to be one. The imported identity data is the first,
+    /// and for a while it was the only one -- which meant a member whose Emirates ID was sitting
+    /// in their own My Workspace, but who was not in the spreadsheet that was loaded, was told
+    /// "we do not have your Emirates ID on file" and asked to upload the document the next screen
+    /// would have shown them. Onboarding wrote into My Workspace when it finished and never read
+    /// from it, which is the wrong way round for the one question it exists to ask.</summary>
+    private async Task PrefillFromWhatWeHoldAsync(MemberOnboarding onboarding, Member member, CancellationToken ct)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+
         if (string.IsNullOrWhiteSpace(member.Email))
         {
             logger.LogInformation(
                 "Onboarding for member {MemberId}: no email on the member record, so nothing can be matched " +
-                "against the imported identity data and the member will be asked for their details.",
+                "against the imported identity data. Their My Workspace record is still used.",
                 member.Id);
-            return;
         }
-
-        if (await known.FindEmiratesIdAsync(member.Email, ct) is { } card)
+        else if (await known.FindEmiratesIdAsync(member.Email, ct) is { } card)
         {
             onboarding.EmiratesIdSource = OnboardingSource.Reference;
             onboarding.EmiratesIdNumber = card.Number;
@@ -217,12 +226,49 @@ public class MemberOnboardingService(
             onboarding.EmiratesIdStatus = EmiratesIdOnboardingStatus.PendingConfirmation;
         }
 
-        if (await known.FindDfmAsync(member.Email, ct) is { } dfm)
+        // Nothing imported for them: what they already have in My Workspace is just as much
+        // something we hold, and asking for it again is asking twice.
+        if (onboarding.EmiratesIdSource == OnboardingSource.None)
+        {
+            var held = await db.MemberDocuments.AsNoTracking()
+                .Where(d => d.MemberId == member.Id
+                            && d.Kind == MemberDocumentKind.EmiratesId
+                            && (d.BlobId != null || d.DocumentNumber != null))
+                .OrderByDescending(d => d.UploadedAtUtc)
+                .FirstOrDefaultAsync(ct);
+
+            if (held is not null)
+            {
+                onboarding.EmiratesIdSource = OnboardingSource.Reference;
+                onboarding.EmiratesIdNumber = held.DocumentNumber;
+                onboarding.EmiratesIdHolderName = held.HolderName;
+                onboarding.EmiratesIdNationality = held.Nationality;
+                onboarding.EmiratesIdExpiryDate = held.ExpiryDate;
+                onboarding.EmiratesIdBlobId = held.BlobId;
+                onboarding.EmiratesIdStatus = EmiratesIdOnboardingStatus.PendingConfirmation;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(member.Email) && await known.FindDfmAsync(member.Email, ct) is { } dfm)
         {
             onboarding.DfmSource = OnboardingSource.Reference;
             onboarding.NinNumber = dfm.Nin;
             onboarding.NinRegisteredName = dfm.RegisteredName;
             onboarding.DfmStatus = DfmOnboardingStatus.PendingConfirmation;
+        }
+
+        if (onboarding.DfmSource == OnboardingSource.None)
+        {
+            var profile = await db.MemberDfmProfiles.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.MemberId == member.Id && p.InvestorNumber != null, ct);
+
+            if (profile is not null)
+            {
+                onboarding.DfmSource = OnboardingSource.Reference;
+                onboarding.NinNumber = profile.InvestorNumber;
+                onboarding.NinRegisteredName = profile.FullName;
+                onboarding.DfmStatus = DfmOnboardingStatus.PendingConfirmation;
+            }
         }
     }
 

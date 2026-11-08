@@ -59,6 +59,7 @@ public class EntraDirectorySync(
     IDirectoryImporter importer,
     UserManager<ApplicationUser> userManager,
     IWebHostEnvironment environment,
+    IDocumentStore documents,
     ILogger<EntraDirectorySync> logger) : IEntraDirectorySync
 {
     private const string GraphBase = "https://graph.microsoft.com/v1.0/";
@@ -152,8 +153,8 @@ public class EntraDirectorySync(
             ? value.GetString()
             : null;
 
-    /// <summary>Stores the Entra profile photo under wwwroot so the nav and tables can show it.
-    /// A user with no photo returns 404, which is normal and not an error.</summary>
+    /// <summary>Stores the Entra profile photo in dbo.DocumentBlobs so the nav and tables can show
+    /// it. A user with no photo returns 404, which is normal and not an error.</summary>
     private async Task<bool> StorePhotoAsync(HttpClient client, DirectoryPerson user, ApplicationUser appUser, CancellationToken ct)
     {
         try
@@ -165,19 +166,21 @@ public class EntraDirectorySync(
             var bytes = await response.Content.ReadAsByteArrayAsync(ct);
             if (bytes.Length == 0) return false;
 
-            var directory = Path.Combine(environment.WebRootPath, "uploads", "profile-pictures");
-            Directory.CreateDirectory(directory);
-
-            // Deterministic name per account, so a re-run replaces rather than accumulating files.
-            var fileName = $"{appUser.Id}.jpg";
-            await File.WriteAllBytesAsync(Path.Combine(directory, fileName), bytes, ct);
-
-            var webPath = $"/uploads/profile-pictures/{fileName}";
-            if (appUser.ProfilePicturePath != webPath)
+            // This sync runs on a schedule, and most runs fetch a photo that has not changed. The
+            // old code wrote a deterministic file name, so a re-run simply overwrote it; writing a
+            // blob every time would instead add a row per user per run and grow without bound. So
+            // the photo is compared against what is already stored and only written when it differs.
+            var hash = IDocumentProtector.Sha256Hex(bytes);
+            if (appUser.ProfilePictureBlobId is int existingId)
             {
-                appUser.ProfilePicturePath = webPath;
-                await userManager.UpdateAsync(appUser);
+                var existing = await documents.DescribeAsync(existingId, ct);
+                if (existing?.ContentSha256 == hash) return true;
             }
+
+            appUser.ProfilePictureBlobId = await documents.SaveAsync(
+                bytes, $"{appUser.Id}.jpg", "image/jpeg", ipAddress: null, ct);
+            appUser.ProfilePicturePath = null;
+            await userManager.UpdateAsync(appUser);
 
             return true;
         }

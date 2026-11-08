@@ -67,31 +67,30 @@ public partial class RpTransactionCcaoReviewPage
         _uploadingMinutes = true;
         try
         {
-            var directory = Path.Combine(Env.WebRootPath, "uploads", "rp-transactions");
-            Directory.CreateDirectory(directory);
-
-            var fileName = $"{Guid.NewGuid():N}{extension}";
             // Copied in chunks rather than one CopyToAsync so the bar can report a real percentage
             // as the file streams in over SignalR, which is what makes it a progress bar rather than
             // a decoration.
+            using var buffer = new MemoryStream();
             await using (var source = file.OpenReadStream(MaxMinutesBytes))
-            await using (var target = File.Create(Path.Combine(directory, fileName)))
             {
-                var buffer = new byte[64 * 1024];
+                var chunk = new byte[64 * 1024];
                 long copied = 0;
                 int read;
-                while ((read = await source.ReadAsync(buffer)) > 0)
+                while ((read = await source.ReadAsync(chunk)) > 0)
                 {
-                    await target.WriteAsync(buffer.AsMemory(0, read));
+                    await buffer.WriteAsync(chunk.AsMemory(0, read));
                     copied += read;
                     _minutesProgress = file.Size > 0 ? copied * 100d / file.Size : null;
                     StateHasChanged();
                 }
             }
 
+            var blobId = await Documents.SaveAsync(buffer.ToArray(), file.Name, file.ContentType, Client.IpAddress);
+
             var document = new RelatedPartyTransactionDocument
             {
-                FilePath = $"/uploads/rp-transactions/{fileName}",
+                BlobId = blobId,
+                FilePath = string.Empty,
                 FileName = file.Name,
                 Kind = RpTransactionDocumentKind.GovernanceMinutes,
             };

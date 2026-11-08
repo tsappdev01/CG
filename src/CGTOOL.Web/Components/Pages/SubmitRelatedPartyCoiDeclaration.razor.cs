@@ -128,31 +128,24 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
             // Named for the member and the document type, so re-uploading replaces rather than
             // accumulating: this is one slot, not a list.
-            var fileName = $"{_effectiveMember.Id}-type{type.Id}{extension}";
-            var filePath = Path.Combine(uploadsDir, fileName);
-
-            foreach (var stale in Directory.GetFiles(uploadsDir, $"{_effectiveMember.Id}-type{type.Id}.*"))
-            {
-                File.Delete(stale);
-            }
-
             const int chunkBytes = 64 * 1024;
+            using var buffer = new MemoryStream();
             await using (var stream = file.OpenReadStream(MaxDeclarationDocumentBytes))
-            await using (var target = File.Create(filePath))
             {
-                var buffer = new byte[chunkBytes];
+                var chunk = new byte[chunkBytes];
                 long totalRead = 0;
                 int read;
-                while ((read = await stream.ReadAsync(buffer)) > 0)
+                while ((read = await stream.ReadAsync(chunk)) > 0)
                 {
-                    await target.WriteAsync(buffer.AsMemory(0, read));
+                    await buffer.WriteAsync(chunk.AsMemory(0, read));
                     totalRead += read;
                     _documentUploadProgress[type.Id] = (int)(totalRead * 100 / Math.Max(1, file.Size));
                     StateHasChanged();
                 }
             }
 
-            row.FilePath = $"/uploads/coi-declaration-documents/{fileName}";
+            row.BlobId = await Documents.SaveAsync(buffer.ToArray(), file.Name, file.ContentType, Client.IpAddress);
+            row.FilePath = null;
             row.OriginalFileName = file.Name;
 
             // The file is written to a path named after the member and the document type, so
@@ -372,8 +365,18 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
     public class UploadedFileRow
     {
+        /// <summary>The document in dbo.DocumentBlobs. Null only for a row loaded from a
+        /// declaration saved before documents moved into the database, which still has Path.</summary>
+        public int? BlobId { get; set; }
+
+        /// <summary>Where this used to be on disk. Legacy rows only; a new upload leaves it
+        /// empty and carries BlobId instead.</summary>
         public string Path { get; set; } = string.Empty;
+
         public string FileName { get; set; } = string.Empty;
+
+        /// <summary>What to point a link or a preview at.</summary>
+        public string? Url => DocumentUrl.For(BlobId, Path);
     }
 
     private class ConflictRow
@@ -575,7 +578,8 @@ public partial class SubmitRelatedPartyCoiDeclaration
             .Where(d => d.RelatedPartyCoiDeclarationId == declaration.Id)
             .ToListAsync());
 
-        _signaturePath = declaration.SignaturePath;
+        _signatureBlobId = declaration.SignatureBlobId;
+        _signaturePath = DocumentUrl.For(declaration.SignatureBlobId, declaration.SignaturePath);
         _signedAtUtc = declaration.SignedAtUtc;
         _hasSignature = !string.IsNullOrEmpty(declaration.SignaturePath);
 
@@ -618,7 +622,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 LicenseActivities = c.LicenseActivities ?? string.Empty,
                 LinkedRelativeKey = c.CoiRelativeId is { } rid && relativeRowsByDbId.TryGetValue(rid, out var relRow) ? relRow.Key : null,
             };
-            row.Documents.AddRange(c.Documents.Select(doc => new UploadedFileRow { Path = doc.FilePath, FileName = doc.FileName }));
+            row.Documents.AddRange(c.Documents.Select(doc => new UploadedFileRow { BlobId = doc.BlobId, Path = doc.FilePath, FileName = doc.FileName }));
             WithActivitiesFilled(row);
 
             var target = c.OwnerType switch
@@ -790,9 +794,9 @@ public partial class SubmitRelatedPartyCoiDeclaration
             TradeLicenseNumber = company.TradeLicenceNumber ?? string.Empty,
             TradeLicenseExpiryDate = company.TradeLicenceExpiryDate,
         };
-        AddWorkspaceDocument(row, company.TradeLicensePath, "Trade License");
-        AddWorkspaceDocument(row, company.MoaPath, "MOA");
-        AddWorkspaceDocument(row, company.PoaPath, "POA");
+        AddWorkspaceDocument(row, company.TradeLicenseBlobId, company.TradeLicensePath, "Trade License");
+        AddWorkspaceDocument(row, company.MoaBlobId, company.MoaPath, "MOA");
+        AddWorkspaceDocument(row, company.PoaBlobId, company.PoaPath, "POA");
         return WithActivitiesFilled(row);
     }
 
@@ -880,7 +884,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 LinkedRelativeKey = _relatives
                     .FirstOrDefault(r => string.Equals(r.Name.Trim(), relative.Name.Trim(), StringComparison.OrdinalIgnoreCase))?.Key,
             };
-            AddWorkspaceDocument(row, holding.TradeLicencePath, "Trade License");
+            AddWorkspaceDocument(row, holding.TradeLicenceBlobId, holding.TradeLicencePath, "Trade License");
             _relativeOwnedCompanies.Add(WithActivitiesFilled(row));
         }
 
@@ -916,10 +920,13 @@ public partial class SubmitRelatedPartyCoiDeclaration
         list.Clear();
     }
 
-    private static void AddWorkspaceDocument(CompanyRow row, string? path, string label)
+    /// <summary>Brings a document across from My Workspace. The blob is referenced, not copied --
+    /// the same reasoning as the insider declaration: the declaration freezes what it was given,
+    /// and a later replacement in My Workspace writes a new row rather than changing this one.</summary>
+    private static void AddWorkspaceDocument(CompanyRow row, int? blobId, string? path, string label)
     {
-        if (string.IsNullOrEmpty(path)) return;
-        row.Documents.Add(new UploadedFileRow { Path = path, FileName = $"{label} (from My Workspace)" });
+        if (blobId is null && string.IsNullOrEmpty(path)) return;
+        row.Documents.Add(new UploadedFileRow { BlobId = blobId, Path = path ?? string.Empty, FileName = $"{label} (from My Workspace)" });
     }
 
     /// <summary>Answers the rows that were entered before the register held the answer, or saved
@@ -1294,29 +1301,28 @@ public partial class SubmitRelatedPartyCoiDeclaration
             var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "coi-trade-licenses");
             Directory.CreateDirectory(uploadsDir);
 
-            var fileName = $"{_effectiveMember.Id}-{row.Key:N}-{row.Documents.Count}{extension}";
-            var filePath = Path.Combine(uploadsDir, fileName);
-
             const int chunkBytes = 64 * 1024;
+            using var buffer = new MemoryStream();
             await using (var stream = file.OpenReadStream(MaxTradeLicenseFileBytes))
-            await using (var target = File.Create(filePath))
             {
-                var buffer = new byte[chunkBytes];
+                var chunk = new byte[chunkBytes];
                 long totalRead = 0;
                 int read;
-                while ((read = await stream.ReadAsync(buffer)) > 0)
+                while ((read = await stream.ReadAsync(chunk)) > 0)
                 {
-                    await target.WriteAsync(buffer.AsMemory(0, read));
+                    await buffer.WriteAsync(chunk.AsMemory(0, read));
                     totalRead += read;
-                    row.UploadProgress = (int)(totalRead * 100 / file.Size);
+                    row.UploadProgress = file.Size == 0 ? 100 : (int)(totalRead * 100 / file.Size);
                     StateHasChanged();
                 }
             }
 
-            row.Documents.Add(new UploadedFileRow { Path = $"/uploads/coi-trade-licenses/{fileName}", FileName = file.Name });
+            var blobId = await Documents.SaveAsync(buffer.ToArray(), file.Name, file.ContentType, Client.IpAddress);
+
+            row.Documents.Add(new UploadedFileRow { BlobId = blobId, FileName = file.Name });
             Toasts.ShowSuccess("File uploaded.");
 
-            await AnalyzeAndFillTradeLicenseAsync(row, filePath);
+            await AnalyzeAndFillTradeLicenseAsync(row, buffer.ToArray());
         }
         finally
         {
@@ -1328,13 +1334,13 @@ public partial class SubmitRelatedPartyCoiDeclaration
     // wizard's trade licence upload (see DocumentIntelligenceService.AnalyzeTradeLicenceAsync) --
     // best-effort only, silently does nothing when DocumentIntelligence isn't configured or the
     // model can't read the file, and every field it fills stays a plain editable input.
-    private async Task AnalyzeAndFillTradeLicenseAsync(CompanyRow row, string filePath)
+    private async Task AnalyzeAndFillTradeLicenseAsync(CompanyRow row, byte[] content)
     {
         if (!DocIntel.IsConfigured) return;
 
         try
         {
-            await using var stream = File.OpenRead(filePath);
+            using var stream = new MemoryStream(content, writable: false);
             var extraction = await DocIntel.AnalyzeTradeLicenceAsync(stream);
             if (extraction is null) return;
 
@@ -1357,6 +1363,12 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private void RemoveDocument(CompanyRow row, UploadedFileRow doc)
     {
         row.Documents.Remove(doc);
+
+        // A legacy row still has a file behind it; a blob-backed one is left in place
+        // deliberately. Removing it here would delete a document that a declaration already
+        // submitted may reference, and an unreferenced blob costs a row, not correctness.
+        if (doc.BlobId is not null || string.IsNullOrWhiteSpace(doc.Path)) return;
+
         try
         {
             var fullPath = Path.Combine(Env.WebRootPath, doc.Path.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
@@ -1462,6 +1474,10 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
     private SignaturePad? _signaturePad;
     private string? _signaturePath;
+
+    /// <summary>Where the signature image actually is. _signaturePath above is only what the page
+    /// renders it from.</summary>
+    private int? _signatureBlobId;
     private DateTime? _signedAtUtc;
     private bool _hasSignature;
 
@@ -1470,26 +1486,30 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// <summary>Writes the signature the pad holds -- newly drawn ink, or an image the member
     /// uploaded -- to a file and returns its path; returns the signature already on file when
     /// neither, so re-submitting an edit keeps what was signed.</summary>
-    private async Task<string?> SaveSignatureAsync()
+    private async Task<int?> SaveSignatureAsync()
     {
-        if (_signaturePad is null) return _signaturePath;
+        if (_signaturePad is null) return _signatureBlobId;
 
         var signature = await _signaturePad.ReadAsync();
-        if (signature is null) return _signaturePath;
+        if (signature is null) return _signatureBlobId;
 
-        var directory = Path.Combine(Env.WebRootPath, "uploads", "declarations", "coi");
-        Directory.CreateDirectory(directory);
-
-        // The file keeps the format it came in as: re-encoding someone's scanned signature to
-        // make every file a PNG would lose quality for nothing.
-        var fileName = $"{Guid.NewGuid():N}{signature.Extension}";
-        await File.WriteAllBytesAsync(Path.Combine(directory, fileName), signature.Bytes);
+        // The image keeps the format it came in as: re-encoding someone's scanned signature to
+        // make every one a PNG would lose quality for nothing.
+        var contentType = signature.Extension switch
+        {
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            _ => "image/jpeg",
+        };
 
         // The old one is left alone. A signature is evidence of what was signed and when, and an
-        // edited declaration's previous version may still be referred to.
-        _signaturePath = $"/uploads/declarations/coi/{fileName}";
+        // edited declaration's previous version may still be referred to -- which is now free,
+        // because a new signature is a new row rather than a file replacing a file.
+        _signatureBlobId = await Documents.SaveAsync(
+            signature.Bytes, $"signature{signature.Extension}", contentType, Client.IpAddress);
+        _signaturePath = DocumentUrl.For(_signatureBlobId, null);
         _signedAtUtc = DateTime.UtcNow;
-        return _signaturePath;
+        return _signatureBlobId;
     }
 
     /// <summary>Refuses a step, saying why and remembering which box to put the cursor in. Every
@@ -1812,7 +1832,8 @@ public partial class SubmitRelatedPartyCoiDeclaration
             IsDraft = isDraft,
             AttestationName = _attestationName.Trim(),
             AttestationConfirmed = _attestationConfirmed,
-            SignaturePath = _signaturePath,
+            SignaturePath = _signatureBlobId is null ? _signaturePath : null,
+            SignatureBlobId = _signatureBlobId,
             SignedAtUtc = _signedAtUtc,
             SubmittedByName = actorName,
             SubmittedOnBehalfOf = isImpersonating ? _effectiveMember.FullName : null,
@@ -1907,7 +1928,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
             foreach (var doc in row.Documents)
             {
-                await Writer.InsertDocumentAsync(companyId, new CoiTradeLicenseDocument { FilePath = doc.Path, FileName = doc.FileName });
+                await Writer.InsertDocumentAsync(companyId, new CoiTradeLicenseDocument { FilePath = doc.Path, BlobId = doc.BlobId, FileName = doc.FileName });
             }
         }
     }

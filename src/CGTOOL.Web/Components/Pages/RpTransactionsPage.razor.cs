@@ -162,29 +162,24 @@ public partial class RpTransactionsPage
         StateHasChanged();
         try
         {
-            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "rp-transactions");
-            Directory.CreateDirectory(uploadsDir);
-
-            var fileName = $"{_effectiveMember!.Id}-{Guid.NewGuid():N}{extension}";
-            var filePath = Path.Combine(uploadsDir, fileName);
-
             const int chunkBytes = 64 * 1024;
+            using var buffer = new MemoryStream();
             await using (var stream = file.OpenReadStream(MaxDocumentFileBytes))
-            await using (var target = File.Create(filePath))
             {
-                var buffer = new byte[chunkBytes];
+                var chunk = new byte[chunkBytes];
                 long totalRead = 0;
                 int read;
-                while ((read = await stream.ReadAsync(buffer)) > 0)
+                while ((read = await stream.ReadAsync(chunk)) > 0)
                 {
-                    await target.WriteAsync(buffer.AsMemory(0, read));
+                    await buffer.WriteAsync(chunk.AsMemory(0, read));
                     totalRead += read;
-                    _uploadProgress = (int)(totalRead * 100 / file.Size);
+                    _uploadProgress = file.Size == 0 ? 100 : (int)(totalRead * 100 / file.Size);
                     StateHasChanged();
                 }
             }
 
-            _pendingDocuments.Add(new RelatedPartyTransactionDocument { FilePath = $"/uploads/rp-transactions/{fileName}", FileName = file.Name });
+            var blobId = await Documents.SaveAsync(buffer.ToArray(), file.Name, file.ContentType, Client.IpAddress);
+            _pendingDocuments.Add(new RelatedPartyTransactionDocument { BlobId = blobId, FilePath = string.Empty, FileName = file.Name });
             Toasts.ShowSuccess("File uploaded.");
         }
         finally

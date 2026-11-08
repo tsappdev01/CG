@@ -6,6 +6,8 @@
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject ILogger<SubmitRelatedPartyCoiDeclaration> Logger
 @inject IRelatedPartyCoiDeclarationWriter Writer
+@inject IDocumentStore Documents
+@inject ClientContext Client
 @inject IFamilyMemberWriter FamilyMemberWriter
 @inject IOwnedCompanyWriter CompanyWriter
 @inject IFamilyMemberHoldingWriter HoldingWriter

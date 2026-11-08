@@ -19,6 +19,9 @@
 @inject IDocumentIntelligenceService DocIntel
 @inject Branding Branding
 
+@* Onboarding first, if they have not done it -- then back to this page. *@
+<CGTOOL.Web.Components.Layout.OnboardingGate />
+
 <PageTitle>Insider Trading Declaration</PageTitle>
 
 <div class="cg-shell cg-declaration-wizard">

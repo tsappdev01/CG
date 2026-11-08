@@ -4,9 +4,6 @@
 @inject PersistentComponentState AppState
 @implements IDisposable
 
-@* Before anything else draws: a member who has not onboarded is sent there first. *@
-<OnboardingGate />
-
 <div class="page">
     <div class="sidebar">
         <NavMenu @rendermode="InteractiveServer" />

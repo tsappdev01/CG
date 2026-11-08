@@ -16,6 +16,9 @@
 @inject IWebHostEnvironment Env
 @inject IRpTransactionPreCheckService PreChecks
 
+@* Onboarding first, if they have not done it -- then back to this page. *@
+<CGTOOL.Web.Components.Layout.OnboardingGate />
+
 <PageTitle>Related Party Transactions</PageTitle>
 
 <div class="cg-shell">

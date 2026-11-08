@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.EntityFrameworkCore;
 using CGTOOL.Web.Data.Governance;
@@ -12,6 +13,28 @@ public partial class Onboarding
 
     private bool _loading = true;
     private bool _busy;
+
+    /// <summary>The page the member was trying to open when onboarding interrupted them, so
+    /// finishing puts them back there rather than on a dashboard they then have to navigate
+    /// away from.</summary>
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    private string? ReturnUrl { get; set; }
+
+    /// <summary>Where "finish" goes. Only a path within this application is accepted: the value
+    /// arrives in the address bar, and a redirect that will send a signed-in member to any URL it
+    /// is handed is an open redirect. Anything else falls back to the dashboard.</summary>
+    private string ReturnTarget =>
+        ReturnUrl is { Length: > 0 } url
+        && url.StartsWith('/')
+        // A second slash OR backslash: "//evil.example" is protocol-relative, and browsers
+        // normalise "/\evil.example" to the same thing, so testing only for "//" lets the
+        // backslash form straight through.
+        && (url.Length == 1 || (url[1] != '/' && url[1] != '\\'))
+        && !url.Contains(':', StringComparison.Ordinal)
+            ? url
+            : "/";
+
+    private string ReturnLabel => ReturnTarget == "/" ? "Go to my dashboard" : "Continue to my declaration";
 
     private Member? _member;
     private MemberOnboarding? _record;

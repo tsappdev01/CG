@@ -7,14 +7,18 @@
 @inject NavigationManager Nav
 @inject IHttpContextAccessor HttpContextAccessor
 
-@* Renders nothing. It exists to send a member who has not onboarded to the onboarding screen
-   before the page they asked for draws.
+@* Renders nothing. Placed on the declaration pages -- the ones a member reaches from the link in
+   their declaration email -- to send them through onboarding first, and back here afterwards.
 
-   Statically rendered on purpose: a redirect decided inside a circuit happens after the page has
-   already been sent and drawn, which is a visible flash of a screen they are not allowed to be on
-   yet. Here, NavigateTo during the static pass is a real HTTP redirect.
+   On those pages only, not on the whole application. The first version of this sat in MainLayout
+   and gated every page, which was both more than the specification asks for (onboarding is
+   triggered by the declaration link) and the cause of a redirect loop: anything that redirects on
+   every page has to be perfectly sure it is not on the page it redirects to, and "perfectly sure"
+   across layouts and render modes turned out to be wishful. Scoping it to three pages removes the
+   class of problem rather than the instance.
 
-   It cannot loop: the onboarding page uses OnboardingLayout, which this is not part of. *@
+   Statically rendered: a redirect decided inside a circuit happens after the page has been sent
+   and drawn, which is a visible flash of a form the member should not be filling in yet. *@
 
 @code {
     protected override async Task OnInitializedAsync()
@@ -25,11 +29,16 @@
         // redirect, and the static pass has already decided.
         if (context is null || context.Response.HasStarted) return;
 
+        // Belt and braces. Nothing should place this on the onboarding page, but a redirect loop
+        // is a bad way to find out that something did.
+        var path = Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0].Trim('/');
+        if (path.StartsWith("onboarding", StringComparison.OrdinalIgnoreCase)) return;
+
         var state = await AuthState.GetAuthenticationStateAsync();
         if (state.User.Identity?.IsAuthenticated != true) return;
 
-        // An administrator acting as somebody is still that person for this purpose: finishing
-        // their onboarding on their behalf is a thing an assistant legitimately does.
+        // An administrator acting as somebody is still that person here: completing their
+        // onboarding on their behalf is a thing an assistant legitimately does.
         int? memberId = ActingAs.Read(context)?.MemberId;
         if (memberId is null)
         {
@@ -43,13 +52,14 @@
                 .FirstOrDefaultAsync();
         }
 
-        // Somebody signed in with no member record -- an administrator account, say. There is
-        // nothing to onboard and nothing to block.
+        // Signed in with no member record -- an administrator account, say. Nothing to onboard.
         if (memberId is null) return;
 
         if (await Onboarding.IsRequiredAsync(memberId.Value))
         {
-            Nav.NavigateTo("/onboarding", forceLoad: false);
+            // Where to put them back afterwards: the declaration they were trying to open.
+            var returnTo = Uri.EscapeDataString("/" + Nav.ToBaseRelativePath(Nav.Uri));
+            Nav.NavigateTo($"/onboarding?returnUrl={returnTo}", forceLoad: false);
         }
     }
 }

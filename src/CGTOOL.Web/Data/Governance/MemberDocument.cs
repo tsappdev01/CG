@@ -43,6 +43,11 @@ public class MemberDocument
     [MaxLength(260)]
     public string? FilePath { get; set; }
 
+    /// <summary>The emirates id, passport, trade licence or other scan, held in dbo.DocumentBlobs. This is where the
+    /// file lives; FilePath above is the old on-disk location, kept until the backfill
+    /// has been checked on every environment and then dropped.</summary>
+    public int? BlobId { get; set; }
+
     /// <summary>The name the member uploaded, kept so the file can be recognised after the stored
     /// name has been rewritten to the record's id.</summary>
     [MaxLength(260)]

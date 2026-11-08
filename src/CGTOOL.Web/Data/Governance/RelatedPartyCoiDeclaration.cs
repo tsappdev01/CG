@@ -53,6 +53,10 @@ public class RelatedPartyCoiDeclaration
     [MaxLength(260)]
     public string? SignaturePath { get; set; }
 
+    /// <summary>The declarant's signature image, held in dbo.DocumentBlobs. SignaturePath above is
+    /// the old on-disk location, kept until the backfill has been checked and then dropped.</summary>
+    public int? SignatureBlobId { get; set; }
+
     /// <summary>When the signature on file was drawn. Its own time rather than SubmittedAtUtc's,
     /// because re-submitting an edited declaration does not re-sign it unless the member signs
     /// again.</summary>
@@ -153,6 +157,11 @@ public class CoiTradeLicenseDocument
     /// <summary>Path (under wwwroot/uploads) to the uploaded file.</summary>
     [Required, MaxLength(260)]
     public string FilePath { get; set; } = string.Empty;
+
+    /// <summary>The trade licence uploaded for this company entry, held in dbo.DocumentBlobs.
+    /// This is where the file lives; FilePath above is the old on-disk location, kept until the
+    /// backfill has been checked on every environment and then dropped.</summary>
+    public int? BlobId { get; set; }
 
     [Required, MaxLength(160)]
     public string FileName { get; set; } = string.Empty;

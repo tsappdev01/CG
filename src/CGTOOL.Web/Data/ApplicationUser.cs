@@ -8,6 +8,11 @@ public class ApplicationUser : IdentityUser
     /// <summary>Web-relative path (under wwwroot) to the uploaded profile picture, e.g. "/uploads/profile-pictures/{id}.jpg". Null = no picture uploaded.</summary>
     public string? ProfilePicturePath { get; set; }
 
+    /// <summary>The profile picture, held in dbo.DocumentBlobs. This is where the
+    /// file lives; ProfilePicturePath above is the old on-disk location, kept until the backfill
+    /// has been checked on every environment and then dropped.</summary>
+    public int? ProfilePictureBlobId { get; set; }
+
     /// <summary>True only for the bootstrap account created by <see cref="Governance.DefaultAdminProvisioner"/>
     /// so a brand new deployment can be signed into at all. It is a flag on the row rather than a
     /// well-known user name so that renaming the account (or changing DefaultAdmin:UserName later)

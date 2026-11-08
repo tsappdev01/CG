@@ -2516,3 +2516,45 @@ GO
 */
 SET NOEXEC OFF;
 GO
+
+-- ---------------------------------------------------------------------------------------------
+-- Document storage (dbo.DocumentBlobs)
+--
+-- The bytes of every uploaded document. @ContentProtected is varbinary(max): what it holds is the
+-- file as uploaded, or an encrypted form of it, and @ProtectionScheme says which -- so the two can
+-- sit side by side while a backfill runs, and encryption can be switched on without rewriting
+-- every existing row first.
+-- ---------------------------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE dbo.usp_DocumentBlob_Insert
+    @FileName nvarchar(255),
+    @ContentType nvarchar(100),
+    @SizeBytes bigint,
+    @ContentProtected varbinary(max),
+    @ProtectionScheme nvarchar(20),
+    @ContentSha256 nvarchar(64) = NULL,
+    @IpAddress nvarchar(64) = NULL,
+    @UploadedAtUtc datetime2,
+    @NewId int OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO dbo.DocumentBlobs
+        (FileName, ContentType, SizeBytes, ContentProtected, ProtectionScheme, ContentSha256, IpAddress, UploadedAtUtc)
+    VALUES
+        (@FileName, @ContentType, @SizeBytes, @ContentProtected, @ProtectionScheme, @ContentSha256, @IpAddress, @UploadedAtUtc);
+
+    SET @NewId = SCOPE_IDENTITY();
+END
+GO
+
+-- Removes a blob no row points at any more. Called when a document is replaced or deleted; the
+-- owning row is cleared first, so this never orphans a reference.
+CREATE OR ALTER PROCEDURE dbo.usp_DocumentBlob_Delete
+    @Id int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM dbo.DocumentBlobs WHERE Id = @Id;
+END
+GO

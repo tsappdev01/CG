@@ -57,6 +57,11 @@ public class Company : IValidatableObject
     [MaxLength(260)]
     public string? LogoPath { get; set; }
 
+    /// <summary>The company logo, held in dbo.DocumentBlobs. This is where the
+    /// file lives; LogoPath above is the old on-disk location, kept until the backfill
+    /// has been checked on every environment and then dropped.</summary>
+    public int? LogoBlobId { get; set; }
+
     public bool Active { get; set; } = true;
 
     public List<Member> Members { get; set; } = [];

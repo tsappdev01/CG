@@ -26,6 +26,11 @@ public class RelatedPartyCoiDeclarationDocument
     [MaxLength(260)]
     public string? FilePath { get; set; }
 
+    /// <summary>The document filed with this rp & coi declaration, held in dbo.DocumentBlobs. This is where the
+    /// file lives; FilePath above is the old on-disk location, kept until the backfill
+    /// has been checked on every environment and then dropped.</summary>
+    public int? BlobId { get; set; }
+
     [MaxLength(260)]
     public string? OriginalFileName { get; set; }
 

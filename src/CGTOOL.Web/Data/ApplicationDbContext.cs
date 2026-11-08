@@ -44,6 +44,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<OwnedCompany> OwnedCompanies => Set<OwnedCompany>();
     public DbSet<MemberDocument> MemberDocuments => Set<MemberDocument>();
+
+    /// <summary>The bytes of every uploaded document. Its own set, and deliberately never a
+    /// navigation property on the rows that point at it: a document row is listed constantly (My
+    /// Workspace draws the lot on load) and must not drag megabytes of scan along with it. Load a
+    /// blob only when one is being delivered, through DocumentStore.</summary>
+    public DbSet<DocumentBlob> DocumentBlobs => Set<DocumentBlob>();
     public DbSet<MemberDfmProfile> MemberDfmProfiles => Set<MemberDfmProfile>();
     public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
     public DbSet<DocumentTypeRequirement> DocumentTypeRequirements => Set<DocumentTypeRequirement>();

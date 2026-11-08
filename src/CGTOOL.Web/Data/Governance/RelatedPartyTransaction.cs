@@ -203,6 +203,11 @@ public class RelatedPartyTransactionDocument
     [Required, MaxLength(260)]
     public string FilePath { get; set; } = string.Empty;
 
+    /// <summary>The supporting document for this transaction, held in dbo.DocumentBlobs. This is where the
+    /// file lives; FilePath above is the old on-disk location, kept until the backfill
+    /// has been checked on every environment and then dropped.</summary>
+    public int? BlobId { get; set; }
+
     [Required, MaxLength(160)]
     public string FileName { get; set; } = string.Empty;
 

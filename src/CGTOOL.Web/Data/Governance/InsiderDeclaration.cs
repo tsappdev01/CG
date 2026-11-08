@@ -60,6 +60,10 @@ public class InsiderDeclaration
     /// <summary>Path (under wwwroot/uploads) to the declarant's uploaded Emirates ID. Mandatory.</summary>
     [MaxLength(260)]
     public string? EmiratesIdPath { get; set; }
+
+    /// <summary>The emirates id filed with this declaration, held in dbo.DocumentBlobs. EmiratesIdPath above is the old
+    /// on-disk location, kept until the backfill has been checked and then dropped.</summary>
+    public int? EmiratesIdBlobId { get; set; }
     [MaxLength(40)]
     public string? EmiratesIdNumber { get; set; }
     [MaxLength(120)]
@@ -69,6 +73,10 @@ public class InsiderDeclaration
     /// <summary>Path (under wwwroot/uploads) to the declarant's uploaded passport. Mandatory.</summary>
     [MaxLength(260)]
     public string? PassportPath { get; set; }
+
+    /// <summary>The passport filed with this declaration, held in dbo.DocumentBlobs. PassportPath above is the old
+    /// on-disk location, kept until the backfill has been checked and then dropped.</summary>
+    public int? PassportBlobId { get; set; }
     [MaxLength(40)]
     public string? PassportNumber { get; set; }
     public DateTime? PassportExpiryDate { get; set; }
@@ -78,6 +86,10 @@ public class InsiderDeclaration
     /// <summary>Path (under wwwroot/uploads) to the declarant's uploaded trade licence, if provided. Optional.</summary>
     [MaxLength(260)]
     public string? TradeLicencePath { get; set; }
+
+    /// <summary>The trade licence filed with this declaration, held in dbo.DocumentBlobs. TradeLicencePath above is the old
+    /// on-disk location, kept until the backfill has been checked and then dropped.</summary>
+    public int? TradeLicenceBlobId { get; set; }
     [MaxLength(40)]
     public string? TradeLicenceNumber { get; set; }
     /// <summary>The licensed business/legal name on the trade licence.</summary>
@@ -90,6 +102,10 @@ public class InsiderDeclaration
     /// <summary>Path (under wwwroot/uploads) to any other supporting document, if provided. Optional.</summary>
     [MaxLength(260)]
     public string? OtherDocumentPath { get; set; }
+
+    /// <summary>The other document filed with this declaration, held in dbo.DocumentBlobs. OtherDocumentPath above is the old
+    /// on-disk location, kept until the backfill has been checked and then dropped.</summary>
+    public int? OtherDocumentBlobId { get; set; }
 
     public DateTime SubmittedAtUtc { get; set; } = DateTime.UtcNow;
 

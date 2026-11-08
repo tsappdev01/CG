@@ -24,6 +24,11 @@ public class ShareholderRegisterUpload
     [MaxLength(300)]
     public string? FilePath { get; set; }
 
+    /// <summary>The uploaded share register or trading workbook, held in dbo.DocumentBlobs. This is where the
+    /// file lives; FilePath above is the old on-disk location, kept until the backfill
+    /// has been checked on every environment and then dropped.</summary>
+    public int? BlobId { get; set; }
+
     public int RecordCount { get; set; }
 
     public DateTime UploadedAtUtc { get; set; } = DateTime.UtcNow;

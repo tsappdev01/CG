@@ -39,6 +39,10 @@ public class FamilyMemberHolding
     [MaxLength(260)]
     public string? TradeLicencePath { get; set; }
 
+    /// <summary>The trade licence for this holding, held in dbo.DocumentBlobs. TradeLicencePath above is the old
+    /// on-disk location, kept until the backfill has been checked and then dropped.</summary>
+    public int? TradeLicenceBlobId { get; set; }
+
     [MaxLength(260)]
     public string? TradeLicenceFileName { get; set; }
 

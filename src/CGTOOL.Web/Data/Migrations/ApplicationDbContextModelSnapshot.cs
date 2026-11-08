@@ -70,6 +70,9 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("ProfilePictureBlobId")
+                        .HasColumnType("int");
+
                     b.Property<string>("ProfilePicturePath")
                         .HasColumnType("nvarchar(max)");
 
@@ -320,6 +323,9 @@ namespace CGTOOL.Web.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("BlobId")
+                        .HasColumnType("int");
+
                     b.Property<int>("CoiCompanyEntryId")
                         .HasColumnType("int");
 
@@ -384,6 +390,9 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<string>("GroupName")
                         .HasMaxLength(80)
                         .HasColumnType("nvarchar(80)");
+
+                    b.Property<int?>("LogoBlobId")
+                        .HasColumnType("int");
 
                     b.Property<string>("LogoPath")
                         .HasMaxLength(260)
@@ -756,6 +765,52 @@ namespace CGTOOL.Web.Data.Migrations
                     b.ToTable("Departments");
                 });
 
+            modelBuilder.Entity("CGTOOL.Web.Data.Governance.DocumentBlob", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<byte[]>("ContentProtected")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("ContentSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ProtectionScheme")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UploadedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DocumentBlobs");
+                });
+
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.DocumentType", b =>
                 {
                     b.Property<int>("Id")
@@ -830,6 +885,9 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<DateOnly?>("DateOfBirth")
                         .HasColumnType("date");
 
+                    b.Property<int?>("EmiratesIdBlobId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("EmiratesIdExpiryDate")
                         .HasColumnType("datetime2");
 
@@ -868,6 +926,9 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("nvarchar(160)");
 
+                    b.Property<int?>("PassportBlobId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("PassportExpiryDate")
                         .HasColumnType("datetime2");
 
@@ -880,6 +941,9 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasColumnType("nvarchar(260)");
 
                     b.Property<int>("Relationship")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TradeLicenceBlobId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("TradeLicenceExpiryDate")
@@ -939,6 +1003,9 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasMaxLength(400)
                         .HasColumnType("nvarchar(400)");
 
+                    b.Property<int?>("TradeLicenceBlobId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("TradeLicenceExpiryDate")
                         .HasColumnType("datetime2");
 
@@ -970,6 +1037,9 @@ namespace CGTOOL.Web.Data.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("DeclarationCycleRunId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EmiratesIdBlobId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("EmiratesIdExpiryDate")
@@ -1009,9 +1079,15 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<int?>("NumberOfSharesHeld")
                         .HasColumnType("int");
 
+                    b.Property<int?>("OtherDocumentBlobId")
+                        .HasColumnType("int");
+
                     b.Property<string>("OtherDocumentPath")
                         .HasMaxLength(260)
                         .HasColumnType("nvarchar(260)");
+
+                    b.Property<int?>("PassportBlobId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("PassportExpiryDate")
                         .HasColumnType("datetime2");
@@ -1050,6 +1126,9 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("nvarchar(160)");
 
+                    b.Property<int?>("TradeLicenceBlobId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("TradeLicenceExpiryDate")
                         .HasColumnType("datetime2");
 
@@ -1086,6 +1165,9 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BlobId")
+                        .HasColumnType("int");
 
                     b.Property<string>("DocumentNumber")
                         .HasMaxLength(100)
@@ -1409,6 +1491,9 @@ namespace CGTOOL.Web.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("BlobId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("datetime2");
 
@@ -1611,6 +1696,9 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<int>("MemberId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("MoaBlobId")
+                        .HasColumnType("int");
+
                     b.Property<string>("MoaPath")
                         .HasMaxLength(260)
                         .HasColumnType("nvarchar(260)");
@@ -1625,6 +1713,9 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<decimal?>("OwnershipPercentage")
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
+
+                    b.Property<int?>("PoaBlobId")
+                        .HasColumnType("int");
 
                     b.Property<string>("PoaPath")
                         .HasMaxLength(260)
@@ -1648,6 +1739,9 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int?>("TradeLicenseBlobId")
+                        .HasColumnType("int");
+
                     b.Property<string>("TradeLicenseDetails")
                         .HasMaxLength(400)
                         .HasColumnType("nvarchar(400)");
@@ -1670,6 +1764,9 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BlobId")
+                        .HasColumnType("int");
 
                     b.Property<string>("FilePath")
                         .IsRequired()
@@ -1737,6 +1834,9 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<bool>("NothingToDeclareSelfOwned")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("SignatureBlobId")
+                        .HasColumnType("int");
+
                     b.Property<string>("SignaturePath")
                         .HasMaxLength(260)
                         .HasColumnType("nvarchar(260)");
@@ -1783,6 +1883,9 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BlobId")
+                        .HasColumnType("int");
 
                     b.Property<string>("DocumentNumber")
                         .HasMaxLength(100)
@@ -1933,6 +2036,9 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BlobId")
+                        .HasColumnType("int");
 
                     b.Property<string>("FileName")
                         .IsRequired()
@@ -2252,6 +2358,9 @@ namespace CGTOOL.Web.Data.Migrations
 
                     b.Property<DateOnly>("AsOnDate")
                         .HasColumnType("date");
+
+                    b.Property<int?>("BlobId")
+                        .HasColumnType("int");
 
                     b.Property<string>("FileName")
                         .IsRequired()

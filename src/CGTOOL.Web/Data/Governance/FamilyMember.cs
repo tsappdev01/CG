@@ -53,6 +53,10 @@ public class FamilyMember
     [MaxLength(260)]
     public string? EmiratesIdPath { get; set; }
 
+    /// <summary>This family member's emirates id, held in dbo.DocumentBlobs. EmiratesIdPath above is the old
+    /// on-disk location, kept until the backfill has been checked and then dropped.</summary>
+    public int? EmiratesIdBlobId { get; set; }
+
     /// <summary>Read off the uploaded Emirates ID by Document Intelligence where it is configured,
     /// and editable either way. Separate from IdentificationNumber, which the member types and which
     /// may hold either an Emirates ID or a passport number: these two say which document they came
@@ -65,6 +69,10 @@ public class FamilyMember
     [MaxLength(260)]
     public string? PassportPath { get; set; }
 
+    /// <summary>This family member's passport, held in dbo.DocumentBlobs. PassportPath above is the old
+    /// on-disk location, kept until the backfill has been checked and then dropped.</summary>
+    public int? PassportBlobId { get; set; }
+
     [MaxLength(60)]
     public string? PassportNumber { get; set; }
 
@@ -72,6 +80,10 @@ public class FamilyMember
 
     [MaxLength(260)]
     public string? TradeLicencePath { get; set; }
+
+    /// <summary>This family member's trade licence, held in dbo.DocumentBlobs. TradeLicencePath above is the old
+    /// on-disk location, kept until the backfill has been checked and then dropped.</summary>
+    public int? TradeLicenceBlobId { get; set; }
 
     /// <summary>Read off the uploaded trade licence by Document Intelligence where it is configured,
     /// and editable either way: the extraction is a best-effort pattern match over the OCR text, not

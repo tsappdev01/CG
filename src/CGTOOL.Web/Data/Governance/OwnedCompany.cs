@@ -45,6 +45,10 @@ public class OwnedCompany
     [MaxLength(260)]
     public string? TradeLicensePath { get; set; }
 
+    /// <summary>This company's trade licence, held in dbo.DocumentBlobs. TradeLicensePath above is the old
+    /// on-disk location, kept until the backfill has been checked and then dropped.</summary>
+    public int? TradeLicenseBlobId { get; set; }
+
     /// <summary>Read off the uploaded trade licence by Document Intelligence where it is configured,
     /// and editable either way -- see the same fields on FamilyMember.</summary>
     [MaxLength(100)]
@@ -58,7 +62,15 @@ public class OwnedCompany
     [MaxLength(260)]
     public string? MoaPath { get; set; }
 
+    /// <summary>This company's memorandum of association, held in dbo.DocumentBlobs. MoaPath above is the old
+    /// on-disk location, kept until the backfill has been checked and then dropped.</summary>
+    public int? MoaBlobId { get; set; }
+
     /// <summary>Power of Attorney -- optional, unlike the trade license/MOA.</summary>
     [MaxLength(260)]
     public string? PoaPath { get; set; }
+
+    /// <summary>This company's power of attorney, held in dbo.DocumentBlobs. PoaPath above is the old
+    /// on-disk location, kept until the backfill has been checked and then dropped.</summary>
+    public int? PoaBlobId { get; set; }
 }

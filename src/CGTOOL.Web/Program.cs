@@ -162,6 +162,28 @@ builder.Services.AddHttpContextAccessor();
 // as the current DbContext. Reads stay as LINQ/EF Core. ASP.NET Core Identity's own tables/APIs
 // (UserManager/RoleManager/SignInManager) are intentionally out of scope.
 builder.Services.AddScoped<IStoredProcedureExecutor, StoredProcedureExecutor>();
+
+// Documents live in dbo.DocumentBlobs, not on disk. Scoped, because both take the circuit's
+// DbContext and run on its connection.
+builder.Services.AddScoped<IDocumentStore, DocumentStore>();
+builder.Services.AddScoped<IDocumentAccess, DocumentAccess>();
+
+// Whether a stored document is encrypted. Off by default, which stores the file as uploaded and
+// matches how the IPO system's dbo.EmiratesIdDocuments holds its content.
+//
+// Turning it on is an operational commitment before it is a security improvement: the key ring
+// (C:\ProgramData\CGTOOL\DataProtectionKeys) becomes part of what a restore needs, and losing it
+// loses every document encrypted under it -- a database backup on its own will no longer bring
+// them back. Documents written either way stay readable, because each row records which scheme it
+// used, so this can be switched on once that backup is in place.
+if (builder.Configuration.GetValue("Documents:Encrypt", false))
+{
+    builder.Services.AddScoped<IDocumentProtector, DataProtectionDocumentProtector>();
+}
+else
+{
+    builder.Services.AddScoped<IDocumentProtector, UnprotectedDocumentStore>();
+}
 builder.Services.AddScoped<ICompanyWriter, CompanyWriter>();
 builder.Services.AddScoped<IDepartmentWriter, DepartmentWriter>();
 builder.Services.AddScoped<IMemberWriter, MemberWriter>();
@@ -412,6 +434,7 @@ app.MapRazorComponents<App>()
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
 app.MapAdminImpersonationEndpoints();
+app.MapDocumentEndpoints();
 app.MapSwitchProfileEndpoints();
 
 // UAE PASS OAuth2 login callback (see UaePassAuthService/SubmitRelatedPartyCoiDeclaration). A plain

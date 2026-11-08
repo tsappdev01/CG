@@ -117,6 +117,12 @@ public static class ReportPdfBuilder
 
         writer.SectionHeading("Signature");
 
+        // A declaration that carries no mark at all is not a declaration whose mark is missing.
+        // The Insider Trading form is signed by who was signed in and when they pressed submit --
+        // the form says so in as many words and never collects a drawing -- so "Signature image
+        // unavailable" under it would report a fault that is not one.
+        var carriesAMark = signature.Image is not null || signature.ImagePath is { Length: > 0 };
+
         var bytes = signature.Image;
         if (bytes is null && signature.ImagePath is { Length: > 0 } legacyPath)
         {
@@ -138,7 +144,7 @@ public static class ReportPdfBuilder
                 writer.Paragraph("Signature image unavailable.");
             }
         }
-        else
+        else if (carriesAMark)
         {
             writer.Paragraph("Signature image unavailable.");
         }
@@ -191,10 +197,12 @@ public static class ReportPdfBuilder
                 : writer.MeasureDataTable([.. table.Columns.Select(c => c.Header)], Fractions(table.Columns), [.. table.Rows]);
         }
 
-        if (record.Signature is not null)
+        if (record.Signature is { } signature)
         {
-            // Heading, the image at its drawn height, then the name and the time.
-            height += writer.MeasureSectionHeading() + 60 + 13 + (2 * writer.MeasureParagraph("Signed 00/00/0000 00:00"));
+            // Heading, the image at its drawn height where there is one, then the name and the
+            // time. A declaration signed by identity reserves no space for a drawing.
+            var mark = signature.Image is not null || signature.ImagePath is { Length: > 0 } ? 60 + 13 : 0;
+            height += writer.MeasureSectionHeading() + mark + (2 * writer.MeasureParagraph("Signed 00/00/0000 00:00"));
         }
 
         return height;

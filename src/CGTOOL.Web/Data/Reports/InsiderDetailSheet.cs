@@ -76,7 +76,18 @@ public static class InsiderDetailSheet
                                           : $"Declared that no relatives hold shares in {parentHoldingCompany}."),
 
                 ShareTransactions(d, row.MemberName),
-            ]);
+            ],
+            // The signature block from the form, which the report had been leaving off entirely:
+            // a reviewer could see every answer and not who stood behind them.
+            //
+            // No image, and none missing. The Insider Trading form signs by who was signed in and
+            // when they pressed submit -- it never collects a drawing, unlike the Related Party
+            // and COI form -- so the name and the time are the whole of it.
+            new ReportSignature(
+                Image: null,
+                ImagePath: null,
+                Name: row.MemberName,
+                SignedAtUtc: d.SubmittedAtUtc));
     }
 
     /// <summary>What was declared bought and sold during the period, and what was held at each end

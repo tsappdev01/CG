@@ -1,4 +1,5 @@
 using System.Reflection;
+using CGTOOL.Web.Data.Governance;
 using CGTOOL.Web.Data.Reports;
 
 namespace CGTOOL.Checks;
@@ -46,7 +47,36 @@ public static class ReportRenderingChecks
         Check.That("a signature written before the move still renders from its path",
                    Render(legacy) == "/uploads/signatures/7.png");
 
-        Check.That("nothing to show renders nothing, rather than a broken image",
-                   string.IsNullOrEmpty(Render(new ReportSignature(null, null, "A Declarant", DateTime.UtcNow))));
+        // The Insider Trading form signs by who was signed in and when they pressed submit, and
+        // never collects a drawing. That is a signature with no mark, not a missing mark.
+        var byIdentity = new ReportSignature(null, null, "A Declarant", DateTime.UtcNow);
+        Check.That("a declaration signed by identity renders no image, rather than a broken one",
+                   string.IsNullOrEmpty(Render(byIdentity)));
+
+        Check.Section("Report signatures: the insider report carries one");
+
+        // Built for real rather than inspected: this is the record the report, the PDF and the
+        // workbook are all rendered from, so if the signature is not on it, none of them show one.
+        var signedAt = new DateTime(2026, 11, 8, 18, 18, 0, DateTimeKind.Utc);
+        var record = InsiderDetailSheet.Record(
+            new DeclarationSubmissionRow<InsiderDeclaration>
+            {
+                MemberId = 1,
+                MemberName = "A Declarant",
+                CompanyName = "An Entity",
+                Year = 2026,
+                Quarter = 1,
+                Submitted = true,
+                Declaration = new InsiderDeclaration { SubmittedAtUtc = signedAt },
+            },
+            "DIP Holding PLC");
+
+        Check.That("the insider report record carries a signature at all", record.Signature is not null);
+        Check.That("signed by the declarant", record.Signature?.Name == "A Declarant");
+        Check.That("signed when they submitted", record.Signature?.SignedAtUtc == signedAt);
+        Check.That("with no mark, because that form never collects one",
+                   record.Signature is { Image: null, ImagePath: null });
+        Check.That("so the screen draws no image for it",
+                   string.IsNullOrEmpty(Render(record.Signature!)));
     }
 }

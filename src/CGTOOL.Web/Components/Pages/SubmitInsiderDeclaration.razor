@@ -489,7 +489,7 @@
                             <div class="cg-doc-card-head">
                                 <span class="cg-doc-card-name">@type.Name</span>
                                 <span class="cg-pill @(type.RequirementFor(DeclarationType.InsiderTrading) == DocumentRequirement.Required ? "cg-pill-required" : "")">@(type.RequirementFor(DeclarationType.InsiderTrading) == DocumentRequirement.Required ? "Required" : "Optional")</span>
-                                <span class="cg-pill cg-pill-status @(string.IsNullOrWhiteSpace(added.FilePath) ? "" : "cg-pill-done")">@(string.IsNullOrWhiteSpace(added.FilePath) ? "Not uploaded" : "Uploaded")</span>
+                                <span class="cg-pill cg-pill-status @(!DocumentUrl.Exists(added.BlobId, added.FilePath) ? "" : "cg-pill-done")">@(!DocumentUrl.Exists(added.BlobId, added.FilePath) ? "Not uploaded" : "Uploaded")</span>
                             </div>
                             <div class="cg-doc-card-source">
                                 <span>
@@ -498,9 +498,9 @@
                                         : string.IsNullOrWhiteSpace(type.Description) ? "JPG, PNG or PDF, up to 1 MB" : type.Description)
                                 </span>
                                 <span class="cg-doc-card-actions">
-                                    @if (!string.IsNullOrWhiteSpace(added.FilePath))
+                                    @if (DocumentUrl.Exists(added.BlobId, added.FilePath))
                                     {
-                                        <a class="cg-doc-chip" href="@added.FilePath" target="_blank" rel="noopener">View</a>
+                                        <a class="cg-doc-chip" href="@DocumentUrl.For(added.BlobId, added.FilePath)" target="_blank" rel="noopener">View</a>
                                     }
                                     <InputFile OnChange="e => OnAddedDocumentSelectedAsync(type, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploadingType(type.Id)" />
                                 </span>

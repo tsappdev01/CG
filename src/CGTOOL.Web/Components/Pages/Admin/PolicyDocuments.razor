@@ -62,7 +62,7 @@
                                         <td class="mono">@v.UploadedAtUtc.ToLocalDisplay("dd/MM/yyyy HH:mm")</td>
                                         <td>@v.UploadedByName</td>
                                         <td>@v.OriginalFileName</td>
-                                        <td><a href="@v.FilePath" target="_blank">Open replaced copy</a></td>
+                                        <td><a href="@DocumentUrl.For(v.BlobId, v.FilePath)" target="_blank">Open replaced copy</a></td>
                                     </tr>
                                 }
                             </tbody>

@@ -74,7 +74,7 @@
                     <div class="cg-doc-chips" style="margin-top:6px;">
                         @foreach (var doc in t.Documents.OrderBy(d => d.Kind))
                         {
-                            <a class="cg-doc-chip" href="@doc.FilePath" target="_blank" rel="noopener"
+                            <a class="cg-doc-chip" href="@DocumentUrl.For(doc.BlobId, doc.FilePath)" target="_blank" rel="noopener"
                                title="@(doc.Kind == RpTransactionDocumentKind.GovernanceMinutes ? "Minutes or approval evidence" : "Supporting document")">@doc.FileName</a>
                         }
                     </div>

@@ -190,7 +190,7 @@ public partial class MemberDetail
             {
                 _selectedUserRoles = (await UserManager.GetRolesAsync(user)).ToHashSet();
                 _systemRoleSelection = _selectedUserRoles.FirstOrDefault() ?? string.Empty;
-                _profilePicturePath = ProfilePictures.Resolve(user.ProfilePicturePath);
+                _profilePicturePath = ProfilePictures.Resolve(user.ProfilePictureBlobId, user.ProfilePicturePath);
             }
         }
 

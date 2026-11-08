@@ -109,7 +109,7 @@
                             <div class="cg-doc-chips" style="margin-top:6px;">
                                 @foreach (var doc in s.Documents)
                                 {
-                                    <a class="cg-doc-chip" href="@doc.FilePath" target="_blank" rel="noopener">@doc.FileName</a>
+                                    <a class="cg-doc-chip" href="@DocumentUrl.For(doc.BlobId, doc.FilePath)" target="_blank" rel="noopener">@doc.FileName</a>
                                 }
                             </div>
                         }
@@ -158,7 +158,7 @@
                                     <div class="cg-doc-chips" style="margin-top:6px;">
                                         @foreach (var doc in s.Documents.Where(d => d.Kind == RpTransactionDocumentKind.GovernanceMinutes))
                                         {
-                                            <a class="cg-doc-chip" href="@doc.FilePath" target="_blank" rel="noopener">@doc.FileName</a>
+                                            <a class="cg-doc-chip" href="@DocumentUrl.For(doc.BlobId, doc.FilePath)" target="_blank" rel="noopener">@doc.FileName</a>
                                         }
                                     </div>
                                 }

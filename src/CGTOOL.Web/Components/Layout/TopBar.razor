@@ -149,9 +149,17 @@
 
         await using var db = await DbFactory.CreateDbContextAsync();
 
-        var path = ProfilePictures.Resolve(
-            await db.Users.Where(u => u.Id == userId).Select(u => u.ProfilePicturePath).FirstOrDefaultAsync());
-        _picturePath = string.IsNullOrEmpty(path) ? path : $"{path}?v={DateTime.UtcNow.Ticks}";
+        var stored = await db.Users.Where(u => u.Id == userId)
+            .Select(u => new { u.ProfilePictureBlobId, u.ProfilePicturePath })
+            .FirstOrDefaultAsync();
+        var path = ProfilePictures.Resolve(stored?.ProfilePictureBlobId, stored?.ProfilePicturePath);
+
+        // A blob-backed picture needs no cache-buster: replacing it writes a new row with a new
+        // id, so the address changes by itself. The suffix is only for the file-backed ones, whose
+        // address stayed the same while the file behind it changed.
+        _picturePath = string.IsNullOrEmpty(path) || stored?.ProfilePictureBlobId is not null
+            ? path
+            : $"{path}?v={DateTime.UtcNow.Ticks}";
 
         _displayName = await db.Members.Where(m => m.ApplicationUserId == userId).Select(m => m.FullName).FirstOrDefaultAsync()
                        ?? user.Identity?.Name;

@@ -178,8 +178,10 @@
 
         _userName = await UserManager.GetUserNameAsync(user);
         _phoneNumber = await UserManager.GetPhoneNumberAsync(user);
-        var storedPicture = ProfilePictures.Resolve(user.ProfilePicturePath);
-        _picturePath = storedPicture is null ? null : $"{storedPicture}?v={DateTime.UtcNow.Ticks}";
+        var storedPicture = ProfilePictures.Resolve(user.ProfilePictureBlobId, user.ProfilePicturePath);
+        _picturePath = storedPicture is null || user.ProfilePictureBlobId is not null
+            ? storedPicture
+            : $"{storedPicture}?v={DateTime.UtcNow.Ticks}";
 
         // An account with an external login signs in through Entra; the setup account does not.
         _isSingleSignOn = (await UserManager.GetLoginsAsync(user)).Count > 0;

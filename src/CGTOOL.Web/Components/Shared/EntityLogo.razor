@@ -4,9 +4,9 @@
 {
     <span>—</span>
 }
-else if (!string.IsNullOrEmpty(Company.LogoPath))
+else if (DocumentUrl.Exists(Company.LogoBlobId, Company.LogoPath))
 {
-    <img src="@Company.LogoPath" alt="@Company.Name" title="@Company.Name" class="cg-entity-logo" />
+    <img src="@DocumentUrl.For(Company.LogoBlobId, Company.LogoPath)" alt="@Company.Name" title="@Company.Name" class="cg-entity-logo" />
 }
 else
 {

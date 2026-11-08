@@ -261,7 +261,7 @@
                                 <td class="cg-num-col">@rowNumber</td>
                                 <td>
                                     <div class="cg-user-cell">
-                                        @{ var photo = ProfilePictures.Resolve(_users?.FirstOrDefault(u => u.Id == m.ApplicationUserId)?.ProfilePicturePath); }
+                                        @{ var account = _users?.FirstOrDefault(u => u.Id == m.ApplicationUserId); var photo = ProfilePictures.Resolve(account?.ProfilePictureBlobId, account?.ProfilePicturePath); }
                                         @if (!string.IsNullOrEmpty(photo))
                                         {
                                             <img src="@photo" alt="" class="cg-table-avatar" />

@@ -137,7 +137,7 @@
                 {
                     <span class="cg-accordion-count cg-count-critical">@ExpiredDocumentCount expired</span>
                 }
-                <span class="cg-accordion-count">@_documents.Count(d => !string.IsNullOrEmpty(d.FilePath))</span>
+                <span class="cg-accordion-count">@_documents.Count(d => DocumentUrl.Exists(d.BlobId, d.FilePath))</span>
             </button>
 
             @if (_documentsOpen)
@@ -164,14 +164,14 @@
                                     <span class="cg-doc-upload-state">@UploadPhase(kind)</span>
                                     <progress class="cg-doc-progress"></progress>
                                 }
-                                else if (doc is not null && !string.IsNullOrEmpty(doc.FilePath))
+                                else if (doc is not null && DocumentUrl.Exists(doc.BlobId, doc.FilePath))
                                 {
-                                    <a class="cg-doc-chip" href="@doc.FilePath" target="_blank" rel="noopener">View</a>
+                                    <a class="cg-doc-chip" href="@DocumentUrl.For(doc.BlobId, doc.FilePath)" target="_blank" rel="noopener">View</a>
                                 }
                             </div>
                         </div>
 
-                        @if (doc is not null && !string.IsNullOrEmpty(doc.FilePath))
+                        @if (doc is not null && DocumentUrl.Exists(doc.BlobId, doc.FilePath))
                         {
                         <div class="cg-doc-panel-split">
                         <div>
@@ -226,7 +226,7 @@
                                 <button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveDocument(doc)">Remove</button>
                             </div>
                         </div>
-                        <DocumentPreview FilePath="@doc.FilePath" OriginalFileName="@doc.OriginalFileName" Version="@doc.UploadedAtUtc" />
+                        <DocumentPreview FilePath="@DocumentUrl.For(doc.BlobId, doc.FilePath)" OriginalFileName="@doc.OriginalFileName" Version="@doc.UploadedAtUtc" />
                         </div>
                         }
                     </div>
@@ -257,14 +257,14 @@
                                     <span class="cg-doc-upload-state">@UploadPhase(MemberDocumentKind.Other, type.Id)</span>
                                     <progress class="cg-doc-progress"></progress>
                                 }
-                                else if (added is not null && !string.IsNullOrEmpty(added.FilePath))
+                                else if (added is not null && DocumentUrl.Exists(added.BlobId, added.FilePath))
                                 {
-                                    <a class="cg-doc-chip" href="@added.FilePath" target="_blank" rel="noopener">View</a>
+                                    <a class="cg-doc-chip" href="@DocumentUrl.For(added.BlobId, added.FilePath)" target="_blank" rel="noopener">View</a>
                                 }
                             </div>
                         </div>
 
-                        @if (added is not null && !string.IsNullOrEmpty(added.FilePath))
+                        @if (added is not null && DocumentUrl.Exists(added.BlobId, added.FilePath))
                         {
                         <div class="cg-doc-panel-split">
                         <div>
@@ -289,7 +289,7 @@
                                 <button type="button" class="cg-action-btn cg-critical" @onclick="() => AskRemoveDocument(added)">Remove</button>
                             </div>
                         </div>
-                        <DocumentPreview FilePath="@added.FilePath" OriginalFileName="@added.OriginalFileName" Version="@added.UploadedAtUtc" />
+                        <DocumentPreview FilePath="@DocumentUrl.For(added.BlobId, added.FilePath)" OriginalFileName="@added.OriginalFileName" Version="@added.UploadedAtUtc" />
                         </div>
                         }
                     </div>
@@ -351,9 +351,9 @@
                             <label class="cg-field">
                                 <span>File</span>
                                 <span class="cg-doc-panel-file">
-                                    @if (!string.IsNullOrEmpty(other.FilePath))
+                                    @if (DocumentUrl.Exists(other.BlobId, other.FilePath))
                                     {
-                                        <a class="cg-doc-chip" href="@other.FilePath" target="_blank" rel="noopener">@(string.IsNullOrWhiteSpace(other.OriginalFileName) ? "View" : other.OriginalFileName)</a>
+                                        <a class="cg-doc-chip" href="@DocumentUrl.For(other.BlobId, other.FilePath)" target="_blank" rel="noopener">@(string.IsNullOrWhiteSpace(other.OriginalFileName) ? "View" : other.OriginalFileName)</a>
                                     }
                                     else
                                     {
@@ -545,9 +545,9 @@
                                     </td>
                                     <td>@HoldingLabel(c.NatureOfHolding)</td>
                                     <td>@(c.OwnershipPercentage is { } pct ? $"{pct:0.##}%" : "—")</td>
-                                    <td>@DocumentCell(c.TradeLicensePath)</td>
-                                    <td>@DocumentCell(c.MoaPath)</td>
-                                    <td>@DocumentCell(c.PoaPath)</td>
+                                    <td>@DocumentCell(DocumentUrl.For(c.TradeLicenseBlobId, c.TradeLicensePath))</td>
+                                    <td>@DocumentCell(DocumentUrl.For(c.MoaBlobId, c.MoaPath))</td>
+                                    <td>@DocumentCell(DocumentUrl.For(c.PoaBlobId, c.PoaPath))</td>
                                     <td>
                                         <span class="cg-row-actions">
                                             <button type="button" class="cg-icon-btn" title="Edit @c.CompanyName" @onclick="() => OpenEditCompany(c)"><span class="cg-ico cg-ico-pencil" aria-hidden="true"></span></button>
@@ -689,9 +689,9 @@
                                     <span class="cg-doc-upload-state">Uploading…</span>
                                     <progress class="cg-doc-progress"></progress>
                                 }
-                                else if (!string.IsNullOrEmpty(holding.TradeLicencePath))
+                                else if (DocumentUrl.Exists(holding.TradeLicenceBlobId, holding.TradeLicencePath))
                                 {
-                                    <a class="cg-doc-chip" href="@holding.TradeLicencePath" target="_blank" rel="noopener">View</a>
+                                    <a class="cg-doc-chip" href="@DocumentUrl.For(holding.TradeLicenceBlobId, holding.TradeLicencePath)" target="_blank" rel="noopener">View</a>
                                 }
                                 else
                                 {
@@ -743,9 +743,9 @@
             else
             {
                 <div class="cg-doc-uploads">
-                    @RelativeUpload("emirates-id", "Emirates ID", _relativeTarget.EmiratesIdPath)
-                    @RelativeUpload("passport", "Passport", _relativeTarget.PassportPath)
-                    @RelativeUpload("trade-licence", "Trade License", _relativeTarget.TradeLicencePath)
+                    @RelativeUpload("emirates-id", "Emirates ID", DocumentUrl.For(_relativeTarget.EmiratesIdBlobId, _relativeTarget.EmiratesIdPath))
+                    @RelativeUpload("passport", "Passport", DocumentUrl.For(_relativeTarget.PassportBlobId, _relativeTarget.PassportPath))
+                    @RelativeUpload("trade-licence", "Trade License", DocumentUrl.For(_relativeTarget.TradeLicenceBlobId, _relativeTarget.TradeLicencePath))
                 </div>
                 <p class="cg-hint">JPEG, PNG or PDF, up to 1 MB. Uploading replaces the document already on file.</p>
 
@@ -853,9 +853,9 @@
             else
             {
                 <div class="cg-doc-uploads">
-                    @CompanyUpload("trade-license", "Trade License", _companyTarget.TradeLicensePath)
-                    @CompanyUpload("moa", "MOA", _companyTarget.MoaPath)
-                    @CompanyUpload("poa", "POA (optional)", _companyTarget.PoaPath)
+                    @CompanyUpload("trade-license", "Trade License", DocumentUrl.For(_companyTarget.TradeLicenseBlobId, _companyTarget.TradeLicensePath))
+                    @CompanyUpload("moa", "MOA", DocumentUrl.For(_companyTarget.MoaBlobId, _companyTarget.MoaPath))
+                    @CompanyUpload("poa", "POA (optional)", DocumentUrl.For(_companyTarget.PoaBlobId, _companyTarget.PoaPath))
                 </div>
                 <p class="cg-hint">JPEG, PNG or PDF, up to 10 MB. Uploading replaces the document already on file.</p>
 

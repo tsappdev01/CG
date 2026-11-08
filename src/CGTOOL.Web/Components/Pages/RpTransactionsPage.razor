@@ -107,7 +107,7 @@
                             @foreach (var doc in _pendingDocuments)
                             {
                                 <li>
-                                    <a href="@doc.FilePath" target="_blank">@doc.FileName</a>
+                                    <a href="@DocumentUrl.For(doc.BlobId, doc.FilePath)" target="_blank">@doc.FileName</a>
                                     <button type="button" class="cg-icon-btn" title="Remove file" @onclick="() => RemovePendingDocument(doc)">×</button>
                                 </li>
                             }

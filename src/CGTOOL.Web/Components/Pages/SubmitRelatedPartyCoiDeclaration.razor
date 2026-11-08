@@ -423,7 +423,7 @@
                     @foreach (var type in RequestedDocumentTypes)
                     {
                         var row = DocumentFor(type.Id);
-                        var attached = !string.IsNullOrWhiteSpace(row.FilePath);
+                        var attached = DocumentUrl.Exists(row.BlobId, row.FilePath);
                         <div class="cg-doc-panel @(IsExpiredOn(row.ExpiryDate) ? "is-expired" : "")">
                             <div class="cg-doc-panel-head">
                                 <div>
@@ -467,7 +467,7 @@
                                         <button type="button" class="cg-action-btn cg-critical" @onclick="() => RemoveDeclarationDocument(row)">Remove</button>
                                     </div>
                                 </div>
-                                <DocumentPreview FilePath="@row.FilePath" OriginalFileName="@row.OriginalFileName" Version="@DocumentVersion(row.DocumentTypeId)" />
+                                <DocumentPreview FilePath="@DocumentUrl.For(row.BlobId, row.FilePath)" OriginalFileName="@row.OriginalFileName" Version="@DocumentVersion(row.DocumentTypeId)" />
                             </div>
                             }
                         </div>

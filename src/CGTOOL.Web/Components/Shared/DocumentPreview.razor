@@ -52,7 +52,23 @@
     private string DisplayName =>
         string.IsNullOrWhiteSpace(OriginalFileName) ? "Attached document" : OriginalFileName!;
 
-    private string Extension => System.IO.Path.GetExtension(FilePath ?? string.Empty).ToLowerInvariant();
+    /// <summary>What kind of file this is, taken from the name the person uploaded and only then
+    /// from the address.
+    ///
+    /// It used to read the address alone, which worked while that was "41-emiratesid.pdf". A stored
+    /// document is served from "/documents/41" now, which has no extension at all -- so every
+    /// preview would have fallen through to "no preview for this kind of file" while the document
+    /// itself was perfectly displayable, and nothing would have looked broken enough to notice.</summary>
+    private string Extension
+    {
+        get
+        {
+            var fromName = System.IO.Path.GetExtension(OriginalFileName ?? string.Empty);
+            return (fromName is { Length: > 0 }
+                ? fromName
+                : System.IO.Path.GetExtension(FilePath ?? string.Empty)).ToLowerInvariant();
+        }
+    }
 
     private bool IsPdf => Extension == ".pdf";
     private bool IsImage => Extension is ".png" or ".jpg" or ".jpeg";

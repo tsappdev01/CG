@@ -41,9 +41,9 @@
                 else
                 {
                     <div class="cg-profile-upload">
-                        @if (!string.IsNullOrEmpty(_editing.LogoPath))
+                        @if (DocumentUrl.Exists(_editing.LogoBlobId, _editing.LogoPath))
                         {
-                            <img src="@_editing.LogoPath" alt="@_editing.Name logo" class="cg-logo-preview" />
+                            <img src="@DocumentUrl.For(_editing.LogoBlobId, _editing.LogoPath)" alt="@_editing.Name logo" class="cg-logo-preview" />
                         }
                         else
                         {

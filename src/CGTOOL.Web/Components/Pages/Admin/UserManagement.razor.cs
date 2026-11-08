@@ -216,7 +216,7 @@ public partial class UserManagement
                 _progressPhase = ImportPhase.Reading;
                 await RenderNowAsync();
 
-                parsed = UserListWorkbookParser.Parse(buffer, file.Name);
+                parsed = UserListWorkbookParser.Parse(buffer, file.Name, IdentityImporter.ExcludedDomains);
             }
             catch (Exception ex)
             {
@@ -251,9 +251,28 @@ public partial class UserManagement
                     _ = ThrottledRenderAsync();
                 }));
 
-            _importProblems = [.. parsed.Problems, .. result.Problems];
+            // The same file's Emirates ID and DFM columns, if it has them. One upload rather than
+            // two screens: the spreadsheet that says who these people are is the spreadsheet that
+            // says what we hold about them, and asking for it twice invites the two to drift.
+            var identityNote = string.Empty;
+            var identityProblems = new List<string>();
+            if (parsed.Identities.Count > 0)
+            {
+                var identity = await IdentityImporter.ImportAsync(
+                    parsed.Identities,
+                    file.Name,
+                    dryRun: false,
+                    createMissingMembers: false,
+                    state.User.Identity?.Name ?? "unknown");
+
+                identityProblems = [.. identity.Problems];
+                identityNote =
+                    $" Emirates ID / NIN details: {identity.ReferencesInserted} added, {identity.ReferencesUpdated} updated.";
+            }
+
+            _importProblems = [.. parsed.Problems, .. result.Problems, .. identityProblems];
             _importResult =
-                $"{file.Name}: {result.Created} added, {result.Updated} updated, {result.Skipped} skipped.";
+                $"{file.Name}: {result.Created} added, {result.Updated} updated, {result.Skipped} skipped.{identityNote}";
 
             Toasts.ShowSuccess(_importResult);
             foreach (var problem in _importProblems.Take(3)) Toasts.ShowWarning(problem);

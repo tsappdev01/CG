@@ -4,7 +4,13 @@ namespace CGTOOL.Web.Data.Governance;
 
 /// <summary>What a spreadsheet upload produced: the people it could read, and a line per row it
 /// could not, naming the row number so the file can be corrected.</summary>
-public record UserListParseResult(List<DirectoryPerson> People, List<string> Problems, int BlankRowsSkipped);
+public record UserListParseResult(
+    List<DirectoryPerson> People,
+    List<string> Problems,
+    int BlankRowsSkipped,
+    /// <summary>The Emirates ID and DFM details, for the rows that carry them. Optional: a plain
+    /// user list has none of these columns and imports exactly as it always did.</summary>
+    List<IdentityImportRow> Identities);
 
 /// <summary>
 /// Reads a spreadsheet of people into the same shape the Entra ID sync produces, so a deployment
@@ -28,11 +34,22 @@ public static class UserListWorkbookParser
     private static readonly string[] WindowsId    = ["windowsuserid", "windowsid", "samaccountname", "username"];
     private static readonly string[] Enabled      = ["accountenabled", "enabled", "active", "status"];
 
+    // Onboarding reference data. Optional -- a file without these columns still imports people.
+    private static readonly string[] Nin          = ["nin", "ninnumber", "nationalinvestornumber"];
+    private static readonly string[] NameOnId     = ["nameonemiratesid", "nameonid", "nameoneid"];
+    private static readonly string[] EmiratesId   = ["emiratesid", "emiratesidnumber", "eid"];
+    private static readonly string[] Nationality  = ["nationality"];
+
     /// <summary>The headings written into the downloadable template, in this order.</summary>
     public static readonly string[] TemplateHeaders =
         ["Display Name", "Windows User ID", "Department", "Title", "Email Address", "Company Name", "Role", "Reporting Manager"];
 
-    public static UserListParseResult Parse(Stream fileStream, string? fileName = null)
+    /// <param name="excludedDomains">Email domains to leave out of the file entirely -- people
+    /// and onboarding details alike. Companies in the group whose staff do not declare: creating
+    /// members for them puts them on the declaration mailing, because that goes to every active
+    /// member with an address.</param>
+    public static UserListParseResult Parse(
+        Stream fileStream, string? fileName = null, IReadOnlyList<string>? excludedDomains = null)
     {
         var table = WorkbookTable.ReadFirstSheet(fileStream, fileName);
 
@@ -53,8 +70,10 @@ public static class UserListWorkbookParser
         }
 
         var people = new List<DirectoryPerson>();
+        var identities = new List<IdentityImportRow>();
         var problems = new List<string>();
         var blanks = 0;
+        var excluded = 0;
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         for (var i = headerRowIndex + 1; i < table.Rows.Count; i++)
@@ -68,6 +87,8 @@ public static class UserListWorkbookParser
             var name = WorkbookTable.TextAny(row, columns, DisplayName);
             var email = WorkbookTable.TextAny(row, columns, Email);
             var company = WorkbookTable.TextAny(row, columns, Company);
+
+            if (IsExcluded(email, excludedDomains)) { excluded++; continue; }
 
             if (string.IsNullOrWhiteSpace(name)) { problems.Add($"Row {rowNumber}: no Display Name."); continue; }
             if (string.IsNullOrWhiteSpace(email)) { problems.Add($"Row {rowNumber}: {name} has no Email Address."); continue; }
@@ -94,9 +115,47 @@ public static class UserListWorkbookParser
                 RoleName: NormalizeRole(WorkbookTable.TextAny(row, columns, Role)),
                 ReportingManagerEmail: NullIfNone(WorkbookTable.TextAny(row, columns, Manager)),
                 WindowsUserId: WorkbookTable.TextAny(row, columns, WindowsId)));
+
+            // The same row's Emirates ID and DFM details, when the file carries them. Kept only
+            // where there is something to keep: a row with neither is nothing for onboarding to
+            // show, and a blank reference row would make "we hold nothing for this person"
+            // indistinguishable from "nobody has looked yet".
+            var nin = Clean(WorkbookTable.TextAny(row, columns, Nin));
+            var eid = Clean(WorkbookTable.TextAny(row, columns, EmiratesId));
+            if (nin is not null || eid is not null)
+            {
+                identities.Add(new IdentityImportRow(
+                    Email: email,
+                    FullName: name,
+                    CompanyName: company,
+                    Nin: nin,
+                    NameOnEmiratesId: Clean(WorkbookTable.TextAny(row, columns, NameOnId)),
+                    EmiratesIdNumber: eid,
+                    Nationality: Clean(WorkbookTable.TextAny(row, columns, Nationality))));
+            }
         }
 
-        return new UserListParseResult(people, problems, blanks);
+        if (excluded > 0)
+        {
+            problems.Insert(0,
+                $"{excluded} row(s) left out: {string.Join(", ", excludedDomains!)}. " +
+                "They are neither imported as people nor given onboarding details.");
+        }
+
+        return new UserListParseResult(people, problems, blanks, identities);
+    }
+
+    /// <summary>A cell's value, or null when there is nothing in it.
+    ///
+    /// "Nothing in it" includes the literal text NULL. These files are SQL exports and write NULL
+    /// where a value is missing -- in 3,724 of the 3,957 rows of the one this was built against --
+    /// so a reader that only tests for an empty string stores the word itself, and onboarding then
+    /// asks somebody to confirm that their National Investor Number is "NULL".</summary>
+    private static string? Clean(string? value)
+    {
+        var trimmed = value?.Trim();
+        if (string.IsNullOrEmpty(trimmed)) return null;
+        return trimmed.Equals("NULL", StringComparison.OrdinalIgnoreCase) ? null : trimmed;
     }
 
     private static int FindHeader(DataTable table)
@@ -119,6 +178,17 @@ public static class UserListWorkbookParser
     /// <summary>"NormalUser", "Normal User", "normal", blank -- all mean the default role. Anything
     /// beginning "admin" means Administrator. Anything else is passed through and checked against
     /// the roles that exist at import time, so a typo is reported rather than silently downgraded.</summary>
+    private static bool IsExcluded(string? email, IReadOnlyList<string>? excludedDomains)
+    {
+        if (excludedDomains is null or { Count: 0 } || string.IsNullOrWhiteSpace(email)) return false;
+
+        var at = email.LastIndexOf('@');
+        if (at < 0) return false;
+
+        var domain = email[(at + 1)..].Trim();
+        return excludedDomains.Any(d => domain.Equals(d, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string? NormalizeRole(string? role)
     {
         if (string.IsNullOrWhiteSpace(role)) return null;

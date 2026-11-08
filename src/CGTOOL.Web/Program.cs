@@ -1,4 +1,6 @@
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -126,6 +128,29 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddDefaultTokenProviders();
 
 builder.Services.AddAuthorization();
+
+// The login form checks credentials against the corporate directory (or, where none is configured,
+// the local password hash). Nothing else throttles it, so without this it answers guesses as fast as
+// they arrive. A per-IP fixed window on the login POST only -- a legitimate person mistypes their
+// password a handful of times, not sixty times in five minutes. Deliberately NOT implemented as
+// Identity's AccessFailedAsync counter: this deployment repurposes lockout to mean "deactivated"
+// (see SetActiveAsync), so counting failures there would deactivate accounts an attacker picked.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        HttpMethods.IsPost(context.Request.Method)
+        && context.Request.Path.StartsWithSegments("/Account/Login")
+            ? RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(5),
+                    QueueLimit = 0,
+                })
+            : RateLimitPartition.GetNoLimiter("unlimited"));
+});
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 builder.Services.AddScoped<IAuditLogger, AuditLogger>();
@@ -329,8 +354,57 @@ else
 
 app.UseHttpsRedirection();
 
-app.UseStaticFiles();
+// Response headers that cost nothing and close off whole classes of attack. nosniff is the one that
+// matters most here: uploads are served from this same origin, so without it a file whose bytes are
+// HTML could be sniffed as a page and run as script on the app's own origin.
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "SAMEORIGIN";
+    headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    headers["X-Permitted-Cross-Domain-Policies"] = "none";
+    await next();
+});
+
+// Identity has to have run before the uploads gate below can ask who is calling. WebApplication adds
+// these automatically, but only around the endpoint pipeline -- static files are served before that
+// and would see an anonymous principal. Calling them here is the documented way to put static files
+// behind authentication; the automatic registration sees these and does not add a second copy.
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Everything under wwwroot/uploads is scans of Emirates IDs, passports, trade licences and
+// signatures, named after the row id ("{memberId}-emiratesid.pdf"). A plain UseStaticFiles over
+// wwwroot hands all of it to anyone who asks, and the names make it enumerable by counting.
+//
+// So wwwroot is served in two halves. The first provider refuses anything that resolves inside the
+// uploads folder -- decided on the file, not on the request path, because a prefix test and the
+// static-file middleware disagree about paths like "//uploads/x" (that one returned 200 to an
+// anonymous caller when this was written as a prefix test). The second serves that folder to
+// signed-in users only. An anonymous request for an upload now matches no file and no route, which
+// is a 404: nothing is disclosed about which files exist.
+var uploadsRoot = Path.Combine(app.Environment.WebRootPath, "uploads");
+Directory.CreateDirectory(uploadsRoot);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PrivateUploadsFileProvider(app.Environment.WebRootFileProvider, uploadsRoot),
+});
+
+app.UseWhen(
+    context => context.User?.Identity?.IsAuthenticated == true,
+    signedIn => signedIn.UseStaticFiles(new StaticFileOptions
+    {
+        // Signed-in is the gate. Narrowing it further -- so a declarant can read only their own
+        // documents -- needs the member behind each file, which for a my-workspace document is a
+        // database lookup rather than something the file name carries, so it is not done here.
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsRoot),
+        RequestPath = "/uploads",
+    }));
+
 app.UseAntiforgery();
+app.UseRateLimiter();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

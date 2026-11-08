@@ -31,7 +31,7 @@ public class LdapActiveDirectoryAuthenticator(IConfiguration configuration) : IA
 
             var searchRequest = new SearchRequest(
                 null,
-                $"(sAMAccountName={username})",
+                $"(sAMAccountName={EscapeFilterValue(username)})",
                 SearchScope.Subtree,
                 "displayName", "mail");
 
@@ -46,5 +46,30 @@ public class LdapActiveDirectoryAuthenticator(IConfiguration configuration) : IA
         {
             return Task.FromResult(new AdAuthResult(false, null, null, $"Invalid corporate credentials ({ex.Message})."));
         }
+    }
+
+    /// <summary>Escapes the characters that would otherwise end the assertion and start another one
+    /// (RFC 4515). The bind above has already succeeded by the time this filter runs, so a crafted
+    /// username has to be one the directory accepted -- but a filter built by string concatenation
+    /// is a defect whether or not today's call path can reach it, and "(sAMAccountName=*)" matching
+    /// every account is not a search this code should be able to make.</summary>
+    private static string EscapeFilterValue(string value)
+    {
+        var escaped = new System.Text.StringBuilder(value.Length);
+        foreach (var c in value)
+        {
+            switch (c)
+            {
+                case '\\': escaped.Append("\\5c"); break;
+                case '*': escaped.Append("\\2a"); break;
+                case '(': escaped.Append("\\28"); break;
+                case ')': escaped.Append("\\29"); break;
+                case '\0': escaped.Append("\\00"); break;
+                case '/': escaped.Append("\\2f"); break;
+                default: escaped.Append(c); break;
+            }
+        }
+
+        return escaped.ToString();
     }
 }

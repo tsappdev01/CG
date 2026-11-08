@@ -92,6 +92,21 @@ public partial class Onboarding
     private string? _captureNote;
     private string? _editNote;
 
+    /// <summary>How far the file has got, 0-100 while it is transferring and null otherwise.
+    ///
+    /// Counted rather than a spinner: the card is a PDF of up to 5 MB over whatever connection
+    /// the member happens to be on, and the step before this one was instant. Without a number
+    /// the screen looks like it ignored the file -- the only sign anything was happening was a
+    /// line of text below the fields, which is not where somebody who has just pressed Choose
+    /// File is looking.</summary>
+    private double? _uploadPercent;
+
+    /// <summary>What is happening now, beside the bar. Reading the card is a round trip to a
+    /// service that cannot be counted, so that stage shows a spinner instead.</summary>
+    private string? _uploadStage;
+
+    private bool _uploading;
+
     /// <summary>The member may continue once there is a card and a number against it. The expiry
     /// is asked for but not insisted on: a member who cannot read it off a worn card should not be
     /// stuck on this screen, and the field is editable later in My Workspace.</summary>
@@ -316,19 +331,42 @@ public partial class Onboarding
         }
 
         _busy = true;
-        _captureNote = "Reading the card…";
+        _uploading = true;
+        _uploadPercent = 0;
+        _uploadStage = $"Uploading {file.Name}";
+        _captureNote = null;
         StateHasChanged();
         try
         {
+            // Read in chunks so the bar can move. CopyToAsync would do the same work and report
+            // nothing until it was finished, which on a slow connection is the whole wait.
+            const int chunkBytes = 64 * 1024;
             using var buffer = new MemoryStream();
             await using (var stream = file.OpenReadStream(MaxCardBytes))
             {
-                await stream.CopyToAsync(buffer);
+                var chunk = new byte[chunkBytes];
+                long soFar = 0;
+                int read;
+                while ((read = await stream.ReadAsync(chunk)) > 0)
+                {
+                    await buffer.WriteAsync(chunk.AsMemory(0, read));
+                    soFar += read;
+                    _uploadPercent = soFar * 100d / Math.Max(1, file.Size);
+                    StateHasChanged();
+                }
             }
 
             var content = buffer.ToArray();
+
+            _uploadPercent = null;
+            _uploadStage = "Saving the card…";
+            StateHasChanged();
+
             _record.EmiratesIdBlobId = await Documents.SaveAsync(
                 content, file.Name, "application/pdf", Client.IpAddress);
+
+            _uploadStage = "Reading the details off the card…";
+            StateHasChanged();
 
             _captureNote = await CaptureAsync(content);
         }
@@ -339,6 +377,9 @@ public partial class Onboarding
         finally
         {
             _busy = false;
+            _uploading = false;
+            _uploadPercent = null;
+            _uploadStage = null;
         }
     }
 
@@ -394,14 +435,31 @@ public partial class Onboarding
         if (file.Size > MaxCardBytes) return;
 
         _busy = true;
+        _uploading = true;
+        _uploadPercent = 0;
+        _uploadStage = $"Uploading {file.Name}";
         StateHasChanged();
         try
         {
+            const int chunkBytes = 64 * 1024;
             using var buffer = new MemoryStream();
             await using (var stream = file.OpenReadStream(MaxCardBytes))
             {
-                await stream.CopyToAsync(buffer);
+                var chunk = new byte[chunkBytes];
+                long soFar = 0;
+                int read;
+                while ((read = await stream.ReadAsync(chunk)) > 0)
+                {
+                    await buffer.WriteAsync(chunk.AsMemory(0, read));
+                    soFar += read;
+                    _uploadPercent = soFar * 100d / Math.Max(1, file.Size);
+                    StateHasChanged();
+                }
             }
+
+            _uploadPercent = null;
+            _uploadStage = "Saving…";
+            StateHasChanged();
 
             _record.NinDocumentBlobId = await Documents.SaveAsync(
                 buffer.ToArray(), file.Name, file.ContentType, Client.IpAddress);
@@ -409,6 +467,9 @@ public partial class Onboarding
         finally
         {
             _busy = false;
+            _uploading = false;
+            _uploadPercent = null;
+            _uploadStage = null;
         }
     }
 }

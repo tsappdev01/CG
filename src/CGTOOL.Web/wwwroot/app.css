@@ -4370,6 +4370,10 @@ button.cg-appbar-user {
 .cg-onboarding-step-btn:hover:not(:disabled) { text-decoration: underline; }
 .cg-onboarding-step-btn:disabled { cursor: default; }
 
+/* The bar or spinner shown under the file input while a card is going up. Sits where the hint
+   was, so the answer to "did it take my file?" is where the question was asked. */
+.cg-onboarding-upload { margin: 10px 0 0; }
+
 .cg-onboarding-link {
     font: inherit;
     background: none;

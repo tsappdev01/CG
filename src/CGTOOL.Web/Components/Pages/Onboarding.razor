@@ -193,16 +193,33 @@ else
             <label class="cg-field">
                 <span>Your Emirates ID</span>
                 <InputFile OnChange="UploadCardAsync" accept=".pdf" disabled="@_busy" />
-                <p class="cg-hint">
-                    @if (_record!.EmiratesIdBlobId is not null)
-                    {
-                        <span>Uploaded.</span>
-                    }
-                    else
-                    {
-                        <span>One PDF containing both sides of the card, up to 5 MB.</span>
-                    }
-                </p>
+
+                @if (_uploading)
+                {
+                    <div class="cg-onboarding-upload">
+                        @if (_uploadPercent is { } percent)
+                        {
+                            <CgProgressBar Percent="percent" Label="@_uploadStage" />
+                        }
+                        else
+                        {
+                            <CgBusy Title="@(_uploadStage ?? "Working…")" />
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="cg-hint">
+                        @if (_record!.EmiratesIdBlobId is not null)
+                        {
+                            <span>Uploaded.</span>
+                        }
+                        else
+                        {
+                            <span>One PDF containing both sides of the card, up to 5 MB.</span>
+                        }
+                    </p>
+                }
             </label>
 
             <label class="cg-field">
@@ -342,7 +359,20 @@ else
                     <label class="cg-field">
                         <span>NIN confirmation or DFM statement <em>(optional)</em></span>
                         <InputFile OnChange="UploadNinDocumentAsync" accept=".pdf,.jpg,.jpeg,.png" disabled="@_busy" />
-                        @if (_record.NinDocumentBlobId is not null) { <p class="cg-hint">Uploaded.</p> }
+                        @if (_uploading)
+                        {
+                            <div class="cg-onboarding-upload">
+                                @if (_uploadPercent is { } ninPercent)
+                                {
+                                    <CgProgressBar Percent="ninPercent" Label="@_uploadStage" />
+                                }
+                                else
+                                {
+                                    <CgBusy Title="@(_uploadStage ?? "Working…")" />
+                                }
+                            </div>
+                        }
+                        else if (_record.NinDocumentBlobId is not null) { <p class="cg-hint">Uploaded.</p> }
                     </label>
 
                     <div class="cg-onboarding-actions">

@@ -201,11 +201,12 @@ GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_Company_SetLogoPath
     @Id int,
-    @LogoPath nvarchar(260) = NULL
+    @LogoPath nvarchar(260) = NULL,
+    @LogoBlobId int = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE dbo.Companies SET LogoPath = @LogoPath WHERE Id = @Id;
+    UPDATE dbo.Companies SET LogoPath = @LogoPath, LogoBlobId = @LogoBlobId WHERE Id = @Id;
 END
 GO
 
@@ -1037,19 +1038,23 @@ CREATE OR ALTER PROCEDURE dbo.usp_InsiderDeclaration_Insert
     @RelativesHaveNin bit = 0,
     @IsDraft bit = 0,
     @EmiratesIdPath nvarchar(260) = NULL,
+    @EmiratesIdBlobId int = NULL,
     @EmiratesIdNumber nvarchar(40) = NULL,
     @EmiratesIdNameOnCard nvarchar(120) = NULL,
     @EmiratesIdExpiryDate date = NULL,
     @PassportPath nvarchar(260) = NULL,
+    @PassportBlobId int = NULL,
     @PassportNumber nvarchar(40) = NULL,
     @PassportExpiryDate date = NULL,
     @PassportIssuingCountry nvarchar(80) = NULL,
     @TradeLicencePath nvarchar(260) = NULL,
+    @TradeLicenceBlobId int = NULL,
     @TradeLicenceNumber nvarchar(40) = NULL,
     @TradeLicenceLegalName nvarchar(160) = NULL,
     @TradeLicenceIssuingAuthority nvarchar(160) = NULL,
     @TradeLicenceExpiryDate date = NULL,
     @OtherDocumentPath nvarchar(260) = NULL,
+    @OtherDocumentBlobId int = NULL,
     @SubmittedByName nvarchar(160),
     @SubmittedOnBehalfOf nvarchar(160) = NULL,
     @NewId int OUTPUT
@@ -1063,17 +1068,17 @@ BEGIN
     INSERT INTO dbo.InsiderDeclarations
         (MemberId, DeclarationCycleRunId, HasNin, NinNumber, HoldsShares, SharesNinNumber, NumberOfSharesHeld,
          RelativesHoldShares, RelativesHaveNin, IsDraft,
-         EmiratesIdPath, EmiratesIdNumber, EmiratesIdNameOnCard, EmiratesIdExpiryDate,
-         PassportPath, PassportNumber, PassportExpiryDate, PassportIssuingCountry,
-         TradeLicencePath, TradeLicenceNumber, TradeLicenceLegalName, TradeLicenceIssuingAuthority, TradeLicenceExpiryDate,
-         OtherDocumentPath, SubmittedAtUtc, SubmittedByName, SubmittedOnBehalfOf)
+         EmiratesIdPath, EmiratesIdBlobId, EmiratesIdNumber, EmiratesIdNameOnCard, EmiratesIdExpiryDate,
+         PassportPath, PassportBlobId, PassportNumber, PassportExpiryDate, PassportIssuingCountry,
+         TradeLicencePath, TradeLicenceBlobId, TradeLicenceNumber, TradeLicenceLegalName, TradeLicenceIssuingAuthority, TradeLicenceExpiryDate,
+         OtherDocumentPath, OtherDocumentBlobId, SubmittedAtUtc, SubmittedByName, SubmittedOnBehalfOf)
     VALUES
         (@MemberId, @DeclarationCycleRunId, @HasNin, @NinNumber, @HoldsShares, @SharesNinNumber, @NumberOfSharesHeld,
          @RelativesHoldShares, @RelativesHaveNin, @IsDraft,
-         @EmiratesIdPath, @EmiratesIdNumber, @EmiratesIdNameOnCard, @EmiratesIdExpiryDate,
-         @PassportPath, @PassportNumber, @PassportExpiryDate, @PassportIssuingCountry,
-         @TradeLicencePath, @TradeLicenceNumber, @TradeLicenceLegalName, @TradeLicenceIssuingAuthority, @TradeLicenceExpiryDate,
-         @OtherDocumentPath, SYSUTCDATETIME(), @SubmittedByName, @SubmittedOnBehalfOf);
+         @EmiratesIdPath, @EmiratesIdBlobId, @EmiratesIdNumber, @EmiratesIdNameOnCard, @EmiratesIdExpiryDate,
+         @PassportPath, @PassportBlobId, @PassportNumber, @PassportExpiryDate, @PassportIssuingCountry,
+         @TradeLicencePath, @TradeLicenceBlobId, @TradeLicenceNumber, @TradeLicenceLegalName, @TradeLicenceIssuingAuthority, @TradeLicenceExpiryDate,
+         @OtherDocumentPath, @OtherDocumentBlobId, SYSUTCDATETIME(), @SubmittedByName, @SubmittedOnBehalfOf);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1132,19 +1137,23 @@ CREATE OR ALTER PROCEDURE dbo.usp_InsiderDeclaration_Update
     @RelativesHaveNin bit = 0,
     @IsDraft bit = 0,
     @EmiratesIdPath nvarchar(260) = NULL,
+    @EmiratesIdBlobId int = NULL,
     @EmiratesIdNumber nvarchar(40) = NULL,
     @EmiratesIdNameOnCard nvarchar(120) = NULL,
     @EmiratesIdExpiryDate date = NULL,
     @PassportPath nvarchar(260) = NULL,
+    @PassportBlobId int = NULL,
     @PassportNumber nvarchar(40) = NULL,
     @PassportExpiryDate date = NULL,
     @PassportIssuingCountry nvarchar(80) = NULL,
     @TradeLicencePath nvarchar(260) = NULL,
+    @TradeLicenceBlobId int = NULL,
     @TradeLicenceNumber nvarchar(40) = NULL,
     @TradeLicenceLegalName nvarchar(160) = NULL,
     @TradeLicenceIssuingAuthority nvarchar(160) = NULL,
     @TradeLicenceExpiryDate date = NULL,
     @OtherDocumentPath nvarchar(260) = NULL,
+    @OtherDocumentBlobId int = NULL,
     @SubmittedByName nvarchar(160),
     @SubmittedOnBehalfOf nvarchar(160) = NULL
 AS
@@ -1160,20 +1169,20 @@ BEGIN
         RelativesHoldShares = @RelativesHoldShares,
         RelativesHaveNin = @RelativesHaveNin,
         IsDraft = @IsDraft,
-        EmiratesIdPath = @EmiratesIdPath,
+        EmiratesIdPath = @EmiratesIdPath, EmiratesIdBlobId = @EmiratesIdBlobId,
         EmiratesIdNumber = @EmiratesIdNumber,
         EmiratesIdNameOnCard = @EmiratesIdNameOnCard,
         EmiratesIdExpiryDate = @EmiratesIdExpiryDate,
-        PassportPath = @PassportPath,
+        PassportPath = @PassportPath, PassportBlobId = @PassportBlobId,
         PassportNumber = @PassportNumber,
         PassportExpiryDate = @PassportExpiryDate,
         PassportIssuingCountry = @PassportIssuingCountry,
-        TradeLicencePath = @TradeLicencePath,
+        TradeLicencePath = @TradeLicencePath, TradeLicenceBlobId = @TradeLicenceBlobId,
         TradeLicenceNumber = @TradeLicenceNumber,
         TradeLicenceLegalName = @TradeLicenceLegalName,
         TradeLicenceIssuingAuthority = @TradeLicenceIssuingAuthority,
         TradeLicenceExpiryDate = @TradeLicenceExpiryDate,
-        OtherDocumentPath = @OtherDocumentPath,
+        OtherDocumentPath = @OtherDocumentPath, OtherDocumentBlobId = @OtherDocumentBlobId,
         SubmittedByName = @SubmittedByName,
         SubmittedOnBehalfOf = @SubmittedOnBehalfOf,
         ModifiedAtUtc = SYSUTCDATETIME()
@@ -1217,6 +1226,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_RelatedPartyCoiDeclaration_Insert
     @AttestationName nvarchar(160),
     @AttestationConfirmed bit = 0,
     @SignaturePath nvarchar(260) = NULL,
+    @SignatureBlobId int = NULL,
     @SignedAtUtc datetime2 = NULL,
     @SubmittedByName nvarchar(160),
     @SubmittedOnBehalfOf nvarchar(160) = NULL,
@@ -1231,11 +1241,11 @@ BEGIN
     INSERT INTO dbo.RelatedPartyCoiDeclarations
         (MemberId, DeclarationCycleRunId, NothingToDeclareRelatives, NothingToDeclareSelfOwned,
          NothingToDeclareRelativeOwned, NothingToDeclareBoardRoles, NothingToDeclareConflicts, IsDraft,
-         AttestationName, AttestationConfirmed, SignaturePath, SignedAtUtc, SubmittedAtUtc, SubmittedByName, SubmittedOnBehalfOf)
+         AttestationName, AttestationConfirmed, SignaturePath, SignatureBlobId, SignedAtUtc, SubmittedAtUtc, SubmittedByName, SubmittedOnBehalfOf)
     VALUES
         (@MemberId, @DeclarationCycleRunId, @NothingToDeclareRelatives, @NothingToDeclareSelfOwned,
          @NothingToDeclareRelativeOwned, @NothingToDeclareBoardRoles, @NothingToDeclareConflicts, @IsDraft,
-         @AttestationName, @AttestationConfirmed, @SignaturePath, @SignedAtUtc, SYSUTCDATETIME(), @SubmittedByName, @SubmittedOnBehalfOf);
+         @AttestationName, @AttestationConfirmed, @SignaturePath, @SignatureBlobId, @SignedAtUtc, SYSUTCDATETIME(), @SubmittedByName, @SubmittedOnBehalfOf);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1252,6 +1262,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_RelatedPartyCoiDeclaration_Update
     @AttestationName nvarchar(160),
     @AttestationConfirmed bit = 0,
     @SignaturePath nvarchar(260) = NULL,
+    @SignatureBlobId int = NULL,
     @SignedAtUtc datetime2 = NULL,
     @SubmittedByName nvarchar(160),
     @SubmittedOnBehalfOf nvarchar(160) = NULL
@@ -1271,6 +1282,7 @@ BEGIN
         -- COALESCE, not assignment: an edit that is re-submitted without signing again keeps
         -- the signature already on file rather than blanking it.
         SignaturePath = COALESCE(@SignaturePath, SignaturePath),
+        SignatureBlobId = COALESCE(@SignatureBlobId, SignatureBlobId),
         SignedAtUtc = COALESCE(@SignedAtUtc, SignedAtUtc),
         SubmittedByName = @SubmittedByName,
         SubmittedOnBehalfOf = @SubmittedOnBehalfOf,
@@ -1371,14 +1383,15 @@ GO
 CREATE OR ALTER PROCEDURE dbo.usp_CoiTradeLicenseDocument_Insert
     @CoiCompanyEntryId int,
     @FilePath nvarchar(260),
+    @BlobId int = NULL,
     @FileName nvarchar(160),
     @NewId int OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.CoiTradeLicenseDocuments (CoiCompanyEntryId, FilePath, FileName, UploadedAtUtc)
-    VALUES (@CoiCompanyEntryId, @FilePath, @FileName, SYSUTCDATETIME());
+    INSERT INTO dbo.CoiTradeLicenseDocuments (CoiCompanyEntryId, FilePath, BlobId, FileName, UploadedAtUtc)
+    VALUES (@CoiCompanyEntryId, @FilePath, @BlobId, @FileName, SYSUTCDATETIME());
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1418,6 +1431,7 @@ GO
 -- an audit note.
 CREATE OR ALTER PROCEDURE dbo.usp_PolicyDocumentVersion_Insert
     @FilePath nvarchar(260),
+    @BlobId int = NULL,
     @OriginalFileName nvarchar(260),
     @UploadedByName nvarchar(160),
     @NewId int OUTPUT
@@ -1425,8 +1439,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.PolicyDocumentVersions (FilePath, OriginalFileName, UploadedAtUtc, UploadedByName)
-    VALUES (@FilePath, @OriginalFileName, SYSUTCDATETIME(), @UploadedByName);
+    INSERT INTO dbo.PolicyDocumentVersions (FilePath, BlobId, OriginalFileName, UploadedAtUtc, UploadedByName)
+    VALUES (@FilePath, @BlobId, @OriginalFileName, SYSUTCDATETIME(), @UploadedByName);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1569,13 +1583,14 @@ CREATE OR ALTER PROCEDURE dbo.usp_ShareholderRegisterUpload_Insert
     @UploadedByName nvarchar(160),
     -- Defaulted, so the procedure still answers a caller that predates the kept file.
     @FilePath nvarchar(300) = NULL,
+    @BlobId int = NULL,
     @NewId int OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.ShareholderRegisterUploads (AsOnDate, FileName, FilePath, RecordCount, UploadedAtUtc, UploadedByName)
-    VALUES (@AsOnDate, @FileName, @FilePath, @RecordCount, SYSUTCDATETIME(), @UploadedByName);
+    INSERT INTO dbo.ShareholderRegisterUploads (AsOnDate, FileName, FilePath, BlobId, RecordCount, UploadedAtUtc, UploadedByName)
+    VALUES (@AsOnDate, @FileName, @FilePath, @BlobId, @RecordCount, SYSUTCDATETIME(), @UploadedByName);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1918,6 +1933,7 @@ GO
 CREATE OR ALTER PROCEDURE dbo.usp_RelatedPartyTransactionDocument_Insert
     @RelatedPartyTransactionId int,
     @FilePath nvarchar(260),
+    @BlobId int = NULL,
     @FileName nvarchar(160),
     @Kind int = 0,   -- Supporting; 1 is the minutes behind a governance decision
     @NewId int OUTPUT
@@ -1925,8 +1941,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.RelatedPartyTransactionDocuments (RelatedPartyTransactionId, FilePath, FileName, Kind, UploadedAtUtc)
-    VALUES (@RelatedPartyTransactionId, @FilePath, @FileName, @Kind, SYSUTCDATETIME());
+    INSERT INTO dbo.RelatedPartyTransactionDocuments (RelatedPartyTransactionId, FilePath, BlobId, FileName, Kind, UploadedAtUtc)
+    VALUES (@RelatedPartyTransactionId, @FilePath, @BlobId, @FileName, @Kind, SYSUTCDATETIME());
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -1989,12 +2005,15 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMember_Update
     @Name nvarchar(120),
     @Relationship int,
     @EmiratesIdPath nvarchar(260) = NULL,
+    @EmiratesIdBlobId int = NULL,
     @EmiratesIdNumber nvarchar(60) = NULL,
     @EmiratesIdExpiryDate datetime2 = NULL,
     @PassportPath nvarchar(260) = NULL,
+    @PassportBlobId int = NULL,
     @PassportNumber nvarchar(60) = NULL,
     @PassportExpiryDate datetime2 = NULL,
     @TradeLicencePath nvarchar(260) = NULL,
+    @TradeLicenceBlobId int = NULL,
     @TradeLicenceNumber nvarchar(100) = NULL,
     @TradeLicenceLegalName nvarchar(200) = NULL,
     @TradeLicenceExpiryDate datetime2 = NULL,
@@ -2009,13 +2028,13 @@ BEGIN
     UPDATE dbo.FamilyMembers
     SET Name = @Name,
         Relationship = @Relationship,
-        EmiratesIdPath = @EmiratesIdPath,
+        EmiratesIdPath = @EmiratesIdPath, EmiratesIdBlobId = @EmiratesIdBlobId,
         EmiratesIdNumber = @EmiratesIdNumber,
         EmiratesIdExpiryDate = @EmiratesIdExpiryDate,
-        PassportPath = @PassportPath,
+        PassportPath = @PassportPath, PassportBlobId = @PassportBlobId,
         PassportNumber = @PassportNumber,
         PassportExpiryDate = @PassportExpiryDate,
-        TradeLicencePath = @TradeLicencePath,
+        TradeLicencePath = @TradeLicencePath, TradeLicenceBlobId = @TradeLicenceBlobId,
         TradeLicenceNumber = @TradeLicenceNumber,
         TradeLicenceLegalName = @TradeLicenceLegalName,
         TradeLicenceExpiryDate = @TradeLicenceExpiryDate,
@@ -2068,8 +2087,11 @@ CREATE OR ALTER PROCEDURE dbo.usp_OwnedCompany_Update
     @TradeLicenseDetails nvarchar(400) = NULL,
     @OwnershipPercentage decimal(5,2) = NULL,
     @TradeLicensePath nvarchar(260) = NULL,
+    @TradeLicenseBlobId int = NULL,
     @MoaPath nvarchar(260) = NULL,
+    @MoaBlobId int = NULL,
     @PoaPath nvarchar(260) = NULL,
+    @PoaBlobId int = NULL,
     @TradeLicenceNumber nvarchar(100) = NULL,
     @TradeLicenceLegalName nvarchar(200) = NULL,
     @TradeLicenceExpiryDate datetime2 = NULL,
@@ -2082,7 +2104,7 @@ BEGIN
     SET NOCOUNT ON;
     UPDATE dbo.OwnedCompanies
     SET CompanyName = @CompanyName, TradeLicenseDetails = @TradeLicenseDetails, OwnershipPercentage = @OwnershipPercentage,
-        TradeLicensePath = @TradeLicensePath, MoaPath = @MoaPath, PoaPath = @PoaPath,
+        TradeLicensePath = @TradeLicensePath, TradeLicenseBlobId = @TradeLicenseBlobId, MoaPath = @MoaPath, MoaBlobId = @MoaBlobId, PoaPath = @PoaPath, PoaBlobId = @PoaBlobId,
         TradeLicenceNumber = @TradeLicenceNumber, TradeLicenceLegalName = @TradeLicenceLegalName,
         TradeLicenceExpiryDate = @TradeLicenceExpiryDate, NatureOfHolding = @NatureOfHolding,
         ServesAsBoardMemberOrExecutive = @ServesAsBoardMemberOrExecutive,
@@ -2106,6 +2128,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_MemberDocument_Insert
     @Kind int,
     @Title nvarchar(120) = NULL,
     @FilePath nvarchar(260) = NULL,
+    @BlobId int = NULL,
     @OriginalFileName nvarchar(260) = NULL,
     @DocumentNumber nvarchar(100) = NULL,
     @HolderName nvarchar(200) = NULL,
@@ -2121,10 +2144,10 @@ BEGIN
     SET NOCOUNT ON;
 
     INSERT INTO dbo.MemberDocuments
-        (MemberId, Kind, Title, FilePath, OriginalFileName, DocumentNumber, HolderName,
+        (MemberId, Kind, Title, FilePath, BlobId, OriginalFileName, DocumentNumber, HolderName,
          Nationality, ExpiryDate, IssueDate, DateOfBirth, UploadedAtUtc, DocumentTypeId)
     VALUES
-        (@MemberId, @Kind, @Title, @FilePath, @OriginalFileName, @DocumentNumber, @HolderName,
+        (@MemberId, @Kind, @Title, @FilePath, @BlobId, @OriginalFileName, @DocumentNumber, @HolderName,
          @Nationality, @ExpiryDate, @IssueDate, @DateOfBirth, @UploadedAtUtc, @DocumentTypeId);
 
     SET @NewId = SCOPE_IDENTITY();
@@ -2135,6 +2158,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_MemberDocument_Update
     @Id int,
     @Title nvarchar(120) = NULL,
     @FilePath nvarchar(260) = NULL,
+    @BlobId int = NULL,
     @OriginalFileName nvarchar(260) = NULL,
     @DocumentNumber nvarchar(100) = NULL,
     @HolderName nvarchar(200) = NULL,
@@ -2150,7 +2174,7 @@ BEGIN
     UPDATE dbo.MemberDocuments
     SET DocumentTypeId = @DocumentTypeId,
         Title = @Title,
-        FilePath = @FilePath,
+        FilePath = @FilePath, BlobId = @BlobId,
         OriginalFileName = @OriginalFileName,
         DocumentNumber = @DocumentNumber,
         HolderName = @HolderName,
@@ -2180,6 +2204,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMemberHolding_Insert
     @PrincipalBusinessActivity nvarchar(400) = NULL,
     @NatureOfInterest nvarchar(400) = NULL,
     @TradeLicencePath nvarchar(260) = NULL,
+    @TradeLicenceBlobId int = NULL,
     @TradeLicenceFileName nvarchar(260) = NULL,
     @TradeLicenceNumber nvarchar(100) = NULL,
     @TradeLicenceExpiryDate datetime2 = NULL,
@@ -2191,10 +2216,10 @@ BEGIN
 
     INSERT INTO dbo.FamilyMemberHoldings
         (FamilyMemberId, CompanyName, NatureOfHolding, OwnershipPercentage, PrincipalBusinessActivity, NatureOfInterest,
-         TradeLicencePath, TradeLicenceFileName, TradeLicenceNumber, TradeLicenceExpiryDate, LicenceActivities)
+         TradeLicencePath, TradeLicenceBlobId, TradeLicenceFileName, TradeLicenceNumber, TradeLicenceExpiryDate, LicenceActivities)
     VALUES
         (@FamilyMemberId, @CompanyName, @NatureOfHolding, @OwnershipPercentage, @PrincipalBusinessActivity, @NatureOfInterest,
-         @TradeLicencePath, @TradeLicenceFileName, @TradeLicenceNumber, @TradeLicenceExpiryDate, @LicenceActivities);
+         @TradeLicencePath, @TradeLicenceBlobId, @TradeLicenceFileName, @TradeLicenceNumber, @TradeLicenceExpiryDate, @LicenceActivities);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -2208,6 +2233,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_FamilyMemberHolding_Update
     @PrincipalBusinessActivity nvarchar(400) = NULL,
     @NatureOfInterest nvarchar(400) = NULL,
     @TradeLicencePath nvarchar(260) = NULL,
+    @TradeLicenceBlobId int = NULL,
     @TradeLicenceFileName nvarchar(260) = NULL,
     @TradeLicenceNumber nvarchar(100) = NULL,
     @TradeLicenceExpiryDate datetime2 = NULL,
@@ -2221,7 +2247,7 @@ BEGIN
         OwnershipPercentage = @OwnershipPercentage,
         PrincipalBusinessActivity = @PrincipalBusinessActivity,
         NatureOfInterest = @NatureOfInterest,
-        TradeLicencePath = @TradeLicencePath,
+        TradeLicencePath = @TradeLicencePath, TradeLicenceBlobId = @TradeLicenceBlobId,
         TradeLicenceFileName = @TradeLicenceFileName,
         TradeLicenceNumber = @TradeLicenceNumber,
         TradeLicenceExpiryDate = @TradeLicenceExpiryDate,
@@ -2406,6 +2432,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_RelatedPartyCoiDeclarationDocument_Insert
     @RelatedPartyCoiDeclarationId int,
     @DocumentTypeId int,
     @FilePath nvarchar(260) = NULL,
+    @BlobId int = NULL,
     @OriginalFileName nvarchar(260) = NULL,
     @DocumentNumber nvarchar(100) = NULL,
     @ExpiryDate datetime2 = NULL,
@@ -2415,9 +2442,9 @@ BEGIN
     SET NOCOUNT ON;
 
     INSERT INTO dbo.RelatedPartyCoiDeclarationDocuments
-        (RelatedPartyCoiDeclarationId, DocumentTypeId, FilePath, OriginalFileName, DocumentNumber, ExpiryDate)
+        (RelatedPartyCoiDeclarationId, DocumentTypeId, FilePath, BlobId, OriginalFileName, DocumentNumber, ExpiryDate)
     VALUES
-        (@RelatedPartyCoiDeclarationId, @DocumentTypeId, @FilePath, @OriginalFileName, @DocumentNumber, @ExpiryDate);
+        (@RelatedPartyCoiDeclarationId, @DocumentTypeId, @FilePath, @BlobId, @OriginalFileName, @DocumentNumber, @ExpiryDate);
 
     SET @NewId = SCOPE_IDENTITY();
 END
@@ -2479,6 +2506,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_InsiderDeclarationDocument_Insert
     @InsiderDeclarationId int,
     @DocumentTypeId int,
     @FilePath nvarchar(260) = NULL,
+    @BlobId int = NULL,
     @OriginalFileName nvarchar(260) = NULL,
     @DocumentNumber nvarchar(100) = NULL,
     @ExpiryDate datetime2 = NULL,
@@ -2488,9 +2516,9 @@ BEGIN
     SET NOCOUNT ON;
 
     INSERT INTO dbo.InsiderDeclarationDocuments
-        (InsiderDeclarationId, DocumentTypeId, FilePath, OriginalFileName, DocumentNumber, ExpiryDate)
+        (InsiderDeclarationId, DocumentTypeId, FilePath, BlobId, OriginalFileName, DocumentNumber, ExpiryDate)
     VALUES
-        (@InsiderDeclarationId, @DocumentTypeId, @FilePath, @OriginalFileName, @DocumentNumber, @ExpiryDate);
+        (@InsiderDeclarationId, @DocumentTypeId, @FilePath, @BlobId, @OriginalFileName, @DocumentNumber, @ExpiryDate);
 
     SET @NewId = SCOPE_IDENTITY();
 END

@@ -65,7 +65,6 @@ public partial class UserManagement
     private bool _bulkCoi;
     private bool _bulkRpRegister;
     private bool _bulkRpTransactions;
-    private Member? _pendingJustify;
     private Member? _printSingleRecord;
     private bool _syncing;
     private bool _showUpload;
@@ -673,11 +672,19 @@ public partial class UserManagement
         await LoadAsync();
     }
 
-    private async Task ToggleActiveAsync(string justification)
+    /// <summary>Switches a member active or inactive straight from the list.
+    ///
+    /// No typed reason is asked for any more. The audit entry is still written, with who did it
+    /// and when -- what has gone is the sentence explaining why, which was required on every
+    /// flick of the toggle.
+    ///
+    /// The authority check below is not part of that and stays: a member who approves or holds
+    /// delegate authority on an entity cannot be deactivated while they do, because the entity
+    /// would be left with nobody able to approve and the first person to notice would be whoever
+    /// could not submit.</summary>
+    private async Task ToggleActiveAsync(Member member)
     {
-        if (_pendingJustify is null) return;
-
-        var member = _pendingJustify;
+        ArgumentNullException.ThrowIfNull(member);
 
         if (member.Active)
         {
@@ -685,15 +692,13 @@ public partial class UserManagement
             if (holdings.Count > 0)
             {
                 Toasts.ShowError($"{member.FullName} holds approving or delegate authority for {string.Join(", ", holdings)}. Reassign it on the entity before deactivating them.");
-                _pendingJustify = null;
                 return;
             }
         }
 
-        await SetMemberActiveAsync(member, !member.Active, justification);
+        await SetMemberActiveAsync(member, !member.Active, justification: string.Empty);
 
         Toasts.ShowSuccess($"{member.FullName} {(member.Active ? "reactivated" : "deactivated")}.");
-        _pendingJustify = null;
         await LoadAsync();
     }
 

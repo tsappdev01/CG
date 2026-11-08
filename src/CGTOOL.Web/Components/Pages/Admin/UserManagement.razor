@@ -397,7 +397,7 @@
                                 </td>
                                 <td>
                                     <span class="cg-status-cell">
-                                        <ToggleSwitch Value="m.Active" ValueChanged="() => _pendingJustify = m" />
+                                        <ToggleSwitch Value="m.Active" ValueChanged="() => ToggleActiveAsync(m)" />
                                         <span class="cg-status-text @(m.Active ? "on" : "off")">@(m.Active ? "Active" : "Inactive")</span>
                                     </span>
                                 </td>
@@ -433,14 +433,6 @@
                 </div>
             </div>
 
-            @if (_pendingJustify is not null)
-            {
-                <JustificationPrompt Show="true"
-                                     Label="@($"Why are you {(_pendingJustify.Active ? "deactivating" : "reactivating")} {_pendingJustify.FullName}? (Deactivating blocks their login.)")"
-                                     Toasts="Toasts"
-                                     OnConfirm="ToggleActiveAsync"
-                                     OnCancel="() => _pendingJustify = null" />
-            }
         </div>
 
         @if (_printSingleRecord is not null)

@@ -8,6 +8,56 @@ namespace CGTOOL.Web.Data.Governance;
 /// with itself.</summary>
 public enum OnboardingStep { Welcome, EmiratesId, Dfm, Done }
 
+/// <summary>What the member was shown before they edited it.
+///
+/// Kept so a correction can record which field changed and from what, rather than only that
+/// something changed. Whoever checks the card afterwards needs to know what is in dispute, and
+/// "the member edited their details" does not tell them.</summary>
+public sealed record EmiratesIdValues(string? Number, string? HolderName, string? Nationality, DateTime? Expiry)
+{
+    public static EmiratesIdValues From(MemberOnboarding o) => new(
+        o.EmiratesIdNumber, o.EmiratesIdHolderName, o.EmiratesIdNationality, o.EmiratesIdExpiryDate);
+
+    public IReadOnlyList<string> ChangesTo(MemberOnboarding o)
+    {
+        var changes = new List<string>();
+        OnboardingChange.Add(changes, "Emirates ID number", Number, o.EmiratesIdNumber);
+        OnboardingChange.Add(changes, "name on the card", HolderName, o.EmiratesIdHolderName);
+        OnboardingChange.Add(changes, "nationality", Nationality, o.EmiratesIdNationality);
+        OnboardingChange.Add(changes, "expiry date",
+            Expiry?.ToString("dd/MM/yyyy"), o.EmiratesIdExpiryDate?.ToString("dd/MM/yyyy"));
+        return changes;
+    }
+}
+
+public sealed record DfmValues(string? Nin, string? RegisteredName)
+{
+    public static DfmValues From(MemberOnboarding o) => new(o.NinNumber, o.NinRegisteredName);
+
+    public IReadOnlyList<string> ChangesTo(MemberOnboarding o)
+    {
+        var changes = new List<string>();
+        OnboardingChange.Add(changes, "NIN", Nin, o.NinNumber);
+        OnboardingChange.Add(changes, "registered name", RegisteredName, o.NinRegisteredName);
+        return changes;
+    }
+}
+
+internal static class OnboardingChange
+{
+    /// <summary>Records a field that moved. Trimmed on both sides before comparing, so whitespace
+    /// a member's paste brought in does not count as a correction and send a card for checking
+    /// that nobody disputed.</summary>
+    public static void Add(List<string> into, string what, string? before, string? after)
+    {
+        if (string.Equals(before?.Trim() ?? "", after?.Trim() ?? "", StringComparison.Ordinal)) return;
+        into.Add($"{what}: \"{Shown(before)}\" to \"{Shown(after)}\"");
+    }
+
+    private static string Shown(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "blank" : value.Trim();
+}
+
 public interface IMemberOnboardingService
 {
     /// <summary>Whether this member has to onboard before they can do anything else.</summary>
@@ -21,15 +71,19 @@ public interface IMemberOnboardingService
 
     Task StartAsync(MemberOnboarding onboarding, string actorName, CancellationToken ct = default);
     Task ConfirmEmiratesIdAsync(MemberOnboarding onboarding, string actorName, CancellationToken ct = default);
-    Task ReportEmiratesIdIssueAsync(MemberOnboarding onboarding, string issue, string actorName, CancellationToken ct = default);
+    /// <summary>The member edited the details they were shown and saved them.</summary>
+    Task CorrectEmiratesIdAsync(MemberOnboarding onboarding, EmiratesIdValues before, string actorName, CancellationToken ct = default);
     Task SubmitEmiratesIdAsync(MemberOnboarding onboarding, string actorName, CancellationToken ct = default);
     Task ConfirmDfmAsync(MemberOnboarding onboarding, string actorName, CancellationToken ct = default);
-    Task ReportDfmIssueAsync(MemberOnboarding onboarding, string issue, string actorName, CancellationToken ct = default);
+    Task CorrectDfmAsync(MemberOnboarding onboarding, DfmValues before, string actorName, CancellationToken ct = default);
     Task SubmitNinAsync(MemberOnboarding onboarding, string actorName, CancellationToken ct = default);
     Task RecordNoNinAsync(MemberOnboarding onboarding, string actorName, CancellationToken ct = default);
 
     /// <summary>Finishes onboarding and copies what was captured into My Workspace.</summary>
     Task CompleteAsync(MemberOnboarding onboarding, Member member, string actorName, CancellationToken ct = default);
+
+    /// <summary>Puts the member back at the start, so they are asked everything again.</summary>
+    Task RestartAsync(int memberId, string actorName, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -44,6 +98,8 @@ public class MemberOnboardingService(
     IDbContextFactory<ApplicationDbContext> dbFactory,
     IMemberOnboardingWriter writer,
     IMemberDocumentWriter documentWriter,
+    IMemberDfmProfileWriter dfmWriter,
+    IMemberWriter memberWriter,
     IMemberIdentityLookup known,
     IAuditLogger auditLog,
     ILogger<MemberOnboardingService> logger) : IMemberOnboardingService
@@ -209,16 +265,44 @@ public class MemberOnboardingService(
         await LogAsync(actorName, o, "Confirmed the Emirates ID details held in the IPO records", ct);
     }
 
-    public async Task ReportEmiratesIdIssueAsync(MemberOnboarding o, string issue, string actorName, CancellationToken ct = default)
+    /// <summary>Takes the member's own version of their Emirates ID details.
+    ///
+    /// This replaced a "report a problem" box. Asking someone to describe in prose what was wrong
+    /// with a number in front of them, and then leaving the wrong number on the screen, put the
+    /// work on whoever read the report and left the member's own record still wrong. Letting them
+    /// type the right value is the same act with the answer already in it.
+    ///
+    /// What they type becomes the record and is marked for checking. It does not overwrite the
+    /// reference data it came from: that belongs to the system that supplied it, and the summary
+    /// of what moved is kept so whoever checks can see both.</summary>
+    public async Task CorrectEmiratesIdAsync(MemberOnboarding o, EmiratesIdValues before, string actorName, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(o);
+        ArgumentNullException.ThrowIfNull(before);
 
-        // The record itself is untouched -- this is a report, and correcting IPO is somebody
-        // else's job through their own process.
-        o.EmiratesIdReportedIssue = issue;
+        var changes = before.ChangesTo(o);
+
+        // Opened the form, changed nothing, saved. That is a confirmation, and recording it as a
+        // correction would queue a card for checking that nobody has disputed.
+        if (changes.Count == 0)
+        {
+            await ConfirmEmiratesIdAsync(o, actorName, ct);
+            return;
+        }
+
+        var summary = Truncate(string.Join("; ", changes), 1000);
+
+        o.EmiratesIdSource = OnboardingSource.EmployeeSubmitted;
+
+        // Pending verification, not confirmed -- the same standing as a card they uploaded. A
+        // member correcting a field is not somebody having checked it.
+        o.EmiratesIdStatus = EmiratesIdOnboardingStatus.PendingVerification;
+        o.EmiratesIdConfirmedAtUtc = null;
+        o.EmiratesIdReportedIssue = summary;
         o.EmiratesIdReportedAtUtc = DateTime.UtcNow;
+
         await writer.UpdateAsync(o);
-        await LogAsync(actorName, o, $"Reported a problem with the Emirates ID on file: {issue}", ct);
+        await LogAsync(actorName, o, $"Corrected the Emirates ID details on file -- {summary}", ct);
     }
 
     public async Task SubmitEmiratesIdAsync(MemberOnboarding o, string actorName, CancellationToken ct = default)
@@ -245,15 +329,36 @@ public class MemberOnboardingService(
         await LogAsync(actorName, o, "Confirmed the DFM details held in the IPO records", ct);
     }
 
-    public async Task ReportDfmIssueAsync(MemberOnboarding o, string issue, string actorName, CancellationToken ct = default)
+    public async Task CorrectDfmAsync(MemberOnboarding o, DfmValues before, string actorName, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(o);
+        ArgumentNullException.ThrowIfNull(before);
 
-        o.DfmReportedIssue = issue;
+        var changes = before.ChangesTo(o);
+        if (changes.Count == 0)
+        {
+            await ConfirmDfmAsync(o, actorName, ct);
+            return;
+        }
+
+        var summary = Truncate(string.Join("; ", changes), 1000);
+
+        o.NinResponse = NinResponse.HasNin;
+        o.DfmSource = OnboardingSource.EmployeeSubmitted;
+        o.DfmStatus = DfmOnboardingStatus.PendingVerification;
+        o.DfmConfirmedAtUtc = null;
+        o.DfmReportedIssue = summary;
         o.DfmReportedAtUtc = DateTime.UtcNow;
+
         await writer.UpdateAsync(o);
-        await LogAsync(actorName, o, $"Reported a problem with the DFM details on file: {issue}", ct);
+        await LogAsync(actorName, o, $"Corrected the DFM details on file -- {summary}", ct);
     }
+
+    /// <summary>Keeps a summary inside the column that holds it. A correction that touched every
+    /// field on a record with long values can run past 1000 characters, and the write would fail
+    /// at the end of onboarding rather than anywhere the member could act on.</summary>
+    private static string Truncate(string value, int max) =>
+        value.Length <= max ? value : value[..(max - 1)] + "\u2026";
 
     public async Task SubmitNinAsync(MemberOnboarding o, string actorName, CancellationToken ct = default)
     {
@@ -302,9 +407,15 @@ public class MemberOnboardingService(
     /// it with something it believes more.</summary>
     private async Task SeedWorkspaceAsync(MemberOnboarding o, Member member, CancellationToken ct)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        await SeedEmiratesIdAsync(db, o, member, ct);
+        await SeedDfmProfileAsync(db, o, member, ct);
+    }
+
+    private async Task SeedEmiratesIdAsync(ApplicationDbContext db, MemberOnboarding o, Member member, CancellationToken ct)
+    {
         if (o.EmiratesIdNumber is null && o.EmiratesIdBlobId is null) return;
 
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var existing = await db.MemberDocuments.AsNoTracking()
             .FirstOrDefaultAsync(d => d.MemberId == member.Id && d.Kind == MemberDocumentKind.EmiratesId, ct);
 
@@ -349,6 +460,141 @@ public class MemberOnboardingService(
             OriginalFileName = o.EmiratesIdBlobId is null ? null : "Emirates ID (from onboarding)",
             UploadedAtUtc = DateTime.UtcNow,
         });
+    }
+
+    /// <summary>Puts the DFM details into My Workspace.
+    ///
+    /// This was missing, and the omission was invisible from the code: onboarding wrote the
+    /// Emirates ID and nothing else, so a member who confirmed their NIN in step 2 finished the
+    /// flow, opened My Workspace and found the investor panel empty. Nothing had gone wrong that
+    /// anything reported -- the answer simply had nowhere to land -- so it read as the system
+    /// having lost it, which is the worst way for a one-time flow to fail.
+    ///
+    /// Fills blanks only, like the Emirates ID half: a member who has already filled this panel in
+    /// themselves has the version they meant, and onboarding has no business preferring its
+    /// own.</summary>
+    private async Task SeedDfmProfileAsync(ApplicationDbContext db, MemberOnboarding o, Member member, CancellationToken ct)
+    {
+        // "I do not have a NIN" is an answer worth keeping on the onboarding record, but it is not
+        // an investor profile: writing a row of blanks would show a DFM registration in My
+        // Workspace for a member who has just said they have none.
+        if (string.IsNullOrWhiteSpace(o.NinNumber)) return;
+
+        var profile = await db.MemberDfmProfiles.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.MemberId == member.Id, ct)
+            ?? new MemberDfmProfile { MemberId = member.Id };
+
+        var changed = false;
+
+        if (string.IsNullOrWhiteSpace(profile.InvestorNumber))
+        {
+            profile.InvestorNumber = o.NinNumber.Trim(); changed = true;
+        }
+
+        // The name the exchange has, where onboarding captured one, and the name on the Emirates
+        // ID otherwise. Both are the member's legal name; neither is the directory's spelling,
+        // which is why this is not taken from Member.FullName.
+        var name = FirstNonBlank(o.NinRegisteredName, o.EmiratesIdHolderName);
+        if (string.IsNullOrWhiteSpace(profile.FullName) && name is not null)
+        {
+            profile.FullName = name; changed = true;
+        }
+
+        // Only a spelling the list offers. Nationality is a <select> in My Workspace, so a value
+        // that is not one of the options renders as "nothing chosen" and would be written back as
+        // blank the first time the member saved the panel for any other reason.
+        if (string.IsNullOrWhiteSpace(profile.Nationality)
+            && o.EmiratesIdNationality is { Length: > 0 } nationality
+            && Countries.All.FirstOrDefault(c => string.Equals(c, nationality.Trim(), StringComparison.OrdinalIgnoreCase)) is { } known)
+        {
+            profile.Nationality = known; changed = true;
+        }
+
+        if (string.IsNullOrWhiteSpace(profile.EmailAddress) && !string.IsNullOrWhiteSpace(member.Email))
+        {
+            profile.EmailAddress = member.Email; changed = true;
+        }
+
+        if (changed) await dfmWriter.SaveAsync(profile);
+    }
+
+    private static string? FirstNonBlank(params string?[] values) =>
+        values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))?.Trim();
+
+    /// <summary>Puts the member back at the start.
+    ///
+    /// The record is cleared rather than deleted: its id is what the audit entries for the
+    /// previous run point at, and removing the row would leave that history pointing at nothing.
+    /// The reference data is deliberately not copied back in here -- GetOrCreateAsync fills it on
+    /// the way in, so a restart picks up whatever is on file now rather than what was on file when
+    /// they first went through.</summary>
+    public async Task RestartAsync(int memberId, string actorName, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+
+        var member = await db.Members.AsNoTracking().FirstOrDefaultAsync(m => m.Id == memberId, ct)
+            ?? throw new InvalidOperationException($"There is no member {memberId} to restart onboarding for.");
+
+        var existing = await db.MemberOnboardings.AsNoTracking()
+            .FirstOrDefaultAsync(o => o.MemberId == memberId, ct);
+
+        if (existing is not null)
+        {
+            Clear(existing);
+            await writer.UpdateAsync(existing);
+        }
+
+        // The flag is what the gate actually reads. Clearing the record without setting it would
+        // reset everything and then never ask the member anything.
+        if (!member.OnboardingRequired)
+        {
+            member.OnboardingRequired = true;
+            await memberWriter.UpdateAsync(member);
+        }
+
+        await auditLog.LogAsync(actorName, AuditAction.Update, nameof(MemberOnboarding),
+            existing?.Id.ToString() ?? memberId.ToString(),
+            $"Restarted onboarding for {member.FullName}; they will be asked for their details again from the beginning.");
+    }
+
+    /// <summary>Back to the state a record that has never been started is in. Field by field
+    /// rather than by replacing the object, because the row keeps its id.</summary>
+    private static void Clear(MemberOnboarding o)
+    {
+        o.Status = OnboardingStatus.Pending;
+        o.StartedAtUtc = null;
+        o.CompletedAtUtc = null;
+
+        o.EmiratesIdStatus = EmiratesIdOnboardingStatus.NotAvailable;
+        o.EmiratesIdSource = OnboardingSource.None;
+        o.EmiratesIdNumber = null;
+        o.EmiratesIdHolderName = null;
+        o.EmiratesIdHolderNameArabic = null;
+        o.EmiratesIdNationality = null;
+        o.EmiratesIdExpiryDate = null;
+        o.EmiratesIdConfirmedAtUtc = null;
+        o.EmiratesIdReportedIssue = null;
+        o.EmiratesIdReportedAtUtc = null;
+
+        // Only the link is dropped. The file itself stays in DocumentBlobs, and anything already
+        // copied into My Workspace keeps pointing at it: a restart re-asks the questions, it does
+        // not throw away the member's documents.
+        o.EmiratesIdBlobId = null;
+        o.EmiratesIdVerifiedAtUtc = null;
+        o.EmiratesIdVerifiedByName = null;
+
+        o.DfmStatus = DfmOnboardingStatus.NotAvailable;
+        o.DfmSource = OnboardingSource.None;
+        o.NinResponse = NinResponse.NotAsked;
+        o.NinNumber = null;
+        o.NinRegisteredName = null;
+        o.DfmOtherInformation = null;
+        o.DfmConfirmedAtUtc = null;
+        o.DfmReportedIssue = null;
+        o.DfmReportedAtUtc = null;
+        o.NinDocumentBlobId = null;
+        o.DfmVerifiedAtUtc = null;
+        o.DfmVerifiedByName = null;
     }
 
     private Task LogAsync(string actorName, MemberOnboarding o, string detail, CancellationToken ct) =>

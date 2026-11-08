@@ -65,6 +65,12 @@ public partial class UserManagement
     private bool _bulkRpRegister;
     private bool _bulkRpTransactions;
     private Member? _printSingleRecord;
+
+    /// <summary>The member an administrator is about to restart onboarding for. Confirmed first:
+    /// it clears answers the member gave and cannot be undone from this screen.</summary>
+    private Member? _restarting;
+    private bool _restartBusy;
+    private string? _restartNote;
     private bool _syncing;
     private bool _showUpload;
     private bool _importing;
@@ -636,6 +642,38 @@ public partial class UserManagement
         _bulkInsider = _bulkCoi = _bulkRpRegister = _bulkRpTransactions = false;
         _selectedIds.Clear();
         await LoadAsync();
+    }
+
+    /// <summary>Puts a member back to the start of onboarding.
+    ///
+    /// Here rather than only as a SQL script because it is an ordinary administrative act -- a
+    /// member whose card was replaced, or who was walked through it with the wrong details on
+    /// file -- and asking an administrator for a database session to do it means it does not get
+    /// done, or gets done with the flag and the record out of step.</summary>
+    private async Task RestartOnboardingAsync()
+    {
+        if (_restarting is null || _restartBusy) return;
+
+        _restartBusy = true;
+        _restartNote = null;
+        var member = _restarting;
+        try
+        {
+            await Onboarding.RestartAsync(member.Id, await CurrentActorAsync());
+            Toasts.ShowSuccess($"{member.FullName} will be asked to onboard again.");
+            _restarting = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            // Kept on the dialog rather than thrown: the administrator is standing in front of a
+            // question they just answered, and a crash page loses which member it was about.
+            _restartNote = $"That could not be done: {ex.Message}";
+        }
+        finally
+        {
+            _restartBusy = false;
+        }
     }
 
     /// <summary>Switches every selected member active or inactive.

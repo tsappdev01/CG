@@ -40,11 +40,18 @@ public partial class Onboarding
     private MemberOnboarding? _record;
     private OnboardingStep _step = OnboardingStep.Welcome;
 
-    private bool _reportingEmiratesId;
-    private bool _reportingDfm;
-    private string _issueText = string.Empty;
+    private bool _editingEmiratesId;
+    private bool _editingDfm;
+
+    /// <summary>What the member was shown before they started editing. Kept so cancelling puts
+    /// the screen back, and so saving can record which fields actually moved -- the inputs bind
+    /// straight onto the record, so by the time they press save the original is gone.</summary>
+    private EmiratesIdValues? _emiratesIdBefore;
+    private DfmValues? _dfmBefore;
+
     private bool? _hasNin;
     private string? _captureNote;
+    private string? _editNote;
 
     /// <summary>The member may continue once there is a card and a number against it. The expiry
     /// is asked for but not insisted on: a member who cannot read it off a worn card should not be
@@ -108,11 +115,42 @@ public partial class Onboarding
         await Flow.ConfirmEmiratesIdAsync(_record!, await ActorAsync());
     });
 
-    private Task ReportEmiratesIdAsync() => RunAsync(async () =>
+    private void BeginEditEmiratesId()
     {
-        await Flow.ReportEmiratesIdIssueAsync(_record!, _issueText.Trim(), await ActorAsync());
-        _reportingEmiratesId = false;
-        _issueText = string.Empty;
+        _emiratesIdBefore = EmiratesIdValues.From(_record!);
+        _editNote = null;
+        _editingEmiratesId = true;
+    }
+
+    /// <summary>Puts back what was on the screen before. The inputs write straight onto the
+    /// record, so leaving the edit without this would keep half-typed values on a screen that
+    /// says they are the details we hold.</summary>
+    private void CancelEmiratesIdEdit()
+    {
+        if (_emiratesIdBefore is { } before)
+        {
+            _record!.EmiratesIdNumber = before.Number;
+            _record.EmiratesIdHolderName = before.HolderName;
+            _record.EmiratesIdNationality = before.Nationality;
+            _record.EmiratesIdExpiryDate = before.Expiry;
+        }
+
+        _editNote = null;
+        _editingEmiratesId = false;
+    }
+
+    private Task SaveEmiratesIdAsync() => RunAsync(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(_record!.EmiratesIdNumber))
+        {
+            _editNote = "Please give your Emirates ID number.";
+            return;
+        }
+
+        _editNote = null;
+        await Flow.CorrectEmiratesIdAsync(_record, _emiratesIdBefore!, await ActorAsync());
+        _editingEmiratesId = false;
+        _emiratesIdBefore = null;
     });
 
     private Task SubmitEmiratesIdAsync() => RunAsync(async () =>
@@ -125,11 +163,40 @@ public partial class Onboarding
         await Flow.ConfirmDfmAsync(_record!, await ActorAsync());
     });
 
-    private Task ReportDfmAsync() => RunAsync(async () =>
+    private void BeginEditDfm()
     {
-        await Flow.ReportDfmIssueAsync(_record!, _issueText.Trim(), await ActorAsync());
-        _reportingDfm = false;
-        _issueText = string.Empty;
+        _dfmBefore = DfmValues.From(_record!);
+        _editNote = null;
+        _editingDfm = true;
+    }
+
+    private void CancelDfmEdit()
+    {
+        if (_dfmBefore is { } before)
+        {
+            _record!.NinNumber = before.Nin;
+            _record.NinRegisteredName = before.RegisteredName;
+        }
+
+        _editNote = null;
+        _editingDfm = false;
+    }
+
+    private Task SaveDfmAsync() => RunAsync(async () =>
+    {
+        // The same rule My Workspace and the declarations apply, so a NIN that is good here is
+        // good there -- a member should not get past onboarding with one that the next screen
+        // they see will reject.
+        if (!Nin.IsValid(_record!.NinNumber))
+        {
+            _editNote = $"A NIN is {Nin.Length} letters or digits. Please check it.";
+            return;
+        }
+
+        _editNote = null;
+        await Flow.CorrectDfmAsync(_record, _dfmBefore!, await ActorAsync());
+        _editingDfm = false;
+        _dfmBefore = null;
     });
 
     private Task SubmitNinAsync() => RunAsync(async () =>

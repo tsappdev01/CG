@@ -43,11 +43,17 @@ public interface IDocumentAccess
 /// document is delivered through one endpoint, the question is asked once, here, for all 21 places
 /// a document can be attached.
 ///
-/// The lookup is a union over those 21 columns rather than a column on DocumentBlobs saying who
-/// owns it. A column would have to be written correctly by 22 upload paths and would be wrong the
-/// first time one of them forgot; the union is derived from the references that actually exist, so
-/// it cannot disagree with them. It is one indexed read, on the path that is about to stream a
-/// file, so the cost is not worth trading for that risk.</summary>
+/// The lookup is a union over every blob reference in the model rather than a column on
+/// DocumentBlobs saying who owns it. A column would have to be written correctly by every upload
+/// path and would be wrong the first time one of them forgot; the union is derived from the
+/// references that actually exist, so it cannot disagree with them. It is one indexed read, on the
+/// path that is about to stream a file, so the cost is not worth trading for that risk.
+///
+/// What it does cost is this: a new place to attach a document is a new line here, and forgetting
+/// it makes that document unreadable rather than over-readable. That has already happened once --
+/// onboarding added three attachment points and this was not updated, so a member pressing "open
+/// it" on their own Emirates ID got a 404. Fails closed, which is the right direction, but add the
+/// line when you add the column.</summary>
 public class DocumentAccess(ApplicationDbContext db) : IDocumentAccess
 {
     // Every blob reference in the model, resolved back to the member it belongs to. Two hops at
@@ -89,6 +95,15 @@ public class DocumentAccess(ApplicationDbContext db) : IDocumentAccess
             SELECT t.MemberId FROM dbo.RelatedPartyTransactionDocuments doc
                 JOIN dbo.RelatedPartyTransactions t ON t.Id = doc.RelatedPartyTransactionId
                 WHERE doc.BlobId = @BlobId
+            UNION ALL
+            SELECT MemberId FROM dbo.MemberOnboardings
+                WHERE EmiratesIdBlobId = @BlobId OR NinDocumentBlobId = @BlobId
+            UNION ALL
+            -- The identity reference is keyed on email rather than member id: it is loaded from a
+            -- spreadsheet that knows addresses, not this system's keys.
+            SELECT m.Id FROM dbo.MemberIdentityReferences r
+                JOIN dbo.Members m ON m.Email = r.Email
+                WHERE r.EmiratesIdBlobId = @BlobId
         ) owners
         """;
 

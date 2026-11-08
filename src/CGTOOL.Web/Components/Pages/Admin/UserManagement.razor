@@ -16,6 +16,7 @@
 @inject IDirectoryImporter DirectoryImporter
 @inject Branding Branding
 @inject IMemberWelcomeEmailSender WelcomeEmailSender
+@inject IMemberOnboardingService Onboarding
 
 <PageTitle>User Management</PageTitle>
 
@@ -234,10 +235,37 @@
             }
         </div>
 
+        @if (_restarting is not null)
+        {
+            <div class="cg-modal-backdrop" @onclick="() => _restarting = null"></div>
+            <div class="cg-modal cg-confirm-modal" role="alertdialog" aria-modal="true">
+                <div class="cg-modal-body">
+                    <h3>Restart onboarding for @_restarting.FullName?</h3>
+                    <p>
+                        They are asked for their Emirates ID and DFM details again from the beginning,
+                        and whatever they answered last time is cleared.
+                    </p>
+                    <p class="cg-hint">
+                        Their documents are not deleted, and anything already copied into their
+                        My&nbsp;Workspace stays as it is. They are asked again the next time they follow
+                        a declaration link.
+                    </p>
+                    @if (_restartNote is not null) { <p class="cg-error">@_restartNote</p> }
+                </div>
+                <div class="cg-modal-foot">
+                    <button type="button" class="cg-action-btn" disabled="@_restartBusy" @onclick="() => _restarting = null">Cancel</button>
+                    <button type="button" class="cg-action-btn cg-critical" disabled="@_restartBusy" @onclick="RestartOnboardingAsync">
+                        Restart onboarding
+                    </button>
+                </div>
+            </div>
+        }
+
         @if (_bulkNotify)
         {
-            <div class="cg-print-overlay">
-                <div class="cg-confirm-modal">
+            <div class="cg-modal-backdrop"></div>
+            <div class="cg-modal cg-confirm-modal" role="alertdialog" aria-modal="true">
+                <div class="cg-modal-body">
                     <h3>Email @_notifiable.Count of these @_selectedIds.Count people?</h3>
                     <p>
                         They are sent the link to submit their declarations. This is the same email a
@@ -260,23 +288,24 @@
                         <p class="cg-hint">@_notifyProgress</p>
                     }
 
-                    <div class="cg-actions">
-                        <button type="button" class="cg-action-btn cg-good"
-                                disabled="@(_notifying || _notifiable.Count == 0)" @onclick="BulkNotifyAsync">
-                            Send @_notifiable.Count email(s)
-                        </button>
-                        <button type="button" class="cg-action-btn" disabled="@_notifying" @onclick="() => _bulkNotify = false">
-                            Cancel
-                        </button>
-                    </div>
+                </div>
+                <div class="cg-modal-foot">
+                    <button type="button" class="cg-action-btn" disabled="@_notifying" @onclick="() => _bulkNotify = false">
+                        Cancel
+                    </button>
+                    <button type="button" class="cg-action-btn cg-good"
+                            disabled="@(_notifying || _notifiable.Count == 0)" @onclick="BulkNotifyAsync">
+                        Send @_notifiable.Count email(s)
+                    </button>
                 </div>
             </div>
         }
 
         @if (_bulkDeclarations)
         {
-            <div class="cg-print-overlay">
-                <div class="cg-confirm-modal">
+            <div class="cg-modal-backdrop"></div>
+            <div class="cg-modal cg-confirm-modal" role="alertdialog" aria-modal="true">
+                <div class="cg-modal-body">
                     <h3>What should these @_selectedIds.Count people declare?</h3>
                     <p>
                         Ticking a box turns that declaration on for all of them. Leaving one unticked
@@ -302,14 +331,14 @@
                         follow the link.
                     </p>
 
-                    <div class="cg-actions">
-                        <button type="button" class="cg-action-btn cg-good"
-                                disabled="@(!_bulkInsider && !_bulkCoi && !_bulkRpRegister && !_bulkRpTransactions)"
-                                @onclick="BulkSetDeclarationsAsync">
-                            Apply to @_selectedIds.Count selected
-                        </button>
-                        <button type="button" class="cg-action-btn" @onclick="() => _bulkDeclarations = false">Cancel</button>
-                    </div>
+                </div>
+                <div class="cg-modal-foot">
+                    <button type="button" class="cg-action-btn" @onclick="() => _bulkDeclarations = false">Cancel</button>
+                    <button type="button" class="cg-action-btn cg-good"
+                            disabled="@(!_bulkInsider && !_bulkCoi && !_bulkRpRegister && !_bulkRpTransactions)"
+                            @onclick="BulkSetDeclarationsAsync">
+                        Apply to @_selectedIds.Count selected
+                    </button>
                 </div>
             </div>
         }
@@ -397,6 +426,7 @@
                                         <button type="button" class="cg-icon-btn" title="Edit @m.FullName" @onclick="() => Edit(m)"><span class="cg-ico cg-ico-pencil" aria-hidden="true"></span></button>
                                         <button type="button" class="cg-icon-btn" title="View @m.FullName" @onclick="() => Edit(m)"><span class="cg-ico cg-ico-eye" aria-hidden="true"></span></button>
                                         <button type="button" class="cg-icon-btn" title="Print preview" @onclick="() => _printSingleRecord = m"><span class="cg-ico cg-ico-print" aria-hidden="true"></span></button>
+                                        <button type="button" class="cg-icon-btn" title="Restart onboarding for @m.FullName" @onclick="() => _restarting = m"><span class="cg-ico cg-ico-restart" aria-hidden="true"></span></button>
                                     </span>
                                 </td>
                             </tr>

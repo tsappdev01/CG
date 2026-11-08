@@ -113,18 +113,19 @@
 
         @if (_pendingRemoval is not null)
         {
-            <div class="cg-print-overlay">
-                <div class="cg-confirm-modal">
+            <div class="cg-modal-backdrop" @onclick="() => _pendingRemoval = null"></div>
+            <div class="cg-modal cg-confirm-modal" role="alertdialog" aria-modal="true">
+                <div class="cg-modal-body">
                     <h3>Remove “@EffectiveLabel(_pendingRemoval)” from the menu?</h3>
                     <p>
                         It disappears from the left-hand nav for everyone, immediately. Anything under it
                         goes too. Nothing is deleted — the pages still exist and anyone with the address
                         can still open them, and you can put it back from this screen at any time.
                     </p>
-                    <div class="cg-actions">
-                        <button type="button" class="cg-action-btn cg-critical" @onclick="ConfirmRemovalAsync">Remove from menu</button>
-                        <button type="button" class="cg-action-btn" @onclick="() => _pendingRemoval = null">Cancel</button>
-                    </div>
+                </div>
+                <div class="cg-modal-foot">
+                    <button type="button" class="cg-action-btn" @onclick="() => _pendingRemoval = null">Cancel</button>
+                    <button type="button" class="cg-action-btn cg-critical" @onclick="ConfirmRemovalAsync">Remove from menu</button>
                 </div>
             </div>
         }

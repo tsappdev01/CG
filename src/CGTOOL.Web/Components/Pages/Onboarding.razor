@@ -68,7 +68,7 @@ else
             </div>
             break;
 
-        case OnboardingStep.EmiratesId when _record!.EmiratesIdSource == OnboardingSource.Reference && !_reportingEmiratesId:
+        case OnboardingStep.EmiratesId when _record!.EmiratesIdSource == OnboardingSource.Reference && !_editingEmiratesId:
             <h2>Step 1 — Check your Emirates ID</h2>
             <p>Please check these details and confirm they are correct.</p>
 
@@ -105,29 +105,61 @@ else
                 <button type="button" class="cg-action-btn cg-good" disabled="@_busy" @onclick="ConfirmEmiratesIdAsync">
                     Yes, confirm
                 </button>
-                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="() => _reportingEmiratesId = true">
-                    No, report a problem
+                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="BeginEditEmiratesId">
+                    No, I need to change it
                 </button>
             </div>
             break;
 
-        case OnboardingStep.EmiratesId when _reportingEmiratesId:
-            <h2>What is wrong with it?</h2>
+        case OnboardingStep.EmiratesId when _editingEmiratesId:
+            <h2>Correct your Emirates ID</h2>
             <p>
-                Tell us what is incorrect and we will have it checked. Nothing you write here
-                changes the record — it is passed on for someone to look at.
+                Change whatever is wrong and continue. What you enter is recorded as yours and
+                marked for checking; what we held before is kept alongside it.
             </p>
+
+            @if (_record.EmiratesIdBlobId is int editBlob)
+            {
+                <div class="cg-onboarding-source">
+                    <span>📄</span>
+                    <div>
+                        <strong>The copy we hold</strong><br />
+                        <a href="@DocumentUrl.For(editBlob, null)" target="_blank" rel="noopener">Open it</a>
+                    </div>
+                </div>
+            }
+
             <label class="cg-field">
-                <span>What should it say?</span>
-                <textarea class="cg-input" rows="4" maxlength="1000" @bind="_issueText"></textarea>
+                <span>Name on the card</span>
+                <input class="cg-input" maxlength="200" @bind="_record.EmiratesIdHolderName" />
             </label>
+            <label class="cg-field">
+                <span>Emirates ID number</span>
+                <input class="cg-input" maxlength="100" @bind="_record.EmiratesIdNumber" />
+            </label>
+            <label class="cg-field">
+                <span>Nationality</span>
+                <select class="cg-input" @bind="_record.EmiratesIdNationality">
+                    <option value="">—</option>
+                    @foreach (var country in Countries.All)
+                    {
+                        <option value="@country">@country</option>
+                    }
+                </select>
+            </label>
+            <label class="cg-field">
+                <span>Expiry date</span>
+                <input type="date" class="cg-input" @bind="_record.EmiratesIdExpiryDate" />
+            </label>
+
+            @if (_editNote is not null) { <p class="cg-error">@_editNote</p> }
+
             <div class="cg-onboarding-actions">
-                <button type="button" class="cg-action-btn cg-good" disabled="@(_busy || string.IsNullOrWhiteSpace(_issueText))"
-                        @onclick="ReportEmiratesIdAsync">
-                    Send and continue
+                <button type="button" class="cg-action-btn cg-good" disabled="@_busy" @onclick="SaveEmiratesIdAsync">
+                    Save and continue
                 </button>
-                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="() => _reportingEmiratesId = false">
-                    Back
+                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="CancelEmiratesIdEdit">
+                    Cancel
                 </button>
             </div>
             break;
@@ -177,7 +209,7 @@ else
             </p>
             break;
 
-        case OnboardingStep.Dfm when _record!.DfmSource == OnboardingSource.Reference && !_reportingDfm:
+        case OnboardingStep.Dfm when _record!.DfmSource == OnboardingSource.Reference && !_editingDfm:
             <h2>Step 2 — Check your DFM details</h2>
             <p>Please check your Dubai Financial Market registration details.</p>
 
@@ -193,26 +225,36 @@ else
                 <button type="button" class="cg-action-btn cg-good" disabled="@_busy" @onclick="ConfirmDfmAsync">
                     Yes, confirm
                 </button>
-                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="() => _reportingDfm = true">
-                    No, report a problem
+                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="BeginEditDfm">
+                    No, I need to change it
                 </button>
             </div>
             break;
 
-        case OnboardingStep.Dfm when _reportingDfm:
-            <h2>What is wrong with it?</h2>
-            <p>Tell us what is incorrect. The record is not changed from here.</p>
+        case OnboardingStep.Dfm when _editingDfm:
+            <h2>Correct your DFM details</h2>
+            <p>
+                Change whatever is wrong and continue. What you enter is recorded as yours and
+                marked for checking.
+            </p>
+
             <label class="cg-field">
-                <span>What should it say?</span>
-                <textarea class="cg-input" rows="4" maxlength="1000" @bind="_issueText"></textarea>
+                <span>National Investor Number (NIN)</span>
+                <input class="cg-input" maxlength="100" placeholder="10 letters or digits" @bind="_record.NinNumber" />
             </label>
+            <label class="cg-field">
+                <span>Registered name with DFM</span>
+                <input class="cg-input" maxlength="200" @bind="_record.NinRegisteredName" />
+            </label>
+
+            @if (_editNote is not null) { <p class="cg-error">@_editNote</p> }
+
             <div class="cg-onboarding-actions">
-                <button type="button" class="cg-action-btn cg-good" disabled="@(_busy || string.IsNullOrWhiteSpace(_issueText))"
-                        @onclick="ReportDfmAsync">
-                    Send and continue
+                <button type="button" class="cg-action-btn cg-good" disabled="@_busy" @onclick="SaveDfmAsync">
+                    Save and continue
                 </button>
-                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="() => _reportingDfm = false">
-                    Back
+                <button type="button" class="cg-action-btn" disabled="@_busy" @onclick="CancelDfmEdit">
+                    Cancel
                 </button>
             </div>
             break;

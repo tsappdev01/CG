@@ -180,7 +180,7 @@ public partial class RelatedPartyRegister
     };
 
     private static string RelationshipLabel(RelativeRelationship relationship) =>
-        RelativeRelationships.Label(relationship);
+        RelativeRelationships.CoiLabel(relationship);
 
 
     private List<int> AvailableYears() => (_rows ?? [])

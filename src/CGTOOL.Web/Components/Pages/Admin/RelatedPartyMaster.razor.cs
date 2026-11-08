@@ -211,7 +211,7 @@ public partial class RelatedPartyMaster
     }
 
     private static string RelationshipLabel(RelativeRelationship relationship) =>
-        RelativeRelationships.Label(relationship);
+        RelativeRelationships.CoiLabel(relationship);
 
     public static string HoldingLabel(RelatedPartyHoldingNature? nature) =>
         nature is null or RelatedPartyHoldingNature.None ? "—" : nature.ToString()!;

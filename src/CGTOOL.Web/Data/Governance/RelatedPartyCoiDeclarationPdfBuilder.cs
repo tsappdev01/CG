@@ -167,5 +167,5 @@ public static class RelatedPartyCoiDeclarationPdfBuilder
     }
 
     private static string RelationshipLabel(RelativeRelationship relationship) =>
-        RelativeRelationships.Label(relationship);
+        RelativeRelationships.CoiLabel(relationship);
 }

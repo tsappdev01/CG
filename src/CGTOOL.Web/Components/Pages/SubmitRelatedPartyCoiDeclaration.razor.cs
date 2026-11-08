@@ -336,7 +336,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private const int MaxDocumentsPerRow = 10;
 
     private static readonly (RelativeRelationship Value, string Label)[] RelativeOptions =
-        RelativeRelationships.Options;
+        RelativeRelationships.CoiOptions;
 
     // Public (not private): CompanyRowEditor.razor, a sibling component that renders one I.B/I.C/I.D
     // row, binds directly to these types.
@@ -2217,7 +2217,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     }
 
     private static string RelationshipLabel(RelativeRelationship relationship) =>
-        RelativeRelationships.Label(relationship);
+        RelativeRelationships.CoiLabel(relationship);
 
     private string? RelativeName(Guid? key) => key is null ? null : _relatives.FirstOrDefault(r => r.Key == key)?.Name;
 }

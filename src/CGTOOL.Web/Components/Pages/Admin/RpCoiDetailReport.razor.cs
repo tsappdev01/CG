@@ -243,7 +243,7 @@ public partial class RpCoiDetailReport
     };
 
     private static string RelationshipLabel(RelativeRelationship relationship) =>
-        RelativeRelationships.Label(relationship);
+        RelativeRelationships.CoiLabel(relationship);
 
     private string FilterStatement()
     {

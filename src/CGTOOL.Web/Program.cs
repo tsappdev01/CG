@@ -176,6 +176,7 @@ builder.Services.AddScoped<IMemberIdentityLookup, MemberIdentityLookup>();
 builder.Services.AddScoped<IMemberIdentityImporter, MemberIdentityImporter>();
 builder.Services.AddScoped<IEmiratesIdBulkAttach, EmiratesIdBulkAttach>();
 builder.Services.AddScoped<IMemberOnboardingService, MemberOnboardingService>();
+builder.Services.AddScoped<IReportAudience, ReportAudience>();
 builder.Services.AddScoped<IDocumentBackfill, DocumentBackfill>();
 
 // Whether a stored document is encrypted. Off by default, which stores the file as uploaded and

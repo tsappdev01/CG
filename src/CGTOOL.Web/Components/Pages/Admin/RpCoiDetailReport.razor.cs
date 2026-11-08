@@ -17,6 +17,7 @@ public partial class RpCoiDetailReport
 {
     [Inject] private IDbContextFactory<ApplicationDbContext> DbFactory { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthState { get; set; } = default!;
+    [Inject] private IReportAudience Audience { get; set; } = default!;
     [Inject] private IDocumentStore DocumentStore { get; set; } = default!;
 
     private List<DeclarationSubmissionRow<RelatedPartyCoiDeclaration>>? _rows;
@@ -62,7 +63,8 @@ public partial class RpCoiDetailReport
         _preparedBy = state.User.Identity?.Name ?? "unknown";
 
         await using var db = await DbFactory.CreateDbContextAsync();
-        _rows = await DeclarationSubmissionSource.RelatedPartyCoiAsync(db);
+        _rows = (await DeclarationSubmissionSource.RelatedPartyCoiAsync(db))
+            .LimitTo(await Audience.VisibleMemberIdsAsync(state.User), r => r.MemberId);
         await LoadSignatureImagesAsync();
         _companies = await db.Companies.AsNoTracking().OrderBy(c => c.Name).ToListAsync();
 

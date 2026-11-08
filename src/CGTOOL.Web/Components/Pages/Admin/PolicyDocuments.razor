@@ -1,5 +1,5 @@
 @page "/admin/policy-documents"
-@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@attribute [Authorize(Roles = GovernanceRoles.AnyAdministrator)]
 @rendermode InteractiveServer
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IPolicyDocumentVersionWriter VersionWriter

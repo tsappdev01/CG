@@ -16,6 +16,7 @@ public partial class InsiderSubmissionReport
 {
     [Inject] private IDbContextFactory<ApplicationDbContext> DbFactory { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthState { get; set; } = default!;
+    [Inject] private IReportAudience Audience { get; set; } = default!;
 
     /// <summary>One row per member who was actually sent a notification for a cycle. Declaration is
     /// null until they submit, which is how the report shows everyone who was required to declare
@@ -94,7 +95,7 @@ public partial class InsiderSubmissionReport
             };
         })
         .OrderBy(r => r.CompanyName).ThenBy(r => r.MemberName)
-        .ToList();
+        .LimitTo(await Audience.VisibleMemberIdsAsync(state.User), r => r.MemberId);
 
         _companies = await db.Companies.AsNoTracking().OrderBy(c => c.Name).ToListAsync();
 

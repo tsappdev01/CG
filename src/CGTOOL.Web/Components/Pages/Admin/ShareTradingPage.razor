@@ -1,5 +1,5 @@
 @page "/admin/investor-relations/share-trading"
-@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@attribute [Authorize(Roles = GovernanceRoles.AnyAdministrator)]
 @rendermode InteractiveServer
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IShareTradingWriter Writer

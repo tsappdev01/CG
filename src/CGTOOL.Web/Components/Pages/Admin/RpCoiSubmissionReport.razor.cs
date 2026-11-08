@@ -17,6 +17,7 @@ public partial class RpCoiSubmissionReport
 {
     [Inject] private IDbContextFactory<ApplicationDbContext> DbFactory { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthState { get; set; } = default!;
+    [Inject] private IReportAudience Audience { get; set; } = default!;
 
     private List<DeclarationSubmissionRow<RelatedPartyCoiDeclaration>>? _rows;
     private List<Company>? _companies;
@@ -34,7 +35,8 @@ public partial class RpCoiSubmissionReport
         _preparedBy = state.User.Identity?.Name ?? "unknown";
 
         await using var db = await DbFactory.CreateDbContextAsync();
-        _rows = await DeclarationSubmissionSource.RelatedPartyCoiAsync(db);
+        _rows = (await DeclarationSubmissionSource.RelatedPartyCoiAsync(db))
+            .LimitTo(await Audience.VisibleMemberIdsAsync(state.User), r => r.MemberId);
         _companies = await db.Companies.AsNoTracking().OrderBy(c => c.Name).ToListAsync();
 
         var newest = _rows.OrderByDescending(r => r.Year).ThenByDescending(r => r.Quarter).FirstOrDefault();

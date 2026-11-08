@@ -1,5 +1,5 @@
 @page "/reports/related-party-master"
-@attribute [Authorize(Roles = GovernanceRoles.Administrator)]
+@attribute [Authorize(Roles = GovernanceRoles.AnyAdministrator)]
 @rendermode InteractiveServer
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 

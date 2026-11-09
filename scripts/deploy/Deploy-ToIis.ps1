@@ -10,14 +10,15 @@
                         They are uploaded by users, exist only on this server, and are gitignored,
                         so a plain /MIR would delete every one of them on the first deploy.
 
-      the policy document
-                        wwwroot\assets\policy.pdf is the live Securities Dealing Policy, replaced
-                        by an administrator through Policy Documents, and policy-backups holds the
-                        copy taken each time it is replaced. A copy of policy.pdf is committed so
-                        a brand-new site has one, which meant every deploy put that committed copy
-                        back over whatever had been uploaded since -- silently, because the link
-                        still worked and only the contents were a year out of date. The backups
-                        are only ever written on the server, so /MIR would delete them outright.
+      wwwroot\assets    The live Securities Dealing Policy and the backups taken each time it is
+                        replaced. Written by an administrator through Policy Documents and never
+                        by the build -- the project excludes them from publish -- so the whole
+                        folder is the server's.
+
+                        The folder rather than the two files: with nothing left in the published
+                        output under assets, /MIR would otherwise look at a directory the source
+                        no longer has and tidy it away. Excluding the directory says plainly that
+                        it is not the build's to manage.
 
       appsettings.json  The server's copy holds the real connection string and the Entra client
                         secret. The repository's copy has empty placeholders, so copying it over
@@ -38,7 +39,7 @@ param(
     [int] $RequiredRuntimeMajor = 10,
     # Files the server owns. They are never copied over and never deleted, so whatever is on the
     # server stays there. Add to this list rather than editing the logic below.
-    [string[]] $PreserveFiles = @('appsettings.json', 'appsettings.Development.json', 'wwwroot\assets\policy.pdf'),
+    [string[]] $PreserveFiles = @('appsettings.json', 'appsettings.Development.json'),
     [switch] $OverwriteAppSettings
 )
 
@@ -85,7 +86,7 @@ else {
 
 $excludeDirs  = @(
     (Join-Path $SitePath 'wwwroot\uploads'),
-    (Join-Path $SitePath 'wwwroot\assets\policy-backups')
+    (Join-Path $SitePath 'wwwroot\assets')
 )
 $excludeFiles = @()
 # Each is excluded only when the server already HAS it. On a brand-new site folder there is
@@ -100,7 +101,11 @@ foreach ($name in $PreserveFiles) {
 
     $destination = Join-Path $SitePath $name
     if (Test-Path $destination) {
+        # Both paths. The one in the site folder stops /MIR deleting it; the one in the publish
+        # output stops the build's copy being written over it. Naming only the first -- which is
+        # what this did -- left the server's file in place right up until robocopy overwrote it.
         $excludeFiles += $destination
+        $excludeFiles += (Join-Path $PublishPath $name)
     }
     elseif ($name -like 'appsettings*') {
         Write-Host "No $name on the server yet, so the build's copy is being deployed if it has one." `

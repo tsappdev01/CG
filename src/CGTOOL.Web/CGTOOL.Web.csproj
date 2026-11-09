@@ -8,6 +8,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The live policy document and the backups taken each time it is replaced are the server's,
+         not the build's. They are written by an administrator through Policy Documents, and a
+         copy of policy.pdf is committed only so the repository carries one.
+
+         Published, that committed copy went out with every deploy and robocopy wrote it straight
+         over whatever had been uploaded since. Excluding it in the deploy script was not enough:
+         /XF there names the file in the SITE folder, which stops /MIR deleting it but not the
+         copy coming the other way. Nothing can overwrite a file the build does not contain. -->
+    <Content Remove="wwwroot\assets\policy.pdf" />
+    <Content Remove="wwwroot\assets\policy-backups\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Azure.AI.DocumentIntelligence" Version="1.0.0" />
     <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="ExcelDataReader" Version="3.9.0" />

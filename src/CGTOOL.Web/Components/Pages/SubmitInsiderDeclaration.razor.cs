@@ -225,7 +225,6 @@ public partial class SubmitInsiderDeclaration
 
     private const long MaxIdUploadBytes = UploadLimits.DocumentBytes;
 
-    private bool _pendingCapture1Confirm;
     private bool _savingDraft;
     private bool _agreeConfirmed;
 
@@ -1895,9 +1894,7 @@ public partial class SubmitInsiderDeclaration
             }
         }
 
-        // Give the declarant a last chance to go back and correct anything before moving on --
-        // ConfirmCapture2 is what actually advances to Screen 2.
-        _pendingCapture1Confirm = true;
+        await ConfirmCapture1Async();
     }
 
     /// <summary>Grid rows that no relative in My Workspace matches, by NIN or by name. Either way of
@@ -1930,7 +1927,7 @@ public partial class SubmitInsiderDeclaration
     {
         _offerWorkspaceSave = false;
         _newToWorkspace.Clear();
-        _pendingCapture1Confirm = true;
+        _ = ConfirmCapture1Async();
     }
 
     /// <summary>Writes the new rows into My Workspace as related parties, then carries on to the
@@ -1939,7 +1936,7 @@ public partial class SubmitInsiderDeclaration
     private async Task AcceptWorkspaceSaveAsync()
     {
         _offerWorkspaceSave = false;
-        if (_effectiveMember is null) { _pendingCapture1Confirm = true; return; }
+        if (_effectiveMember is null) { await ConfirmCapture1Async(); return; }
 
         var state = await AuthState.GetAuthenticationStateAsync();
         var actorName = state.User.Identity?.Name ?? "unknown";
@@ -1969,12 +1966,13 @@ public partial class SubmitInsiderDeclaration
 
         _newToWorkspace.Clear();
         Toasts.ShowSuccess($"Added {saved} related part{(saved == 1 ? "y" : "ies")} to My Workspace.");
-        _pendingCapture1Confirm = true;
+        await ConfirmCapture1Async();
     }
 
+    /// <summary>Moves on to screen 2. Called straight from Next now, and from the two
+    /// My Workspace offers once they are answered.</summary>
     private async Task ConfirmCapture1Async()
     {
-        _pendingCapture1Confirm = false;
         _step = Step.Capture2;
 
         // The relatives' NIN grid was just filled in on the screen behind this one. Rows waiting
@@ -1986,8 +1984,6 @@ public partial class SubmitInsiderDeclaration
 
         await AutoLoadDocumentsAsync();
     }
-
-    private void CancelCapture1Confirm() => _pendingCapture1Confirm = false;
 
     // Screen 2 "Proceed to Submission" -- validates, then autosaves (Functional Spec §5 "Declaration
     // saved") before landing on the confirmation step. The autosave preserves whatever submitted/draft

@@ -214,11 +214,10 @@
                                    OnCancel="DeclineWorkspaceSave" />
                 }
 
-                <ConfirmPrompt Show="_pendingCapture1Confirm"
-                               Message="Please confirm all information entered above is correct before proceeding — you can still come back and edit it, but double-check now."
-                               ConfirmLabel="All information is correct — proceed"
-                               OnConfirm="ConfirmCapture1Async"
-                               OnCancel="CancelCapture1Confirm" />
+                @* The "please confirm all information entered above is correct" window that stood
+                   between this step and the next is gone, as it is on the Related Party & COI
+                   declaration: it asked the member to confirm the screen before they could see
+                   what came next, and nothing is filed until Submit on the review step anyway. *@
             </div>
         }
         else if (_step == Step.Capture2)

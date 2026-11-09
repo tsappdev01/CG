@@ -60,9 +60,18 @@ public static class SubmissionFlowChecks
                        .GetMethod("SaveSignatureAsync",
                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance) is not null);
 
-        // Nothing stands between the last capture step and the summary that exists to be checked.
+        // Nothing stands between a capture step and the next on either declaration. The Insider
+        // declaration keeps three ConfirmPrompts, but they are offers -- add these relatives to My
+        // Workspace, load these documents from it -- not a gate asking the member to confirm the
+        // screen they are already looking at.
         Check.That("no window interrupts the step before Review",
                    !coiMarkup.Contains("<ConfirmPrompt", StringComparison.Ordinal));
+
+        foreach (var (name, markup) in new[] { ("Insider", insiderMarkup), ("RP & COI", coiMarkup) })
+        {
+            Check.That($"the {name} declaration does not ask the member to confirm a screen before showing the next",
+                       !markup.Contains("Please confirm all information entered above is correct", StringComparison.Ordinal));
+        }
 
         Check.That("each declaration still has a Submit that calls SubmitAsync",
                    insiderMarkup.Contains("OnClick=\"SubmitAsync\"", StringComparison.Ordinal)

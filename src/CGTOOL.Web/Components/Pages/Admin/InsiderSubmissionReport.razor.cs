@@ -47,10 +47,16 @@ public partial class InsiderSubmissionReport
     private int _companyFilter;
     private string _statusFilter = string.Empty;
 
+    private bool _canOpenDetails;
+
     protected override async Task OnInitializedAsync()
     {
         var state = await AuthState.GetAuthenticationStateAsync();
         _preparedBy = state.User.Identity?.Name ?? "unknown";
+
+        // A reporting manager is shown their staff's rows and whether each has declared, and
+        // nothing more: the sheet behind the link is every answer on the form.
+        _canOpenDetails = GovernanceRoles.IsAnyAdministrator(state.User);
 
         await using var db = await DbFactory.CreateDbContextAsync();
 
@@ -173,7 +179,7 @@ public partial class InsiderSubmissionReport
                     ModifiedBy(r),
                 })
             ],
-            RowLinks = [.. rows.Select(DetailLink)],
+            RowLinks = _canOpenDetails ? [.. rows.Select(DetailLink)] : [],
         };
     }
 

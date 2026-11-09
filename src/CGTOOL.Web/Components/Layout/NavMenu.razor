@@ -175,15 +175,18 @@
                             <div class="nav-item px-3" style="order:@OrderOf("Reports.AuditTrail");@HideOf("Reports.AuditTrail")"><NavLink class="nav-link" href="reports/audit-trail">@LabelOf("Reports.AuditTrail")</NavLink></div>
                         }
                         <div class="nav-item px-3" style="order:@OrderOf("Reports.InsiderSubmission");@HideOf("Reports.InsiderSubmission")"><NavLink class="nav-link" href="reports/insider-submission">@LabelOf("Reports.InsiderSubmission")</NavLink></div>
-                        <div class="nav-item px-3" style="order:@OrderOf("Reports.InsiderDetail");@HideOf("Reports.InsiderDetail")"><NavLink class="nav-link" href="reports/insider-submission-detail">@LabelOf("Reports.InsiderDetail")</NavLink></div>
+                        @* The detail sheets are administrators' -- a reporting manager sees whether
+                           their staff declared, not what they declared. Left in the menu they would
+                           be two links that refuse, which reads as the application being broken. *@
                         @if (GovernanceRoles.IsAnyAdministrator(reportsCtx.User))
                         {
+                            <div class="nav-item px-3" style="order:@OrderOf("Reports.InsiderDetail");@HideOf("Reports.InsiderDetail")"><NavLink class="nav-link" href="reports/insider-submission-detail">@LabelOf("Reports.InsiderDetail")</NavLink></div>
                             <div class="nav-item px-3" style="order:@OrderOf("Reports.InsiderNin");@HideOf("Reports.InsiderNin")"><NavLink class="nav-link" href="reports/insider-nin">@LabelOf("Reports.InsiderNin")</NavLink></div>
                         }
                         <div class="nav-item px-3" style="order:@OrderOf("Reports.RpCoiSubmission");@HideOf("Reports.RpCoiSubmission")"><NavLink class="nav-link" href="reports/rp-coi-submission">@LabelOf("Reports.RpCoiSubmission")</NavLink></div>
-                        <div class="nav-item px-3" style="order:@OrderOf("Reports.RpCoiDetail");@HideOf("Reports.RpCoiDetail")"><NavLink class="nav-link" href="reports/rp-coi-submission-detail">@LabelOf("Reports.RpCoiDetail")</NavLink></div>
                         @if (GovernanceRoles.IsAnyAdministrator(reportsCtx.User))
                         {
+                            <div class="nav-item px-3" style="order:@OrderOf("Reports.RpCoiDetail");@HideOf("Reports.RpCoiDetail")"><NavLink class="nav-link" href="reports/rp-coi-submission-detail">@LabelOf("Reports.RpCoiDetail")</NavLink></div>
                             <div class="nav-item px-3" style="order:@OrderOf("Reports.InsiderTrading");@HideOf("Reports.InsiderTrading")"><NavLink class="nav-link" href="reports/insider-trading">@LabelOf("Reports.InsiderTrading")</NavLink></div>
                             <div class="nav-item px-3" style="order:@OrderOf("Reports.RelatedPartyRegister");@HideOf("Reports.RelatedPartyRegister")"><NavLink class="nav-link" href="reports/related-party-register">@LabelOf("Reports.RelatedPartyRegister")</NavLink></div>
                             <div class="nav-item px-3" style="order:@OrderOf("Reports.RelatedPartyMaster");@HideOf("Reports.RelatedPartyMaster")"><NavLink class="nav-link" href="reports/related-party-master">@LabelOf("Reports.RelatedPartyMaster")</NavLink></div>

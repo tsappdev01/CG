@@ -29,10 +29,16 @@ public partial class RpCoiSubmissionReport
     private int _companyFilter;
     private string _statusFilter = string.Empty;
 
+    private bool _canOpenDetails;
+
     protected override async Task OnInitializedAsync()
     {
         var state = await AuthState.GetAuthenticationStateAsync();
         _preparedBy = state.User.Identity?.Name ?? "unknown";
+
+        // See the note on the Insider submission report: a manager sees who has declared, not
+        // what they declared.
+        _canOpenDetails = GovernanceRoles.IsAnyAdministrator(state.User);
 
         await using var db = await DbFactory.CreateDbContextAsync();
         _rows = (await DeclarationSubmissionSource.RelatedPartyCoiAsync(db))
@@ -108,12 +114,14 @@ public partial class RpCoiSubmissionReport
                     ModifiedBy(r.Declaration),
                 })
             ],
-            RowLinks =
-            [
-                .. rows.Select(r => r.Submitted
-                    ? ReportLinks.Declarant(ReportLinks.RpCoiDetail, r.MemberId, r.MemberName, r.Year, r.Quarter)
-                    : null)
-            ],
+            RowLinks = _canOpenDetails
+                ?
+                [
+                    .. rows.Select(r => r.Submitted
+                        ? ReportLinks.Declarant(ReportLinks.RpCoiDetail, r.MemberId, r.MemberName, r.Year, r.Quarter)
+                        : null)
+                ]
+                : [],
         };
     }
 

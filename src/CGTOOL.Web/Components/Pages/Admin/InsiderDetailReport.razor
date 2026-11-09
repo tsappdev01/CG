@@ -1,5 +1,8 @@
 @page "/reports/insider-submission-detail"
-@attribute [Authorize(Roles = GovernanceRoles.SharedReportViewers)]
+@* A reporting manager sees whether their staff declared, not what they declared: the
+   detail sheet is every answer on the form, which is the compliance function's to read.
+   The submission reports withhold the link; this is what stops the address being typed. *@
+@attribute [Authorize(Roles = GovernanceRoles.AnyAdministrator)]
 @rendermode InteractiveServer
 
 <PageTitle>Insider Declaration Detailed Submission Report</PageTitle>

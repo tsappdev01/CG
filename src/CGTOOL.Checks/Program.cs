@@ -4,6 +4,7 @@ Console.WriteLine("CGTOOL consistency checks");
 
 RelationshipChecks.Run();
 ReportAccessChecks.Run();
+ReportAccessChecks.DetailSheetsAreAdministrators();
 IdentityFormatChecks.Run();
 ReportRenderingChecks.Run();
 ReportRenderingChecks.DetailTables();

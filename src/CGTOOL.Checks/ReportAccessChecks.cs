@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using CGTOOL.Web.Data;
 using CGTOOL.Web.Data.Governance;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 namespace CGTOOL.Checks;
@@ -79,4 +80,44 @@ public static class ReportAccessChecks
         public ApplicationDbContext CreateDbContext() =>
             throw new InvalidOperationException("An administrator must not need the database to be told they may see everyone.");
     }
+    /// <summary>A reporting manager sees whether their staff declared; the sheet of what they
+    /// declared is the compliance function's. The submission reports withhold the link, and the
+    /// detail pages refuse the address, so neither stands alone.</summary>
+    public static void DetailSheetsAreAdministrators()
+    {
+        Check.Section("Who can open a declaration's detail sheet");
+
+        var pages = new (string Name, Type? Page)[]
+        {
+            ("Insider Detail", Type.GetType("CGTOOL.Web.Components.Pages.Admin.InsiderDetailReport, CGTOOL.Web")),
+            ("RP & COI Detail", Type.GetType("CGTOOL.Web.Components.Pages.Admin.RpCoiDetailReport, CGTOOL.Web")),
+        };
+
+        foreach (var (name, page) in pages)
+        {
+            Check.That($"{name} is still a page", page is not null);
+            if (page is null) continue;
+
+            var roles = page.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+                .Cast<AuthorizeAttribute>()
+                .Select(a => a.Roles ?? string.Empty)
+                .ToList();
+
+            Check.That($"{name} is restricted to administrators",
+                       roles.Any(r => r == GovernanceRoles.AnyAdministrator));
+            Check.That($"{name} is not open to every report viewer",
+                       !roles.Any(r => r == GovernanceRoles.SharedReportViewers));
+        }
+
+        Check.Section("Who the roles cover");
+
+        // The guard the pages use. A manager is an ordinary user with people reporting to them --
+        // no role of their own -- so "administrator" is the whole of the distinction.
+        Check.That("the administrator roles are the two administrator roles",
+                   GovernanceRoles.AnyAdministrator
+                       == $"{GovernanceRoles.Administrator},{GovernanceRoles.ApplicationAdministrator}");
+        Check.That("report viewers still include ordinary users, so managers keep the summaries",
+                   GovernanceRoles.SharedReportViewers.Contains(GovernanceRoles.NormalUser, StringComparison.Ordinal));
+    }
+
 }

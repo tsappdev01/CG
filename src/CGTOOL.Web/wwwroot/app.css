@@ -3545,12 +3545,11 @@ button.cg-appbar-user {
 .cg-modal-body { padding: 16px 22px; overflow: auto; }
 .cg-modal-foot { padding: 14px 22px; border-top: 1px solid var(--cg-line); display: flex; justify-content: flex-end; gap: 10px; }
 
-/* The undertakings a declarant confirms before filing, and the signature block beneath them --
-   the part of the printed form a pen went to. Numbered because the form numbers them, and people
-   refer to them by number. */
-.cg-undertakings { margin: 0 0 16px; padding-left: 22px; }
-.cg-undertakings li { margin-bottom: 9px; font-size: 13.5px; line-height: 1.5; }
-.cg-undertakings li:last-child { margin-bottom: 0; }
+/* The undertaking a declarant confirms before filing, and the signature block beneath it --
+   the part of the printed form a pen went to. The Insider declaration's numbered list of
+   undertakings was dropped at the business's request, so the list styles went with it; what is
+   left is the Related Party & COI declaration's single inline undertaking and the confirm
+   toggle both declarations use. */
 .cg-signature-block {
     display: flex; flex-wrap: wrap; gap: 10px 32px; margin: 0 0 16px;
     padding: 12px 14px; border: 1px solid var(--cg-line); border-radius: var(--cg-radius-sm);

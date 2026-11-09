@@ -155,6 +155,36 @@ else
                 </div>
             }
 
+            @* This screen let the member correct every field except the one thing that settles
+               them: the card itself. If what we hold is the wrong person's card, or unreadable,
+               retyping the number around it does not fix the record. Same control, same reader
+               and same limit as the upload step -- a member correcting their details can replace
+               the copy here instead of being told to contact somebody. *@
+            <div class="cg-field">
+                <span>@(_record.EmiratesIdBlobId is null ? "Upload your Emirates ID" : "Replace the copy we hold")</span>
+                <InputFile OnChange="UploadCardAsync" accept=".pdf" disabled="@_busy" />
+
+                @if (_uploading)
+                {
+                    <div class="cg-onboarding-upload">
+                        @if (_uploadPercent is { } editPercent)
+                        {
+                            <CgProgressBar Percent="editPercent" Label="@_uploadStage" />
+                        }
+                        else
+                        {
+                            <CgBusy Title="@(_uploadStage ?? "Working…")" />
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="cg-hint">One PDF containing both sides of the card, up to @UploadLimits.DocumentLimit. Optional — leave it if the copy we hold is correct.</p>
+                }
+            </div>
+
+            @if (_captureNote is not null) { <p class="cg-hint">@_captureNote</p> }
+
             <label class="cg-field">
                 <span>Name on the card</span>
                 <input class="cg-input" maxlength="200" @bind="_record.EmiratesIdHolderName" />

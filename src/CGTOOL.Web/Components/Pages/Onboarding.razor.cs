@@ -187,6 +187,7 @@ public partial class Onboarding
             _record.EmiratesIdHolderName = before.HolderName;
             _record.EmiratesIdNationality = before.Nationality;
             _record.EmiratesIdExpiryDate = before.Expiry;
+            _record.EmiratesIdBlobId = before.BlobId;
         }
 
         _editNote = null;

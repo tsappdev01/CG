@@ -13,10 +13,11 @@ public enum OnboardingStep { Welcome, EmiratesId, Dfm, Done }
 /// Kept so a correction can record which field changed and from what, rather than only that
 /// something changed. Whoever checks the card afterwards needs to know what is in dispute, and
 /// "the member edited their details" does not tell them.</summary>
-public sealed record EmiratesIdValues(string? Number, string? HolderName, string? Nationality, DateTime? Expiry)
+public sealed record EmiratesIdValues(string? Number, string? HolderName, string? Nationality, DateTime? Expiry, int? BlobId)
 {
     public static EmiratesIdValues From(MemberOnboarding o) => new(
-        o.EmiratesIdNumber, o.EmiratesIdHolderName, o.EmiratesIdNationality, o.EmiratesIdExpiryDate);
+        o.EmiratesIdNumber, o.EmiratesIdHolderName, o.EmiratesIdNationality, o.EmiratesIdExpiryDate,
+        o.EmiratesIdBlobId);
 
     public IReadOnlyList<string> ChangesTo(MemberOnboarding o)
     {
@@ -26,6 +27,15 @@ public sealed record EmiratesIdValues(string? Number, string? HolderName, string
         OnboardingChange.Add(changes, "nationality", Nationality, o.EmiratesIdNationality);
         OnboardingChange.Add(changes, "expiry date",
             Expiry?.ToString("dd/MM/yyyy"), o.EmiratesIdExpiryDate?.ToString("dd/MM/yyyy"));
+
+        // A replaced copy of the card is a correction in its own right. Without this, somebody
+        // who uploaded a better scan and changed no field had it recorded as a confirmation --
+        // and the new copy never reached My Workspace, which only takes a card on a correction.
+        if (BlobId != o.EmiratesIdBlobId)
+        {
+            changes.Add(BlobId is null ? "copy of the card supplied" : "copy of the card replaced");
+        }
+
         return changes;
     }
 }
@@ -316,6 +326,7 @@ public class MemberOnboardingService(
         o.EmiratesIdConfirmedAtUtc = DateTime.UtcNow;
         o.EmiratesIdStatus = EmiratesIdOnboardingStatus.Confirmed;
         await writer.UpdateAsync(o);
+        await SyncEmiratesIdAsync(o, overwrite: false, ct);
         await LogAsync(actorName, o, "Confirmed the Emirates ID details held in the IPO records", ct);
     }
 
@@ -356,6 +367,7 @@ public class MemberOnboardingService(
         o.EmiratesIdReportedAtUtc = DateTime.UtcNow;
 
         await writer.UpdateAsync(o);
+        await SyncEmiratesIdAsync(o, overwrite: true, ct);
         await LogAsync(actorName, o, $"Corrected the Emirates ID details on file -- {summary}", ct);
     }
 
@@ -369,8 +381,18 @@ public class MemberOnboardingService(
         // anybody having checked it.
         o.EmiratesIdStatus = EmiratesIdOnboardingStatus.PendingVerification;
         await writer.UpdateAsync(o);
+        await SyncEmiratesIdAsync(o, overwrite: true, ct);
         await LogAsync(actorName, o, "Supplied their Emirates ID; recorded as pending verification", ct);
     }
+    /// <summary>What step 1 established goes to My Workspace there and then. See
+    /// SeedEmiratesIdAsync for why the member's own entry overwrites and a confirmation does
+    /// not.</summary>
+    private async Task SyncEmiratesIdAsync(MemberOnboarding o, bool overwrite, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        await SeedEmiratesIdAsync(db, o, o.MemberId, overwrite, ct);
+    }
+
 
     public async Task ConfirmDfmAsync(MemberOnboarding o, string actorName, CancellationToken ct = default)
     {
@@ -462,39 +484,55 @@ public class MemberOnboardingService(
     private async Task SeedWorkspaceAsync(MemberOnboarding o, Member member, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        await SeedEmiratesIdAsync(db, o, member, ct);
+        await SeedEmiratesIdAsync(db, o, member.Id, overwrite: false, ct);
         await SeedDfmProfileAsync(db, o, member, ct);
     }
 
-    private async Task SeedEmiratesIdAsync(ApplicationDbContext db, MemberOnboarding o, Member member, CancellationToken ct)
+    /// <summary>Puts the Emirates ID onto the member's My Workspace record.
+    ///
+    /// Runs when the card is confirmed, corrected or supplied -- not only when the whole of
+    /// onboarding finishes. Waiting for the end meant a member who filled in their name on the
+    /// card in step 1 and then stopped had typed it into nothing: My Workspace, and so every
+    /// declaration that pre-fills from it, still showed no name.
+    ///
+    /// <paramref name="overwrite"/> is the difference between the two callers. Seeding at the end
+    /// fills blanks only: a value already in My Workspace is one the member put there. A
+    /// correction or an upload on the onboarding screen is the member typing this value now, so
+    /// it wins over whatever was held.</summary>
+    private async Task SeedEmiratesIdAsync(ApplicationDbContext db, MemberOnboarding o, int memberId, bool overwrite, CancellationToken ct)
     {
-        if (o.EmiratesIdNumber is null && o.EmiratesIdBlobId is null) return;
+        if (o.EmiratesIdNumber is null && o.EmiratesIdBlobId is null && o.EmiratesIdHolderName is null) return;
 
         var existing = await db.MemberDocuments.AsNoTracking()
-            .FirstOrDefaultAsync(d => d.MemberId == member.Id && d.Kind == MemberDocumentKind.EmiratesId, ct);
+            .FirstOrDefaultAsync(d => d.MemberId == memberId && d.Kind == MemberDocumentKind.EmiratesId, ct);
 
         if (existing is not null)
         {
             var changed = false;
-            if (string.IsNullOrWhiteSpace(existing.DocumentNumber) && o.EmiratesIdNumber is { Length: > 0 })
+            bool Takes(string? held) => overwrite || string.IsNullOrWhiteSpace(held);
+
+            if (Takes(existing.DocumentNumber) && o.EmiratesIdNumber is { Length: > 0 })
             {
                 existing.DocumentNumber = o.EmiratesIdNumber; changed = true;
             }
-            if (string.IsNullOrWhiteSpace(existing.HolderName) && o.EmiratesIdHolderName is { Length: > 0 })
+            if (Takes(existing.HolderName) && o.EmiratesIdHolderName is { Length: > 0 })
             {
                 existing.HolderName = o.EmiratesIdHolderName; changed = true;
             }
-            if (string.IsNullOrWhiteSpace(existing.Nationality) && o.EmiratesIdNationality is { Length: > 0 })
+            if (Takes(existing.Nationality) && o.EmiratesIdNationality is { Length: > 0 })
             {
                 existing.Nationality = o.EmiratesIdNationality; changed = true;
             }
-            if (existing.ExpiryDate is null && o.EmiratesIdExpiryDate is not null)
+            if ((overwrite || existing.ExpiryDate is null) && o.EmiratesIdExpiryDate is not null)
             {
                 existing.ExpiryDate = o.EmiratesIdExpiryDate; changed = true;
             }
-            if (existing.BlobId is null && o.EmiratesIdBlobId is not null)
+            if ((overwrite || existing.BlobId is null) && o.EmiratesIdBlobId is not null)
             {
-                existing.BlobId = o.EmiratesIdBlobId; changed = true;
+                existing.BlobId = o.EmiratesIdBlobId;
+                existing.FilePath = null;
+                existing.OriginalFileName = "Emirates ID.pdf";
+                changed = true;
             }
 
             if (changed) await documentWriter.UpdateAsync(existing);
@@ -503,7 +541,7 @@ public class MemberOnboardingService(
 
         await documentWriter.InsertAsync(new MemberDocument
         {
-            MemberId = member.Id,
+            MemberId = memberId,
             Kind = MemberDocumentKind.EmiratesId,
             // The front of the card is the document; the back is kept on the onboarding record.
             BlobId = o.EmiratesIdBlobId,

@@ -105,5 +105,46 @@ public static class DeclarationDocumentChecks
                    && source.Contains("\"trade-licence\" => SyncToWorkspaceAsync", StringComparison.Ordinal)
                    && source.Contains("\"other-document\" => SyncToWorkspaceAsync", StringComparison.Ordinal)
                    && source.Contains("kind.StartsWith(\"type-\"", StringComparison.Ordinal));
+
+        OnboardingReachesTheWorkspace(dir.FullName);
+    }
+
+    /// <summary>Onboarding used to put the Emirates ID into My Workspace only when the whole of
+    /// onboarding completed, so a member who typed the name on their card in step 1 and stopped
+    /// had typed it into nothing. And the correction screen let them fix every field except the
+    /// card itself: it showed the copy held with no way to replace it.</summary>
+    private static void OnboardingReachesTheWorkspace(string root)
+    {
+        Check.Section("Onboarding's Emirates ID reaches My Workspace");
+
+        var service = Path.Combine(root, "src", "CGTOOL.Web", "Data", "Governance", "MemberOnboardingService.cs");
+        var page = Path.Combine(root, "src", "CGTOOL.Web", "Components", "Pages", "Onboarding.razor");
+
+        Check.That("the onboarding service and page are where they are expected",
+                   File.Exists(service) && File.Exists(page));
+        if (!File.Exists(service) || !File.Exists(page)) return;
+
+        var source = File.ReadAllText(service);
+
+        foreach (var method in new[] { "ConfirmEmiratesIdAsync", "CorrectEmiratesIdAsync", "SubmitEmiratesIdAsync" })
+        {
+            var at = source.IndexOf($"public async Task {method}", StringComparison.Ordinal);
+            var end = at < 0 ? -1 : source.IndexOf("\n    public ", at + 1, StringComparison.Ordinal);
+            var body = at < 0 ? string.Empty : source[at..(end < 0 ? source.Length : end)];
+            Check.That($"{method} puts the card on the member's My Workspace record",
+                       body.Contains("SyncEmiratesIdAsync", StringComparison.Ordinal));
+        }
+
+        Check.That("a correction the member typed wins over what was held, a confirmation does not",
+                   source.Contains("SyncEmiratesIdAsync(o, overwrite: true", StringComparison.Ordinal)
+                   && source.Contains("SyncEmiratesIdAsync(o, overwrite: false", StringComparison.Ordinal));
+
+        Check.That("replacing the copy of the card counts as a correction",
+                   source.Contains("BlobId != o.EmiratesIdBlobId", StringComparison.Ordinal));
+
+        var markup = File.ReadAllText(page);
+        var pickers = markup.Split("OnChange=\"UploadCardAsync\"").Length - 1;
+        Check.That($"the card can be uploaded from the correction screen as well as the first step (found {pickers})",
+                   pickers >= 2);
     }
 }

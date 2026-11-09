@@ -91,15 +91,15 @@
                with its own ternary, which on a submitted declaration left steps 2 and 3 matching
                no state at all and rendering blank. *@
             <ol class="cg-stepper cg-stepper-wrap" aria-label="Progress">
-                @for (var i = 0; i < ChevronSteps.Length; i++)
+                @for (var i = 0; i < WizardSteps.Length; i++)
                 {
                     if (i > 0)
                     {
                         <li class="cg-step-rule @RuleClass(i - 1)" aria-hidden="true"></li>
                     }
-                    <li class="cg-step @StepClass(ChevronSteps[i].Step)">
+                    <li class="cg-step @StepClass(WizardSteps[i].Step)">
                         <span class="cg-step-num">@(i + 1)</span>
-                        <span class="cg-step-label">@ChevronSteps[i].Label</span>
+                        <span class="cg-step-label">@WizardSteps[i].Label</span>
                     </li>
                 }
             </ol>

@@ -216,8 +216,8 @@ public static class SubmissionFlowChecks
         Check.Section("The step chevron is built from the steps");
 
         Check.That("neither chevron numbers its steps by hand",
-                   insiderMarkup.Contains("ChevronSteps", StringComparison.Ordinal)
-                   && coiMarkup.Contains("ChevronSteps", StringComparison.Ordinal));
+                   insiderMarkup.Contains("WizardSteps", StringComparison.Ordinal)
+                   && coiMarkup.Contains("WizardSteps", StringComparison.Ordinal));
 
         Check.That("both chevrons wrap rather than crowding the edge on a narrow screen",
                    insiderMarkup.Contains("cg-stepper-wrap", StringComparison.Ordinal)
@@ -231,11 +231,10 @@ public static class SubmissionFlowChecks
         const System.Reflection.BindingFlags Statics =
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static;
         var steps = page.GetField("WizardSteps", Statics);
-        var drawn = page.GetField("ChevronSteps", Statics);
 
         Check.That("the chevron's state is worked out in one method",
-                   stepClass is not null && stepField is not null && steps is not null && drawn is not null);
-        if (stepClass is null || stepField is null || steps is null || drawn is null) return;
+                   stepClass is not null && stepField is not null && steps is not null);
+        if (stepClass is null || stepField is null || steps is null) return;
 
         var instance = Activator.CreateInstance(page)!;
         var list = (Array)steps.GetValue(null)!;
@@ -248,13 +247,13 @@ public static class SubmissionFlowChecks
         }
         string ClassOf(int i) => (string)stepClass.Invoke(instance, [StepAt(i)])!;
 
-        var shown = (Array)drawn.GetValue(null)!;
         Check.That("the wizard still has its three steps", list.Length == 3);
 
-        // Review is where the member already is when they reach it and the only way on is Submit,
-        // so it is not drawn as a step still to be done. It stays a step for Back, Next and the
-        // validation that walks them.
-        Check.That("the chevron draws every step but the last", shown.Length == list.Length - 1);
+        // Review is drawn and numbered like the rest: the member asked for it back on the
+        // chevron, so the summary is a step they can see themselves arrive at.
+        Check.That("the chevron draws Review too",
+                   insiderMarkup.Contains("i < WizardSteps.Length", StringComparison.Ordinal)
+                   && coiMarkup.Contains("i < WizardSteps.Length", StringComparison.Ordinal));
 
         stepField.SetValue(instance, StepAt(0));
         Check.That("on the first step, it is the current one and nothing is done yet",
@@ -265,13 +264,13 @@ public static class SubmissionFlowChecks
                    ClassOf(0) == "is-done" && ClassOf(1) == "is-current");
 
         stepField.SetValue(instance, StepAt(2));
-        Check.That("while reviewing, every drawn step reads as done",
-                   ClassOf(0) == "is-done" && ClassOf(1) == "is-done");
+        Check.That("while reviewing, the steps behind read as done and Review is current",
+                   ClassOf(0) == "is-done" && ClassOf(1) == "is-done" && ClassOf(2) == "is-current");
 
         var done = Enum.Parse(stepField.FieldType, "Done");
         stepField.SetValue(instance, done);
-        Check.That("on a submitted declaration they still read as done, not as blank",
-                   ClassOf(0) == "is-done" && ClassOf(1) == "is-done");
+        Check.That("on a submitted declaration every step reads as done, not as blank",
+                   ClassOf(0) == "is-done" && ClassOf(1) == "is-done" && ClassOf(2) == "is-done");
     }
 
     private static string? FindRepositoryRoot()

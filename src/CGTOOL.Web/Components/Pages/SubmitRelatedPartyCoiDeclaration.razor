@@ -80,9 +80,9 @@
                its own list; on one page they run together, and the member cannot see how much is
                left. Every step is reachable from here, forwards through its own checks. *@
             <ol class="cg-stepper cg-stepper-wrap" aria-label="Progress">
-                @for (var i = 0; i < ChevronSteps.Length; i++)
+                @for (var i = 0; i < WizardSteps.Length; i++)
                 {
-                    var wizardStep = ChevronSteps[i];
+                    var wizardStep = WizardSteps[i];
                     var number = i + 1;
                     if (i > 0)
                     {

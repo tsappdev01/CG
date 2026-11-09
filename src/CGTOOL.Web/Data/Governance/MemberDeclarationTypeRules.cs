@@ -19,6 +19,34 @@ public static class MemberDeclarationTypeRules
     /// <summary>The entity whose people declare as board members.</summary>
     public const string BoardEntityName = "Board Member";
 
+    /// <summary>Applies the entity's rule to a member, writing the capacity and -- when the rule
+    /// says board -- the Board of Directors flag with it. Returns true when it wrote anything.
+    ///
+    /// The two are written together because they are read apart. The capacity shows on the record
+    /// and in the Related Party master report; IsBoardMember decides which Related Party &amp; COI
+    /// form variant renders (Functional Spec Section 3) and who counts as board-or-executive in the
+    /// Related Party Register. Setting only the capacity gave a person imported under the board
+    /// entity a record that said "Board Member" while they were served the Executive Management
+    /// form and left out of the board grouping -- the record and the form disagreeing about the
+    /// same person.
+    ///
+    /// Fill, never overwrite, and never clear: a capacity an administrator has since changed is a
+    /// deliberate exception, and someone can sit on the board of another entity entirely, so the
+    /// flag is only ever turned on by this rule.</summary>
+    public static bool Apply(Member member, string? entityName)
+    {
+        ArgumentNullException.ThrowIfNull(member);
+
+        if (member.DeclarationType is not null) return false;
+
+        var type = FromEntityName(entityName);
+        member.DeclarationType = type;
+
+        if (type == MemberDeclarationType.BoardMember) member.IsBoardMember = true;
+
+        return true;
+    }
+
     public static MemberDeclarationType FromEntityName(string? entityName)
     {
         var normalised = Normalise(entityName);

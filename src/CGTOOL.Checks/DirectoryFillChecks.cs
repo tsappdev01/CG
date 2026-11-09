@@ -26,6 +26,7 @@ public static class DirectoryFillChecks
         Section_DepartmentsFromTheDirectory();
         Section_EnrichingAnUploadedRow();
         Section_DeclarationTypeFromTheEntity();
+        Section_CapacityAndBoardFlagAgree();
     }
 
     private static void Section_NoListingToPickTheWrongPersonFrom()
@@ -309,6 +310,46 @@ public static class DirectoryFillChecks
         {
             Check.That($"{produced} is a capacity the form offers", offered.Contains(produced));
         }
+    }
+
+    private static void Section_CapacityAndBoardFlagAgree()
+    {
+        Check.Section("The capacity and the board flag agree");
+
+        // They are read apart: the capacity shows on the record and in the Related Party master
+        // report, while IsBoardMember decides which RP & COI form variant renders and who counts
+        // as board-or-executive in the Related Party Register. Writing only the capacity gave a
+        // person imported under the board entity a record saying "Board Member" while they were
+        // served the Executive Management form.
+        var director = new Member { FullName = "A Person" };
+        Check.That("the board entity writes a capacity",
+                   MemberDeclarationTypeRules.Apply(director, MemberDeclarationTypeRules.BoardEntityName));
+        Check.That("a board declarant is a board member on the record too",
+                   director is { DeclarationType: MemberDeclarationType.BoardMember, IsBoardMember: true });
+
+        var employee = new Member { FullName = "A Person" };
+        MemberDeclarationTypeRules.Apply(employee, MemberDeclarationTypeRules.ParentEntityName);
+        Check.That("an employee is not made a board member",
+                   employee is { DeclarationType: MemberDeclarationType.EmployeeDiPjsc, IsBoardMember: false });
+
+        var other = new Member { FullName = "A Person" };
+        MemberDeclarationTypeRules.Apply(other, "Some Other Entity");
+        Check.That("an employee of another entity is not made a board member",
+                   other is { DeclarationType: MemberDeclarationType.EmployeeOther, IsBoardMember: false });
+
+        // A capacity somebody chose is a deliberate exception; a later run must leave it, and the
+        // flag beside it, exactly as it stands.
+        var chosen = new Member { FullName = "A Person", DeclarationType = MemberDeclarationType.Corporate };
+        Check.That("a record that already has a capacity is not rewritten",
+                   !MemberDeclarationTypeRules.Apply(chosen, MemberDeclarationTypeRules.BoardEntityName));
+        Check.That("and its board flag is not touched either",
+                   chosen is { DeclarationType: MemberDeclarationType.Corporate, IsBoardMember: false });
+
+        // Someone can sit on the board of another entity entirely, so the rule only ever turns
+        // the flag on. Clearing it here would quietly demote them on the next import.
+        var elsewhere = new Member { FullName = "A Person", IsBoardMember = true };
+        MemberDeclarationTypeRules.Apply(elsewhere, "Some Other Entity");
+        Check.That("a board seat held elsewhere survives the import", elsewhere.IsBoardMember);
     }
 
     private sealed class QueueHandler(Queue<string> pages) : HttpMessageHandler

@@ -70,6 +70,12 @@ Each of these was found from a screenshot, not from the code:
   onboard and an empty My Workspace until an administrator opened the record and ticked boxes by
   hand. `MemberDefaults.ApplyToNew` is now the one answer, applied by every path that creates a
   member.
+- **Two fields that describe the same fact are read by different screens.** `DeclarationType`
+  shows on the member's record and in the Related Party master report; `IsBoardMember` decides
+  which RP & COI form variant renders and who counts as board-or-executive in the Related Party
+  Register. Setting only the first gave a person imported under the board entity a record saying
+  "Board Member" while they were served the Executive Management form. When a change writes one
+  of a pair, find who reads the other.
 
 ## Consistency checks
 

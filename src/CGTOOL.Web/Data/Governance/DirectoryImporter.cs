@@ -119,8 +119,10 @@ public class DirectoryImporter(
                     // What everyone declares, applied on creation only -- see MemberDefaults.
                     MemberDefaults.ApplyToNew(member);
 
-                    // And the capacity they declare in, which the entity decides.
-                    member.DeclarationType = MemberDeclarationTypeRules.FromEntityName(user.CompanyName);
+                    // And the capacity they declare in, which the entity decides -- along with
+                    // the Board of Directors flag when it says board, because the two are read by
+                    // different screens and must not disagree about the same person.
+                    MemberDeclarationTypeRules.Apply(member, user.CompanyName);
                     member.Id = await memberWriter.InsertAsync(member);
                     members.Add(member);
                     created++;
@@ -151,8 +153,9 @@ public class DirectoryImporter(
                     // Filled in, never overwritten. The entity decides the capacity for somebody
                     // the system has just met, but a declaration type an administrator has since
                     // chosen is a deliberate exception -- a run that re-derived it would undo
-                    // every one of them, quietly, on a schedule.
-                    member.DeclarationType ??= MemberDeclarationTypeRules.FromEntityName(user.CompanyName);
+                    // every one of them, quietly, on a schedule. Apply leaves a record that
+                    // already has a capacity entirely alone, flag included.
+                    MemberDeclarationTypeRules.Apply(member, user.CompanyName);
                     member.IsManualEntry = false;
                     member.Active = user.AccountEnabled;
                     await memberWriter.UpdateAsync(member);

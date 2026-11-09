@@ -121,13 +121,9 @@
                 <div class="cg-info-callout">
                     <p><b>Relative:</b> Father, mother, brother, sister, children, spouse, father-in-law, mother-in-law, and children of the spouse.</p>
                 </div>
-                <label class="cg-switch cg-nothing-switch">
-                    <input type="checkbox" @bind:get="!_nothingRelatives" @bind:set="v => _nothingRelatives = !v" />
-                    <span class="cg-switch-track" aria-hidden="true"></span>
-                    <span class="cg-switch-label">
-                        @(_nothingRelatives ? "I have nothing to declare in this section." : "I have something to declare in this section.")
-                    </span>
-                </label>
+                <DeclareChoice Question="Do you have any relatives to declare?"
+                               Value="@AnswerFor(Step.Relatives)"
+                               ValueChanged="@(v => Answer(Step.Relatives, v))" />
                 @if (!_nothingRelatives)
                 {
                     <div class="cg-table-wrap">
@@ -181,16 +177,11 @@
                 @* The declaration's own wording, not a generic "nothing to declare": what the member
                    is answering here is a specific statement about their shareholdings, and it is the
                    statement they are signing. *@
-                <label class="cg-switch cg-nothing-switch cg-switch-statement">
-                    <input type="checkbox" @bind:get="!_nothingSelfOwned" @bind:set="v => { _nothingSelfOwned = !v; SetNothingSelfOwned(); }" />
-                    <span class="cg-switch-track" aria-hidden="true"></span>
-                    <span class="cg-switch-label">
-                        <b>@(_nothingSelfOwned ? "No," : "Yes,")</b>
-                        @(_nothingSelfOwned
-                            ? "there are no companies in which I hold more than 30% of paid up capital, wherein, my shareholding represents both beneficial interest and ability to influence strategic, operating, investing and financial decision-making."
-                            : "there are companies in which I hold more than 30% of paid up capital, wherein, my shareholding represents both beneficial interest and ability to influence strategic, operating, investing and financial decision-making (Listed Below).")
-                    </span>
-                </label>
+                <DeclareChoice Question="Are there companies in which you hold more than 30% of paid up capital, wherein your shareholding represents both beneficial interest and the ability to influence strategic, operating, investing and financial decision-making?"
+                               YesLabel="Yes — I'll list them below"
+                               NoLabel="No — there are none"
+                               Value="@AnswerFor(Step.SelfOwned)"
+                               ValueChanged="@(v => Answer(Step.SelfOwned, v))" />
                 @if (!_nothingSelfOwned)
                 {
                     @foreach (var row in _selfOwnedCompanies)
@@ -223,13 +214,10 @@
         {
             <div class="cg-member-form cg-declaration-form">
                 <h3>Companies in which a relative owns ≥30% of its shares</h3>
-                <label class="cg-switch cg-nothing-switch">
-                    <input type="checkbox" @bind:get="!_nothingRelativeOwned" @bind:set="v => { _nothingRelativeOwned = !v; SetNothingRelativeOwned(); }" />
-                    <span class="cg-switch-track" aria-hidden="true"></span>
-                    <span class="cg-switch-label">
-                        @(_nothingRelativeOwned ? "I have nothing to declare in this section." : "I have something to declare in this section.")
-                    </span>
-                </label>
+                <DeclareChoice Question="Are there companies owned 30% or more by one of your relatives?"
+                               NoLabel="No — there are none"
+                               Value="@AnswerFor(Step.RelativeOwned)"
+                               ValueChanged="@(v => Answer(Step.RelativeOwned, v))" />
                 @if (!_nothingRelativeOwned)
                 {
                     @foreach (var row in _relativeOwnedCompanies)
@@ -262,13 +250,10 @@
         {
             <div class="cg-member-form cg-declaration-form">
                 <h3>Companies in which I serve as board member or senior executive</h3>
-                <label class="cg-switch cg-nothing-switch">
-                    <input type="checkbox" @bind:get="!_nothingBoardRoles" @bind:set="v => { _nothingBoardRoles = !v; SetNothingBoardRoles(); }" />
-                    <span class="cg-switch-track" aria-hidden="true"></span>
-                    <span class="cg-switch-label">
-                        @(_nothingBoardRoles ? "I have nothing to declare in this section." : "I have something to declare in this section.")
-                    </span>
-                </label>
+                <DeclareChoice Question="Are there companies in which you serve as a board member or senior executive?"
+                               NoLabel="No — there are none"
+                               Value="@AnswerFor(Step.BoardRoles)"
+                               ValueChanged="@(v => Answer(Step.BoardRoles, v))" />
                 @if (!_nothingBoardRoles)
                 {
                     @foreach (var row in _boardRoleCompanies)
@@ -333,13 +318,10 @@
                         escalate the matter to the Corporate Affairs Office of @Branding.ParentHoldingCompany for further decision making on the matter.
                     </p>
                 }
-                <label class="cg-switch cg-nothing-switch">
-                    <input type="checkbox" @bind:get="!_nothingConflicts" @bind:set="v => _nothingConflicts = !v" />
-                    <span class="cg-switch-track" aria-hidden="true"></span>
-                    <span class="cg-switch-label">
-                        @(_nothingConflicts ? "I have nothing to declare in this section." : "I have something to declare in this section.")
-                    </span>
-                </label>
+                <DeclareChoice Question="Do you have any conflicts of interest to declare?"
+                               NoLabel="No — I have none"
+                               Value="@AnswerFor(Step.Conflicts)"
+                               ValueChanged="@(v => Answer(Step.Conflicts, v))" />
                 @if (!_nothingConflicts)
                 {
                     <div class="cg-table-wrap">

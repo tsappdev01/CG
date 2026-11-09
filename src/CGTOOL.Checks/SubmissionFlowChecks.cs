@@ -53,6 +53,58 @@ public static class SubmissionFlowChecks
                    && coiMarkup.Contains("OnClick=\"SubmitAsync\"", StringComparison.Ordinal));
 
         Chevron(insiderMarkup, coiMarkup);
+        SectionQuestions(coiMarkup);
+    }
+
+    /// <summary>Each RP & COI section opens by asking whether there is anything in it.
+    ///
+    /// It used to ask with a switch bound to the inverse of the flag it set: the member read "I
+    /// have nothing to declare" beside a control that was off, off being what made that sentence
+    /// true. Worse, it started there, so a section nobody opened was declared empty on their
+    /// behalf. Five buttons-pairs with neither chosen replaced it, and nothing may walk past an
+    /// unanswered one.</summary>
+    private static void SectionQuestions(string coiMarkup)
+    {
+        Check.Section("Each section asks its question outright");
+
+        var asked = coiMarkup.Split("<DeclareChoice").Length - 1;
+        Check.That($"all five sections ask with buttons, not a switch (found {asked})", asked == 5);
+
+        Check.That("no switch is left asking it",
+                   !coiMarkup.Contains("cg-nothing-switch", StringComparison.Ordinal));
+
+        // The specific defect: a control whose checked state is the negation of the value it sets.
+        Check.That("nothing is bound to the inverse of the flag it sets",
+                   !coiMarkup.Contains("@bind:get=\"!_nothing", StringComparison.Ordinal));
+
+        var page = typeof(CGTOOL.Web.Components.Pages.SubmitRelatedPartyCoiDeclaration);
+        const System.Reflection.BindingFlags Any =
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var answerFor = page.GetMethod("AnswerFor", Any);
+        var answer = page.GetMethod("Answer", Any);
+        var stepType = page.GetNestedType("Step", System.Reflection.BindingFlags.NonPublic);
+
+        Check.That("the page can say whether a section is answered", answerFor is not null && answer is not null && stepType is not null);
+        if (answerFor is null || answer is null || stepType is null) return;
+
+        var instance = Activator.CreateInstance(page)!;
+        var relatives = Enum.Parse(stepType, "Relatives");
+        var conflicts = Enum.Parse(stepType, "Conflicts");
+
+        Check.That("a section nobody has answered reads as unanswered, not as empty",
+                   answerFor.Invoke(instance, [relatives]) is null
+                   && answerFor.Invoke(instance, [conflicts]) is null);
+
+        answer.Invoke(instance, [relatives, true]);
+        Check.That("answering \"nothing to declare\" records that answer",
+                   answerFor.Invoke(instance, [relatives]) is true);
+
+        answer.Invoke(instance, [relatives, false]);
+        Check.That("and changing the answer records the other one",
+                   answerFor.Invoke(instance, [relatives]) is false);
+
+        Check.That("answering one section does not answer the rest",
+                   answerFor.Invoke(instance, [conflicts]) is null);
     }
 
     /// <summary>The chevron that tells the member how far through they are.

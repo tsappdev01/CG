@@ -294,6 +294,54 @@ public partial class SubmitRelatedPartyCoiDeclaration
     // section that starts open is a section already claiming something is there -- the answer should
     // be one the member gave. A section the register fills turns itself on below, because rows on
     // screen and "nothing to declare" cannot both be true.
+    /// <summary>The sections the member has actually answered. The five flags below cannot carry
+    /// this on their own: they are plain booleans, stored as plain booleans, so "nothing to
+    /// declare" and "never looked at" are the same value. Keeping the answered set beside them
+    /// lets the buttons start with neither chosen, and lets Next say which section is unanswered,
+    /// without a schema change for a distinction the database never has to keep -- by the time a
+    /// row is written, every section has an answer.</summary>
+    private readonly HashSet<Step> _answered = [];
+
+    /// <summary>What the buttons show: null until this section is answered.</summary>
+    private bool? AnswerFor(Step section) => _answered.Contains(section) ? NothingFor(section) : null;
+
+    private bool NothingFor(Step section) => section switch
+    {
+        Step.Relatives => _nothingRelatives,
+        Step.SelfOwned => _nothingSelfOwned,
+        Step.RelativeOwned => _nothingRelativeOwned,
+        Step.BoardRoles => _nothingBoardRoles,
+        Step.Conflicts => _nothingConflicts,
+        _ => true,
+    };
+
+    /// <summary>Records the answer and runs whatever that section does when it changes -- the
+    /// company sections keep a blank row ready when there is something to declare and clear the
+    /// section when there is not, which the switch used to do from its own setter.</summary>
+    private void Answer(Step section, bool nothingToDeclare)
+    {
+        _answered.Add(section);
+        switch (section)
+        {
+            case Step.Relatives: _nothingRelatives = nothingToDeclare; break;
+            case Step.SelfOwned: _nothingSelfOwned = nothingToDeclare; SetNothingSelfOwned(); break;
+            case Step.RelativeOwned: _nothingRelativeOwned = nothingToDeclare; SetNothingRelativeOwned(); break;
+            case Step.BoardRoles: _nothingBoardRoles = nothingToDeclare; SetNothingBoardRoles(); break;
+            case Step.Conflicts: _nothingConflicts = nothingToDeclare; break;
+        }
+    }
+
+    /// <summary>Every section of a declaration that already exists has an answer in it, so
+    /// re-opening a draft does not ask again for what was answered last time.</summary>
+    private void MarkEverySectionAnswered()
+    {
+        _answered.Add(Step.Relatives);
+        _answered.Add(Step.SelfOwned);
+        _answered.Add(Step.RelativeOwned);
+        _answered.Add(Step.BoardRoles);
+        _answered.Add(Step.Conflicts);
+    }
+
     private bool _nothingRelatives = true;
     private bool _nothingSelfOwned = true;
     private bool _nothingRelativeOwned = true;
@@ -519,7 +567,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 });
             }
 
-            if (_relatives.Count > 0) _nothingRelatives = false;
+            if (_relatives.Count > 0) { _nothingRelatives = false; _answered.Add(Step.Relatives); }
         }
 
         if (_run is not null && !_isEditing)
@@ -587,6 +635,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         _signedAtUtc = declaration.SignedAtUtc;
         _hasSignature = !string.IsNullOrEmpty(declaration.SignaturePath);
 
+        MarkEverySectionAnswered();
         _nothingRelatives = declaration.NothingToDeclareRelatives;
         _nothingSelfOwned = declaration.NothingToDeclareSelfOwned;
         _nothingRelativeOwned = declaration.NothingToDeclareRelativeOwned;
@@ -816,9 +865,9 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// was filled in so the answer and the rows never disagree.</summary>
     private void AutoLoadCompanySections()
     {
-        if (FillSelfOwned()) _nothingSelfOwned = false;
-        if (FillBoardRoles()) _nothingBoardRoles = false;
-        if (FillRelativeOwned()) _nothingRelativeOwned = false;
+        if (FillSelfOwned()) { _nothingSelfOwned = false; _answered.Add(Step.SelfOwned); }
+        if (FillBoardRoles()) { _nothingBoardRoles = false; _answered.Add(Step.BoardRoles); }
+        if (FillRelativeOwned()) { _nothingRelativeOwned = false; _answered.Add(Step.RelativeOwned); }
     }
 
     /// <summary>The section's own toggle. Switching it off clears the section; switching it back on
@@ -1537,7 +1586,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
         return false;
     }
 
-    private bool ValidateStep(Step step) => step switch
+    private bool ValidateStep(Step step) => SectionIsAnswered(step) && step switch
     {
         Step.Relatives => ValidateRelatives(),
         Step.SelfOwned => ValidateCompanySection(_selfOwnedCompanies, _nothingSelfOwned, "Companies I own ≥30%"),
@@ -1547,6 +1596,28 @@ public partial class SubmitRelatedPartyCoiDeclaration
         Step.Documents => ValidateDocuments(),
         _ => true,
     };
+
+    /// <summary>A section with a yes/no question on it cannot be walked past unanswered. The
+    /// switch this replaced started on "nothing to declare", so a section nobody read was declared
+    /// empty on their behalf; with neither button chosen there is nothing to default to, and
+    /// saying so by name beats a Next button that does nothing when pressed.</summary>
+    private bool SectionIsAnswered(Step step)
+    {
+        var question = step switch
+        {
+            Step.Relatives => "whether you have any relatives to declare",
+            Step.SelfOwned => "whether there are companies in which you hold more than 30%",
+            Step.RelativeOwned => "whether a relative owns 30% or more of any company",
+            Step.BoardRoles => "whether you serve as a board member or senior executive anywhere",
+            Step.Conflicts => "whether you have any conflicts of interest",
+            _ => null,
+        };
+
+        if (question is null || _answered.Contains(step)) return true;
+
+        Toasts.ShowError($"Please answer {question} before continuing.");
+        return false;
+    }
 
     /// <summary>Nothing passes this step until every document the RP and COI tab marks Required is
     /// attached. Named one by one rather than "documents are missing": the person is looking at a

@@ -1,0 +1,38 @@
+@* An explicit answer to "is there anything in this section?", in place of the switch that used to
+   ask it.
+
+   The switch was bound to the inverse of the flag it set, so the member read "I have nothing to
+   declare" beside a control that was off -- off meaning that sentence was true. Which way round it
+   went could only be worked out by flicking it, and because it started on "nothing", a section
+   somebody never looked at was silently declared empty.
+
+   Two buttons and nothing chosen: the question is asked in words, both answers are offered in
+   words, and the member has to give one. Same pattern as the Insider declaration's NIN question,
+   so the two declarations ask a yes/no the same way. *@
+
+<div class="cg-declare-choice @(Value is null ? "is-unanswered" : "")">
+    <p class="cg-declare-question" id="@_questionId">@Question</p>
+    <div class="cg-yesno" role="group" aria-labelledby="@_questionId">
+        <button type="button" class="cg-action-btn @(Value == false ? "cg-good" : "")"
+                aria-pressed="@((Value == false).ToString().ToLowerInvariant())"
+                disabled="@Disabled" @onclick="() => SetAsync(false)">@YesLabel</button>
+        <button type="button" class="cg-action-btn @(Value == true ? "cg-good" : "")"
+                aria-pressed="@((Value == true).ToString().ToLowerInvariant())"
+                disabled="@Disabled" @onclick="() => SetAsync(true)">@NoLabel</button>
+    </div>
+</div>
+
+@code {
+    /// <summary>null until the member answers. true means "nothing to declare here".</summary>
+    [Parameter] public bool? Value { get; set; }
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+
+    [Parameter, EditorRequired] public string Question { get; set; } = string.Empty;
+    [Parameter] public string YesLabel { get; set; } = "Yes — I'll list them below";
+    [Parameter] public string NoLabel { get; set; } = "No — nothing to declare";
+    [Parameter] public bool Disabled { get; set; }
+
+    private readonly string _questionId = $"cg-declare-{Guid.NewGuid():N}";
+
+    private Task SetAsync(bool nothingToDeclare) => ValueChanged.InvokeAsync(nothingToDeclare);
+}

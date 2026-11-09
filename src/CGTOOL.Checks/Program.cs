@@ -9,5 +9,6 @@ ReportRenderingChecks.Run();
 CountryChecks.Run();
 OnboardingTemplateChecks.Run();
 ExpiryChecks.Run();
+AuditTrailChecks.Run();
 
 return Check.Report();

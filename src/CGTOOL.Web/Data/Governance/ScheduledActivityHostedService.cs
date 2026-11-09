@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace CGTOOL.Web.Data.Governance;
 
@@ -14,11 +15,28 @@ public class ScheduledActivityHostedService(IServiceScopeFactory scopeFactory, I
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var emailSender = scope.ServiceProvider.GetRequiredService<IActivityEmailSender>();
                 var activityWriter = scope.ServiceProvider.GetRequiredService<IScheduledActivityWriter>();
-                await RunOnceAsync(db, emailSender, activityWriter, DateOnly.FromDateTime(DateTime.UtcNow), stoppingToken);
+                var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogger>();
+                await RunOnceAsync(db, emailSender, activityWriter, DateOnly.FromDateTime(DateTime.UtcNow), stoppingToken, auditLog);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Scheduled activity check failed.");
+
+                // In the audit log as well as the application log. A run that failed is the one
+                // an auditor needs evidence of -- "the reminders went out every quarter" is only
+                // worth anything if the times they did not are on the same record.
+                try
+                {
+                    using var failureScope = scopeFactory.CreateScope();
+                    await failureScope.ServiceProvider.GetRequiredService<IAuditLogger>().LogAsync(
+                        SystemActor, AuditAction.Update, nameof(ScheduledActivity), null,
+                        $"Scheduled activity run failed: {ex.Message}");
+                }
+                catch (Exception auditFailure)
+                {
+                    // Never let recording a failure become a second one.
+                    logger.LogError(auditFailure, "Could not record the scheduled activity failure in the audit log.");
+                }
             }
 
             try
@@ -35,7 +53,11 @@ public class ScheduledActivityHostedService(IServiceScopeFactory scopeFactory, I
         }
     }
 
-    public static async Task RunOnceAsync(ApplicationDbContext db, IActivityEmailSender emailSender, IScheduledActivityWriter activityWriter, DateOnly today, CancellationToken ct = default)
+    /// <summary>What the audit log calls a run nobody started. The actor column is never blank:
+    /// an entry with no actor reads like one whose actor was lost.</summary>
+    public const string SystemActor = "System (scheduled)";
+
+    public static async Task RunOnceAsync(ApplicationDbContext db, IActivityEmailSender emailSender, IScheduledActivityWriter activityWriter, DateOnly today, CancellationToken ct = default, IAuditLogger? auditLog = null)
     {
         var activities = await db.ScheduledActivities.Include(a => a.Dates).Where(a => a.Active).ToListAsync(ct);
 
@@ -63,6 +85,19 @@ public class ScheduledActivityHostedService(IServiceScopeFactory scopeFactory, I
             var triggeredAt = DateTime.UtcNow;
             await activityWriter.SetDateLastTriggeredAsync(match.Id, triggeredAt);
             match.LastTriggeredUtc = triggeredAt;
+
+            // Evidence the run happened, what it sent and to how many. Until now the only trace
+            // was LastTriggeredUtc on the row, which says a reminder went out and not who it
+            // reached -- and which the next run overwrites.
+            if (auditLog is not null)
+            {
+                await auditLog.LogAsync(
+                    SystemActor,
+                    AuditAction.Notify,
+                    nameof(ScheduledActivity),
+                    activity.Id.ToString(CultureInfo.InvariantCulture),
+                    $"{label} reminder sent to {recipients.Count} recipient(s) on {today:dd/MM/yyyy}.");
+            }
         }
     }
 

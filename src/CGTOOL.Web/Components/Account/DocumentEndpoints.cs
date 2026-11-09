@@ -1,5 +1,6 @@
 using CGTOOL.Web.Data.Governance;
 using Microsoft.Net.Http.Headers;
+using System.Globalization;
 
 namespace CGTOOL.Web.Components.Account;
 
@@ -25,6 +26,8 @@ internal static class DocumentEndpoints
             HttpContext context,
             IDocumentAccess access,
             IDocumentStore store,
+            IAuditLogger auditLog,
+            ActingAsCookie actingAs,
             CancellationToken ct) =>
         {
             // Asked before the document is opened, so a refusal costs a lookup rather than a read
@@ -34,6 +37,18 @@ internal static class DocumentEndpoints
                 // 404, not 403: "you may not read document 4312" confirms document 4312 exists and
                 // belongs to someone. Refusing and not-found look the same from outside, so ids
                 // cannot be probed for which ones are real.
+                //
+                // Recorded all the same. A refusal is the entry an audit most wants: somebody
+                // asking for a document they may not have is the thing nobody would otherwise
+                // ever hear about.
+                await auditLog.LogAsync(
+                    context.User.Identity?.Name ?? "unknown",
+                    AuditAction.AccessDenied,
+                    nameof(DocumentBlob),
+                    blobId.ToString(CultureInfo.InvariantCulture),
+                    "Asked for a stored document they may not read.",
+                    actingOnBehalfOf: actingAs.Read(context)?.MemberName);
+
                 return Results.NotFound();
             }
 
@@ -60,6 +75,21 @@ internal static class DocumentEndpoints
             }
 
             context.Response.Headers.CacheControl = "private, max-age=0, must-revalidate";
+
+            // Who opened whose document. Reading one leaves no other trace -- the file is not
+            // changed by being looked at -- so without this the log can say who uploaded a
+            // member's Emirates ID and never who went and looked at it afterwards.
+            //
+            // Below the 304 above, deliberately: a browser revalidating a document it already
+            // holds has not opened it again, and logging that would bury the real reads under
+            // cache traffic.
+            await auditLog.LogAsync(
+                context.User.Identity?.Name ?? "unknown",
+                AuditAction.DocumentViewed,
+                nameof(DocumentBlob),
+                blobId.ToString(CultureInfo.InvariantCulture),
+                $"Opened '{descriptor.FileName}' ({descriptor.ContentType}, {descriptor.SizeBytes} bytes).",
+                actingOnBehalfOf: actingAs.Read(context)?.MemberName);
 
             // Inline, with the name still on it.
             //

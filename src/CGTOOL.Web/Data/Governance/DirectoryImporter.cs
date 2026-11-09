@@ -118,6 +118,18 @@ public class DirectoryImporter(
                     member.Id = await memberWriter.InsertAsync(member);
                     members.Add(member);
                     created++;
+
+                    // Per person, not only in the summary below. "148 created" answers how many;
+                    // an auditor asking when a particular member was added, by whom, and from
+                    // which file needs the row that names them. Creations only -- an import that
+                    // touches four thousand existing rows would otherwise bury the trail in
+                    // entries saying nothing changed.
+                    await auditLog.LogAsync(
+                        actorName,
+                        AuditAction.Create,
+                        nameof(Member),
+                        member.Id.ToString(),
+                        $"{member.FullName} ({member.Email}) added by {sourceLabel}.");
                 }
                 else
                 {

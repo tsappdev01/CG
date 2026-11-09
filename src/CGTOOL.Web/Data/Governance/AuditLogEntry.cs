@@ -18,6 +18,11 @@ public enum AuditAction
     /// <summary>A sign-in that was refused. Appended rather than inserted: the values are stored as
     /// their numbers, so anything above this would renumber history.</summary>
     AccessDenied,
+
+    /// <summary>Somebody opened a stored document -- an Emirates ID, a passport, a signed
+    /// declaration. Reading one leaves no other trace, so without this an audit can say who
+    /// uploaded a member's card and never who looked at it. Appended, for the reason above.</summary>
+    DocumentViewed,
 }
 
 /// <summary>Immutable record of a CRUD/permission change, kept for SCA compliance audits.</summary>

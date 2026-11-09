@@ -30,6 +30,7 @@ public static class AuditTrailLanguage
         AuditAction.Notify => "Sent a notification",
         AuditAction.Recall => "Recalled a notification",
         AuditAction.AccessDenied => "Was refused entry",
+        AuditAction.DocumentViewed => "Opened a document",
         _ => action.ToString(),
     };
 

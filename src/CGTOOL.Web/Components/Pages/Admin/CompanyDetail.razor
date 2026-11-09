@@ -32,7 +32,7 @@
             <label class="cg-field"><span>Short code</span><InputText class="cg-input" @bind-Value="_editing.ShortCode" maxlength="20" /><ValidationMessage For="() => _editing.ShortCode" class="cg-error" /></label>
             <label class="cg-field"><span>Company name</span><InputText class="cg-input" @bind-Value="_editing.Name" maxlength="160" /><ValidationMessage For="() => _editing.Name" class="cg-error" /></label>
 
-            <label class="cg-field">
+            <div class="cg-field">
                 <span>Company logo</span>
                 @if (_editing.Id == 0)
                 {
@@ -53,7 +53,7 @@
                     </div>
                     <p class="cg-subtitle">JPEG, PNG, or WebP, up to @UploadLimits.PictureLimit. Kept on file for the entity.</p>
                 }
-            </label>
+            </div>
             @* Address, City and Country are not edited here. The columns remain and keep whatever
                they already hold -- the save writes the loaded values back unchanged. *@
 

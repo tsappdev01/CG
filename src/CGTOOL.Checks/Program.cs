@@ -15,5 +15,6 @@ AuditTrailChecks.Run();
 DirectoryFillChecks.Run();
 DeclarationDocumentChecks.Run();
 UploadLimitChecks.Run();
+UploadControlChecks.Run();
 
 return Check.Report();

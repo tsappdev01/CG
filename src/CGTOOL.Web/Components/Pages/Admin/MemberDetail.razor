@@ -320,7 +320,7 @@
 
                     @if (!string.IsNullOrEmpty(_editing.ApplicationUserId))
                     {
-                        <label class="cg-field">
+                        <div class="cg-field">
                             <span>Profile picture</span>
                             <div class="cg-profile-upload">
                                 @if (!string.IsNullOrEmpty(_profilePicturePath))
@@ -334,7 +334,7 @@
                                 <InputFile OnChange="OnProfilePictureSelectedAsync" accept="image/png,image/jpeg,image/webp" />
                             </div>
                             <p class="cg-hint">JPEG, PNG or WebP, up to @UploadLimits.PictureLimit.</p>
-                        </label>
+                        </div>
                     }
                 </div>
 

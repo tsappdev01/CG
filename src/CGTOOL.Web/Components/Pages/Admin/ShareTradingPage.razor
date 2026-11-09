@@ -191,10 +191,10 @@
             <h2>Upload Shares Trading data</h2>
             <p class="cg-subtitle">DFM extract -- Report Date, Symbol, Investor Number, Investor Name, Client Type, Nationality, Previous/Current Own Qty, Owned Qty Change. Every upload adds to the existing history, it never overwrites a prior one.</p>
 
-            <label class="cg-field">
+            <div class="cg-field">
                 <span>Shares Trading file (.xlsx)</span>
                 <InputFile OnChange="OnFileSelectedAsync" accept=".xlsx" disabled="@(_reading || _uploading)" />
-            </label>
+            </div>
 
             @* The parser reads columns by name, so a file from the market parses whatever order it
                arrives in. Someone building one by hand has no such luck: they find out what the

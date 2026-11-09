@@ -29,10 +29,10 @@
             <p class="cg-subtitle">No policy document has been uploaded yet.</p>
         }
 
-        <label class="cg-field">
+        <div class="cg-field">
             <span>Upload new version (PDF only)</span>
             <InputFile OnChange="OnFileSelectedAsync" accept="application/pdf" disabled="@_uploading" />
-        </label>
+        </div>
         @if (_uploading)
         {
             <p class="cg-subtitle">Uploading…</p>

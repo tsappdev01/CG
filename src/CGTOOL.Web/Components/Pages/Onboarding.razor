@@ -205,7 +205,7 @@ else
             <h2>Step 1 — Your Emirates ID</h2>
             <p>We do not have your Emirates ID on file. Please upload a copy to continue.</p>
 
-            <label class="cg-field">
+            <div class="cg-field">
                 <span>Your Emirates ID</span>
                 <InputFile OnChange="UploadCardAsync" accept=".pdf" disabled="@_busy" />
 
@@ -235,7 +235,7 @@ else
                         }
                     </p>
                 }
-            </label>
+            </div>
 
             <label class="cg-field">
                 <span>Name as it appears on the card</span>
@@ -371,7 +371,7 @@ else
                         <span>Registered name with DFM</span>
                         <input class="cg-input" maxlength="200" @bind="_record.NinRegisteredName" />
                     </label>
-                    <label class="cg-field">
+                    <div class="cg-field">
                         <span>NIN confirmation or DFM statement <em>(optional)</em></span>
                         <InputFile OnChange="UploadNinDocumentAsync" accept=".pdf,.jpg,.jpeg,.png" disabled="@_busy" />
                         @if (_uploading)
@@ -388,7 +388,7 @@ else
                             </div>
                         }
                         else if (_record.NinDocumentBlobId is not null) { <p class="cg-hint">Uploaded.</p> }
-                    </label>
+                    </div>
 
                     <div class="cg-onboarding-actions">
                         <button type="button" class="cg-action-btn cg-good"

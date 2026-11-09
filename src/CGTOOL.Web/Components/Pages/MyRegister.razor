@@ -849,7 +849,7 @@
                     @CompanyUpload("moa", "MOA", DocumentUrl.For(_companyTarget.MoaBlobId, _companyTarget.MoaPath))
                     @CompanyUpload("poa", "POA (optional)", DocumentUrl.For(_companyTarget.PoaBlobId, _companyTarget.PoaPath))
                 </div>
-                <p class="cg-hint">JPEG, PNG or PDF, up to 10 MB. Uploading replaces the document already on file.</p>
+                <p class="cg-hint">JPEG, PNG or PDF, up to @UploadLimits.SupportingDocumentLimit. Uploading replaces the document already on file.</p>
 
                 <h3 class="cg-doc-heading">From the trade licence</h3>
                 <p class="cg-hint">Read off the uploaded licence automatically where document capture is configured. Always check them — the reading is best-effort, not authoritative — and correct anything wrong before saving. Dates are @UaeDate.Pattern.ToLowerInvariant().</p>

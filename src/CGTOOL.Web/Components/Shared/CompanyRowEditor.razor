@@ -83,8 +83,8 @@
         </label>
     </div>
 
-    <label class="cg-field">
-        <span>Trade License Document(s) <em class="cg-subtitle" style="margin:0;">(PDF, JPG, or PNG — up to 10 MB each)</em></span>
+    <div class="cg-field">
+        <span>Trade License Document(s) <em class="cg-subtitle" style="margin:0;">(PDF, JPG, or PNG — up to @UploadLimits.SupportingDocumentLimit each)</em></span>
         <InputFile id="@FieldId("documents")" OnChange="e => OnFileSelected.InvokeAsync(e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@Row.Uploading" />
         @if (Row.Uploading)
         {
@@ -107,7 +107,7 @@
         {
             <span class="cg-subtitle">No documents uploaded yet.</span>
         }
-    </label>
+    </div>
 
     <div class="cg-actions">
         <button type="button" class="cg-action-btn cg-critical" @onclick="() => OnRemove.InvokeAsync()">Remove company</button>

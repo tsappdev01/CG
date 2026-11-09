@@ -97,7 +97,7 @@
                 </label>
                 <label class="cg-field"><span>Date of request</span><input class="cg-input" value="@DateTime.Today.ToString("dd/MM/yyyy")" disabled /></label>
 
-                <label class="cg-field">
+                <div class="cg-field">
                     <span>Supporting documents <em class="cg-subtitle" style="margin:0;">(optional -- e.g. draft agreement, board paper. PDF, JPG, or PNG, up to @UploadLimits.SupportingDocumentLimit each)</em></span>
                     <InputFile OnChange="UploadDocumentAsync" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingDocument" />
                     @if (_uploadingDocument)
@@ -116,7 +116,7 @@
                             }
                         </ul>
                     }
-                </label>
+                </div>
 
                 <div class="cg-actions">
                     <CgBusyButton CssClass="cg-good" BusyLabel="Submitting…" OnClick="SubmitAsync">Submit</CgBusyButton>

@@ -47,10 +47,10 @@
        already holds. Drawing with a mouse is the worst of the three for anyone without a stylus. *@
     @if (!ReadOnly && _uploadedPreview is null or { Length: 0 })
     {
-        <label class="cg-signature-upload">
+        <div class="cg-signature-upload">
             <span>Upload a signature image (JPG, GIF or PNG, up to @MaxUploadKb KB)</span>
             <InputFile OnChange="OnUploadAsync" accept=".jpg,.jpeg,.gif,.png" />
-        </label>
+        </div>
     }
 
     @if (_uploadError is { Length: > 0 } error)

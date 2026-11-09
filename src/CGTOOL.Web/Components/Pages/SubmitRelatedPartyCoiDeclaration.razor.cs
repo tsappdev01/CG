@@ -1255,13 +1255,16 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
     // Functional Spec §5.6: expiry visibility. "Expired"/"Expiring soon" thresholds mirror the
     // spec's suggested 30/60-day window.
+    /// <summary>How a trade licence reads on the related party register. A reporting
+    /// classification rather than a gate -- nothing is refused on it -- but "expired" has to mean
+    /// the same day here as on the screens that do refuse, so the test comes from DocumentExpiry
+    /// rather than a second comparison against a different clock.</summary>
     public static string ExpiryStatus(DateTime? expiry)
     {
         if (expiry is null) return "unknown";
-        var days = (expiry.Value.Date - DateTime.UtcNow.Date).TotalDays;
-        if (days < 0) return "expired";
-        if (days <= 60) return "expiring-soon";
-        return "valid";
+        if (DocumentExpiry.IsExpired(expiry)) return "expired";
+
+        return DocumentExpiry.DaysSinceExpiry(expiry) >= -60 ? "expiring-soon" : "valid";
     }
 
     public static string ExpiryLabel(DateTime? expiry) => ExpiryStatus(expiry) switch

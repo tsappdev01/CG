@@ -527,12 +527,17 @@ public partial class SubmitInsiderDeclaration
 
         if (prior is null) return;
 
-        var today = DateTime.UtcNow.Date;
-
+        // Carried forward unless it is past the point a declaration may be filed on it. A
+        // document expired inside the grace still comes across: the member is allowed to submit
+        // on it, so making them re-upload it would be demanding something the rules do not.
+        //
+        // This also stops treating "no expiry recorded" as expired, which is what the date
+        // comparison it replaced did -- plenty of attached documents carry no date, and every
+        // other screen counts those as current.
         _emiratesIdNumber = prior.EmiratesIdNumber ?? string.Empty;
         _emiratesIdNameOnCard = prior.EmiratesIdNameOnCard ?? string.Empty;
         _emiratesIdExpiryDate = prior.EmiratesIdExpiryDate;
-        if (prior.EmiratesIdExpiryDate is { } eidExpiry && eidExpiry.Date >= today)
+        if (!DocumentExpiry.BlocksSubmission(prior.EmiratesIdExpiryDate))
         {
             _emiratesIdBlobId = prior.EmiratesIdBlobId;
             _emiratesIdPath = DocumentUrl.For(prior.EmiratesIdBlobId, prior.EmiratesIdPath);
@@ -545,7 +550,7 @@ public partial class SubmitInsiderDeclaration
         _passportNumber = prior.PassportNumber ?? string.Empty;
         _passportIssuingCountry = prior.PassportIssuingCountry ?? string.Empty;
         _passportExpiryDate = prior.PassportExpiryDate;
-        if (prior.PassportExpiryDate is { } passportExpiry && passportExpiry.Date >= today)
+        if (!DocumentExpiry.BlocksSubmission(prior.PassportExpiryDate))
         {
             _passportBlobId = prior.PassportBlobId;
             _passportPath = DocumentUrl.For(prior.PassportBlobId, prior.PassportPath);
@@ -559,7 +564,7 @@ public partial class SubmitInsiderDeclaration
         _tradeLicenceLegalName = prior.TradeLicenceLegalName ?? string.Empty;
         _tradeLicenceIssuingAuthority = prior.TradeLicenceIssuingAuthority ?? string.Empty;
         _tradeLicenceExpiryDate = prior.TradeLicenceExpiryDate;
-        if (prior.TradeLicenceExpiryDate is { } licenceExpiry && licenceExpiry.Date >= today)
+        if (!DocumentExpiry.BlocksSubmission(prior.TradeLicenceExpiryDate))
         {
             _tradeLicenceBlobId = prior.TradeLicenceBlobId;
             _tradeLicencePath = DocumentUrl.For(prior.TradeLicenceBlobId, prior.TradeLicencePath);
@@ -571,7 +576,9 @@ public partial class SubmitInsiderDeclaration
 
         if (_emiratesIdExpiredNeedsReupload || _passportExpiredNeedsReupload || _tradeLicenceExpiredNeedsReupload)
         {
-            Toasts.ShowError("Details carried over from your last declaration — please upload a current copy of the document(s) marked as expired below.");
+            Toasts.ShowError(
+                $"Details carried over from your last declaration — the document(s) marked below have been "
+                + $"expired for more than {DocumentExpiry.SubmissionGraceDays} days. Please upload a current copy.");
         }
         else
         {

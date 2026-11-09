@@ -88,7 +88,10 @@ public class RpTransactionPreCheckService(IDbContextFactory<ApplicationDbContext
             }
         }
 
-        if (match?.TradeLicenceExpiry is { } expiry && expiry.Date < DateTime.Today)
+        // A warning on a transaction, not a gate on a declaration, so no grace applies here --
+        // but "expired" is read from the same place as everywhere else, so this cannot come to
+        // mean a different day from the screens that do refuse.
+        if (match?.TradeLicenceExpiry is { } expiry && DocumentExpiry.IsExpired(expiry))
         {
             checks.Add(new PreCheck($"Trade licence expired {expiry:dd/MM/yyyy}", PreCheckState.Warn));
         }

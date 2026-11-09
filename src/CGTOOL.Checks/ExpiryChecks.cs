@@ -1,3 +1,4 @@
+using CGTOOL.Web.Components.Pages;
 using CGTOOL.Web.Data.Governance;
 
 namespace CGTOOL.Checks;
@@ -67,5 +68,32 @@ public static class ExpiryChecks
 
         Check.That("a single day reads as \"1 day ago\", not \"1 days ago\"",
                    DocumentExpiry.Notice("Emirates ID", Expiring(1), today)?.Contains("1 day ago", StringComparison.Ordinal) == true);
+
+        Check.Section("Document expiry: carrying a document forward to the next declaration");
+        // A declaration carries the last one's documents. It used to drop anything past its date,
+        // which with a grace would make the member re-upload something they may submit on -- and
+        // it treated "no expiry recorded" as expired, which nothing else does.
+        Check.That("a current document carries forward", !DocumentExpiry.BlocksSubmission(Expiring(-10), today));
+        Check.That("one expired inside the grace still carries forward",
+                   !DocumentExpiry.BlocksSubmission(Expiring(14), today));
+        Check.That("one expired beyond the grace does not",
+                   DocumentExpiry.BlocksSubmission(Expiring(15), today));
+        Check.That("one with no expiry recorded carries forward, as every other screen treats it",
+                   !DocumentExpiry.BlocksSubmission(null, today));
+
+        Check.Section("Trade licence status on the related party register");
+        foreach (var (days, expected) in new[]
+                 {
+                     (1, "expired"), (0, "expiring-soon"), (-60, "expiring-soon"), (-61, "valid"), (-400, "valid"),
+                 })
+        {
+            // The register classifies rather than refuses, but "expired" has to mean the same day
+            // here as on the screens that do refuse.
+            var status = SubmitRelatedPartyCoiDeclaration.ExpiryStatus(
+                DateOnly.FromDateTime(DateTime.UtcNow.ToLocalTime()).AddDays(-days).ToDateTime(TimeOnly.MinValue));
+            Check.That($"expiry {-days,4} day(s) from today reads as \"{expected}\"", status == expected);
+        }
+        Check.That("no expiry recorded reads as unknown",
+                   SubmitRelatedPartyCoiDeclaration.ExpiryStatus(null) == "unknown");
     }
 }

@@ -257,6 +257,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
             row.FilePath = null;
             row.OriginalFileName = match.OriginalFileName;
             row.DocumentNumber = match.DocumentNumber;
+            row.HolderName = match.HolderName;
             row.ExpiryDate = match.ExpiryDate;
             filled++;
         }
@@ -1437,6 +1438,14 @@ public partial class SubmitRelatedPartyCoiDeclaration
     }
 
     // ---------- moving between steps ----------
+
+
+    /// <summary>What the chevron draws: the wizard minus its last step. Review is where the member
+    /// already is when they get there and the only way on is Submit, so numbering it was counting
+    /// the summary as a thing still to be done. It stays a step for navigation -- Back, Next and
+    /// the validation that walks the steps all still know it -- which is also what makes every
+    /// numbered step read as done while the member is reviewing.</summary>
+    private static readonly (Step Step, string Label)[] ChevronSteps = WizardSteps[..^1];
 
     private static int IndexOfStep(Step step) => Array.FindIndex(WizardSteps, w => w.Step == step);
 

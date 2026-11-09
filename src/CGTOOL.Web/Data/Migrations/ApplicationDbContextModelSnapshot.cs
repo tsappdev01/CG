@@ -2080,6 +2080,10 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasMaxLength(260)
                         .HasColumnType("nvarchar(260)");
 
+                    b.Property<string>("HolderName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("OriginalFileName")
                         .HasMaxLength(260)
                         .HasColumnType("nvarchar(260)");
@@ -3158,7 +3162,7 @@ namespace CGTOOL.Web.Data.Migrations
                         .IsRequired();
 
                     b.HasOne("CGTOOL.Web.Data.Governance.RelatedPartyCoiDeclaration", "RelatedPartyCoiDeclaration")
-                        .WithMany()
+                        .WithMany("SupportingDocuments")
                         .HasForeignKey("RelatedPartyCoiDeclarationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -3358,6 +3362,8 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Navigation("Conflicts");
 
                     b.Navigation("Relatives");
+
+                    b.Navigation("SupportingDocuments");
                 });
 
             modelBuilder.Entity("CGTOOL.Web.Data.Governance.RelatedPartyTransaction", b =>

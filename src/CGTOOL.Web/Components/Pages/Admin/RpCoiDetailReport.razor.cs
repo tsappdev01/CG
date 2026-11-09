@@ -219,7 +219,11 @@ public partial class RpCoiDetailReport
         var files = d.SupportingDocuments
             .Where(doc => DocumentUrl.Exists(doc.BlobId, doc.FilePath))
             .Select(doc => (
-                Against: doc.DocumentType?.Name ?? "Supporting document",
+                // Whose document it is, when the declaration recorded it -- a reviewer reading a
+                // sheet of attachments is checking exactly that.
+                Against: doc.HolderName is { Length: > 0 } who
+                    ? $"{doc.DocumentType?.Name ?? "Supporting document"} — {who}"
+                    : doc.DocumentType?.Name ?? "Supporting document",
                 Name: doc.OriginalFileName is { Length: > 0 } n ? n : doc.DocumentType?.Name ?? "Document",
                 When: doc.ExpiryDate is { } expiry ? $"Expires {expiry:dd/MM/yyyy}" : "—",
                 // Never null: Exists() above is what guarantees one of the two is there.

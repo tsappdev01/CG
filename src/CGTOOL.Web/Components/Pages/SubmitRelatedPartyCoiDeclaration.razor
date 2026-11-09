@@ -80,9 +80,9 @@
                its own list; on one page they run together, and the member cannot see how much is
                left. Every step is reachable from here, forwards through its own checks. *@
             <ol class="cg-stepper cg-stepper-wrap" aria-label="Progress">
-                @for (var i = 0; i < WizardSteps.Length; i++)
+                @for (var i = 0; i < ChevronSteps.Length; i++)
                 {
-                    var wizardStep = WizardSteps[i];
+                    var wizardStep = ChevronSteps[i];
                     var number = i + 1;
                     if (i > 0)
                     {
@@ -437,6 +437,15 @@
                                             <span>Reference number</span>
                                             <input class="cg-input" @bind="row.DocumentNumber" maxlength="100" />
                                         </label>
+                                        @* The card above this says it wants "number, name on the ID,
+                                           expiry and date of birth" and used to offer nowhere to put
+                                           the name -- so the one field saying whose document this is
+                                           was the one not captured. It comes across with the file
+                                           when the document is loaded from My Workspace. *@
+                                        <label class="cg-field">
+                                            <span>Name as per the document</span>
+                                            <input class="cg-input" @bind="row.HolderName" maxlength="200" />
+                                        </label>
                                         <label class="cg-field">
                                             <span>Expiry date</span>
                                             <UaeDateInput CssClass="@(IsExpiredOn(row.ExpiryDate) ? "cg-input-invalid" : null)"
@@ -493,13 +502,14 @@
                     <h2 class="cg-section-heading">Documents attached</h2>
                     <div class="cg-table-wrap">
                         <table>
-                            <thead><tr><th>Document</th><th>Number</th><th>Expiry</th><th>Attached</th></tr></thead>
+                            <thead><tr><th>Document</th><th>Name on it</th><th>Number</th><th>Expiry</th><th>Attached</th></tr></thead>
                             <tbody>
                                 @foreach (var type in RequestedDocumentTypes)
                                 {
                                     var reviewRow = DocumentFor(type.Id);
                                     <tr class="cg-data-row">
                                         <td>@type.Name</td>
+                                        <td>@(string.IsNullOrWhiteSpace(reviewRow.HolderName) ? "—" : reviewRow.HolderName)</td>
                                         <td class="mono">@(string.IsNullOrWhiteSpace(reviewRow.DocumentNumber) ? "—" : reviewRow.DocumentNumber)</td>
                                         <td class="mono">@(reviewRow.ExpiryDate is { } on ? on.ToString("dd/MM/yyyy") : "—")</td>
                                         <td>
@@ -677,9 +687,11 @@
         <button type="button" class="cg-action-btn" disabled="@_savingDraft" @onclick="SaveDraftAsync">@(_savingDraft ? "Saving…" : "Save as Draft")</button>
         @if (NextStep is { } next)
         {
-            <button type="button" class="cg-action-btn cg-good" @onclick="() => GoToStep(next)">
-                @(next == Step.Review ? "Proceed to Submission" : "Next →")
-            </button>
+            @* One label for every step, review included. The step before review used to say
+               "Proceed to Submission", which read as the thing that files the declaration on a
+               button that only turns the page -- and now that review is not numbered in the
+               chevron, there is nothing left for it to be proceeding to. *@
+            <button type="button" class="cg-action-btn cg-good" @onclick="() => GoToStep(next)">Next →</button>
         }
     </div>;
 }

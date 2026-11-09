@@ -2438,6 +2438,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_RelatedPartyCoiDeclarationDocument_Insert
     @BlobId int = NULL,
     @OriginalFileName nvarchar(260) = NULL,
     @DocumentNumber nvarchar(100) = NULL,
+    @HolderName nvarchar(200) = NULL,
     @ExpiryDate datetime2 = NULL,
     @NewId int OUTPUT
 AS
@@ -2445,9 +2446,9 @@ BEGIN
     SET NOCOUNT ON;
 
     INSERT INTO dbo.RelatedPartyCoiDeclarationDocuments
-        (RelatedPartyCoiDeclarationId, DocumentTypeId, FilePath, BlobId, OriginalFileName, DocumentNumber, ExpiryDate)
+        (RelatedPartyCoiDeclarationId, DocumentTypeId, FilePath, BlobId, OriginalFileName, DocumentNumber, HolderName, ExpiryDate)
     VALUES
-        (@RelatedPartyCoiDeclarationId, @DocumentTypeId, @FilePath, @BlobId, @OriginalFileName, @DocumentNumber, @ExpiryDate);
+        (@RelatedPartyCoiDeclarationId, @DocumentTypeId, @FilePath, @BlobId, @OriginalFileName, @DocumentNumber, @HolderName, @ExpiryDate);
 
     SET @NewId = SCOPE_IDENTITY();
 END

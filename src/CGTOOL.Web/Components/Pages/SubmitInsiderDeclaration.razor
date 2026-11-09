@@ -91,15 +91,15 @@
                with its own ternary, which on a submitted declaration left steps 2 and 3 matching
                no state at all and rendering blank. *@
             <ol class="cg-stepper cg-stepper-wrap" aria-label="Progress">
-                @for (var i = 0; i < WizardSteps.Length; i++)
+                @for (var i = 0; i < ChevronSteps.Length; i++)
                 {
                     if (i > 0)
                     {
                         <li class="cg-step-rule @RuleClass(i - 1)" aria-hidden="true"></li>
                     }
-                    <li class="cg-step @StepClass(WizardSteps[i].Step)">
+                    <li class="cg-step @StepClass(ChevronSteps[i].Step)">
                         <span class="cg-step-num">@(i + 1)</span>
-                        <span class="cg-step-label">@WizardSteps[i].Label</span>
+                        <span class="cg-step-label">@ChevronSteps[i].Label</span>
                     </li>
                 }
             </ol>
@@ -111,8 +111,11 @@
                 <label class="cg-field">
                     <span>1. Do you have a National Investor Number (NIN)?</span>
                     <div class="cg-yesno">
-                        <button type="button" class="cg-action-btn @(_hasNin ? "cg-good" : "")" @onclick="() => _hasNin = true">Yes, I have a NIN</button>
-                        <button type="button" class="cg-action-btn @(!_hasNin ? "cg-good" : "")" @onclick="() => _hasNin = false">I don't have a NIN</button>
+                        @* Neither lit until one is pressed: _hasNin alone cannot tell "no" from
+                           "not answered", so the second button used to be lit from the start and a
+                           question nobody read was answered for them. *@
+                        <button type="button" class="cg-action-btn @(Picked(QHasNin, _hasNin) ? "cg-good" : "")" @onclick="() => AnswerHasNin(true)">Yes, I have a NIN</button>
+                        <button type="button" class="cg-action-btn @(Picked(QHasNin, !_hasNin) ? "cg-good" : "")" @onclick="() => AnswerHasNin(false)">I don't have a NIN</button>
                     </div>
                 </label>
                 @if (_hasNin)
@@ -139,8 +142,8 @@
                 <label class="cg-field">
                     <span>2. Do your relatives have a National Investor Number (NIN)? <em class="cg-subtitle" style="margin:0;">(Father, Mother, Brother, Sister, Children, Spouse, Father-in-Law, Mother-in-Law, Stepchildren)</em></span>
                     <div class="cg-yesno">
-                        <button type="button" class="cg-action-btn @(_relativesHaveNin ? "cg-good" : "")" @onclick="() => ChooseRelativesHaveNinAsync(true)">Yes, my relatives have a NIN</button>
-                        <button type="button" class="cg-action-btn @(!_relativesHaveNin ? "cg-good" : "")" @onclick="() => ChooseRelativesHaveNinAsync(false)">No, my relatives do not have a NIN</button>
+                        <button type="button" class="cg-action-btn @(Picked(QRelativesNin, _relativesHaveNin) ? "cg-good" : "")" @onclick="() => ChooseRelativesHaveNinAsync(true)">Yes, my relatives have a NIN</button>
+                        <button type="button" class="cg-action-btn @(Picked(QRelativesNin, !_relativesHaveNin) ? "cg-good" : "")" @onclick="() => ChooseRelativesHaveNinAsync(false)">No, my relatives do not have a NIN</button>
                     </div>
                 </label>
 
@@ -542,8 +545,8 @@
                 <p class="cg-subtitle">Relatives: father, mother, brother, sister, children, spouse, father-in-law, mother-in-law, stepchildren.</p>
 
                 <div class="cg-choice-cards" role="radiogroup" aria-label="@($"Do you or any of your relatives hold shares in {Branding.ParentHoldingCompany}?")">
-                    <button type="button" role="radio" aria-checked="@_holdsSharesInDI"
-                            class="cg-choice-card @(_holdsSharesInDI ? "is-picked" : "")"
+                    <button type="button" role="radio" aria-checked="@Picked(QHoldsShares, _holdsSharesInDI)"
+                            class="cg-choice-card @(Picked(QHoldsShares, _holdsSharesInDI) ? "is-picked" : "")"
                             @onclick="() => ChooseHoldsSharesAsync(true)">
                         <span class="cg-choice-dot" aria-hidden="true"></span>
                         <span class="cg-choice-text">
@@ -551,8 +554,8 @@
                             <span class="cg-choice-sub">You will list the holdings below.</span>
                         </span>
                     </button>
-                    <button type="button" role="radio" aria-checked="@(!_holdsSharesInDI)"
-                            class="cg-choice-card @(!_holdsSharesInDI ? "is-picked" : "")"
+                    <button type="button" role="radio" aria-checked="@Picked(QHoldsShares, !_holdsSharesInDI)"
+                            class="cg-choice-card @(Picked(QHoldsShares, !_holdsSharesInDI) ? "is-picked" : "")"
                             @onclick="() => ChooseHoldsSharesAsync(false)">
                         <span class="cg-choice-dot" aria-hidden="true"></span>
                         <span class="cg-choice-text">
@@ -561,7 +564,7 @@
                         </span>
                     </button>
                 </div>
-                @if (_holdsSharesInDI)
+                @if (Picked(QHoldsShares, _holdsSharesInDI))
                 {
                     <div class="cg-table-wrap">
                         <table>
@@ -650,7 +653,7 @@
                         </span>
                         <button type="button" class="cg-action-btn" disabled="@_savingDraft" @onclick="SaveDraftAsync">@(_savingDraft ? "Saving…" : "Save as draft")</button>
                         <button type="button" class="cg-action-btn cg-good" disabled="@(BlockingDocuments().Count > 0)" @onclick="GoToReviewAsync">
-                            @(_holdsSharesInDI ? "Continue to review" : "Continue to review")
+                            Next →
                         </button>
                     </div>
                 </div>

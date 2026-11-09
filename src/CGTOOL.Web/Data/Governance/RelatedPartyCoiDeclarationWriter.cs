@@ -86,6 +86,7 @@ public class RelatedPartyCoiDeclarationWriter(IStoredProcedureExecutor sp) : IRe
         new SqlParameter("@BlobId", (object?)document.BlobId ?? DBNull.Value),
         new SqlParameter("@OriginalFileName", (object?)document.OriginalFileName ?? DBNull.Value),
         new SqlParameter("@DocumentNumber", (object?)document.DocumentNumber ?? DBNull.Value),
+        new SqlParameter("@HolderName", (object?)document.HolderName ?? DBNull.Value),
         new SqlParameter("@ExpiryDate", (object?)document.ExpiryDate ?? DBNull.Value));
 
     public Task DeleteDocumentsAsync(int declarationId) => sp.ExecuteAsync(

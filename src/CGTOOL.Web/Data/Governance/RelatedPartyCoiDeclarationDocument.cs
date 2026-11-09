@@ -37,5 +37,13 @@ public class RelatedPartyCoiDeclarationDocument
     [MaxLength(100)]
     public string? DocumentNumber { get; set; }
 
+    /// <summary>The name as it is printed on the document. The card on the form asked for "number,
+    /// name on the ID, expiry and date of birth" and then offered nowhere to put the name, so the
+    /// one field that says whose card this is was the one the declaration did not keep. Held here
+    /// rather than read from the member's record for the reason the whole of this class exists: a
+    /// declaration is evidence of what was provided on the day it was submitted.</summary>
+    [MaxLength(200)]
+    public string? HolderName { get; set; }
+
     public DateTime? ExpiryDate { get; set; }
 }

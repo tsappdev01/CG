@@ -24,6 +24,14 @@ public partial class SubmitInsiderDeclaration
         (Step.Review, "Review & submit"),
     ];
 
+
+    /// <summary>What the chevron draws: the wizard minus its last step. Review is where the member
+    /// already is when they get there and the only way on is Submit, so numbering it was counting
+    /// the summary as a thing still to be done. It stays a step for navigation -- Back, Next and
+    /// the validation that walks the steps all still know it -- which is also what makes every
+    /// numbered step read as done while the member is reviewing.</summary>
+    private static readonly (Step Step, string Label)[] ChevronSteps = WizardSteps[..^1];
+
     private static int IndexOfStep(Step step)
     {
         var at = Array.FindIndex(WizardSteps, entry => entry.Step == step);
@@ -97,6 +105,33 @@ public partial class SubmitInsiderDeclaration
 
         var (from, to) = PeriodRange();
         return $"Q{_run.PeriodQuarter} {_run.PeriodYear} ({from:MMM} \u2013 {to:MMM})";
+    }
+
+    /// <summary>The questions on this declaration the member has actually answered.
+    ///
+    /// The three below are plain booleans, so "no" and "not answered yet" are the same value: one
+    /// of the two buttons was always lit before anybody pressed either, and a declarant who
+    /// scrolled past a question had "no" recorded for them. The Related Party & COI declaration
+    /// had the same fault in switch form. Keeping the answered set beside the flags lets the
+    /// buttons start with neither chosen without a schema change -- by the time a row is written
+    /// every question has an answer.</summary>
+    private readonly HashSet<string> _answered = [];
+
+    private const string QHasNin = "has-nin";
+    private const string QRelativesNin = "relatives-nin";
+    private const string QHoldsShares = "holds-shares";
+
+    private bool Answered(string question) => _answered.Contains(question);
+
+    /// <summary>True only once the question has been answered that way -- which is what the
+    /// buttons read to decide whether to look chosen.</summary>
+    private bool Picked(string question, bool value) => Answered(question) && value;
+
+    private void MarkEveryQuestionAnswered()
+    {
+        _answered.Add(QHasNin);
+        _answered.Add(QRelativesNin);
+        _answered.Add(QHoldsShares);
     }
 
     private bool _hasNin;
@@ -343,6 +378,7 @@ public partial class SubmitInsiderDeclaration
         if (!Nin.IsValid(investorNumber)) return;
 
         _hasNin = true;
+        _answered.Add(QHasNin);
         _ninNumber = investorNumber!.Trim();
         _ninFromDfm = true;
     }
@@ -486,6 +522,7 @@ public partial class SubmitInsiderDeclaration
         _editingDeclarationId = declaration.Id;
         _run = declaration.DeclarationCycleRun;
 
+        MarkEveryQuestionAnswered();
         _hasNin = declaration.HasNin;
         _ninNumber = declaration.NinNumber ?? string.Empty;
         _relativesHaveNin = declaration.RelativesHaveNin;
@@ -618,7 +655,8 @@ public partial class SubmitInsiderDeclaration
     /// answer changes -- clicking "yes" again is not a fresh question.</summary>
     private async Task ChooseRelativesHaveNinAsync(bool haveNin)
     {
-        var changed = _relativesHaveNin != haveNin;
+        var changed = _relativesHaveNin != haveNin || !Answered(QRelativesNin);
+        _answered.Add(QRelativesNin);
         _relativesHaveNin = haveNin;
 
         if (!haveNin) return;
@@ -1653,7 +1691,8 @@ public partial class SubmitInsiderDeclaration
 
     private async Task ChooseHoldsSharesAsync(bool holdsShares)
     {
-        var changed = _holdsSharesInDI != holdsShares;
+        var changed = _holdsSharesInDI != holdsShares || !Answered(QHoldsShares);
+        _answered.Add(QHoldsShares);
         _holdsSharesInDI = holdsShares;
 
         if (!holdsShares || !changed) return;
@@ -1780,9 +1819,39 @@ public partial class SubmitInsiderDeclaration
         await ContinueToReviewAsync();
     }
 
+    /// <summary>Answering is not optional, and was never meant to be: the declaration records a
+    /// yes or a no against each of these questions. What changed is that it is now the member who
+    /// supplies it rather than the field's default value.</summary>
+    private void AnswerHasNin(bool hasNin)
+    {
+        _answered.Add(QHasNin);
+        _hasNin = hasNin;
+    }
+
+    /// <summary>Nothing moves on from a question nobody has answered. Named rather than silent:
+    /// a Next button that does nothing when pressed is the same dead end as the switch this
+    /// replaced on the Related Party & COI declaration.</summary>
+    private bool QuestionsAnswered(params (string Question, string Asks)[] questions)
+    {
+        foreach (var (question, asks) in questions)
+        {
+            if (Answered(question)) continue;
+            Toasts.ShowError($"Please answer {asks} before continuing.");
+            return false;
+        }
+        return true;
+    }
+
     // Screen 1 "Next" -- Functional Spec §3.1/§3.2/§8 validation.
     private async Task GoToCapture2Async()
     {
+        if (!QuestionsAnswered(
+                (QHasNin, "whether you have a National Investor Number"),
+                (QRelativesNin, "whether your relatives have a National Investor Number")))
+        {
+            return;
+        }
+
         if (_hasNin && !IsValidNin(_ninNumber))
         {
             Toasts.ShowError(Nin.ErrorFor("your own National Investor Number"));
@@ -1928,6 +1997,11 @@ public partial class SubmitInsiderDeclaration
     // clicked.
     private async Task GoToReviewAsync()
     {
+        if (!QuestionsAnswered((QHoldsShares, $"whether you or your relatives hold shares in {Branding.ParentHoldingCompany}")))
+        {
+            return;
+        }
+
         // Each document is demanded only if THIS declaration asks for it. These checks used to be
         // unconditional, which was the whole bug: the Document Center could switch the passport
         // off, the card would disappear from the step, the footer would read "All required details

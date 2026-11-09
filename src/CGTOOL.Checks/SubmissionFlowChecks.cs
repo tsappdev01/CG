@@ -54,6 +54,71 @@ public static class SubmissionFlowChecks
 
         Chevron(insiderMarkup, coiMarkup);
         SectionQuestions(coiMarkup);
+        InsiderQuestions(insiderMarkup);
+        DocumentCardAsksForTheName(coiMarkup);
+    }
+
+    /// <summary>The Insider declaration's three yes/no questions had the same fault the RP & COI
+    /// switch had, in button form: the flags behind them are plain booleans, so one of each pair
+    /// was lit before anybody pressed either and a question scrolled past was answered "no" on the
+    /// declarant's behalf.</summary>
+    private static void InsiderQuestions(string insiderMarkup)
+    {
+        Check.Section("No answer is chosen for the declarant");
+
+        foreach (var flag in new[] { "_hasNin", "_relativesHaveNin", "_holdsSharesInDI" })
+        {
+            // The old form: the flag read straight into the chosen state, with no way to say
+            // "unanswered". Every one of them now goes through Picked(question, value).
+            Check.That($"{flag} no longer lights a button on its own",
+                       !insiderMarkup.Contains($"cg-action-btn @({flag} ?", StringComparison.Ordinal)
+                       && !insiderMarkup.Contains($"cg-action-btn @(!{flag} ?", StringComparison.Ordinal)
+                       && !insiderMarkup.Contains($"cg-choice-card @({flag} ?", StringComparison.Ordinal)
+                       && !insiderMarkup.Contains($"cg-choice-card @(!{flag} ?", StringComparison.Ordinal));
+        }
+
+        var picked = insiderMarkup.Split("Picked(").Length - 1;
+        Check.That($"all three questions ask through the one helper (found {picked} uses)", picked >= 6);
+
+        var page = typeof(CGTOOL.Web.Components.Pages.SubmitInsiderDeclaration);
+        const System.Reflection.BindingFlags Any =
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var pickedMethod = page.GetMethod("Picked", Any);
+        var answerHasNin = page.GetMethod("AnswerHasNin", Any);
+
+        Check.That("the page decides what looks chosen in one place", pickedMethod is not null && answerHasNin is not null);
+        if (pickedMethod is null || answerHasNin is null) return;
+
+        var instance = Activator.CreateInstance(page)!;
+        var hasNin = page.GetField("_hasNin", Any)!;
+
+        // Exactly what the two buttons pass: the flag for Yes, its negation for No.
+        bool YesLit() => (bool)pickedMethod.Invoke(instance, ["has-nin", (bool)hasNin.GetValue(instance)!])!;
+        bool NoLit() => (bool)pickedMethod.Invoke(instance, ["has-nin", !(bool)hasNin.GetValue(instance)!])!;
+
+        Check.That("before answering, neither Yes nor No is lit", !YesLit() && !NoLit());
+
+        answerHasNin.Invoke(instance, [false]);
+        Check.That("answering No lights No and only No", NoLit() && !YesLit());
+
+        answerHasNin.Invoke(instance, [true]);
+        Check.That("answering Yes lights Yes and only Yes", YesLit() && !NoLit());
+    }
+
+    /// <summary>The RP & COI document card promised "number, name on the ID, expiry and date of
+    /// birth" and gave the name nowhere to go, so the one field saying whose document it is was
+    /// the one the declaration did not keep.</summary>
+    private static void DocumentCardAsksForTheName(string coiMarkup)
+    {
+        Check.Section("A document records whose it is");
+
+        Check.That("the card has a field for the name on the document",
+                   coiMarkup.Contains("row.HolderName", StringComparison.Ordinal));
+
+        var holder = typeof(CGTOOL.Web.Data.Governance.RelatedPartyCoiDeclarationDocument)
+            .GetProperty("HolderName");
+        Check.That("and the declaration keeps its own copy of it, as it does every other field",
+                   holder is not null && holder.PropertyType == typeof(string));
     }
 
     /// <summary>Each RP & COI section opens by asking whether there is anything in it.
@@ -118,8 +183,8 @@ public static class SubmissionFlowChecks
         Check.Section("The step chevron is built from the steps");
 
         Check.That("neither chevron numbers its steps by hand",
-                   insiderMarkup.Contains("WizardSteps", StringComparison.Ordinal)
-                   && coiMarkup.Contains("WizardSteps", StringComparison.Ordinal));
+                   insiderMarkup.Contains("ChevronSteps", StringComparison.Ordinal)
+                   && coiMarkup.Contains("ChevronSteps", StringComparison.Ordinal));
 
         Check.That("both chevrons wrap rather than crowding the edge on a narrow screen",
                    insiderMarkup.Contains("cg-stepper-wrap", StringComparison.Ordinal)
@@ -130,11 +195,14 @@ public static class SubmissionFlowChecks
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
         var stepField = page.GetField("_step", Any);
         var stepClass = page.GetMethod("StepClass", Any);
-        var steps = page.GetField("WizardSteps",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        const System.Reflection.BindingFlags Statics =
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static;
+        var steps = page.GetField("WizardSteps", Statics);
+        var drawn = page.GetField("ChevronSteps", Statics);
 
-        Check.That("the chevron's state is worked out in one method", stepClass is not null && stepField is not null && steps is not null);
-        if (stepClass is null || stepField is null || steps is null) return;
+        Check.That("the chevron's state is worked out in one method",
+                   stepClass is not null && stepField is not null && steps is not null && drawn is not null);
+        if (stepClass is null || stepField is null || steps is null || drawn is null) return;
 
         var instance = Activator.CreateInstance(page)!;
         var list = (Array)steps.GetValue(null)!;
@@ -147,20 +215,30 @@ public static class SubmissionFlowChecks
         }
         string ClassOf(int i) => (string)stepClass.Invoke(instance, [StepAt(i)])!;
 
-        Check.That("there are three steps", list.Length == 3);
+        var shown = (Array)drawn.GetValue(null)!;
+        Check.That("the wizard still has its three steps", list.Length == 3);
+
+        // Review is where the member already is when they reach it and the only way on is Submit,
+        // so it is not drawn as a step still to be done. It stays a step for Back, Next and the
+        // validation that walks them.
+        Check.That("the chevron draws every step but the last", shown.Length == list.Length - 1);
 
         stepField.SetValue(instance, StepAt(0));
         Check.That("on the first step, it is the current one and nothing is done yet",
-                   ClassOf(0) == "is-current" && ClassOf(1) == string.Empty && ClassOf(2) == string.Empty);
+                   ClassOf(0) == "is-current" && ClassOf(1) == string.Empty);
+
+        stepField.SetValue(instance, StepAt(1));
+        Check.That("on the second step, the first reads as done",
+                   ClassOf(0) == "is-done" && ClassOf(1) == "is-current");
 
         stepField.SetValue(instance, StepAt(2));
-        Check.That("on the last step, the two behind it are done and it is current",
-                   ClassOf(0) == "is-done" && ClassOf(1) == "is-done" && ClassOf(2) == "is-current");
+        Check.That("while reviewing, every drawn step reads as done",
+                   ClassOf(0) == "is-done" && ClassOf(1) == "is-done");
 
         var done = Enum.Parse(stepField.FieldType, "Done");
         stepField.SetValue(instance, done);
-        Check.That("on a submitted declaration every step reads as done, not as blank",
-                   ClassOf(0) == "is-done" && ClassOf(1) == "is-done" && ClassOf(2) == "is-done");
+        Check.That("on a submitted declaration they still read as done, not as blank",
+                   ClassOf(0) == "is-done" && ClassOf(1) == "is-done");
     }
 
     private static string? FindRepositoryRoot()

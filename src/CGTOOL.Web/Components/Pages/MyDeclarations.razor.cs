@@ -132,7 +132,6 @@ public partial class MyDeclarations
             // The print sheet shows these, and an un-included collection prints as "none
             // declared" rather than failing -- a declaration that silently loses its share
             // transactions on the way to paper.
-            .Include(d => d.ShareEntries)
             .Where(d => d.MemberId == _effectiveMember.Id)
             .OrderByDescending(d => d.SubmittedAtUtc)
             .ToListAsync();

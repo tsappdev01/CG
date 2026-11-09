@@ -34,70 +34,6 @@ public partial class SubmitInsiderDeclaration
     private bool _loadedAsSubmittedEdit;
     private bool _justAutoSaved;
 
-    // Case 1 (Functional Spec §3.1)
-    /// <summary>The share movement table from the printed form: what was held when the period
-    /// opened, each purchase and sale during it, and what was held when it closed -- for the
-    /// declarant, their spouse and their relatives.</summary>
-    private readonly List<ShareEntryRow> _shareEntries = [];
-
-    private class ShareEntryRow
-    {
-        public bool IsSelf { get; set; } = true;
-        public RelativeRelationship Relationship { get; set; } = RelativeRelationship.Spouse;
-        public string HolderName { get; set; } = string.Empty;
-        public string HolderNin { get; set; } = string.Empty;
-        public ShareEntryKind EntryKind { get; set; } = ShareEntryKind.OpeningBalance;
-        public DateTime? TransactionDate { get; set; }
-        public long NumberOfShares { get; set; }
-        public decimal? Rate { get; set; }
-    }
-
-    /// <summary>Whether the declarant's own DFM number is on file. Half the trigger for the share
-    /// movement table: someone with no investor number has no DFM holding to report.</summary>
-    private bool _hasDfmInvestorNumber;
-
-    /// <summary>The share movement table is asked of employees who hold a DFM investor number.
-    /// Board members and corporate declarants report through their own arrangements, and someone
-    /// without a number has nothing the table could describe.</summary>
-    private bool ShowShareMovements =>
-        _hasDfmInvestorNumber
-        && _effectiveMember?.DeclarationType is MemberDeclarationType.EmployeeDiPjsc
-                                             or MemberDeclarationType.EmployeeOther;
-
-    /// <summary>The printed form's row labels, in its order.</summary>
-    private static readonly (ShareEntryKind Value, string Label)[] ShareEntryKinds =
-    [
-        // Short, because these sit in a table column beside five others. The period they refer to
-        // is named in full above the table, so repeating "during the period" on every row of a
-        // table that is entirely about one period bought nothing and cost the column its width:
-        // "Held at the beginning of the period" rendered as "Hel".
-        (ShareEntryKind.OpeningBalance, "Held at start"),
-        (ShareEntryKind.Purchase, "Purchase"),
-        (ShareEntryKind.Sale, "Sale"),
-        (ShareEntryKind.ClosingBalance, "Held at end"),
-    ];
-
-    private static string ShareHolderLabel(ShareEntryRow row) =>
-        row.IsSelf ? "Self" : RelationshipLabel(row.Relationship);
-
-    /// <summary>What the "Share held by" picker binds to: "self", or the relationship's own
-    /// number. One control for both rather than a checkbox beside a dropdown, because the list
-    /// the shareholding grid shows above is a single list with Self at the top of it.</summary>
-    private static string HolderValue(ShareEntryRow row) =>
-        row.IsSelf ? "self" : ((int)row.Relationship).ToString();
-
-    /// <summary>The name this holder is listed under in the shareholding grid above, or null when
-    /// they are not listed there. Drives whether the transactions table shows the name as text or
-    /// offers a box to type it in: a name that was fetched is not one to re-type, and an editable
-    /// copy of it is just somewhere for the two to drift apart.</summary>
-    private string? ListedHolderName(ShareEntryRow row)
-    {
-        if (row.IsSelf) return _effectiveMember?.FullName;
-
-        var listed = _relatives.FirstOrDefault(r => !r.IsSelf && r.Relationship == row.Relationship);
-        return string.IsNullOrWhiteSpace(listed?.RelativeName) ? null : listed!.RelativeName;
-    }
-
     /// <summary>The declarant's own NIN on a shareholding row. It was given a step earlier -- typed
     /// there, or carried over from My DFM -- so the grid reads it back rather than asking for the
     /// same ten characters a second time. A row for someone else keeps what was typed on it.</summary>
@@ -105,82 +41,6 @@ public partial class SubmitInsiderDeclaration
         row.IsSelf && _hasNin && !string.IsNullOrWhiteSpace(_ninNumber)
             ? _ninNumber.Trim()
             : row.NinNumber;
-
-    /// <summary>The NIN this holder is listed under above, for the same reason as the name: it is
-    /// fetched, not typed, so it is read back from its source at save time.</summary>
-    private string? ListedHolderNin(ShareEntryRow row)
-    {
-        if (row.IsSelf) return string.IsNullOrWhiteSpace(_ninNumber) ? null : _ninNumber;
-
-        var listed = _relatives.FirstOrDefault(r => !r.IsSelf && r.Relationship == row.Relationship);
-        return string.IsNullOrWhiteSpace(listed?.NinNumber) ? null : listed!.NinNumber;
-    }
-
-    /// <summary>Chooses the holder and brings their name and NIN with them.
-    ///
-    /// Everyone here has already been listed in the shareholding grid above, with a name and a NIN
-    /// typed once. Asking again per transaction is asking someone to copy their spouse's investor
-    /// number four times and get it right every time.</summary>
-    private void SetShareEntryHolder(ShareEntryRow row, object? value)
-    {
-        var raw = value?.ToString();
-        if (string.IsNullOrWhiteSpace(raw)) return;
-
-        if (raw == "self")
-        {
-            row.IsSelf = true;
-            row.HolderName = string.Empty;
-            row.HolderNin = _ninNumber;
-            return;
-        }
-
-        if (!int.TryParse(raw, out var relationship)) return;
-
-        row.IsSelf = false;
-        row.Relationship = (RelativeRelationship)relationship;
-
-        // The matching row from the shareholding grid, when that holder was listed there.
-        var listed = _relatives.FirstOrDefault(r => !r.IsSelf && r.Relationship == row.Relationship);
-        row.HolderName = listed?.RelativeName ?? string.Empty;
-        row.HolderNin = listed?.NinNumber ?? string.Empty;
-    }
-
-    private static string ShareEntryLabel(ShareEntryKind kind) =>
-        ShareEntryKinds.First(k => k.Value == kind).Label;
-
-    /// <summary>The same thing said inside a sentence, where a column heading's shorthand reads
-    /// like a mistake: "the held at start for Spouse has no number of shares".</summary>
-    private static string ShareEntryPhrase(ShareEntryKind kind) => kind switch
-    {
-        ShareEntryKind.OpeningBalance => "holding at the start of the period",
-        ShareEntryKind.Purchase => "purchase",
-        ShareEntryKind.Sale => "sale",
-        _ => "holding at the end of the period",
-    };
-
-    private static bool IsTransactionKind(ShareEntryKind kind) =>
-        kind is ShareEntryKind.Purchase or ShareEntryKind.Sale;
-
-    private void AddShareEntry()
-    {
-        var row = new ShareEntryRow
-        {
-            // Seeded with the declarant, which is whose line it usually is, and with their own
-            // number so the commonest row needs nothing typed into it but a quantity.
-            IsSelf = true,
-            HolderNin = _ninNumber,
-        };
-
-        // Unless the declarant is not one of the shareholders listed above, in which case the row
-        // opens on the first person who is. A row cannot start on someone its own picker does not
-        // offer: the box would read as one person while the row held another.
-        if (!_relatives.Any(r => r.IsSelf) && ListedShareHolders().FirstOrDefault() is { Value: not "self" } first)
-        {
-            SetShareEntryHolder(row, first.Value);
-        }
-
-        _shareEntries.Add(row);
-    }
 
     /// <summary>Who the shareholding grid above lists, in the order the relationship list is
     /// written. The transactions table picks from these and no one else: a transaction belongs to
@@ -201,24 +61,6 @@ public partial class SubmitInsiderDeclaration
         return options;
     }
 
-    /// <summary>The same list, with this row's own holder kept on it even if they have since been
-    /// taken off the grid above. Dropping them would leave the box showing the first name on the
-    /// list while the row still held the other one.</summary>
-    private List<(string Value, string Label)> ShareHolderOptionsFor(ShareEntryRow row)
-    {
-        var options = ListedShareHolders();
-        var value = HolderValue(row);
-
-        if (options.All(o => o.Value != value))
-        {
-            options.Insert(0, (value, ShareHolderLabel(row)));
-        }
-
-        return options;
-    }
-
-    private void RemoveShareEntry(ShareEntryRow row) => _shareEntries.Remove(row);
-
     /// <summary>A transaction has to have happened inside the period being declared. A date in
     /// another quarter belongs on another declaration, and one typed by accident would otherwise
     /// be filed as though it were this quarter's.</summary>
@@ -231,14 +73,6 @@ public partial class SubmitInsiderDeclaration
 
         var (from, to) = PeriodRange();
         return $"Q{_run.PeriodQuarter} {_run.PeriodYear} ({from:MMM} \u2013 {to:MMM})";
-    }
-
-    private bool IsOutsidePeriod(DateTime? date)
-    {
-        if (date is not { } value || _run is null) return false;
-
-        var (from, to) = PeriodRange();
-        return value.Date < from.Date || value.Date > to.Date;
     }
 
     private bool _hasNin;
@@ -493,7 +327,6 @@ public partial class SubmitInsiderDeclaration
 
         if (!Nin.IsValid(investorNumber)) return;
 
-        _hasDfmInvestorNumber = true;
         _hasNin = true;
         _ninNumber = investorNumber!.Trim();
         _ninFromDfm = true;
@@ -673,30 +506,6 @@ public partial class SubmitInsiderDeclaration
         _addedDocuments.AddRange(await db.InsiderDeclarationDocuments.AsNoTracking()
             .Where(d => d.InsiderDeclarationId == declaration.Id)
             .ToListAsync());
-
-        _shareEntries.Clear();
-        _shareEntries.AddRange((await db.InsiderDeclarationShareEntries.AsNoTracking()
-            .Where(e => e.InsiderDeclarationId == declaration.Id)
-            .OrderByDescending(e => e.IsSelf).ThenBy(e => e.Relationship).ThenBy(e => e.EntryKind).ThenBy(e => e.Id)
-            .ToListAsync())
-            .Select(e => new ShareEntryRow
-            {
-                IsSelf = e.IsSelf,
-                Relationship = e.Relationship,
-                HolderName = e.HolderName ?? string.Empty,
-                HolderNin = e.HolderNin ?? string.Empty,
-                EntryKind = e.EntryKind,
-                TransactionDate = e.TransactionDate,
-                NumberOfShares = e.NumberOfShares,
-                Rate = e.Rate,
-            }));
-
-        // The prefill does not run on this path, so the table's trigger has to be established here
-        // as well -- otherwise reopening a draft would hide a table that was filled in.
-        _hasDfmInvestorNumber = await db.MemberDfmProfiles.AsNoTracking()
-            .Where(profile => profile.MemberId == declaration.MemberId)
-            .Select(profile => profile.InvestorNumber)
-            .FirstOrDefaultAsync() is { } onFile && Nin.IsValid(onFile);
 
         _relatives.Clear();
         _relatives.AddRange(declaration.Relatives.Select(r => new RelativeRow
@@ -2029,55 +1838,6 @@ public partial class SubmitInsiderDeclaration
             }
         }
 
-        if (ShowShareMovements)
-        {
-            foreach (var entry in _shareEntries)
-            {
-                if (IsTransactionKind(entry.EntryKind))
-                {
-                    if (entry.TransactionDate is null)
-                    {
-                        Toasts.ShowError($"Enter the date of each {ShareEntryPhrase(entry.EntryKind)}.");
-                        return;
-                    }
-
-                    if (IsOutsidePeriod(entry.TransactionDate))
-                    {
-                        Toasts.ShowError($"Transactions must fall in {PeriodLabel()}. {entry.TransactionDate:dd/MM/yyyy} does not.");
-                        return;
-                    }
-                }
-
-                // Only a transaction. Zero is a real answer to a balance -- someone who held
-                // nothing at the start of the period and bought during it says so with a zero --
-                // and refusing it would make them delete a row that is telling the truth. A
-                // purchase or sale of no shares is not a purchase or a sale.
-                if (IsTransactionKind(entry.EntryKind) && entry.NumberOfShares == 0)
-                {
-                    Toasts.ShowError($"The {ShareEntryPhrase(entry.EntryKind)} for {ShareHolderLabel(entry)} "
-                        + "has no number of shares. Enter it, or remove the row.");
-                    return;
-                }
-
-                if (!entry.IsSelf && string.IsNullOrWhiteSpace(ListedHolderName(entry) ?? entry.HolderName))
-                {
-                    Toasts.ShowError($"{ShareHolderLabel(entry)} has no name. Add them to the shareholding list above, or type the name on the transaction row.");
-                    return;
-                }
-
-                // The NIN is not typed on this table -- it comes from the shareholding grid above
-                // -- so the message points at where it can actually be corrected.
-                var resolvedNin = ListedHolderNin(entry) ?? entry.HolderNin;
-                if (string.IsNullOrWhiteSpace(resolvedNin) || Nin.IsInvalidEntry(resolvedNin))
-                {
-                    Toasts.ShowError(entry.IsSelf
-                        ? "Your own NIN is missing or invalid. Correct it in question 1."
-                        : $"{ShareHolderLabel(entry)} has no valid NIN. Add them to the shareholding list above with their NIN, then choose them here again.");
-                    return;
-                }
-            }
-        }
-
         // The types an administrator added, which had no gate here at all -- marking one Required
         // showed a card and nothing more.
         var missingAdded = AddedDocumentTypes
@@ -2271,7 +2031,6 @@ public partial class SubmitInsiderDeclaration
                 await Writer.DeleteRelativesAsync(_editingDeclarationId);
                 await Writer.DeleteNinHoldersAsync(_editingDeclarationId);
                 await Writer.DeleteDocumentsAsync(_editingDeclarationId);
-                await Writer.DeleteShareEntriesAsync(_editingDeclarationId);
                 declarationId = _editingDeclarationId;
             }
             else
@@ -2309,38 +2068,6 @@ public partial class SubmitInsiderDeclaration
                 }
             }
 
-            // Written the way the grids above are: cleared and rewritten inside the same
-            // transaction, so a save can remove an attachment as well as add one. Rows with
-            // nothing in them are skipped -- a card someone opened and left alone should not
-            // leave an empty attachment behind.
-            foreach (var entry in _shareEntries)
-            {
-                // Every row is written, exactly as it stands. Dropping the ones that looked
-                // empty is what made Save as draft lose work, and a zero is not emptiness anyway
-                // -- "held none at the start of the period" is a declaration, and the review step
-                // is where a row that says nothing useful is turned back.
-
-                await Writer.InsertShareEntryAsync(declarationId, new InsiderDeclarationShareEntry
-                {
-                    IsSelf = entry.IsSelf,
-                    Relationship = entry.Relationship,
-                    // Resolved here rather than trusted from the row: the name was fetched from
-                    // the shareholding grid, and that grid may have been edited since. The
-                    // declarant's own name is not stored -- it is on the declaration already.
-                    HolderName = entry.IsSelf
-                        ? null
-                        : (ListedHolderName(entry) ?? entry.HolderName) is { Length: > 0 } name
-                            ? name.Trim()
-                            : null,
-                    HolderNin = (ListedHolderNin(entry) ?? entry.HolderNin) is { Length: > 0 } nin ? nin.Trim() : null,
-                    EntryKind = entry.EntryKind,
-                    // A balance has no day and no price, whatever was typed before the row's kind
-                    // was changed to one.
-                    TransactionDate = IsTransactionKind(entry.EntryKind) ? entry.TransactionDate : null,
-                    NumberOfShares = entry.NumberOfShares,
-                    Rate = IsTransactionKind(entry.EntryKind) ? entry.Rate : null,
-                });
-            }
 
             foreach (var added in _addedDocuments)
             {
@@ -2476,7 +2203,6 @@ public partial class SubmitInsiderDeclaration
                             .AsNoTracking()
                             .Include(x => x.Relatives)
                             .Include(x => x.NinHolders)
-                            .Include(x => x.ShareEntries)
                             .FirstAsync(x => x.Id == declarationId);
                         var logoPath = Path.Combine(Env.WebRootPath, "images", "di-logo.jpg");
                         var pdfBytes = InsiderDeclarationPdfBuilder.Build(declaration, _effectiveMember, _run, File.Exists(logoPath) ? logoPath : null, Branding.ParentHoldingCompany);

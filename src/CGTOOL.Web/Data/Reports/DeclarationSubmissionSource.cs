@@ -34,7 +34,6 @@ public static class DeclarationSubmissionSource
             .AsNoTracking()
             .Include(d => d.Relatives)
             .Include(d => d.NinHolders)
-            .Include(d => d.ShareEntries)
             .ToListAsync();
 
         return await BuildAsync(db, DeclarationCycleType.InsiderTrading, declarations,

@@ -781,7 +781,9 @@ public partial class MyRegister : ComponentBase
         if (id.DateOfBirth is not null) document.DateOfBirth = id.DateOfBirth;
         if (id.DateOfIssue is not null) document.IssueDate = id.DateOfIssue;
 
-        var holder = string.Join(" ", new[] { id.FirstName, id.LastName }.Where(n => !string.IsNullOrWhiteSpace(n)));
+        // The name as the card prints it, not the model's two-part version of it. Worked out by
+        // IdDocumentExtraction so this screen, the declaration and onboarding all take the same one.
+        var holder = id.HolderName;
         if (!string.IsNullOrWhiteSpace(holder)) document.HolderName = holder;
 
         if (document.Kind == MemberDocumentKind.Passport && !string.IsNullOrWhiteSpace(id.CountryRegion))

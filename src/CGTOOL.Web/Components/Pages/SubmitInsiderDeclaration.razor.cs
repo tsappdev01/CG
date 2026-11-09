@@ -15,6 +15,30 @@ public partial class SubmitInsiderDeclaration
     // Draft" / "Proceed to Submission").
     private enum Step { Loading, NoAccess, NotDue, EditWindowClosed, Capture1, Capture2, Review, Done }
 
+    /// <summary>The wizard in order, and what the chevron calls each one. One list, so the
+    /// numbering, the labels and the done/current states cannot disagree with each other.</summary>
+    private static readonly (Step Step, string Label)[] WizardSteps =
+    [
+        (Step.Capture1, "Personal details"),
+        (Step.Capture2, "Documents & shareholding"),
+        (Step.Review, "Review & submit"),
+    ];
+
+    private static int IndexOfStep(Step step)
+    {
+        var at = Array.FindIndex(WizardSteps, entry => entry.Step == step);
+        // Done is past the end of the wizard, not outside it: everything behind it is finished.
+        return at >= 0 ? at : step == Step.Done ? WizardSteps.Length : -1;
+    }
+
+    private string StepClass(Step step)
+    {
+        var (here, current) = (IndexOfStep(step), IndexOfStep(_step));
+        return here == current ? "is-current" : here < current ? "is-done" : string.Empty;
+    }
+
+    private string RuleClass(int afterIndex) => IndexOfStep(_step) > afterIndex ? "is-done" : string.Empty;
+
     [Parameter] public int? Id { get; set; }
 
     private Step _step = Step.Loading;
@@ -785,6 +809,10 @@ public partial class SubmitInsiderDeclaration
             // be invisible to it. Runs after onSavedAsync so the number and expiry the card
             // reader just filled in go with it.
             await SyncUploadToWorkspaceAsync(kind, blobId, file.Name);
+
+            // The card's own label reads from this set. Without it the document the member has
+            // just put in both places would still be described as held only by this declaration.
+            if (kind != "other-document") _workspaceBlobIds.Add(blobId);
         }
         finally
         {
@@ -800,7 +828,7 @@ public partial class SubmitInsiderDeclaration
     private async Task AnalyzeAndFillEmiratesIdAsync(byte[] content) => await AnalyzeAndFillAsync(content, extraction =>
     {
         if (!string.IsNullOrWhiteSpace(extraction.DocumentNumber)) _emiratesIdNumber = extraction.DocumentNumber;
-        var name = string.Join(" ", new[] { extraction.FirstName, extraction.LastName }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        var name = extraction.HolderName;
         if (!string.IsNullOrWhiteSpace(name)) _emiratesIdNameOnCard = name;
         if (extraction.DateOfExpiration is not null) _emiratesIdExpiryDate = extraction.DateOfExpiration;
     });
@@ -902,18 +930,31 @@ public partial class SubmitInsiderDeclaration
     /// Added document types are kept apart by DocumentTypeId; the four built-in slots have none.</summary>
     private Task SyncUploadToWorkspaceAsync(string kind, int blobId, string fileName) => kind switch
     {
-        "emirates-id" => SyncToWorkspaceAsync(MemberDocumentKind.EmiratesId, null, blobId, fileName, _emiratesIdNumber, _emiratesIdExpiryDate),
-        "passport" => SyncToWorkspaceAsync(MemberDocumentKind.Passport, null, blobId, fileName, _passportNumber, _passportExpiryDate),
-        "trade-licence" => SyncToWorkspaceAsync(MemberDocumentKind.TradeLicence, null, blobId, fileName, _tradeLicenceNumber, _tradeLicenceExpiryDate),
-        "other-document" => SyncToWorkspaceAsync(MemberDocumentKind.Other, null, blobId, fileName, null, null),
+        // The name and the nationality go with the number, not just the file. My Workspace shows
+        // the name on the card, and the declaration's own pull reads it back from there -- a
+        // document synced without it leaves the member's register showing a nameless card and
+        // asks them to type the name again on the next declaration.
+        "emirates-id" => SyncToWorkspaceAsync(MemberDocumentKind.EmiratesId, null, blobId, fileName,
+                             _emiratesIdNumber, _emiratesIdExpiryDate, _emiratesIdNameOnCard, null),
+        "passport" => SyncToWorkspaceAsync(MemberDocumentKind.Passport, null, blobId, fileName,
+                          _passportNumber, _passportExpiryDate, null, _passportIssuingCountry),
+        "trade-licence" => SyncToWorkspaceAsync(MemberDocumentKind.TradeLicence, null, blobId, fileName,
+                               _tradeLicenceNumber, _tradeLicenceExpiryDate, _tradeLicenceLegalName, null),
+        // Not the free "Other document" slot. My Workspace keeps untyped Other documents as a
+        // list the member curates, so this one slot matches no row there: an upsert would
+        // overwrite whichever unrelated document happened to come first, and an insert would add
+        // a row on every re-upload. Nothing pulls an untyped Other back either -- the pull handles
+        // the three named kinds and the typed documents -- so there is nothing to keep in step.
+        "other-document" => Task.CompletedTask,
         _ when kind.StartsWith("type-", StringComparison.Ordinal) && int.TryParse(kind[5..], out var typeId)
             => SyncToWorkspaceAsync(MemberDocumentKind.Other, typeId, blobId, fileName,
-                   AddedDocumentFor(typeId).DocumentNumber, AddedDocumentFor(typeId).ExpiryDate),
+                   AddedDocumentFor(typeId).DocumentNumber, AddedDocumentFor(typeId).ExpiryDate, null, null),
         _ => Task.CompletedTask,
     };
 
     private async Task SyncToWorkspaceAsync(MemberDocumentKind kind, int? documentTypeId, int? blobId,
-                                            string? originalFileName, string? number, DateTime? expiry)
+                                            string? originalFileName, string? number, DateTime? expiry,
+                                            string? holderName, string? nationality)
     {
         if (_effectiveMember is null || blobId is null) return;
 
@@ -938,6 +979,9 @@ public partial class SubmitInsiderDeclaration
                     OriginalFileName = originalFileName,
                     DocumentNumber = number,
                     ExpiryDate = expiry,
+                    HolderName = Blank(holderName),
+                    Nationality = Blank(nationality),
+                    UploadedAtUtc = DateTime.UtcNow,
                 });
                 return;
             }
@@ -945,10 +989,16 @@ public partial class SubmitInsiderDeclaration
             existing.BlobId = blobId;
             existing.FilePath = null;
             existing.OriginalFileName = originalFileName;
+            // A new file, so a new date. My Workspace shows this, and leaving it would have the
+            // member's own register dating the document they uploaded today to whenever the one
+            // it replaced went in.
+            existing.UploadedAtUtc = DateTime.UtcNow;
             // Only what this screen actually knows. A blank number here is the card not having
             // been read yet, not an instruction to erase the one already on file.
             if (!string.IsNullOrWhiteSpace(number)) existing.DocumentNumber = number;
             if (expiry is not null) existing.ExpiryDate = expiry;
+            if (!string.IsNullOrWhiteSpace(holderName)) existing.HolderName = holderName.Trim();
+            if (!string.IsNullOrWhiteSpace(nationality)) existing.Nationality = nationality.Trim();
 
             await MemberDocuments.UpdateAsync(existing);
         }
@@ -960,6 +1010,8 @@ public partial class SubmitInsiderDeclaration
                 kind, _effectiveMember.Id);
         }
     }
+
+    private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static bool AnythingRead(IdDocumentExtraction e) =>
         !string.IsNullOrWhiteSpace(e.DocumentNumber) || !string.IsNullOrWhiteSpace(e.FirstName)

@@ -407,8 +407,9 @@ public partial class Onboarding
             if (!string.IsNullOrWhiteSpace(read.DocumentNumber)) _record!.EmiratesIdNumber = read.DocumentNumber;
             if (read.DateOfExpiration is not null) _record!.EmiratesIdExpiryDate = read.DateOfExpiration;
 
-            var name = string.Join(" ", new[] { read.FirstName, read.LastName }
-                .Where(part => !string.IsNullOrWhiteSpace(part)));
+            // The name as the card prints it. The model returns it split in two and shortened,
+            // which on an Emirates ID is a different, shorter name than the one on the card.
+            var name = read.HolderName;
             if (!string.IsNullOrWhiteSpace(name)) _record!.EmiratesIdHolderName = name;
 
             // Only a spelling the list offers, since the field is a dropdown: the reader returns

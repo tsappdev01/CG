@@ -14,7 +14,38 @@ public record IdDocumentExtraction(
     DateTime? DateOfExpiration,
     string? CountryRegion,
     DateTime? DateOfBirth = null,
-    DateTime? DateOfIssue = null);
+    DateTime? DateOfIssue = null,
+    string? NameOnDocument = null)
+{
+    /// <summary>The name to put in a field labelled "name on the ID", worked out once here rather
+    /// than by each of the three screens that ask for it.
+    ///
+    /// The prebuilt model splits an Emirates ID's single printed name into FirstName and LastName
+    /// and keeps only the first part or two of it: a card reading "Aisha Bint Rashid Al Noori
+    /// Hassan" comes back as "Aisha Bint", which is not the name on the ID and is not
+    /// what a register of identity documents is for. The line printed on the card is preferred
+    /// when it is the same name spelled out in full -- every word the model found is in it. That
+    /// test is what keeps a passport's "Surname" line, which the same label search can land on,
+    /// from replacing a full name with half of one.</summary>
+    public string? HolderName
+    {
+        get
+        {
+            var joined = string.Join(" ", new[] { FirstName, LastName }
+                .Where(part => !string.IsNullOrWhiteSpace(part)).Select(part => part!.Trim())).Trim();
+            var printed = NameOnDocument?.Trim();
+
+            if (string.IsNullOrWhiteSpace(printed)) return joined.Length == 0 ? null : joined;
+            if (joined.Length == 0) return printed;
+
+            return printed.Length > joined.Length && Covers(printed, joined) ? printed : joined;
+        }
+    }
+
+    private static bool Covers(string printed, string joined) =>
+        joined.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .All(word => printed.Contains(word, StringComparison.OrdinalIgnoreCase));
+}
 
 /// <summary>Extracted fields from a trade licence. Unlike Emirates ID/passport, Document Intelligence
 /// has no purpose-built prebuilt model for trade licences (there's no such document type in its
@@ -115,6 +146,10 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         var firstName = GetString(document, "FirstName") ?? mrz?.GivenNames;
         var lastName = GetString(document, "LastName") ?? mrz?.Surname;
 
+        // The whole name as the card prints it, kept beside the model's split version rather than
+        // instead of it. IdDocumentExtraction.HolderName decides which of the two to use.
+        var printedName = text.Length > 0 ? IdDocumentTextParser.FindNameOnCard(text) : null;
+
         return new IdDocumentExtraction(
             DocumentNumber: number,
             FirstName: firstName,
@@ -122,7 +157,8 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             DateOfExpiration: expiry,
             CountryRegion: GetString(document, "CountryRegion") ?? Countries.FromMrzCode(mrz?.Nationality),
             DateOfBirth: dateOfBirth,
-            DateOfIssue: issued);
+            DateOfIssue: issued,
+            NameOnDocument: printedName);
     }
 
     private static string? GetString(AnalyzedDocument? document, string fieldName) =>

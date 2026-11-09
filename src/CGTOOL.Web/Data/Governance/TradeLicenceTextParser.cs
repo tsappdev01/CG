@@ -275,6 +275,23 @@ public static class IdDocumentTextParser
     public static string? FindPassportNumber(string text) =>
         DocumentTextParser.FindValue(text, PassportNumberLabels);
 
+    private static readonly string[] NameLabels = ["full name", "name"];
+
+    /// <summary>The name line on the card. Everything that is not part of a Latin-script name is
+    /// dropped: the bilingual layout puts the Arabic name on the same line often enough that
+    /// keeping it would store two names in a field that holds one. A line carrying digits is
+    /// rejected outright -- that is a number that happened to sit under the label, not a name.</summary>
+    public static string? FindNameOnCard(string text)
+    {
+        var value = DocumentTextParser.FindValue(text, NameLabels);
+        if (string.IsNullOrWhiteSpace(value) || value.Any(char.IsDigit)) return null;
+
+        var kept = new string(value.Where(c => char.IsAsciiLetter(c) || c is ' ' or '-' or '\'' or '.').ToArray());
+        var cleaned = string.Join(" ", kept.Split(' ', StringSplitOptions.RemoveEmptyEntries)).Trim();
+
+        return cleaned.Length < 3 || !cleaned.Any(char.IsAsciiLetter) ? null : cleaned;
+    }
+
     private static readonly string[] DateOfBirthLabels =
         ["date of birth", "birth date", "d.o.b", "dob", "تاريخ الميلاد"];
 

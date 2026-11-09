@@ -99,12 +99,21 @@ public static class DeclarationDocumentChecks
         Check.That("every slot still uploads through one handler", handler >= 0);
         Check.That("that handler puts the file on the member's My Workspace record",
                    body.Contains("SyncUploadToWorkspaceAsync", StringComparison.Ordinal));
-        Check.That("all four built-in slots and the added types are mapped onto a document kind",
+        Check.That("the three identity slots and the added types are mapped onto a document kind",
                    source.Contains("\"emirates-id\" => SyncToWorkspaceAsync", StringComparison.Ordinal)
                    && source.Contains("\"passport\" => SyncToWorkspaceAsync", StringComparison.Ordinal)
                    && source.Contains("\"trade-licence\" => SyncToWorkspaceAsync", StringComparison.Ordinal)
-                   && source.Contains("\"other-document\" => SyncToWorkspaceAsync", StringComparison.Ordinal)
                    && source.Contains("kind.StartsWith(\"type-\"", StringComparison.Ordinal));
+
+        // Deliberate, and the kind of decision that gets quietly reversed by somebody tidying up
+        // an inconsistent-looking switch. My Workspace keeps untyped Other documents as a list,
+        // so the declaration's single Other slot matches no row there: an upsert would overwrite
+        // an unrelated document and an insert would add one on every re-upload.
+        Check.That("the free Other slot is left alone, because My Workspace keeps a list of those",
+                   source.Contains("\"other-document\" => Task.CompletedTask", StringComparison.Ordinal));
+
+        Check.That("replacing a file re-dates the record, so My Workspace does not show the old date",
+                   source.Contains("existing.UploadedAtUtc = DateTime.UtcNow", StringComparison.Ordinal));
 
         OnboardingReachesTheWorkspace(dir.FullName);
     }

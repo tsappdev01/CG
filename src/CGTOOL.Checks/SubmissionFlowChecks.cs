@@ -51,6 +51,64 @@ public static class SubmissionFlowChecks
         Check.That("each declaration still has a Submit that calls SubmitAsync",
                    insiderMarkup.Contains("OnClick=\"SubmitAsync\"", StringComparison.Ordinal)
                    && coiMarkup.Contains("OnClick=\"SubmitAsync\"", StringComparison.Ordinal));
+
+        Chevron(insiderMarkup, coiMarkup);
+    }
+
+    /// <summary>The chevron that tells the member how far through they are.
+    ///
+    /// The Insider one was written out step by step, each with its own ternary: the numbering
+    /// lived in the markup, and on a submitted declaration steps 2 and 3 matched no state at all
+    /// and rendered blank. Both are now built from a step list, so the labels, the numbering and
+    /// the states come from one place.</summary>
+    private static void Chevron(string insiderMarkup, string coiMarkup)
+    {
+        Check.Section("The step chevron is built from the steps");
+
+        Check.That("neither chevron numbers its steps by hand",
+                   insiderMarkup.Contains("WizardSteps", StringComparison.Ordinal)
+                   && coiMarkup.Contains("WizardSteps", StringComparison.Ordinal));
+
+        Check.That("both chevrons wrap rather than crowding the edge on a narrow screen",
+                   insiderMarkup.Contains("cg-stepper-wrap", StringComparison.Ordinal)
+                   && coiMarkup.Contains("cg-stepper-wrap", StringComparison.Ordinal));
+
+        var page = typeof(CGTOOL.Web.Components.Pages.SubmitInsiderDeclaration);
+        const System.Reflection.BindingFlags Any =
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var stepField = page.GetField("_step", Any);
+        var stepClass = page.GetMethod("StepClass", Any);
+        var steps = page.GetField("WizardSteps",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        Check.That("the chevron's state is worked out in one method", stepClass is not null && stepField is not null && steps is not null);
+        if (stepClass is null || stepField is null || steps is null) return;
+
+        var instance = Activator.CreateInstance(page)!;
+        var list = (Array)steps.GetValue(null)!;
+        // A value tuple's elements are fields, and the names live in an attribute rather than on
+        // the type, so Item1 is what reflection has to ask for.
+        object StepAt(int i)
+        {
+            var entry = list.GetValue(i)!;
+            return entry.GetType().GetField("Item1")!.GetValue(entry)!;
+        }
+        string ClassOf(int i) => (string)stepClass.Invoke(instance, [StepAt(i)])!;
+
+        Check.That("there are three steps", list.Length == 3);
+
+        stepField.SetValue(instance, StepAt(0));
+        Check.That("on the first step, it is the current one and nothing is done yet",
+                   ClassOf(0) == "is-current" && ClassOf(1) == string.Empty && ClassOf(2) == string.Empty);
+
+        stepField.SetValue(instance, StepAt(2));
+        Check.That("on the last step, the two behind it are done and it is current",
+                   ClassOf(0) == "is-done" && ClassOf(1) == "is-done" && ClassOf(2) == "is-current");
+
+        var done = Enum.Parse(stepField.FieldType, "Done");
+        stepField.SetValue(instance, done);
+        Check.That("on a submitted declaration every step reads as done, not as blank",
+                   ClassOf(0) == "is-done" && ClassOf(1) == "is-done" && ClassOf(2) == "is-done");
     }
 
     private static string? FindRepositoryRoot()

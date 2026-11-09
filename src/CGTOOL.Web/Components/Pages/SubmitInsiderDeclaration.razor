@@ -85,22 +85,23 @@
                 }
             </div>
 
-            @* Three steps, so the member can see how much is left rather than discovering it. *@
-            <ol class="cg-stepper" aria-label="Progress">
-                <li class="cg-step @(_step == Step.Capture1 ? "is-current" : "is-done")">
-                    <span class="cg-step-num">1</span>
-                    <span class="cg-step-label">Personal details</span>
-                </li>
-                <li class="cg-step-rule @(_step == Step.Capture1 ? "" : "is-done")" aria-hidden="true"></li>
-                <li class="cg-step @(_step == Step.Capture2 ? "is-current" : _step == Step.Review ? "is-done" : "")">
-                    <span class="cg-step-num">2</span>
-                    <span class="cg-step-label">Documents &amp; shareholding</span>
-                </li>
-                <li class="cg-step-rule @(_step == Step.Review ? "is-done" : "")" aria-hidden="true"></li>
-                <li class="cg-step @(_step == Step.Review ? "is-current" : "")">
-                    <span class="cg-step-num">3</span>
-                    <span class="cg-step-label">Review &amp; submit</span>
-                </li>
+            @* Built from the step list rather than written out three times, and with the same
+               done/current rules and the same wrapping as the Related Party & COI chevron. The
+               hand-written version numbered the steps in the markup and worked each state out
+               with its own ternary, which on a submitted declaration left steps 2 and 3 matching
+               no state at all and rendering blank. *@
+            <ol class="cg-stepper cg-stepper-wrap" aria-label="Progress">
+                @for (var i = 0; i < WizardSteps.Length; i++)
+                {
+                    if (i > 0)
+                    {
+                        <li class="cg-step-rule @RuleClass(i - 1)" aria-hidden="true"></li>
+                    }
+                    <li class="cg-step @StepClass(WizardSteps[i].Step)">
+                        <span class="cg-step-num">@(i + 1)</span>
+                        <span class="cg-step-label">@WizardSteps[i].Label</span>
+                    </li>
+                }
             </ol>
         }
 

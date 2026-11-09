@@ -76,5 +76,58 @@ public static class CountryChecks
         // Every MRZ code already had to map onto the list; the same rule, checked the same way.
         Check.That("every nationality the dropdown offers resolves to itself",
                    Countries.All.All(c => Countries.Resolve(c) == c));
+
+        NameOnTheDocument();
+    }
+
+    /// <summary>The name a register of identity documents stores.
+    ///
+    /// The prebuilt model splits an Emirates ID's one printed name and keeps the first part or
+    /// two, so a card printed with five names came back with two and My Workspace showed a name
+    /// that was not the name on the ID. The line printed on the card wins when it is the same
+    /// name in full -- and only then, because the same label search lands on a passport's
+    /// "Surname" line, which would otherwise replace a full name with half of one.</summary>
+    private static void NameOnTheDocument()
+    {
+        Check.Section("The name stored is the name on the document");
+
+        static string? Holder(string? first, string? last, string? printed) =>
+            new IdDocumentExtraction(null, first, last, null, null, NameOnDocument: printed).HolderName;
+
+        Check.That("the full printed name wins over the model's shortened one",
+                   Holder("Aisha", "Bint", "Aisha Bint Rashid Al Noori Hassan")
+                   == "Aisha Bint Rashid Al Noori Hassan");
+
+        Check.That("a printed line that is not the same name is ignored",
+                   Holder("Aisha", "Bint", "Hassan Mohammed") == "Aisha Bint");
+
+        Check.That("the case the card prints it in does not matter",
+                   Holder("AISHA", "BINT", "Aisha Bint Rashid Al Noori") == "Aisha Bint Rashid Al Noori");
+
+        Check.That("with nothing printed, the model's name is used",
+                   Holder("Aisha", "Bint", null) == "Aisha Bint");
+
+        Check.That("with nothing from the model, the printed name is used",
+                   Holder(null, null, "Aisha Bint Rashid") == "Aisha Bint Rashid");
+
+        Check.That("a card that read as nothing stores nothing", Holder(null, null, null) is null);
+        Check.That("a blank printed line is not mistaken for a name", Holder("Aisha", "Bint", "   ") == "Aisha Bint");
+        Check.That("a shorter printed line does not replace a longer name",
+                   Holder("Aisha", "Bint", "Aisha") == "Aisha Bint");
+
+        Check.Section("Reading the name line off the card");
+
+        Check.That("the name follows its label",
+                   IdDocumentTextParser.FindNameOnCard("Name: Aisha Bint Rashid Al Noori")
+                   == "Aisha Bint Rashid Al Noori");
+
+        Check.That("the Arabic half of a bilingual line is dropped",
+                   IdDocumentTextParser.FindNameOnCard("Name: Aisha Bint الاسم") == "Aisha Bint");
+
+        Check.That("a line with digits in it is a number, not a name",
+                   IdDocumentTextParser.FindNameOnCard("Name: 784-1000-0000000-0") is null);
+
+        Check.That("a line with no name on it reads as nothing",
+                   IdDocumentTextParser.FindNameOnCard("Nationality: INDIA") is null);
     }
 }

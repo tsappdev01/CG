@@ -532,6 +532,7 @@ public class MemberOnboardingService(
                 existing.BlobId = o.EmiratesIdBlobId;
                 existing.FilePath = null;
                 existing.OriginalFileName = "Emirates ID.pdf";
+                existing.UploadedAtUtc = DateTime.UtcNow;
                 changed = true;
             }
 

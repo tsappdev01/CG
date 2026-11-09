@@ -106,7 +106,7 @@ public partial class MemberDetail
 
         if (Id == 0)
         {
-            _editing = new Member { Active = true };
+            _editing = MemberDefaults.ApplyToNew(new Member { Active = true });
             _adSynced = false;
             _approvedImpersonatorIds = [];
             _selectedUserRoles = [];
@@ -283,28 +283,143 @@ public partial class MemberDetail
         _adSynced = await DirectoryProvider.IsSyncedAsync(company);
     }
 
+    private bool _fillingFromDirectory;
+
+    /// <summary>Fills this person's details from the company directory.
+    ///
+    /// It used to read the entity's whole employee list and take the first row of it, so it filled
+    /// in whoever Graph happened to return first -- a different person's name, title and address
+    /// written over this one's, with nothing on screen saying so. The record is now asked for by
+    /// identity (object id, then address, then an unambiguous name), and when the directory holds
+    /// no match for this person nothing at all is written.</summary>
     private async Task LoadFromDirectoryAsync()
     {
-        if (_editing is null || _editing.CompanyId == 0) return;
-        var company = _companies!.First(c => c.Id == _editing.CompanyId);
-        var records = await DirectoryProvider.GetEmployeesAsync(company);
-        var record = records.FirstOrDefault();
-        if (record is null)
+        if (_editing is null || _editing.CompanyId == 0 || _fillingFromDirectory) return;
+
+        _fillingFromDirectory = true;
+        try
         {
-            Toasts.ShowError("No Azure AD records were returned for this entity.");
-            return;
+            var company = _companies!.First(c => c.Id == _editing.CompanyId);
+            var record = await DirectoryProvider.FindEmployeeAsync(
+                company.Name, _editing.AzureAdObjectId, _editing.Email, _editing.FullName);
+
+            if (record is null)
+            {
+                var looked = _editing.Email ?? _editing.FullName ?? "this person";
+                Toasts.ShowError(
+                    $"The company directory has no entry matching {looked}. Nothing was changed.");
+                return;
+            }
+
+            var filled = new List<string>();
+
+            if (record.FullName is { Length: > 0 } && record.FullName != _editing.FullName)
+            {
+                _editing.FullName = record.FullName;
+                filled.Add("full name");
+            }
+
+            if (record.JobTitle is { Length: > 0 } && record.JobTitle != _editing.JobTitle)
+            {
+                _editing.JobTitle = record.JobTitle;
+                filled.Add("job title");
+            }
+
+            if (record.DepartmentName is { Length: > 0 })
+            {
+                var dept = _departments!.FirstOrDefault(
+                    d => d.Name.Equals(record.DepartmentName, StringComparison.OrdinalIgnoreCase));
+
+                if (dept is null)
+                {
+                    // Said rather than swallowed: silently leaving the department alone looks
+                    // identical to the directory not having one.
+                    Toasts.ShowWarning(
+                        $"The directory puts them in \"{record.DepartmentName}\", which is not a department here. Department left as it was.");
+                }
+                else if (dept.Id != _editing.DepartmentId)
+                {
+                    _editing.DepartmentId = dept.Id;
+                    filled.Add("department");
+                }
+            }
+
+            // The address and the object id are the handles the match was made on, so they are
+            // only ever filled in when empty -- never replaced with another person's.
+            if (string.IsNullOrWhiteSpace(_editing.Email) && record.Email is { Length: > 0 })
+            {
+                _editing.Email = record.Email;
+                filled.Add("email address");
+            }
+
+            if (string.IsNullOrWhiteSpace(_editing.AzureAdObjectId) && record.SystemId is { Length: > 0 })
+            {
+                _editing.AzureAdObjectId = record.SystemId;
+            }
+
+            if (record.Signature is { Length: > 0 }) _editing.Signature = record.Signature;
+
+            var photo = await FillPhotoFromDirectoryAsync(record.SystemId ?? _editing.AzureAdObjectId);
+
+            if (filled.Count == 0 && photo != DirectoryPhotoResult.Stored)
+            {
+                Toasts.ShowSuccess($"{record.FullName} was found in the directory; everything here already matches.");
+                return;
+            }
+
+            // The picture is stored against the sign-in account the moment it arrives, exactly as
+            // choosing a file does, while the fields above are part of the form. Saying which is
+            // which stops "I did not press Save" from being a surprise either way.
+            var note = filled.Count == 0
+                ? string.Empty
+                : $" Filled from the directory: {string.Join(", ", filled)} — press Save to keep them.";
+
+            Toasts.ShowSuccess(
+                (photo == DirectoryPhotoResult.Stored ? "Profile picture updated from the directory." : string.Empty) + note);
+        }
+        finally
+        {
+            _fillingFromDirectory = false;
+        }
+    }
+
+    /// <summary>Pulls the directory's photograph for this person and stores it against their
+    /// sign-in account. Choosing a file by hand still overrides it: this writes a new blob the
+    /// same way that does, so the most recent of the two is what shows.</summary>
+    private async Task<DirectoryPhotoResult> FillPhotoFromDirectoryAsync(string? objectId)
+    {
+        if (string.IsNullOrWhiteSpace(objectId) || string.IsNullOrEmpty(_editing?.ApplicationUserId))
+        {
+            return DirectoryPhotoResult.None;
         }
 
-        _editing.FullName = record.FullName;
-        _editing.JobTitle = record.JobTitle;
-        _editing.Email = record.Email;
-        _editing.Signature = record.Signature;
-        _editing.AzureAdObjectId = record.SystemId;
-        if (record.DepartmentName is not null)
+        if (await DirectoryProvider.GetPhotoAsync(objectId) is not { } photo) return DirectoryPhotoResult.None;
+
+        // Re-fetched rather than taken from the _users snapshot loaded at page load: a stale
+        // ConcurrencyStamp there makes the update fail every time. Same reason as the file upload.
+        var user = await UserManager.FindByIdAsync(_editing.ApplicationUserId);
+        if (user is null) return DirectoryPhotoResult.None;
+
+        var result = await DirectoryPhotos.StoreAsync(photo.Content, photo.ContentType, user, Documents, UserManager);
+        if (result != DirectoryPhotoResult.Stored) return result;
+
+        var cached = _users!.FirstOrDefault(u => u.Id == user.Id);
+        if (cached is not null)
         {
-            var dept = _departments!.FirstOrDefault(d => d.Name.Equals(record.DepartmentName, StringComparison.OrdinalIgnoreCase));
-            if (dept is not null) _editing.DepartmentId = dept.Id;
+            cached.ProfilePictureBlobId = user.ProfilePictureBlobId;
+            cached.ProfilePicturePath = user.ProfilePicturePath;
         }
+
+        _profilePicturePath = DocumentUrl.For(user.ProfilePictureBlobId, user.ProfilePicturePath);
+
+        await AuditLog.LogAsync(
+            await CurrentActorAsync(),
+            AuditAction.Update,
+            nameof(ApplicationUser),
+            user.Id,
+            "Profile picture filled from the company directory");
+
+        return result;
     }
 
     // A <select multiple> firing several change events in quick succession (rapid ctrl/shift-click, or

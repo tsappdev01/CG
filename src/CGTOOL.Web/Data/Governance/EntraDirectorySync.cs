@@ -58,7 +58,6 @@ public class EntraDirectorySync(
     IHttpClientFactory httpClientFactory,
     IDirectoryImporter importer,
     UserManager<ApplicationUser> userManager,
-    IWebHostEnvironment environment,
     IDocumentStore documents,
     ILogger<EntraDirectorySync> logger) : IEntraDirectorySync
 {
@@ -170,19 +169,10 @@ public class EntraDirectorySync(
             // old code wrote a deterministic file name, so a re-run simply overwrote it; writing a
             // blob every time would instead add a row per user per run and grow without bound. So
             // the photo is compared against what is already stored and only written when it differs.
-            var hash = IDocumentProtector.Sha256Hex(bytes);
-            if (appUser.ProfilePictureBlobId is int existingId)
-            {
-                var existing = await documents.DescribeAsync(existingId, ct);
-                if (existing?.ContentSha256 == hash) return true;
-            }
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
+            var stored = await DirectoryPhotos.StoreAsync(bytes, contentType, appUser, documents, userManager, ct);
 
-            appUser.ProfilePictureBlobId = await documents.SaveAsync(
-                bytes, $"{appUser.Id}.jpg", "image/jpeg", ipAddress: null, ct);
-            appUser.ProfilePicturePath = null;
-            await userManager.UpdateAsync(appUser);
-
-            return true;
+            return stored != DirectoryPhotoResult.None;
         }
         catch (Exception ex)
         {

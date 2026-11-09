@@ -115,6 +115,9 @@ public class DirectoryImporter(
                         IsManualEntry = false,
                         Active = user.AccountEnabled,
                     };
+
+                    // What everyone declares, applied on creation only -- see MemberDefaults.
+                    MemberDefaults.ApplyToNew(member);
                     member.Id = await memberWriter.InsertAsync(member);
                     members.Add(member);
                     created++;

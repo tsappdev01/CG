@@ -59,6 +59,18 @@ Each of these was found from a screenshot, not from the code:
   the bytes and the on-screen viewer was left reading a path that is now null, so every signature
   since showed as a broken image on screen while the PDF of the same report drew it correctly.
 
+- **A method that fills a form from a list takes the wrong row.** "Fill from directory" read the
+  entity's whole employee list and used `records.FirstOrDefault()`, so it wrote the first
+  employee's name, title, address and Entra object id onto whichever person was being edited. An
+  error message hid it for months: the lookup also asked Graph to `$filter=companyName eq '...'`,
+  which /users answers 400 for, so every click reported "No Azure AD records were returned for
+  this entity" instead. Fixing the visible failure would have shipped the silent one.
+- **An import that creates rows decides their defaults by omission.** Members imported from the
+  spreadsheet carried every declaration flag false, so each one had nothing to declare, nothing to
+  onboard and an empty My Workspace until an administrator opened the record and ticked boxes by
+  hand. `MemberDefaults.ApplyToNew` is now the one answer, applied by every path that creates a
+  member.
+
 ## Consistency checks
 
 `src/CGTOOL.Checks` is a console program run by CI after the build. It holds whatever two places

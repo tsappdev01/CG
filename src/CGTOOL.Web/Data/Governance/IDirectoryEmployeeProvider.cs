@@ -20,13 +20,29 @@ public interface IDirectoryEmployeeProvider
 {
     Task<bool> IsSyncedAsync(Company company, CancellationToken ct = default);
 
-    Task<IReadOnlyList<DirectoryEmployeeRecord>> GetEmployeesAsync(Company company, CancellationToken ct = default);
+    /// <summary>The directory's record for one person, or null when it has none for them.
+    ///
+    /// Asked for by identity, never by position in a list. "Fill from directory" used to read the
+    /// entity's whole employee list and take the first row in it, so it filled in whoever the
+    /// directory happened to return first for that company -- a different person's name, title and
+    /// address written over this one's, with nothing on screen to say so. There is deliberately no
+    /// "give me the entity's people" method any more: nothing needed one, and its only use was the
+    /// call that produced that bug.</summary>
+    Task<DirectoryEmployeeRecord?> FindEmployeeAsync(
+        string? companyName, string? objectId, string? email, string? fullName, CancellationToken ct = default);
+
+    /// <summary>Their photograph, as the bytes and the type it came back as.</summary>
+    Task<(byte[] Content, string ContentType)?> GetPhotoAsync(string objectId, CancellationToken ct = default);
 }
 
 public class NotConfiguredDirectoryEmployeeProvider : IDirectoryEmployeeProvider
 {
     public Task<bool> IsSyncedAsync(Company company, CancellationToken ct = default) => Task.FromResult(false);
 
-    public Task<IReadOnlyList<DirectoryEmployeeRecord>> GetEmployeesAsync(Company company, CancellationToken ct = default)
-        => Task.FromResult<IReadOnlyList<DirectoryEmployeeRecord>>([]);
+    public Task<DirectoryEmployeeRecord?> FindEmployeeAsync(
+        string? companyName, string? objectId, string? email, string? fullName, CancellationToken ct = default)
+        => Task.FromResult<DirectoryEmployeeRecord?>(null);
+
+    public Task<(byte[] Content, string ContentType)?> GetPhotoAsync(string objectId, CancellationToken ct = default)
+        => Task.FromResult<(byte[], string)?>(null);
 }

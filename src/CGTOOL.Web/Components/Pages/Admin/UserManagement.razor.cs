@@ -264,7 +264,8 @@ public partial class UserManagement
                 {
                     _progressDone = n;
                     _ = ThrottledRenderAsync();
-                }));
+                }),
+                afterAccount: StoreDirectoryPhotoAsync);
 
             // The same file's Emirates ID and DFM columns, if it has them. One upload rather than
             // two screens: the spreadsheet that says who these people are is the spreadsheet that
@@ -285,9 +286,11 @@ public partial class UserManagement
                     $" Emirates ID / NIN details: {identity.ReferencesInserted} added, {identity.ReferencesUpdated} updated.";
             }
 
+            var photoNote = result.PhotosStored > 0 ? $" {result.PhotosStored} profile picture(s) taken from the directory." : string.Empty;
+
             _importProblems = [.. parsed.Problems, .. result.Problems, .. identityProblems];
             _importResult =
-                $"{file.Name}: {result.Created} added, {result.Updated} updated, {result.Skipped} skipped.{identityNote}";
+                $"{file.Name}: {result.Created} added, {result.Updated} updated, {result.Skipped} skipped.{identityNote}{photoNote}";
 
             Toasts.ShowSuccess(_importResult);
             foreach (var problem in _importProblems.Take(3)) Toasts.ShowWarning(problem);
@@ -890,5 +893,38 @@ public partial class UserManagement
     {
         var state = await AuthState.GetAuthenticationStateAsync();
         return state.User.Identity?.Name ?? "unknown";
+    }
+
+    /// <summary>Takes the person's photograph from the company directory after their sign-in
+    /// account exists, so an uploaded list produces the same records a tenant sync would.
+    ///
+    /// A spreadsheet carries no object id, so the directory is asked who this row is before the
+    /// photo can be asked for. Choosing a file on their record still replaces it afterwards --
+    /// this writes a blob exactly as that does, so whichever happened last is what shows.</summary>
+    private async Task<bool> StoreDirectoryPhotoAsync(DirectoryPerson person, ApplicationUser appUser, CancellationToken ct)
+    {
+        try
+        {
+            var objectId = person.ObjectId is { Length: > 0 } id
+                ? id
+                : (await DirectoryProvider.FindEmployeeAsync(
+                    person.CompanyName, null, person.Mail ?? person.UserPrincipalName, person.DisplayName, ct))?.SystemId;
+
+            if (string.IsNullOrWhiteSpace(objectId)) return false;
+
+            if (await DirectoryProvider.GetPhotoAsync(objectId, ct) is not { } photo) return false;
+
+            var stored = await DirectoryPhotos.StoreAsync(
+                photo.Content, photo.ContentType, appUser, Documents, UserManager, ct);
+
+            return stored != DirectoryPhotoResult.None;
+        }
+        catch (Exception ex)
+        {
+            // A directory that cannot answer must not fail the import: the person is already
+            // created by this point, and a missing picture is not a reason to lose the row.
+            Logger.LogWarning(ex, "Could not fetch the directory photo for {DisplayName}.", person.DisplayName);
+            return false;
+        }
     }
 }

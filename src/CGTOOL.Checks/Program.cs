@@ -10,5 +10,6 @@ CountryChecks.Run();
 OnboardingTemplateChecks.Run();
 ExpiryChecks.Run();
 AuditTrailChecks.Run();
+DirectoryFillChecks.Run();
 
 return Check.Report();

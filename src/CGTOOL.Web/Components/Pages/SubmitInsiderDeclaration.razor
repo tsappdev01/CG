@@ -801,72 +801,15 @@
 
                 <div class="cg-actions">
                     <button type="button" class="cg-action-btn" disabled="@_submitting" @onclick="() => _step = Step.Capture2">← Back to edit</button>
-                    @* Proceed, not Submit: what it opens is the undertakings, and nothing is filed
-                       until those are confirmed. A button that says Submit and then asks something
-                       else first has already told the reader they were finished. *@
-                    <button type="button" class="cg-action-btn cg-good" disabled="@(!_agreeConfirmed || _submitting)"
-                            @onclick="() => _showUndertakings = true">Proceed</button>
+                    @* Submit, and it submits. The undertakings dialog that used to open here was
+                       dropped at the business's request; the agreement toggle beside this button
+                       is what the declarant now confirms before filing. *@
+                    <CgBusyButton CssClass="cg-good" Disabled="@(!_agreeConfirmed)"
+                                  BusyLabel="Submitting…" OnClick="SubmitAsync">
+                        Submit
+                    </CgBusyButton>
                 </div>
 
-                @if (_showUndertakings)
-                {
-                    <div class="cg-modal-backdrop" @onclick="() => _showUndertakings = false"></div>
-                    <div class="cg-modal" role="dialog" aria-modal="true" aria-labelledby="cg-undertakings-title">
-                        <div class="cg-modal-head">
-                            <h2 id="cg-undertakings-title">Confirm and submit</h2>
-                            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="() => _showUndertakings = false">&times;</button>
-                        </div>
-                        <div class="cg-modal-body">
-                            @* The undertakings from the printed Insider Declaration Form. They are
-                               the part of the form a signature went under, so they are read here
-                               rather than on the review sheet, where everything else is a value to
-                               be checked rather than a statement to be made. *@
-                            <p><b>I, also, confirm that:</b></p>
-                            <ol class="cg-undertakings">
-                                <li>
-                                    I am maintaining relevant supporting evidence / documentation of any purchase / sale of
-                                    @Branding.ParentHoldingCompany shares detailed above which can be produced upon request
-                                    by the ITSC or Regulator/Market.
-                                </li>
-                                <li>
-                                    I have secured the necessary approvals from the Market's Board of Directors before
-                                    executing the abovementioned transactions.
-                                </li>
-                                <li>I have updated my data with the brokerage companies through which they trade.</li>
-                                <li>
-                                    I acknowledge and undertake to update my data with brokerage firms, with the obligation
-                                    to obtain market approval before trading on the listed company's shares by submitting
-                                    the application through the brokerage company.
-                                </li>
-                                <li>
-                                    I acknowledge that I am aware of the blackout period and undertake not to trade in the
-                                    Company's securities during such period.
-                                </li>
-                            </ol>
-
-                            @* The signature block from the same form. The name and the date are not
-                               typed: they are who is signed in and when they pressed it, which is
-                               also what gets stored against the declaration. *@
-                            <dl class="cg-signature-block">
-                                <div><dt>Full Name</dt><dd>@_effectiveMember!.FullName</dd></div>
-                                <div><dt>Date</dt><dd class="mono">@DateTime.Now.ToString("dd/MM/yyyy HH:mm")</dd></div>
-                            </dl>
-
-                            <label class="cg-switch cg-undertakings-confirm">
-                                <input type="checkbox" @bind="_undertakingsConfirmed" />
-                                <span class="cg-switch-track" aria-hidden="true"></span>
-                                <span class="cg-switch-label">I confirm the undertakings above.</span>
-                            </label>
-                        </div>
-                        <div class="cg-modal-foot">
-                            <button type="button" class="cg-action-btn" disabled="@_submitting" @onclick="() => _showUndertakings = false">Back</button>
-                            <CgBusyButton CssClass="cg-good" Disabled="@(!_undertakingsConfirmed)"
-                                          BusyLabel="Submitting…" OnClick="SubmitAsync">
-                                Submit
-                            </CgBusyButton>
-                        </div>
-                    </div>
-                }
             </div>
         }
         else if (_step == Step.Done)

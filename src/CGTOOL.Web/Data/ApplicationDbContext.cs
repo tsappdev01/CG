@@ -156,7 +156,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<RelatedPartyCoiDeclarationDocument>()
             .HasOne(d => d.RelatedPartyCoiDeclaration)
-            .WithMany()
+            .WithMany(d => d.SupportingDocuments)
             .HasForeignKey(d => d.RelatedPartyCoiDeclarationId)
             .OnDelete(DeleteBehavior.Cascade);
 

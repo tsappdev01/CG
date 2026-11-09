@@ -211,25 +211,42 @@ public partial class RpCoiDetailReport
     /// without the link.</summary>
     private static ReportSubTable Documents(RelatedPartyCoiDeclaration d)
     {
-        var files = d.Companies
-            .SelectMany(c => c.Documents.Select(doc => (Company: c.LegalCompanyName, Doc: doc)))
-            .OrderBy(x => x.Company).ThenBy(x => x.Doc.FileName)
+        // Both kinds, which this table used to show only half of: the trade licences that hang
+        // off a declared company, and the documents the declaration itself asks for. A member's
+        // Emirates ID was attached on the form and then appeared in no report at all.
+        // The declaration's own documents carry an expiry rather than an upload time, and a
+        // trade licence the other way round. The column says which it is showing.
+        var files = d.SupportingDocuments
+            .Where(doc => DocumentUrl.Exists(doc.BlobId, doc.FilePath))
+            .Select(doc => (
+                Against: doc.DocumentType?.Name ?? "Supporting document",
+                Name: doc.OriginalFileName is { Length: > 0 } n ? n : doc.DocumentType?.Name ?? "Document",
+                When: doc.ExpiryDate is { } expiry ? $"Expires {expiry:dd/MM/yyyy}" : "—",
+                // Never null: Exists() above is what guarantees one of the two is there.
+                Path: DocumentUrl.For(doc.BlobId, doc.FilePath) ?? string.Empty))
+            .Concat(d.Companies
+                .SelectMany(c => c.Documents.Select(doc => (
+                    Against: c.LegalCompanyName,
+                    Name: doc.FileName,
+                    When: $"Uploaded {doc.UploadedAtUtc.ToLocalDisplay("dd/MM/yyyy")}",
+                    Path: doc.FilePath))))
+            .OrderBy(x => x.Against).ThenBy(x => x.Name)
             .ToList();
 
         return new ReportSubTable(
             "Documents",
-            [new("Company", 38), new("File", 40), new("Uploaded", 22)],
+            [new("Against", 38), new("File", 40), new("Date", 22)],
             [.. files.Select(f => new[]
             {
-                f.Company,
-                f.Doc.FileName,
-                f.Doc.UploadedAtUtc.ToLocalDisplay("dd/MM/yyyy"),
+                f.Against,
+                f.Name,
+                f.When,
             })],
             d.Companies.Count == 0
-                ? "No companies were declared, so there are no licences to file."
-                : "No trade licences were uploaded against the declared companies.",
+                ? "Nothing was attached to this declaration."
+                : "No documents were uploaded with this declaration or against the companies declared.",
             LinkColumn: 1,
-            RowLinks: [.. files.Select(f => (string?)f.Doc.FilePath)]);
+            RowLinks: [.. files.Select(f => (string?)f.Path)]);
     }
 
     /// <summary>Which section of the form the company came from — the declarant's own, a

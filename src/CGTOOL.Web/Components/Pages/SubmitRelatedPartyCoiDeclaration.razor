@@ -502,73 +502,98 @@
                     </table>
                 </div>
 
+                @* The documents the previous step collected. They were missing from this sheet
+                   entirely: a member who had attached their Emirates ID got to the last stage, saw
+                   no mention of it, and had no way to tell whether it had gone with the
+                   declaration. The Insider declaration's review has shown them all along. *@
+                @if (RequestedDocumentTypes.Any())
+                {
+                    <h2 class="cg-section-heading">Documents attached</h2>
+                    <div class="cg-table-wrap">
+                        <table>
+                            <thead><tr><th>Document</th><th>Number</th><th>Expiry</th><th>Attached</th></tr></thead>
+                            <tbody>
+                                @foreach (var type in RequestedDocumentTypes)
+                                {
+                                    var reviewRow = DocumentFor(type.Id);
+                                    <tr class="cg-data-row">
+                                        <td>@type.Name</td>
+                                        <td class="mono">@(string.IsNullOrWhiteSpace(reviewRow.DocumentNumber) ? "—" : reviewRow.DocumentNumber)</td>
+                                        <td class="mono">@(reviewRow.ExpiryDate is { } on ? on.ToString("dd/MM/yyyy") : "—")</td>
+                                        <td>
+                                            @if (IsAttached(reviewRow))
+                                            {
+                                                <span class="cg-pill cg-pill-done">Yes</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="cg-pill @(IsRequired(type) ? "cg-pill-required" : "")">No</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
                 <p class="cg-subtitle">Please review carefully. You can still edit this declaration from Declarations until the due date (<b class="mono">@_run!.DueDateUtc.ToLocalDisplay("dd/MM/yyyy")</b>).</p>
+
+                @* The attestation sits on the review sheet itself. It used to open in a
+                   "Confirm and submit" window; business asked for the popup to go, and Submit
+                   to conclude the declaration from here. The signature is still captured and
+                   still stored -- it is reproduced on the RP & COI reports -- so it moved onto
+                   the page rather than being dropped. *@
+                <h2 class="cg-section-heading">Confirm and submit</h2>
+
+                <label class="cg-field">
+                    <span>Typed signature (full name)</span>
+                    <input class="cg-input" @bind="_attestationName" maxlength="160" />
+                </label>
+
+                <div class="cg-field">
+                    <span>Signature <span class="cg-required" aria-hidden="true">*</span></span>
+                    <SignaturePad @ref="_signaturePad"
+                                  ExistingSignaturePath="@_signaturePath"
+                                  SignedAtUtc="@_signedAtUtc"
+                                  OnChanged="OnSignatureChanged" />
+                </div>
+
+                <dl class="cg-signature-block">
+                    <div><dt>Full Name</dt><dd>@_effectiveMember!.FullName</dd></div>
+                    <div><dt>Date</dt><dd class="mono">@DateTime.Now.ToString("dd/MM/yyyy HH:mm")</dd></div>
+                </dl>
+
+                @* The offer to verify is hidden. A declaration that was verified still
+                   says so, and the UAE PASS round trip behind it is untouched --
+                   StartUaePassVerificationAsync and the callback still work -- so
+                   offering it again is putting the button back. *@
+                @if (_uaePassVerifiedAtUtc is not null)
+                {
+                    <div class="cg-info-callout">
+                        <p>✅ Identity verified via <b>UAE PASS</b> as <b>@_uaePassVerifiedName</b> on <span class="mono">@_uaePassVerifiedAtUtc.Value.ToLocalDisplay("dd MMM yyyy HH:mm")</span>.</p>
+                    </div>
+                }
+
+                <label class="cg-switch cg-undertakings-confirm">
+                    <input type="checkbox" @bind="_attestationConfirmed" />
+                    <span class="cg-switch-track" aria-hidden="true"></span>
+                    <span class="cg-switch-label">I, @_attestationName, confirm the above declaration is complete and accurate.</span>
+                </label>
 
                 <div class="cg-actions">
                     <button type="button" class="cg-action-btn" disabled="@_submitting" @onclick="() => _step = Step.Conflicts">← Back to edit</button>
-                    @* Proceed, not Submit: the attestation is what it opens, and nothing is filed
-                       until that is signed and confirmed. *@
-                    <button type="button" class="cg-action-btn cg-good" disabled="@_submitting"
-                            @onclick="() => _showAttestation = true">Proceed</button>
+                    @* Save as Draft, as on every capture step. It was missing only here, so
+                       somebody who reached the last stage and wanted to come back to it had to
+                       step backwards to find the button. The Insider declaration offers it on
+                       its review step for the same reason. *@
+                    <button type="button" class="cg-action-btn" disabled="@(_savingDraft || _submitting)" @onclick="SaveDraftAsync">@(_savingDraft ? "Saving…" : "Save as Draft")</button>
+                    @* Submit files the declaration from here. No intermediate window. *@
+                    <CgBusyButton CssClass="cg-good" Disabled="@(!_attestationConfirmed || _savingDraft)"
+                                  BusyLabel="Submitting…" OnClick="SubmitAsync">
+                        Submit
+                    </CgBusyButton>
                 </div>
-
-                @if (_showAttestation)
-                {
-                    <div class="cg-modal-backdrop" @onclick="() => _showAttestation = false"></div>
-                    <div class="cg-modal" role="dialog" aria-modal="true" aria-labelledby="cg-attestation-title">
-                        <div class="cg-modal-head">
-                            <h2 id="cg-attestation-title">Confirm and submit</h2>
-                            <button type="button" class="cg-modal-close" aria-label="Close" @onclick="() => _showAttestation = false">&times;</button>
-                        </div>
-                        <div class="cg-modal-body">
-                            @* The attestation, moved off the review sheet into the window the
-                               Proceed button opens -- the same shape as the Insider declaration's,
-                               so signing one is signing the other. Everything here was already
-                               required; none of it is new to agree to. *@
-                            <label class="cg-field">
-                                <span>Typed signature (full name)</span>
-                                <input class="cg-input" @bind="_attestationName" maxlength="160" />
-                            </label>
-
-                            <div class="cg-field">
-                                <span>Signature <span class="cg-required" aria-hidden="true">*</span></span>
-                                <SignaturePad @ref="_signaturePad"
-                                              ExistingSignaturePath="@_signaturePath"
-                                              SignedAtUtc="@_signedAtUtc"
-                                              OnChanged="OnSignatureChanged" />
-                            </div>
-
-                            <dl class="cg-signature-block">
-                                <div><dt>Full Name</dt><dd>@_effectiveMember!.FullName</dd></div>
-                                <div><dt>Date</dt><dd class="mono">@DateTime.Now.ToString("dd/MM/yyyy HH:mm")</dd></div>
-                            </dl>
-
-                            @* The offer to verify is hidden. A declaration that was verified still
-                               says so, and the UAE PASS round trip behind it is untouched --
-                               StartUaePassVerificationAsync and the callback still work -- so
-                               offering it again is putting the button back. *@
-                            @if (_uaePassVerifiedAtUtc is not null)
-                            {
-                                <div class="cg-info-callout">
-                                    <p>✅ Identity verified via <b>UAE PASS</b> as <b>@_uaePassVerifiedName</b> on <span class="mono">@_uaePassVerifiedAtUtc.Value.ToLocalDisplay("dd MMM yyyy HH:mm")</span>.</p>
-                                </div>
-                            }
-
-                            <label class="cg-switch cg-undertakings-confirm">
-                                <input type="checkbox" @bind="_attestationConfirmed" />
-                                <span class="cg-switch-track" aria-hidden="true"></span>
-                                <span class="cg-switch-label">I, @_attestationName, confirm the above declaration is complete and accurate.</span>
-                            </label>
-                        </div>
-                        <div class="cg-modal-foot">
-                            <button type="button" class="cg-action-btn" disabled="@_submitting" @onclick="() => _showAttestation = false">Back</button>
-                            <CgBusyButton CssClass="cg-good" Disabled="@(!_attestationConfirmed)"
-                                          BusyLabel="Submitting…" OnClick="SubmitAsync">
-                                Submit
-                            </CgBusyButton>
-                        </div>
-                    </div>
-                }
             </div>
         }
         else if (_step == Step.Done)

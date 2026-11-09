@@ -89,6 +89,15 @@ public class RelatedPartyCoiDeclaration
     public List<CoiRelative> Relatives { get; set; } = [];
     public List<CoiCompanyEntry> Companies { get; set; } = [];
     public List<CoiConflictEntry> Conflicts { get; set; } = [];
+
+    /// <summary>The documents the declaration itself asks for -- an Emirates ID, a passport,
+    /// whatever the Document Centre requests for this declaration type. Distinct from the trade
+    /// licences, which hang off a declared company.
+    ///
+    /// There was no way here from the declaration before: the rows were mapped WithMany() and
+    /// read only by the form that wrote them, so a member's Emirates ID was invisible to every
+    /// report and to the declaration's own review step.</summary>
+    public List<RelatedPartyCoiDeclarationDocument> SupportingDocuments { get; set; } = [];
 }
 
 /// <summary>I.A "List of Relatives" grid row. Relationship reuses InsiderDeclaration's

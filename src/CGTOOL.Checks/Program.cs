@@ -16,5 +16,6 @@ DirectoryFillChecks.Run();
 DeclarationDocumentChecks.Run();
 UploadLimitChecks.Run();
 UploadControlChecks.Run();
+SubmissionFlowChecks.Run();
 
 return Check.Report();

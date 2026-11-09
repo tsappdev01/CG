@@ -778,6 +778,13 @@ public partial class SubmitInsiderDeclaration
             {
                 await onSavedAsync(content);
             }
+
+            // ...and onto the member's own file in My Workspace, so a document uploaded while
+            // filling in this declaration is on hand for the next one. The RP & COI declaration
+            // pulls its documents from there, which is why an Emirates ID uploaded here used to
+            // be invisible to it. Runs after onSavedAsync so the number and expiry the card
+            // reader just filled in go with it.
+            await SyncUploadToWorkspaceAsync(kind, blobId, file.Name);
         }
         finally
         {
@@ -877,6 +884,80 @@ public partial class SubmitInsiderDeclaration
             // OCR is a convenience, not a hard requirement -- the declarant can still fill every field
             // by hand, so a failed call here should never block the upload that already succeeded.
             Toasts.ShowError($"Could not auto-read the document ({ex.Message}). Enter the details manually.");
+        }
+    }
+
+    /// <summary>Puts a document uploaded here on the member's My Workspace file as well.
+    ///
+    /// My Workspace is the register every declaration reads from -- the Related Party & COI
+    /// declaration fills its own cards from it, and so does the next quarter's Insider one. A
+    /// document uploaded on this screen never reached it, so a member who attached their Emirates
+    /// ID here opened the COI declaration and was told there was nothing on file to bring across.
+    ///
+    /// Written as an update where the member already has that kind on file, so the register holds
+    /// one Emirates ID rather than one per declaration. It points at the same blob this
+    /// declaration does; replacing it later writes a new blob and repoints only the register, so
+    /// what was declared here stays as it was filed.</summary>
+    /// <summary>Maps the upload handler's kind string onto the member's standing document record.
+    /// Added document types are kept apart by DocumentTypeId; the four built-in slots have none.</summary>
+    private Task SyncUploadToWorkspaceAsync(string kind, int blobId, string fileName) => kind switch
+    {
+        "emirates-id" => SyncToWorkspaceAsync(MemberDocumentKind.EmiratesId, null, blobId, fileName, _emiratesIdNumber, _emiratesIdExpiryDate),
+        "passport" => SyncToWorkspaceAsync(MemberDocumentKind.Passport, null, blobId, fileName, _passportNumber, _passportExpiryDate),
+        "trade-licence" => SyncToWorkspaceAsync(MemberDocumentKind.TradeLicence, null, blobId, fileName, _tradeLicenceNumber, _tradeLicenceExpiryDate),
+        "other-document" => SyncToWorkspaceAsync(MemberDocumentKind.Other, null, blobId, fileName, null, null),
+        _ when kind.StartsWith("type-", StringComparison.Ordinal) && int.TryParse(kind[5..], out var typeId)
+            => SyncToWorkspaceAsync(MemberDocumentKind.Other, typeId, blobId, fileName,
+                   AddedDocumentFor(typeId).DocumentNumber, AddedDocumentFor(typeId).ExpiryDate),
+        _ => Task.CompletedTask,
+    };
+
+    private async Task SyncToWorkspaceAsync(MemberDocumentKind kind, int? documentTypeId, int? blobId,
+                                            string? originalFileName, string? number, DateTime? expiry)
+    {
+        if (_effectiveMember is null || blobId is null) return;
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var existing = await db.MemberDocuments
+                .Where(d => d.MemberId == _effectiveMember.Id
+                            && d.Kind == kind
+                            && d.DocumentTypeId == documentTypeId)
+                .FirstOrDefaultAsync();
+
+            if (existing is null)
+            {
+                await MemberDocuments.InsertAsync(new MemberDocument
+                {
+                    MemberId = _effectiveMember.Id,
+                    Kind = kind,
+                    DocumentTypeId = documentTypeId,
+                    BlobId = blobId,
+                    OriginalFileName = originalFileName,
+                    DocumentNumber = number,
+                    ExpiryDate = expiry,
+                });
+                return;
+            }
+
+            existing.BlobId = blobId;
+            existing.FilePath = null;
+            existing.OriginalFileName = originalFileName;
+            // Only what this screen actually knows. A blank number here is the card not having
+            // been read yet, not an instruction to erase the one already on file.
+            if (!string.IsNullOrWhiteSpace(number)) existing.DocumentNumber = number;
+            if (expiry is not null) existing.ExpiryDate = expiry;
+
+            await MemberDocuments.UpdateAsync(existing);
+        }
+        catch (Exception ex)
+        {
+            // The declaration's own copy is already saved. Failing to update the register is
+            // worth knowing about but must not cost the member the upload they just made.
+            Logger.LogWarning(ex, "Could not put the {Kind} on the My Workspace file for member {MemberId}.",
+                kind, _effectiveMember.Id);
         }
     }
 

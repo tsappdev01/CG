@@ -118,6 +118,9 @@ public class DirectoryImporter(
 
                     // What everyone declares, applied on creation only -- see MemberDefaults.
                     MemberDefaults.ApplyToNew(member);
+
+                    // And the capacity they declare in, which the entity decides.
+                    member.DeclarationType = MemberDeclarationTypeRules.FromEntityName(user.CompanyName);
                     member.Id = await memberWriter.InsertAsync(member);
                     members.Add(member);
                     created++;
@@ -144,6 +147,12 @@ public class DirectoryImporter(
                     member.Email = user.Address;
                     // A spreadsheet import must not erase the link an Entra sync established.
                     if (user.ObjectId is { Length: > 0 }) member.AzureAdObjectId = user.ObjectId;
+
+                    // Filled in, never overwritten. The entity decides the capacity for somebody
+                    // the system has just met, but a declaration type an administrator has since
+                    // chosen is a deliberate exception -- a run that re-derived it would undo
+                    // every one of them, quietly, on a schedule.
+                    member.DeclarationType ??= MemberDeclarationTypeRules.FromEntityName(user.CompanyName);
                     member.IsManualEntry = false;
                     member.Active = user.AccountEnabled;
                     await memberWriter.UpdateAsync(member);

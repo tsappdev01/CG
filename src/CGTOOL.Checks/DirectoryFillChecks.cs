@@ -25,6 +25,7 @@ public static class DirectoryFillChecks
         Section_WhyThereIsNoPicture();
         Section_DepartmentsFromTheDirectory();
         Section_EnrichingAnUploadedRow();
+        Section_DeclarationTypeFromTheEntity();
     }
 
     private static void Section_NoListingToPickTheWrongPersonFrom()
@@ -257,6 +258,57 @@ public static class DirectoryFillChecks
         Check.That("a missing directory title does not erase the file's", kept.JobTitle == "Consultant");
         Check.That("a whitespace directory department does not erase the file's", kept.Department == "IT");
         Check.That("nothing changed means nothing to report", !DirectoryEnrichment.Changed(typed, kept));
+    }
+
+    private static void Section_DeclarationTypeFromTheEntity()
+    {
+        Check.Section("The capacity an imported person declares in");
+
+        // Imported rows never say, and left unset the person has no form to fill -- so somebody
+        // had to open each record and choose one by hand.
+        Check.That("the parent entity's people declare as its employees",
+                   MemberDeclarationTypeRules.FromEntityName("DI Park") == MemberDeclarationType.EmployeeDiPjsc);
+
+        Check.That("the board entity's people declare as board members",
+                   MemberDeclarationTypeRules.FromEntityName("Board Member") == MemberDeclarationType.BoardMember);
+
+        Check.That("everybody else declares as an employee of another entity",
+                   MemberDeclarationTypeRules.FromEntityName("Tech Source LLC") == MemberDeclarationType.EmployeeOther);
+
+        // Entity names are typed by hand in both the spreadsheet and Entra. Comparing them as
+        // they arrive would send most of these down the "Other" branch with nothing saying why.
+        foreach (var spelling in new[] { "DI PARK", "di park", " DI  Park ", "DI-Park", "DIPark" })
+        {
+            Check.That($"\"{spelling}\" is the parent entity",
+                       MemberDeclarationTypeRules.FromEntityName(spelling) == MemberDeclarationType.EmployeeDiPjsc);
+        }
+
+        foreach (var spelling in new[] { "BOARD MEMBER", "board member", "Board-Member" })
+        {
+            Check.That($"\"{spelling}\" is the board entity",
+                       MemberDeclarationTypeRules.FromEntityName(spelling) == MemberDeclarationType.BoardMember);
+        }
+
+        // Close enough to matter: the holding company is not the entity named "DI Park".
+        Check.That("the holding company's own name is not mistaken for the parent entity",
+                   MemberDeclarationTypeRules.FromEntityName("DIP Holding PLC") == MemberDeclarationType.EmployeeOther);
+
+        Check.That("a row with no entity name still gets a capacity",
+                   MemberDeclarationTypeRules.FromEntityName(null) == MemberDeclarationType.EmployeeOther
+                   && MemberDeclarationTypeRules.FromEntityName("   ") == MemberDeclarationType.EmployeeOther);
+
+        // The three the rule produces must still be types the dropdown offers, or the member's
+        // record would show a capacity nobody can select or change.
+        var offered = MemberDeclarationTypes.All("DIP Holding PLC").Select(t => t.Value).ToHashSet();
+        foreach (var produced in new[]
+                 {
+                     MemberDeclarationType.EmployeeDiPjsc,
+                     MemberDeclarationType.BoardMember,
+                     MemberDeclarationType.EmployeeOther,
+                 })
+        {
+            Check.That($"{produced} is a capacity the form offers", offered.Contains(produced));
+        }
     }
 
     private sealed class QueueHandler(Queue<string> pages) : HttpMessageHandler

@@ -294,6 +294,22 @@ public partial class UserManagement
 
             await LoadAsync();
         }
+        catch (Exception ex)
+        {
+            // Without this the import ran inside a try/finally with no catch, so anything that
+            // threw escaped the event handler, Blazor tore the circuit down, and the screen
+            // simply stopped: the bar frozen at "0 of 2", the button still saying Importing, and
+            // nothing anywhere saying what had gone wrong. A failed import has to say so.
+            //
+            // The message is shown rather than summarised. The ones that actually happen name
+            // the thing to fix -- a stored procedure the database has not had applied yet says
+            // so almost in those words -- and hiding that behind "the import failed" turns a
+            // two-minute fix into an afternoon.
+            Logger.LogError(ex, "User list import from {File} failed.", file.Name);
+            _importResult = $"{file.Name} could not be imported: {ex.Message}";
+            _importProblems = [_importResult];
+            Toasts.ShowError(_importResult);
+        }
         finally
         {
             _importing = false;

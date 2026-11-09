@@ -30,8 +30,6 @@ public interface IMemberIdentityImporter
     /// <summary>Email domains left out of the import.</summary>
     IReadOnlyList<string> ExcludedDomains { get; }
 
-    IReadOnlyList<IdentityImportRow> Parse(Stream workbook, out IReadOnlyList<string> problems);
-
     Task<IdentityImportResult> ImportAsync(
         IReadOnlyList<IdentityImportRow> rows, string sourceFileName, bool dryRun, bool createMissingMembers,
         string actorName, CancellationToken ct = default);
@@ -82,100 +80,7 @@ public class MemberIdentityImporter(
     /// <summary>The columns the file is expected to have, by header name. Matched on a normalised
     /// header rather than position, so a reordered or re-exported file still loads -- and a file
     /// that is missing one says which.</summary>
-    private static readonly (string Key, string[] Accepts)[] Headers =
-    [
-        ("email", ["emailaddress", "email"]),
-        ("name", ["name", "fullname"]),
-        ("company", ["company", "companyname"]),
-        ("nin", ["nin", "ninnumber"]),
-        ("nameonid", ["nameonemiratesid", "nameonid"]),
-        ("emiratesid", ["emiratesid", "emiratesidnumber"]),
-        ("nationality", ["nationality"]),
-    ];
 
-    public IReadOnlyList<IdentityImportRow> Parse(Stream workbook, out IReadOnlyList<string> problems)
-    {
-        ArgumentNullException.ThrowIfNull(workbook);
-
-        var found = new List<string>();
-        var rows = new List<IdentityImportRow>();
-
-        using var book = new ClosedXML.Excel.XLWorkbook(workbook);
-        var sheet = book.Worksheets.First();
-        var used = sheet.RangeUsed();
-        if (used is null)
-        {
-            problems = ["The sheet is empty."];
-            return rows;
-        }
-
-        // Header row: the first row of the used range.
-        var headerRow = used.FirstRow();
-        var columns = new Dictionary<string, int>();
-        foreach (var cell in headerRow.Cells())
-        {
-            var normalised = Normalise(cell.GetString());
-            foreach (var (key, accepts) in Headers)
-            {
-                // First match wins, so the file's duplicate "Name" column does not displace the
-                // one already mapped.
-                if (!columns.ContainsKey(key) && accepts.Contains(normalised))
-                {
-                    columns[key] = cell.Address.ColumnNumber;
-                }
-            }
-        }
-
-        if (!columns.ContainsKey("email"))
-        {
-            problems = ["No email column was found. The file needs a column headed \"EmailAddress\"."];
-            return rows;
-        }
-
-        foreach (var key in new[] { "nin", "emiratesid" })
-        {
-            if (!columns.ContainsKey(key))
-            {
-                found.Add($"No \"{key}\" column was found, so that half of the reference data will be blank.");
-            }
-        }
-
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var excluded = 0;
-        foreach (var row in used.RowsUsed().Skip(1))
-        {
-            var email = Value(row, columns, "email");
-            if (string.IsNullOrWhiteSpace(email)) continue;
-
-            email = email.Trim();
-
-            if (IsExcluded(email)) { excluded++; continue; }
-            if (!seen.Add(email))
-            {
-                // The last row for an address would otherwise silently win. Saying so is cheap and
-                // the duplicate is usually a mistake in the file.
-                found.Add($"Row {row.RowNumber()}: '{email}' appears more than once; the first row is used.");
-                continue;
-            }
-
-            rows.Add(new IdentityImportRow(
-                email,
-                Value(row, columns, "name"),
-                Value(row, columns, "company"),
-                Value(row, columns, "nin"),
-                Value(row, columns, "nameonid"),
-                Value(row, columns, "emiratesid"),
-                Value(row, columns, "nationality")));
-        }
-
-        if (excluded > 0)
-        {
-            found.Insert(0, $"{excluded} rows left out: {string.Join(", ", ExcludedDomains)}.");
-        }
-
-        problems = found;
-        return rows;
-    }
 
     public async Task<IdentityImportResult> ImportAsync(
         IReadOnlyList<IdentityImportRow> rows, string sourceFileName, bool dryRun, bool createMissingMembers,
@@ -293,21 +198,6 @@ public class MemberIdentityImporter(
         }
     }
 
-    /// <summary>A cell's value, or null when there is nothing in it.
-    ///
-    /// "Nothing in it" includes the literal text NULL. The file is a SQL export and writes NULL
-    /// where a value is missing, in 3,726 of its 3,961 rows -- so a reader that only checks for an
-    /// empty string loads the word itself, and onboarding then asks somebody to confirm that their
-    /// National Investor Number is "NULL".</summary>
-    private static string? Value(ClosedXML.Excel.IXLRangeRow row, Dictionary<string, int> columns, string key)
-    {
-        if (!columns.TryGetValue(key, out var column)) return null;
-
-        var raw = row.Cell(column).GetString()?.Trim();
-        if (string.IsNullOrEmpty(raw)) return null;
-
-        return raw.Equals("NULL", StringComparison.OrdinalIgnoreCase) ? null : raw;
-    }
 
     /// <summary>Whether a value is in Emirates ID card format: fifteen digits beginning 784.
     /// Used only to say which rows no uploaded scan can match -- a residence number in this column
@@ -315,9 +205,4 @@ public class MemberIdentityImporter(
     private static bool LooksLikeEmiratesId(string? value) =>
         value is { Length: 15 } && value.All(char.IsDigit) && value.StartsWith("784", StringComparison.Ordinal);
 
-    /// <summary>Lowercase, with spaces, hyphens and dots removed -- the same rule the Investor
-    /// Relations workbook parser uses, so "Emirates ID", "EmiratesID" and "emirates-id" all land
-    /// on the same column.</summary>
-    private static string Normalise(string? header) =>
-        new([.. (header ?? string.Empty).ToLowerInvariant().Where(c => c is not (' ' or '-' or '.' or '_'))]);
 }

@@ -51,7 +51,6 @@ public static class NavMenuCatalog
         new("Reports.RpCoiSubmission", "RP & COI Submission", "Reports"),
         new("Reports.RpCoiDetail", "RP & COI Detail", "Reports"),
         new("Reports.InsiderTrading", "Insider Trading", "Reports"),
-        new("Reports.InsiderReconciliation", "Declared vs Actual", "Reports"),
         new("Reports.RelatedPartyRegister", "Related Party Register", "Reports"),
         new("Reports.RelatedPartyMaster", "Related Party Master", "Reports"),
 

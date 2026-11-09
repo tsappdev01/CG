@@ -4,6 +4,16 @@ namespace CGTOOL.Web.Data.Governance;
 
 /// <summary>What a line records. The form's rows in order: what was held when the period opened,
 /// each purchase and each sale during it, and what was held when it closed.</summary>
+/// <summary>RETIRED. The share transactions section was removed from the Insider declaration at
+/// the business's request, and with it the Declared vs Actual report that read these rows.
+///
+/// The type, the DbSet and the table stay so that declarations submitted while the section existed
+/// still hold what was declared on them -- a declaration is evidence, and dropping the table would
+/// destroy it. Nothing writes here any more: the writer's insert and delete are gone, so an edit
+/// to an old declaration leaves its rows exactly as they were filed.
+///
+/// If the business later confirms the history is not needed, the table, this file and the
+/// usp_InsiderDeclarationShareEntry_* procedures can go together, in that order.</summary>
 public enum ShareEntryKind
 {
     OpeningBalance,

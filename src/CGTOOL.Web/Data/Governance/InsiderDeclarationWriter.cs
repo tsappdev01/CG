@@ -20,9 +20,6 @@ public interface IInsiderDeclarationWriter
 
     Task DeleteDocumentsAsync(int insiderDeclarationId);
 
-    Task<int> InsertShareEntryAsync(int insiderDeclarationId, InsiderDeclarationShareEntry entry);
-
-    Task DeleteShareEntriesAsync(int insiderDeclarationId);
 }
 
 /// <summary>Callers must wrap InsertAsync + InsertRelativeAsync/InsertNinHolderAsync (or
@@ -92,22 +89,6 @@ public class InsiderDeclarationWriter(IStoredProcedureExecutor sp) : IInsiderDec
         new SqlParameter("@OriginalFileName", (object?)document.OriginalFileName ?? DBNull.Value),
         new SqlParameter("@DocumentNumber", (object?)document.DocumentNumber ?? DBNull.Value),
         new SqlParameter("@ExpiryDate", (object?)document.ExpiryDate ?? DBNull.Value));
-
-    public Task<int> InsertShareEntryAsync(int insiderDeclarationId, InsiderDeclarationShareEntry entry) => sp.InsertAsync(
-        "dbo.usp_InsiderDeclarationShareEntry_Insert",
-        new SqlParameter("@InsiderDeclarationId", insiderDeclarationId),
-        new SqlParameter("@IsSelf", entry.IsSelf),
-        new SqlParameter("@Relationship", (int)entry.Relationship),
-        new SqlParameter("@HolderName", (object?)entry.HolderName ?? DBNull.Value),
-        new SqlParameter("@HolderNin", (object?)entry.HolderNin ?? DBNull.Value),
-        new SqlParameter("@EntryKind", (int)entry.EntryKind),
-        new SqlParameter("@TransactionDate", (object?)entry.TransactionDate ?? DBNull.Value),
-        new SqlParameter("@NumberOfShares", entry.NumberOfShares),
-        new SqlParameter("@Rate", (object?)entry.Rate ?? DBNull.Value));
-
-    public Task DeleteShareEntriesAsync(int insiderDeclarationId) => sp.ExecuteAsync(
-        "dbo.usp_InsiderDeclarationShareEntry_DeleteForDeclaration",
-        new SqlParameter("@InsiderDeclarationId", insiderDeclarationId));
 
     public Task DeleteDocumentsAsync(int insiderDeclarationId) => sp.ExecuteAsync(
         "dbo.usp_InsiderDeclarationDocument_DeleteForDeclaration",

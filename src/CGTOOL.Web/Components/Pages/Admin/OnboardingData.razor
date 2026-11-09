@@ -5,6 +5,8 @@
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject ClientContext Client
 @inject ToastService Toasts
+@inject IAuditLogger AuditLog
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Onboarding data</PageTitle>
 

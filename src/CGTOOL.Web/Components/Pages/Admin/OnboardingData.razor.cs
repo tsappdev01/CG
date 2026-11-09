@@ -36,6 +36,9 @@ public partial class OnboardingData
         _busy = true;
         StateHasChanged();
 
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var actor = state.User.Identity?.Name ?? "unknown";
+
         try
         {
             var files = e.GetMultipleFiles(MaxScanCount);
@@ -65,7 +68,7 @@ public partial class OnboardingData
                     }
 
                     _scanResults.Add(await Attacher.AttachAsync(
-                        file.Name, buffer.ToArray(), file.ContentType, Client.IpAddress));
+                        file.Name, buffer.ToArray(), file.ContentType, Client.IpAddress, actor));
                 }
                 catch (Exception ex)
                 {
@@ -77,6 +80,17 @@ public partial class OnboardingData
             await RefreshCountsAsync();
 
             var attached = _scanResults.Count(r => r.Attached);
+
+            // The run itself, beside the per-card entries the service writes. One says what was
+            // uploaded and when; the others say to whom.
+            await AuditLog.LogAsync(
+                actor,
+                AuditAction.Update,
+                nameof(MemberIdentityReference),
+                "EmiratesIdScanUpload",
+                $"Bulk Emirates ID upload: {attached} of {_scanResults.Count} scan(s) attached, "
+                + $"{_scanResults.Count(r => !r.Attached)} not matched.");
+
             Toasts.ShowSuccess($"{attached} of {_scanResults.Count} scans attached.");
         }
         finally

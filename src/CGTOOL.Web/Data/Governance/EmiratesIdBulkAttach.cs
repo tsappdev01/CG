@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -49,8 +50,11 @@ public interface IEmiratesIdBulkAttach
         return found.Count == 1 ? found.First() : null;
     }
 
+    /// <param name="actorName">Who is uploading. Attaching somebody's identity document to their
+    /// record is a change to that record, so it is recorded against them by name.</param>
     Task<EmiratesIdAttachOutcome> AttachAsync(
-        string fileName, byte[] content, string contentType, string? ipAddress, CancellationToken ct = default);
+        string fileName, byte[] content, string contentType, string? ipAddress, string actorName,
+        CancellationToken ct = default);
 }
 
 /// <summary>
@@ -64,10 +68,12 @@ public interface IEmiratesIdBulkAttach
 public class EmiratesIdBulkAttach(
     IDbContextFactory<ApplicationDbContext> dbFactory,
     IDocumentStore documents,
+    IAuditLogger auditLog,
     ILogger<EmiratesIdBulkAttach> logger) : IEmiratesIdBulkAttach
 {
     public async Task<EmiratesIdAttachOutcome> AttachAsync(
-        string fileName, byte[] content, string contentType, string? ipAddress, CancellationToken ct = default)
+        string fileName, byte[] content, string contentType, string? ipAddress, string actorName,
+        CancellationToken ct = default)
     {
         var number = IEmiratesIdBulkAttach.NumberFromFileName(fileName);
         if (number is null)
@@ -102,6 +108,16 @@ public class EmiratesIdBulkAttach(
             logger.LogWarning("Emirates ID {Number} matched a reference row but the update changed nothing.", number);
             return new EmiratesIdAttachOutcome(fileName, number, false, "The record could not be updated.");
         }
+
+        // In the service rather than the screen, so an attachment cannot be made from anywhere
+        // without leaving a record. One entry per card: this is somebody's identity document
+        // being filed against their name, and "226 scans attached" does not say whose.
+        await auditLog.LogAsync(
+            actorName,
+            AuditAction.Update,
+            nameof(MemberIdentityReference),
+            reference.Id.ToString(CultureInfo.InvariantCulture),
+            $"Emirates ID scan attached for {reference.Email} from '{fileName}' ({content.Length} bytes).");
 
         return new EmiratesIdAttachOutcome(fileName, number, true, null);
     }

@@ -78,7 +78,7 @@ public partial class UserManagement
     /// <summary>Which part of the upload is running, so the bar can say what it is waiting on
     /// rather than just spinning: the three phases have very different durations and only two of
     /// them can be measured.</summary>
-    private enum ImportPhase { Idle, Uploading, Reading, Importing }
+    private enum ImportPhase { Idle, Uploading, Reading, LookingUp, Importing }
 
     private ImportPhase _progressPhase = ImportPhase.Idle;
     private string? _progressName;
@@ -92,6 +92,7 @@ public partial class UserManagement
     {
         ImportPhase.Uploading => $"Uploading {_progressName}",
         ImportPhase.Reading => "Reading the spreadsheet",
+        ImportPhase.LookingUp => $"Looking up {_progressDone} of {_progressTotal} people in the directory",
         ImportPhase.Importing => $"Importing {_progressDone} of {_progressTotal} people",
         _ => string.Empty,
     };
@@ -251,13 +252,18 @@ public partial class UserManagement
 
             var state = await AuthState.GetAuthenticationStateAsync();
 
+            // Before importing, not after: the directory's job title and department have to be on
+            // the row for DirectoryImporter to write them, and its department is what creates the
+            // department record. Filling afterwards would mean a second pass over everyone.
+            var (people, enriched) = await FillFromDirectoryAsync(parsed.People);
+
             _progressPhase = ImportPhase.Importing;
             _progressDone = 0;
             _progressTotal = parsed.People.Count;
             await RenderNowAsync();
 
             var result = await DirectoryImporter.ImportAsync(
-                parsed.People,
+                people,
                 state.User.Identity?.Name ?? "unknown",
                 $"User list upload ({file.Name})",
                 progress: new Progress<int>(n =>
@@ -286,11 +292,14 @@ public partial class UserManagement
                     $" Emirates ID / NIN details: {identity.ReferencesInserted} added, {identity.ReferencesUpdated} updated.";
             }
 
+            var directoryNote = enriched > 0
+                ? $" {enriched} row(s) completed from the company directory."
+                : string.Empty;
             var photoNote = result.PhotosStored > 0 ? $" {result.PhotosStored} profile picture(s) taken from the directory." : string.Empty;
 
             _importProblems = [.. parsed.Problems, .. result.Problems, .. identityProblems];
             _importResult =
-                $"{file.Name}: {result.Created} added, {result.Updated} updated, {result.Skipped} skipped.{identityNote}{photoNote}";
+                $"{file.Name}: {result.Created} added, {result.Updated} updated, {result.Skipped} skipped.{identityNote}{directoryNote}{photoNote}";
 
             Toasts.ShowSuccess(_importResult);
             foreach (var problem in _importProblems.Take(3)) Toasts.ShowWarning(problem);
@@ -895,6 +904,60 @@ public partial class UserManagement
         return state.User.Identity?.Name ?? "unknown";
     }
 
+    /// <summary>Asks the directory about every row in the uploaded file and fills in what the
+    /// spreadsheet left out, before any of it is written.
+    ///
+    /// The template is a list of people, not a personnel record, so rows arrive as a first name
+    /// and an address: every person imported from one had no job title and no department until
+    /// somebody opened their record and pressed "Fill from directory" by hand.
+    ///
+    /// Matched on identity only -- the Entra object id if the file somehow has one, otherwise the
+    /// address. The name is deliberately not offered as a fallback: a bare first name matching one
+    /// of several people who share it is exactly how one person's job title lands on another's
+    /// record.</summary>
+    private async Task<(IReadOnlyList<DirectoryPerson> People, int Enriched)> FillFromDirectoryAsync(
+        IReadOnlyList<DirectoryPerson> people)
+    {
+        _progressPhase = ImportPhase.LookingUp;
+        _progressDone = 0;
+        _progressTotal = people.Count;
+        await RenderNowAsync();
+
+        var filled = new List<DirectoryPerson>(people.Count);
+        var enriched = 0;
+
+        foreach (var person in people)
+        {
+            _progressDone++;
+            await ThrottledRenderAsync();
+
+            try
+            {
+                var record = await DirectoryProvider.FindEmployeeAsync(
+                    person.CompanyName, person.ObjectId, person.Address, fullName: null);
+
+                if (record is null)
+                {
+                    filled.Add(person);
+                    continue;
+                }
+
+                var merged = DirectoryEnrichment.Merge(person, record);
+                if (DirectoryEnrichment.Changed(person, merged)) enriched++;
+                filled.Add(merged);
+            }
+            catch (Exception ex)
+            {
+                // A directory that cannot answer must not stop the upload: the spreadsheet is
+                // still a complete enough record to create the person from.
+                Logger.LogWarning(ex, "Could not look up {DisplayName} in the directory.", person.DisplayName);
+                filled.Add(person);
+            }
+        }
+
+        return (filled, enriched);
+    }
+
     /// <summary>Takes the person's photograph from the company directory after their sign-in
     /// account exists, so an uploaded list produces the same records a tenant sync would.
     ///
@@ -912,10 +975,11 @@ public partial class UserManagement
 
             if (string.IsNullOrWhiteSpace(objectId)) return false;
 
-            if (await DirectoryProvider.GetPhotoAsync(objectId, ct) is not { } photo) return false;
+            var photo = await DirectoryProvider.GetPhotoAsync(objectId, ct);
+            if (!photo.HasContent) return false;
 
             var stored = await DirectoryPhotos.StoreAsync(
-                photo.Content, photo.ContentType, appUser, Documents, UserManager, ct);
+                photo.Content!, photo.ContentType!, appUser, Documents, UserManager, ct);
 
             return stored != DirectoryPhotoResult.None;
         }

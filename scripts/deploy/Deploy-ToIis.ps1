@@ -108,6 +108,18 @@ foreach ($name in $PreserveFiles) {
         $excludeFiles += (Join-Path $PublishPath $name)
     }
     elseif ($name -like 'appsettings*') {
+        # The project excludes appsettings.json from Content, so the publish output no longer
+        # carries one -- there is then no copy to write over the server's, which is the point.
+        # The cost is this case: a site folder with no settings file and a build that cannot
+        # seed one. The app would start, find no connection string and answer 500, which reads
+        # as a broken deploy. Said here instead, before anything is copied.
+        if ($name -eq 'appsettings.json' -and -not (Test-Path (Join-Path $PublishPath $name))) {
+            throw ("There is no $name in the site folder and the build does not carry one, so this " +
+                   "deploy would leave the app with no connection string. Put $name in $SitePath " +
+                   "with the real values and run this again -- every later deploy will leave it alone. " +
+                   "Nothing has been changed; the site is still running whatever it was running.")
+        }
+
         Write-Host "No $name on the server yet, so the build's copy is being deployed if it has one." `
                    "Put the real values in it afterwards -- later deploys will leave it alone."
     }

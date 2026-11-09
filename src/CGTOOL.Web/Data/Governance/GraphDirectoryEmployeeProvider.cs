@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Identity.Client;
@@ -16,7 +17,10 @@ namespace CGTOOL.Web.Data.Governance;
 /// request is an advanced query, and is case-sensitive even then. That filter is why every
 /// lookup came back empty and the screen reported no records for the entity.
 /// </summary>
-public class GraphDirectoryEmployeeProvider(IConfiguration configuration, IHttpClientFactory httpClientFactory) : IDirectoryEmployeeProvider
+public class GraphDirectoryEmployeeProvider(
+    IConfiguration configuration,
+    IHttpClientFactory httpClientFactory,
+    ILogger<GraphDirectoryEmployeeProvider> logger) : IDirectoryEmployeeProvider
 {
     public Task<bool> IsSyncedAsync(Company company, CancellationToken ct = default)
         => Task.FromResult(IsConfigured());
@@ -70,21 +74,39 @@ public class GraphDirectoryEmployeeProvider(IConfiguration configuration, IHttpC
         return null;
     }
 
-    public async Task<(byte[] Content, string ContentType)?> GetPhotoAsync(string objectId, CancellationToken ct = default)
+    public async Task<DirectoryPhoto> GetPhotoAsync(string objectId, CancellationToken ct = default)
     {
-        if (!IsConfigured() || string.IsNullOrWhiteSpace(objectId)) return null;
+        if (!IsConfigured()) return DirectoryPhoto.Unavailable(DirectoryPhotoOutcome.NotConfigured);
+        if (string.IsNullOrWhiteSpace(objectId)) return DirectoryPhoto.Unavailable(DirectoryPhotoOutcome.NoDirectoryAccount);
 
         var client = await CreateClientAsync(ct);
-        if (client is null) return null;
+        if (client is null) return DirectoryPhoto.Unavailable(DirectoryPhotoOutcome.NotConfigured);
 
-        // A user with no photograph answers 404, which is an answer and not a failure.
         using var response = await client.GetAsync($"users/{Uri.EscapeDataString(objectId)}/photo/$value", ct);
-        if (!response.IsSuccessStatusCode) return null;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            // Each of these used to return the same null, so a tenant that will not hand photos
+            // to this app registration was indistinguishable from a person who has none.
+            var outcome = response.StatusCode switch
+            {
+                HttpStatusCode.NotFound or HttpStatusCode.NoContent => DirectoryPhotoOutcome.NoPhoto,
+                HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized => DirectoryPhotoOutcome.Refused,
+                _ => DirectoryPhotoOutcome.Failed,
+            };
+
+            logger.LogInformation(
+                "Graph answered {Status} for the photo of {ObjectId}: {Outcome}.",
+                (int)response.StatusCode, objectId, outcome);
+
+            return DirectoryPhoto.Unavailable(outcome);
+        }
 
         var bytes = await response.Content.ReadAsByteArrayAsync(ct);
-        if (bytes.Length == 0) return null;
+        if (bytes.Length == 0) return DirectoryPhoto.Unavailable(DirectoryPhotoOutcome.NoPhoto);
 
-        return (bytes, response.Content.Headers.ContentType?.MediaType ?? "image/jpeg");
+        return new DirectoryPhoto(
+            DirectoryPhotoOutcome.Fetched, bytes, response.Content.Headers.ContentType?.MediaType ?? "image/jpeg");
     }
 
     // companyName is selected as well as read: the entity a person belongs to is matched here

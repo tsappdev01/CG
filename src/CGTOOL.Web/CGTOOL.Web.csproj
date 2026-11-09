@@ -8,6 +8,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The server's appsettings.json is the one with the real connection string, the Entra
+         client secret and the Document Intelligence key in it. The repository's copy carries
+         placeholders, and published it would be copied straight over the live one on every
+         deploy. Deploy-ToIis.ps1 already excludes it from the robocopy, but only when the server
+         already has one; keeping it out of the publish output as well means there is no copy to
+         overwrite with in the first place. Still listed as <None> so it stays in the project
+         tree, editable, and user secrets keep working in development. -->
+    <Content Remove="appsettings.json" />
+
     <!-- The live policy document and the backups taken each time it is replaced are the server's,
          not the build's. They are written by an administrator through Policy Documents, and a
          copy of policy.pdf is committed only so the repository carries one.
@@ -18,6 +27,10 @@
          copy coming the other way. Nothing can overwrite a file the build does not contain. -->
     <Content Remove="wwwroot\assets\policy.pdf" />
     <Content Remove="wwwroot\assets\policy-backups\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="appsettings.json" />
   </ItemGroup>
 
   <ItemGroup>

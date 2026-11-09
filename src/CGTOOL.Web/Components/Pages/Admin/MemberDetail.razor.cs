@@ -327,20 +327,20 @@ public partial class MemberDetail
 
             if (record.DepartmentName is { Length: > 0 })
             {
-                var dept = _departments!.FirstOrDefault(
-                    d => d.Name.Equals(record.DepartmentName, StringComparison.OrdinalIgnoreCase));
-
-                if (dept is null)
+                // Created when we do not have it, rather than reported and skipped. The directory
+                // is where the organisation chart actually lives, and the import has always
+                // created missing departments -- leaving this button to refuse meant filling a
+                // person from the directory still left their department blank, which read as the
+                // directory not having one for them.
+                if (await ResolveDepartmentAsync(record.DepartmentName) is not { } dept)
                 {
-                    // Said rather than swallowed: silently leaving the department alone looks
-                    // identical to the directory not having one.
                     Toasts.ShowWarning(
-                        $"The directory puts them in \"{record.DepartmentName}\", which is not a department here. Department left as it was.");
+                        $"The directory puts them in \"{record.DepartmentName}\", which could not be added here. Department left as it was.");
                 }
                 else if (dept.Id != _editing.DepartmentId)
                 {
                     _editing.DepartmentId = dept.Id;
-                    filled.Add("department");
+                    filled.Add(dept.Added ? $"department (added \"{dept.Name}\")" : "department");
                 }
             }
 
@@ -359,7 +359,13 @@ public partial class MemberDetail
 
             if (record.Signature is { Length: > 0 }) _editing.Signature = record.Signature;
 
-            var photo = await FillPhotoFromDirectoryAsync(record.SystemId ?? _editing.AzureAdObjectId);
+            var (photo, why) = await FillPhotoFromDirectoryAsync(record.SystemId ?? _editing.AzureAdObjectId);
+
+            // Why there is no picture, every time there is no picture. The button used to finish
+            // with "everything here already matches" whether the directory had no photograph for
+            // them, had one and would not hand it over, or had never been asked -- three
+            // different problems that an administrator cannot tell apart from the screen.
+            if (why is not null) Toasts.ShowWarning(why);
 
             if (filled.Count == 0 && photo != DirectoryPhotoResult.Stored)
             {
@@ -386,22 +392,33 @@ public partial class MemberDetail
     /// <summary>Pulls the directory's photograph for this person and stores it against their
     /// sign-in account. Choosing a file by hand still overrides it: this writes a new blob the
     /// same way that does, so the most recent of the two is what shows.</summary>
-    private async Task<DirectoryPhotoResult> FillPhotoFromDirectoryAsync(string? objectId)
+    private async Task<(DirectoryPhotoResult Result, string? Why)> FillPhotoFromDirectoryAsync(string? objectId)
     {
-        if (string.IsNullOrWhiteSpace(objectId) || string.IsNullOrEmpty(_editing?.ApplicationUserId))
+        var who = _editing?.FullName is { Length: > 0 } name ? name : "this person";
+
+        if (string.IsNullOrWhiteSpace(objectId))
         {
-            return DirectoryPhotoResult.None;
+            return (DirectoryPhotoResult.None,
+                    $"{who} is not linked to a directory account, so there is no picture to fetch.");
         }
 
-        if (await DirectoryProvider.GetPhotoAsync(objectId) is not { } photo) return DirectoryPhotoResult.None;
+        if (string.IsNullOrEmpty(_editing?.ApplicationUserId))
+        {
+            // The picture hangs off the sign-in account, so without one there is nowhere to put it.
+            return (DirectoryPhotoResult.None,
+                    "A picture can only be stored once this person has a sign-in account linked below.");
+        }
+
+        var photo = await DirectoryProvider.GetPhotoAsync(objectId);
+        if (!photo.HasContent) return (DirectoryPhotoResult.None, photo.Explain(who));
 
         // Re-fetched rather than taken from the _users snapshot loaded at page load: a stale
         // ConcurrencyStamp there makes the update fail every time. Same reason as the file upload.
         var user = await UserManager.FindByIdAsync(_editing.ApplicationUserId);
-        if (user is null) return DirectoryPhotoResult.None;
+        if (user is null) return (DirectoryPhotoResult.None, "Their sign-in account could not be read.");
 
-        var result = await DirectoryPhotos.StoreAsync(photo.Content, photo.ContentType, user, Documents, UserManager);
-        if (result != DirectoryPhotoResult.Stored) return result;
+        var result = await DirectoryPhotos.StoreAsync(photo.Content!, photo.ContentType!, user, Documents, UserManager);
+        if (result != DirectoryPhotoResult.Stored) return (result, null);
 
         var cached = _users!.FirstOrDefault(u => u.Id == user.Id);
         if (cached is not null)
@@ -419,7 +436,46 @@ public partial class MemberDetail
             user.Id,
             "Profile picture filled from the company directory");
 
-        return result;
+        return (result, null);
+    }
+
+    /// <summary>The department of that name, creating it when we do not have one. Mirrors what
+    /// DirectoryImporter does for an imported person, through the same writer and the same code
+    /// generator, so a department reaches the database one way regardless of which path met it
+    /// first.</summary>
+    private async Task<(int Id, string Name, bool Added)?> ResolveDepartmentAsync(string name)
+    {
+        var existing = _departments!.FirstOrDefault(d => d.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null) return (existing.Id, existing.Name, false);
+
+        try
+        {
+            var department = new Department
+            {
+                Name = name.Trim(),
+                Code = ShortCodes.Unique(name, _departments!.Select(d => d.Code)),
+            };
+
+            department.Id = await DepartmentWriter.InsertAsync(department);
+
+            _departments!.Add(department);
+            _departments = [.. _departments.OrderBy(d => d.Name)];
+
+            await AuditLog.LogAsync(
+                await CurrentActorAsync(),
+                AuditAction.Create,
+                nameof(Department),
+                department.Id.ToString(),
+                $"{department.Name} added from the company directory.");
+
+            return (department.Id, department.Name, true);
+        }
+        catch (Exception ex)
+        {
+            // A department that cannot be created must not lose the rest of the fill.
+            Logger.LogError(ex, "Could not add the department {Department} from the directory.", name);
+            return null;
+        }
     }
 
     // A <select multiple> firing several change events in quick succession (rapid ctrl/shift-click, or

@@ -206,7 +206,7 @@ public class DirectoryImporter(
         var company = new Company
         {
             Name = companyName.Trim(),
-            ShortCode = UniqueShortCode(companyName, companies.Select(c => c.ShortCode)),
+            ShortCode = ShortCodes.Unique(companyName, companies.Select(c => c.ShortCode)),
         };
         company.Id = await companyWriter.InsertAsync(company);
         companies.Add(company);
@@ -223,7 +223,7 @@ public class DirectoryImporter(
         var department = new Department
         {
             Name = departmentName.Trim(),
-            Code = UniqueShortCode(departmentName, departments.Select(d => d.Code)),
+            Code = ShortCodes.Unique(departmentName, departments.Select(d => d.Code)),
         };
         department.Id = await departmentWriter.InsertAsync(department);
         departments.Add(department);
@@ -232,23 +232,6 @@ public class DirectoryImporter(
 
     /// <summary>Company.ShortCode and Department.Code are unique, and Entra has no equivalent field,
     /// so one is derived from the name and suffixed until it does not collide.</summary>
-    private static string UniqueShortCode(string name, IEnumerable<string> taken)
-    {
-        var letters = new string(name.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
-        var seed = (letters.Length == 0 ? "ORG" : letters[..Math.Min(8, letters.Length)]);
-
-        var existing = taken.Where(t => t is not null).Select(t => t.ToUpperInvariant()).ToHashSet();
-        if (!existing.Contains(seed)) return seed;
-
-        for (var n = 2; n < 1000; n++)
-        {
-            var candidate = $"{seed[..Math.Min(6, seed.Length)]}{n}";
-            if (!existing.Contains(candidate)) return candidate;
-        }
-
-        return $"{seed[..Math.Min(4, seed.Length)]}{Guid.NewGuid().ToString("N")[..4].ToUpperInvariant()}";
-    }
-
     /// <summary>
     /// Every Entra user gets a login account so single sign-on lands on a member record rather than
     /// provisioning a stranger on first use. The account carries no password -- there is nothing to

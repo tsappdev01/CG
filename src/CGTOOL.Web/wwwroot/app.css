@@ -253,6 +253,13 @@ h1:focus {
     font-size: 13px;
 }
 
+/* The same shape as .cg-error in the amber that means "this is not stopping you". Used where a
+   document has expired but is still inside the grace a declaration may be filed in. */
+.cg-warning {
+    color: var(--cg-warning);
+    font-size: 13px;
+}
+
 .cg-error-banner {
     background: color-mix(in srgb, var(--cg-critical) 12%, transparent);
     border: 1px solid var(--cg-critical);
@@ -4373,6 +4380,22 @@ button.cg-appbar-user {
 /* The bar or spinner shown under the file input while a card is going up. Sits where the hint
    was, so the answer to "did it take my file?" is where the question was asked. */
 .cg-onboarding-upload { margin: 10px 0 0; }
+
+/* An expired card, said on the onboarding screen that shows it. Amber rather than red: it is a
+   thing to put right, not a thing stopping them finishing. */
+.cg-onboarding-alert {
+    display: grid;
+    gap: 4px;
+    margin: 0 0 18px;
+    padding: 12px 14px;
+    border: 1px solid var(--cg-warning);
+    border-radius: 10px;
+    background: var(--cg-warning-tint);
+    color: var(--cg-ink);
+    font-size: 13px;
+    line-height: 1.45;
+    text-align: left;
+}
 
 .cg-onboarding-link {
     font: inherit;

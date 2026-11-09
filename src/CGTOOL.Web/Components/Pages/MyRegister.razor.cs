@@ -649,7 +649,7 @@ public partial class MyRegister : ComponentBase
     /// so it is worth saying here, where the member can actually replace it, rather than leaving
     /// them to find out at the deadline.</summary>
     private static bool IsExpired(MemberDocument? document) =>
-        document?.ExpiryDate is { } expiry && expiry.Date < DateTime.UtcNow.Date;
+        DocumentExpiry.IsExpired(document?.ExpiryDate);
 
     private int ExpiredDocumentCount => _documents.Count(IsExpired);
 

@@ -73,8 +73,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
     /// <summary>Expired by today, in local terms. A document with no expiry date is not expired --
     /// plenty of things people attach do not carry one.</summary>
-    private static bool IsExpiredOn(DateTime? expiry) =>
-        expiry is { } date && date.Date < DateTime.UtcNow.ToLocalTime().Date;
+    private static bool IsExpiredOn(DateTime? expiry) => DocumentExpiry.IsExpired(expiry);
 
     private bool IsUploadingDocument(int documentTypeId) => _uploadingTypeIds.Contains(documentTypeId);
 

@@ -111,6 +111,21 @@ else
                 }
             </dl>
 
+            @if (DocumentExpiry.IsExpired(_record.EmiratesIdExpiryDate))
+            {
+                @* Raised here rather than left to the first declaration: this is the screen where
+                   the member is looking at the card, and where there is still time to replace it
+                   before a deadline is involved. It does not stop them finishing onboarding. *@
+                <div class="cg-onboarding-alert">
+                    <strong>This Emirates ID has expired.</strong>
+                    <span>
+                        It expired on @_record.EmiratesIdExpiryDate!.Value.ToString("dd/MM/yyyy"). Please upload a
+                        valid Emirates ID in My&nbsp;Workspace. You can still confirm these details and finish
+                        onboarding now.
+                    </span>
+                </div>
+            }
+
             <p><strong>Is the above correct?</strong></p>
             <div class="cg-onboarding-actions">
                 <button type="button" class="cg-action-btn cg-good" disabled="@_busy" @onclick="ConfirmEmiratesIdAsync">

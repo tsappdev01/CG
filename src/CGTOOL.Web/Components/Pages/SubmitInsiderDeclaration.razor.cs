@@ -1155,10 +1155,18 @@ public partial class SubmitInsiderDeclaration
         return lines;
     }
 
-    private List<string> ExpiredDocuments()
+    /// <summary>The documents whose expiry actually stops this declaration being filed -- past
+    /// their date by more than the grace DocumentExpiry allows. Anything expired inside the
+    /// grace is in ExpiringDocuments instead: the member is told, and still let through.</summary>
+    private List<string> BlockingDocuments() => ExpiredDocuments(DocumentExpiry.BlocksSubmission);
+
+    /// <summary>Expired, but still inside the grace. Worth saying, not worth stopping for.</summary>
+    private List<string> ExpiringDocuments() => ExpiredDocuments(DocumentExpiry.IsWithinSubmissionGrace);
+
+    private List<string> ExpiredDocuments(Func<DateTime?, DateOnly?, bool> matches)
     {
-        var today = DateTime.UtcNow.Date;
         var expired = new List<string>();
+        bool IsExpired(DateTime? expiry) => matches(expiry, null);
 
         // Only documents this declaration actually asks for. A draft keeps the dates it was saved
         // with, so a passport switched off in the Document Center afterwards would otherwise go on
@@ -1184,18 +1192,20 @@ public partial class SubmitInsiderDeclaration
         foreach (var type in AddedDocumentTypes)
         {
             var added = AddedDocumentFor(type.Id);
-            if (!string.IsNullOrWhiteSpace(added.FilePath) && IsExpired(added.ExpiryDate))
+
+            // By blob or path. Testing FilePath alone meant an added document uploaded since they
+            // moved into the database counted as "not attached", so its expiry was never looked
+            // at and an out-of-date one went through unnoticed.
+            if (DocumentUrl.Exists(added.BlobId, added.FilePath) && IsExpired(added.ExpiryDate))
             {
                 expired.Add(type.Name);
             }
         }
 
         return expired;
-
-        bool IsExpired(DateTime? expiry) => expiry is { } date && date.Date < today;
     }
 
-    private static bool IsExpiredOn(DateTime? expiry) => expiry is { } date && date.Date < DateTime.UtcNow.Date;
+    private static bool IsExpiredOn(DateTime? expiry) => DocumentExpiry.IsExpired(expiry);
 
     private static string Join(List<string> parts) => parts.Count switch
     {
@@ -1306,7 +1316,7 @@ public partial class SubmitInsiderDeclaration
     /// the enforcing, with a message saying which part is missing.</summary>
     private bool StepIsComplete =>
         EmiratesIdComplete && PassportComplete && AddedDocumentsComplete
-        && ExpiredDocuments().Count == 0;
+        && BlockingDocuments().Count == 0;
 
     /// <summary>Nothing is asked of a document the Document Centre has made optional or switched
     /// off. Its fields are still there to fill in if someone attaches one -- optional means it need
@@ -1375,10 +1385,15 @@ public partial class SubmitInsiderDeclaration
         // Workspace. OfferDocumentPullAsync says so by name instead. Only documents this
         // declaration asks for are worth complaining about -- an expired licence is not this
         // form's business when this form never asks for one.
-        _expiredInWorkspace = documents.Where(d => AskedForHere(d) && IsExpiredOn(d.ExpiryDate)).ToList();
+        // Only the ones that would actually stop them. A document expired inside the grace is
+        // still worth bringing across -- refusing to carry it over would leave the member with
+        // an empty slot and nothing to submit, over a document the rules now let them submit on.
+        _expiredInWorkspace = documents
+            .Where(d => AskedForHere(d) && DocumentExpiry.BlocksSubmission(d.ExpiryDate))
+            .ToList();
 
         return documents
-            .Where(d => !IsExpiredOn(d.ExpiryDate))
+            .Where(d => !DocumentExpiry.BlocksSubmission(d.ExpiryDate))
             .Where(d => refresh ? AskedForHere(d) : StillNeededHere(d))
             .ToList();
     }
@@ -1453,7 +1468,8 @@ public partial class SubmitInsiderDeclaration
 
     private void WarnAboutExpiredInWorkspace() =>
         Toasts.ShowError($"Your {Join(_expiredInWorkspace.Select(DocumentPullLabel).ToList())} in My Workspace "
-            + $"{(_expiredInWorkspace.Count == 1 ? "has" : "have")} expired and {(_expiredInWorkspace.Count == 1 ? "was" : "were")} not brought across. "
+            + $"{(_expiredInWorkspace.Count == 1 ? "has" : "have")} been expired for more than "
+            + $"{DocumentExpiry.SubmissionGraceDays} days and {(_expiredInWorkspace.Count == 1 ? "was" : "were")} not brought across. "
             + "Upload a current copy there.");
 
     private async Task OfferDocumentPullAsync()
@@ -1982,15 +1998,29 @@ public partial class SubmitInsiderDeclaration
             return;
         }
 
-        // A declaration is a statement about today, so it cannot be made on an expired document --
-        // the trade licence above all, which lapses yearly while a passport runs for ten. Blocked
-        // rather than warned: an expired licence attached to a submitted declaration is a finding
-        // at the next audit, and the member is the only one who can fix it.
-        if (ExpiredDocuments() is { Count: > 0 } expired)
+        // A declaration is a statement about today, so it cannot be made on a document that
+        // lapsed a while ago -- an expired licence attached to a submitted declaration is a
+        // finding at the next audit, and the member is the only one who can fix it.
+        //
+        // A fortnight's grace, though. A renewal does not always beat a filing deadline, and
+        // being two days out of date should not make somebody miss one. Past that the block
+        // stands.
+        if (BlockingDocuments() is { Count: > 0 } blocking)
         {
-            Toasts.ShowError($"Your {Join(expired)} {(expired.Count == 1 ? "has" : "have")} expired. "
-                + "Upload a current copy here, and update it in My Workspace so it is right for next time.");
+            Toasts.ShowError(
+                $"Your {Join(blocking)} {(blocking.Count == 1 ? "has" : "have")} been expired for more than "
+                + $"{DocumentExpiry.SubmissionGraceDays} days. Upload a current copy here, and update it in "
+                + "My Workspace so it is right for next time.");
             return;
+        }
+
+        // Expired, but inside the grace: let it through and say so, so the member knows the next
+        // one will not go through on this document.
+        if (ExpiringDocuments() is { Count: > 0 } expiring)
+        {
+            Toasts.ShowWarning(
+                $"Your {Join(expiring)} {(expiring.Count == 1 ? "has" : "have")} expired. This declaration "
+                + "has been accepted, but please upload a current copy in My Workspace.");
         }
 
         if (_holdsSharesInDI)

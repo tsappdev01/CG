@@ -767,7 +767,7 @@
                             @(StepIsComplete ? "All required details complete" : "Some required details are still missing")
                         </span>
                         <button type="button" class="cg-action-btn" disabled="@_savingDraft" @onclick="SaveDraftAsync">@(_savingDraft ? "Saving…" : "Save as draft")</button>
-                        <button type="button" class="cg-action-btn cg-good" disabled="@(ExpiredDocuments().Count > 0)" @onclick="GoToReviewAsync">
+                        <button type="button" class="cg-action-btn cg-good" disabled="@(BlockingDocuments().Count > 0)" @onclick="GoToReviewAsync">
                             @(_holdsSharesInDI ? "Continue to review" : "Continue to review")
                         </button>
                     </div>
@@ -783,11 +783,22 @@
                                    OnCancel="DeclineShareholderSaveAsync" />
                 }
 
-                @if (ExpiredDocuments() is { Count: > 0 } expiredNow)
+                @if (BlockingDocuments() is { Count: > 0 } blockingNow)
                 {
                     <p class="cg-error">
-                        Your @Join(expiredNow) @(expiredNow.Count == 1 ? "has" : "have") expired. A declaration cannot be submitted on an expired document —
+                        Your @Join(blockingNow) @(blockingNow.Count == 1 ? "has" : "have") been expired for more than
+                        @DocumentExpiry.SubmissionGraceDays days. A declaration cannot be submitted on it —
                         upload a current copy above, and update it in My Workspace so it is right for next time.
+                    </p>
+                }
+                else if (ExpiringDocuments() is { Count: > 0 } expiringNow)
+                {
+                    @* Expired, but inside the grace. Said plainly, with the days left on it, so the
+                       member knows this is the last declaration that will go through on it. *@
+                    <p class="cg-warning">
+                        Your @Join(expiringNow) @(expiringNow.Count == 1 ? "has" : "have") expired. You can still submit
+                        this declaration, but please upload a current copy above and update it in My Workspace —
+                        after @DocumentExpiry.SubmissionGraceDays days past expiry it will be refused.
                     </p>
                 }
             </div>

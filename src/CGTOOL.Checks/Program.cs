@@ -8,5 +8,6 @@ IdentityFormatChecks.Run();
 ReportRenderingChecks.Run();
 CountryChecks.Run();
 OnboardingTemplateChecks.Run();
+ExpiryChecks.Run();
 
 return Check.Report();

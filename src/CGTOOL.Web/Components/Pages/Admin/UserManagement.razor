@@ -155,22 +155,6 @@
                     <button type="button" class="cg-icon-btn" title="Close" @onclick="() => _showUpload = false">×</button>
                 </div>
 
-                <p class="cg-subtitle">
-                    A spreadsheet (.xlsx or .csv) with one row per person. <b>Display Name</b>,
-                    <b>Email Address</b> and <b>Company Name</b> are required; Department, Title, Role
-                    and Reporting Manager are optional. Columns are matched by heading, so their order
-                    does not matter. Someone already here is updated rather than duplicated — matched
-                    on their email address. An entity that does not exist yet is created.
-                </p>
-                <p class="cg-subtitle">
-                    If the file also has <b>NIN</b>, <b>EmiratesID</b>, <b>NameOnEmiratesID</b> or
-                    <b>Nationality</b>, those are loaded at the same time as what each person is asked
-                    to confirm during onboarding. Rows without either a NIN or an Emirates ID are
-                    imported as people but hold nothing for onboarding to show, so those members are
-                    asked to supply their own. The card scans themselves are uploaded under
-                    <b>Onboarding Data</b>.
-                </p>
-
                 <div class="cg-upload-row">
                     <InputFile OnChange="OnUserListSelectedAsync" accept=".xlsx,.xls,.csv" disabled="@_importing" />
                     <a class="cg-action-btn" href="/admin/user-list-template.csv" download>Download template</a>

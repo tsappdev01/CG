@@ -172,6 +172,8 @@ public class MemberOnboardingService(
             onboarding.EmiratesIdNumber = refreshed.EmiratesIdNumber;
             onboarding.EmiratesIdHolderName = refreshed.EmiratesIdHolderName;
             onboarding.EmiratesIdNationality = refreshed.EmiratesIdNationality;
+            onboarding.EmiratesIdHolderNameArabic = refreshed.EmiratesIdHolderNameArabic;
+            onboarding.EmiratesIdExpiryDate = refreshed.EmiratesIdExpiryDate;
             onboarding.EmiratesIdBlobId = refreshed.EmiratesIdBlobId;
             onboarding.EmiratesIdStatus = EmiratesIdOnboardingStatus.PendingConfirmation;
         }
@@ -219,6 +221,12 @@ public class MemberOnboardingService(
             onboarding.EmiratesIdNumber = card.Number;
             onboarding.EmiratesIdHolderName = card.NameOnCard;
             onboarding.EmiratesIdNationality = card.Nationality;
+            onboarding.EmiratesIdHolderNameArabic = card.NameOnCardArabic;
+
+            // The expiry matters before the member reaches a declaration rather than at it: an
+            // expired card is refused at submission, and onboarding is where there is still time
+            // to ask for a current copy.
+            onboarding.EmiratesIdExpiryDate = card.ExpiryDate;
 
             // The scan, where one was loaded in bulk. The member sees the card they are being
             // asked about rather than just its number.

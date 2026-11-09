@@ -1,4 +1,5 @@
 using System.Data;
+using System.Globalization;
 
 namespace CGTOOL.Web.Data.Governance;
 
@@ -36,7 +37,12 @@ public static class UserListWorkbookParser
 
     // Onboarding reference data. Optional -- a file without these columns still imports people.
     private static readonly string[] Nin          = ["nin", "ninnumber", "nationalinvestornumber"];
-    private static readonly string[] NameOnId     = ["nameonemiratesid", "nameonid", "nameoneid"];
+    // The card's own name first. The onboarding template carries two: one typed by the team and
+    // one read off the Emirates ID, and where they disagree the card is the one that counts.
+    // TextAny takes the first of these the file actually has, so the order is the precedence.
+    private static readonly string[] NameOnId     = ["nameonemiratesid(iddata)", "nameonemiratesid", "nameonid", "nameoneid"];
+    private static readonly string[] NameOnIdAr   = ["nameonemiratesid_arabic", "nameonemiratesidarabic", "nameonidarabic"];
+    private static readonly string[] IdExpiry     = ["expirydate", "emiratesidexpirydate", "emiratesidexpiry", "idexpiry"];
     private static readonly string[] EmiratesId   = ["emiratesid", "emiratesidnumber", "eid"];
     private static readonly string[] Nationality  = ["nationality"];
 
@@ -131,7 +137,9 @@ public static class UserListWorkbookParser
                     Nin: nin,
                     NameOnEmiratesId: Clean(WorkbookTable.TextAny(row, columns, NameOnId)),
                     EmiratesIdNumber: eid,
-                    Nationality: Clean(WorkbookTable.TextAny(row, columns, Nationality))));
+                    Nationality: Clean(WorkbookTable.TextAny(row, columns, Nationality)),
+                    NameOnEmiratesIdArabic: Clean(WorkbookTable.TextAny(row, columns, NameOnIdAr)),
+                    EmiratesIdExpiryDate: ExpiryDate(row, columns)));
             }
         }
 
@@ -155,7 +163,42 @@ public static class UserListWorkbookParser
     {
         var trimmed = value?.Trim();
         if (string.IsNullOrEmpty(trimmed)) return null;
-        return trimmed.Equals("NULL", StringComparison.OrdinalIgnoreCase) ? null : trimmed;
+
+        // "#REF!" is Excel's broken-reference marker, and the onboarding template carries it in
+        // fourteen cells. Storing it would put the word itself on somebody's record.
+        return trimmed.Equals("NULL", StringComparison.OrdinalIgnoreCase)
+               || trimmed.StartsWith('#') && trimmed.EndsWith('!')
+            ? null
+            : trimmed;
+    }
+
+    /// <summary>The Emirates ID expiry, however the sheet holds it.
+    ///
+    /// Excel keeps a date as a day count from 1899-12-30, and a column that was never formatted
+    /// as a date arrives as that number -- 47044 rather than 09/10/2028. A reader that only
+    /// accepted text would silently drop every expiry in the file.</summary>
+    private static DateTime? ExpiryDate(DataRow row, Dictionary<string, int> columns)
+    {
+        var raw = WorkbookTable.ValueAny(row, columns, IdExpiry);
+
+        switch (raw)
+        {
+            case null: return null;
+            case DateTime dt: return dt;
+        }
+
+        var text = Clean(Convert.ToString(raw, CultureInfo.InvariantCulture));
+        if (text is null) return null;
+
+        if (double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out var serial))
+        {
+            // Excel's own range. Anything outside it is a number that is not a date.
+            return serial is > 0 and < 2958466 ? DateTime.FromOADate(serial) : null;
+        }
+
+        return DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+            ? parsed
+            : null;
     }
 
     private static int FindHeader(DataTable table)

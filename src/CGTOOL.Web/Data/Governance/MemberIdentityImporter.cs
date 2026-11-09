@@ -8,7 +8,8 @@ namespace CGTOOL.Web.Data.Governance;
 /// <summary>One row of the employee spreadsheet, after parsing.</summary>
 public sealed record IdentityImportRow(
     string Email, string? FullName, string? CompanyName,
-    string? Nin, string? NameOnEmiratesId, string? EmiratesIdNumber, string? Nationality);
+    string? Nin, string? NameOnEmiratesId, string? EmiratesIdNumber, string? Nationality,
+    string? NameOnEmiratesIdArabic = null, DateTime? EmiratesIdExpiryDate = null);
 
 /// <summary>What an import did, or would do.</summary>
 public sealed record IdentityImportResult(
@@ -275,7 +276,12 @@ public class MemberIdentityImporter(
                 new SqlParameter("@Nin", SqlDbType.NVarChar, 100) { Value = (object?)Nin.Normalise(row.Nin) ?? DBNull.Value },
                 new SqlParameter("@NameOnEmiratesId", SqlDbType.NVarChar, 200) { Value = (object?)row.NameOnEmiratesId ?? DBNull.Value },
                 new SqlParameter("@EmiratesIdNumber", SqlDbType.NVarChar, 100) { Value = (object?)row.EmiratesIdNumber ?? DBNull.Value },
-                new SqlParameter("@Nationality", SqlDbType.NVarChar, 80) { Value = (object?)row.Nationality ?? DBNull.Value },
+                // Resolved, not stored as written: the card export writes "State of Palestine"
+                // where the dropdown holds "Palestine", and an unresolvable spelling is better
+                // left empty than saved as a nationality no screen can show.
+                new SqlParameter("@Nationality", SqlDbType.NVarChar, 80) { Value = (object?)Countries.Resolve(row.Nationality) ?? DBNull.Value },
+                new SqlParameter("@NameOnEmiratesIdArabic", SqlDbType.NVarChar, 200) { Value = (object?)row.NameOnEmiratesIdArabic ?? DBNull.Value },
+                new SqlParameter("@EmiratesIdExpiryDate", SqlDbType.DateTime2) { Value = (object?)row.EmiratesIdExpiryDate ?? DBNull.Value },
                 new SqlParameter("@SourceFileName", SqlDbType.NVarChar, 260) { Value = (object?)sourceFileName ?? DBNull.Value },
                 new SqlParameter("@ImportedAtUtc", SqlDbType.DateTime2) { Value = DateTime.UtcNow },
             ]);

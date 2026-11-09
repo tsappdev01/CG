@@ -5,6 +5,12 @@ DI Corporate Governance Tool. Blazor Web App on .NET 10, EF Core, SQL Server `CG
 
 ## Before you call a change done, find the other places it touches
 
+> After a change is made, cross-check all related areas, modules and functionalities to
+> identify and address any potential impact or dependencies.
+
+That is a standing instruction from the people who own this system, not a style preference, and
+it is here because it has caught something nearly every time it has been followed.
+
 Most of what has gone wrong here was not a wrong line. It was a right line in one place and the
 same thing left unchanged in three others, which nothing noticed because each place still worked
 on its own. So a change is not finished when it compiles:

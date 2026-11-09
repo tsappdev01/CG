@@ -81,5 +81,18 @@ public static class WorkbookTable
         return null;
     }
 
+    /// <summary>The raw cell from the first of these headers the file has, so a caller that needs
+    /// the value rather than its text -- a date Excel is holding as a number -- can still use the
+    /// same ordered-alias lookup TextAny gives.</summary>
+    public static object? ValueAny(DataRow row, Dictionary<string, int> columns, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var value = Value(row, columns, key);
+            if (value is not null && value != DBNull.Value) return value;
+        }
+        return null;
+    }
+
     public static bool HasAny(Dictionary<string, int> columns, params string[] keys) => keys.Any(columns.ContainsKey);
 }

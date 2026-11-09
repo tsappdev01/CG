@@ -278,7 +278,6 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
     private bool _hadExistingRow;
     private bool _loadedAsSubmittedEdit;
-    private bool _justAutoSaved;
 
     private DateTime? _uaePassVerifiedAtUtc;
     private string? _uaePassVerifiedName;
@@ -374,7 +373,6 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private string _attestationName = string.Empty;
     private bool _attestationConfirmed;
 
-    private bool _pendingFormConfirm;
 
     private const long MaxTradeLicenseFileBytes = UploadLimits.SupportingDocumentBytes;
     private const int MaxDocumentsPerRow = 10;
@@ -634,7 +632,6 @@ public partial class SubmitRelatedPartyCoiDeclaration
         _signatureBlobId = declaration.SignatureBlobId;
         _signaturePath = DocumentUrl.For(declaration.SignatureBlobId, declaration.SignaturePath);
         _signedAtUtc = declaration.SignedAtUtc;
-        _hasSignature = !string.IsNullOrEmpty(declaration.SignaturePath);
 
         MarkEverySectionAnswered();
         _nothingRelatives = declaration.NothingToDeclareRelatives;
@@ -1513,11 +1510,6 @@ public partial class SubmitRelatedPartyCoiDeclaration
                 return;
             }
 
-            if (target == Step.Review)
-            {
-                _pendingFormConfirm = true;
-                return;
-            }
         }
 
         _step = target;
@@ -1535,7 +1527,11 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// step it lives on.</summary>
     private string? _focusFieldId;
 
-    // ---------- the drawn signature ----------
+    // ---------- the signature on file ----------
+    //
+    // The pad is gone from the form, but a declaration signed before it was removed keeps its
+    // signature: it is loaded here, carried through a re-submission by SaveSignatureAsync, and
+    // still printed on the reports. Only the asking has stopped.
 
     private SignaturePad? _signaturePad;
     private string? _signaturePath;
@@ -1544,9 +1540,6 @@ public partial class SubmitRelatedPartyCoiDeclaration
     /// renders it from.</summary>
     private int? _signatureBlobId;
     private DateTime? _signedAtUtc;
-    private bool _hasSignature;
-
-    private void OnSignatureChanged(bool hasSignature) => _hasSignature = hasSignature;
 
     /// <summary>Writes the signature the pad holds -- newly drawn ink, or an image the member
     /// uploaded -- to a file and returns its path; returns the signature already on file when
@@ -1774,15 +1767,6 @@ public partial class SubmitRelatedPartyCoiDeclaration
 
         return true;
     }
-
-    private void ConfirmForm()
-    {
-        _pendingFormConfirm = false;
-        _step = Step.Review;
-        _justAutoSaved = false;
-    }
-
-    private void CancelFormConfirm() => _pendingFormConfirm = false;
 
     private async Task SaveDraftAsync()
     {
@@ -2027,11 +2011,9 @@ public partial class SubmitRelatedPartyCoiDeclaration
             Toasts.ShowError("Please confirm that the information given in this declaration is true, complete and accurate.");
             return;
         }
-        if (!(_signaturePad?.HasSignature ?? !string.IsNullOrEmpty(_signaturePath)))
-        {
-            Toasts.ShowError("Sign the declaration before submitting it.");
-            return;
-        }
+        // No signature is demanded any more. SaveSignatureAsync below still runs, and with no pad
+        // on the page it returns whatever this declaration was signed with before -- so editing a
+        // declaration that was signed does not strip its signature.
         _submitting = true;
 
         try

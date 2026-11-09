@@ -44,9 +44,25 @@ public static class SubmissionFlowChecks
                    !coiMarkup.Contains("cg-attestation-title", StringComparison.Ordinal)
                    && !coiMarkup.Contains("_showAttestation", StringComparison.Ordinal));
 
-        Check.That("the RP & COI declaration still captures a signature",
-                   coiMarkup.Contains("<SignaturePad", StringComparison.Ordinal)
+        // The drawn signature was dropped at the business's request. What must not go with it is
+        // the signature already on a declaration signed before the change: SaveSignatureAsync
+        // returns the blob on file when there is no pad, which is what keeps an edit from
+        // stripping it, and the reports still print it.
+        Check.That("the RP & COI declaration no longer asks for a drawn signature",
+                   !coiMarkup.Contains("<SignaturePad", StringComparison.Ordinal));
+
+        Check.That("it still takes a typed name and a confirmation",
+                   coiMarkup.Contains("_attestationName", StringComparison.Ordinal)
                    && coiMarkup.Contains("_attestationConfirmed", StringComparison.Ordinal));
+
+        Check.That("a signature already on file survives a re-submission",
+                   typeof(CGTOOL.Web.Components.Pages.SubmitRelatedPartyCoiDeclaration)
+                       .GetMethod("SaveSignatureAsync",
+                           System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance) is not null);
+
+        // Nothing stands between the last capture step and the summary that exists to be checked.
+        Check.That("no window interrupts the step before Review",
+                   !coiMarkup.Contains("<ConfirmPrompt", StringComparison.Ordinal));
 
         Check.That("each declaration still has a Submit that calls SubmitAsync",
                    insiderMarkup.Contains("OnClick=\"SubmitAsync\"", StringComparison.Ordinal)

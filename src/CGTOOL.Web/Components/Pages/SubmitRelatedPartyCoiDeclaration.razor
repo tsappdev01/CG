@@ -97,12 +97,11 @@
                 }
             </ol>
 
-            @* Reachable from any step, because any chevron can be the one that asks for Review. *@
-            <ConfirmPrompt Show="_pendingFormConfirm"
-                           Message="Please confirm all information entered above is correct before proceeding — you can still come back and edit it, but double-check now."
-                           ConfirmLabel="All information is correct — proceed"
-                           OnConfirm="ConfirmForm"
-                           OnCancel="CancelFormConfirm" />
+            @* The "please confirm all information entered above is correct" window that used to
+               stand between the last step and Review is gone. It asked the member to confirm the
+               form before showing them the summary of it, which is the page that exists to be
+               checked -- and the review step asks the same thing again, after they have seen it.
+               Next now shows the review page. *@
         }
 
         @if (_step == Step.Relatives)
@@ -475,10 +474,6 @@
         else if (_step == Step.Review)
         {
             <div class="cg-member-form cg-declaration-form">
-                @if (_justAutoSaved)
-                {
-                    <div class="cg-toast cg-toast-success" style="margin-bottom:12px;">Declaration saved</div>
-                }
                 <h2>@(_loadedAsSubmittedEdit ? "Are you sure you want to proceed for editing your declaration?" : "Are you sure you want to submit below declaration form?")</h2>
 
                 <div class="cg-table-wrap">
@@ -543,14 +538,12 @@
                     <input class="cg-input" @bind="_attestationName" maxlength="160" />
                 </label>
 
-                <div class="cg-field">
-                    <span>Signature <span class="cg-required" aria-hidden="true">*</span></span>
-                    <SignaturePad @ref="_signaturePad"
-                                  ExistingSignaturePath="@_signaturePath"
-                                  SignedAtUtc="@_signedAtUtc"
-                                  OnChanged="OnSignatureChanged" />
-                </div>
-
+                @* The drawn signature was dropped at the business's request: the typed name above
+                   and the confirmation below are what the declarant gives now, and neither is
+                   harder to stand behind than a finger-drawn line. A declaration signed before
+                   this still carries its signature -- the column, the stored image and the block
+                   on the reports are all untouched, so nothing already filed loses what it was
+                   signed with. *@
                 <dl class="cg-signature-block">
                     <div><dt>Full Name</dt><dd>@_effectiveMember!.FullName</dd></div>
                     <div><dt>Date</dt><dd class="mono">@DateTime.Now.ToString("dd/MM/yyyy HH:mm")</dd></div>

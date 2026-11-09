@@ -285,32 +285,15 @@
         {
             <div class="cg-member-form cg-declaration-form">
                 <h2 class="cg-section-heading">Conflict of Interest Declaration</h2>
-                @if (IsBod)
+                @* The paragraph defining what a conflict of interest is has been removed at the
+                   business's request -- for board members and employees alike, who each had their
+                   own wording of it. What stays is the undertaking below, which is not an
+                   explanation but something the declarant is giving. *@
+                @if (!IsBod)
                 {
-                    <div class="cg-info-callout">
-                        <p>
-                            A conflict of interest is a transaction or relationship that presents or might conflict with a Board member's obligations owed to @Branding.ParentHoldingCompany
-                            and the Board member's personal, business or other interests. All conflict of interest are not necessarily prohibited or harmful to it.
-                            However, full disclosure of all actual and potential conflicts is necessary, and the interested Board member(s) shall be recused from
-                            participating in discussions and voting on the matter. Board members must recognize that conflict of interest, even when in fact it
-                            may not exist, can be damaging to them and to @Branding.ParentHoldingCompany and accordingly, must be avoided.
-                        </p>
-                    </div>
-                }
-                else
-                {
-                    <div class="cg-info-callout">
-                        <p>
-                            A conflict of interest is a transaction or relationship that presents or might conflict with an Employee's obligations owed to
-                            @Branding.ParentHoldingCompany and its Group Companies, and the individual's personal, business or other interests. All conflicts of interest
-                            are not necessarily prohibited or harmful to them. However, full disclosure of all actual and potential conflicts is necessary, and the
-                            interested individual shall be recused from participating in decision making on the matter. An employee must recognize that conflict
-                            of interest, even when in fact it may not exist, can be damaging to them and to @Branding.ParentHoldingCompany and accordingly, must be avoided.
-                        </p>
-                    </div>
-                    @* Bold, and not a subtitle: the paragraph above it explains what a conflict of
-                       interest is, which is background. This one is an undertaking the declarant is
-                       giving, and it was set in the same grey as the explanation. *@
+                    @* Bold, and not a subtitle: this is an undertaking the declarant is giving,
+                       and it was set in the same grey as the explanation that used to sit above
+                       it. *@
                     <p class="cg-undertaking">
                         I hereby declare that if at any time following the submission of this form I become aware of any actual or potential transactions,
                         relationships, or activities that could reasonably be expected to give rise to potential conflicts of interest, I will promptly

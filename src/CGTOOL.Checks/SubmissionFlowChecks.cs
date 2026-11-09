@@ -157,6 +157,14 @@ public static class SubmissionFlowChecks
     {
         Check.Section("Each section asks its question outright");
 
+        // Removed at the business's request, in both wordings -- the board member's and the
+        // employee's. The undertaking that followed it is not an explanation and stays.
+        Check.That("the conflict-of-interest definition is not back on the form",
+                   !coiMarkup.Contains("A conflict of interest is a transaction", StringComparison.Ordinal));
+
+        Check.That("the undertaking that followed it is still given",
+                   coiMarkup.Contains("escalate the matter to the Corporate Affairs Office", StringComparison.Ordinal));
+
         var asked = coiMarkup.Split("<DeclareChoice").Length - 1;
         Check.That($"all five sections ask with buttons, not a switch (found {asked})", asked == 5);
 

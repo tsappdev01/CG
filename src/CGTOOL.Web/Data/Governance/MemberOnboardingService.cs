@@ -553,8 +553,7 @@ public class MemberOnboardingService(
         // that is not one of the options renders as "nothing chosen" and would be written back as
         // blank the first time the member saved the panel for any other reason.
         if (string.IsNullOrWhiteSpace(profile.Nationality)
-            && o.EmiratesIdNationality is { Length: > 0 } nationality
-            && Countries.All.FirstOrDefault(c => string.Equals(c, nationality.Trim(), StringComparison.OrdinalIgnoreCase)) is { } known)
+            && Countries.Resolve(o.EmiratesIdNationality) is { } known)
         {
             profile.Nationality = known; changed = true;
         }

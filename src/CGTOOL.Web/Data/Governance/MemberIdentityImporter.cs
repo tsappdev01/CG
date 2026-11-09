@@ -272,7 +272,7 @@ public class MemberIdentityImporter(
                 new SqlParameter("@Email", SqlDbType.NVarChar, 320) { Value = row.Email },
                 new SqlParameter("@FullName", SqlDbType.NVarChar, 200) { Value = (object?)row.FullName ?? DBNull.Value },
                 new SqlParameter("@CompanyName", SqlDbType.NVarChar, 200) { Value = (object?)row.CompanyName ?? DBNull.Value },
-                new SqlParameter("@Nin", SqlDbType.NVarChar, 100) { Value = (object?)row.Nin ?? DBNull.Value },
+                new SqlParameter("@Nin", SqlDbType.NVarChar, 100) { Value = (object?)Nin.Normalise(row.Nin) ?? DBNull.Value },
                 new SqlParameter("@NameOnEmiratesId", SqlDbType.NVarChar, 200) { Value = (object?)row.NameOnEmiratesId ?? DBNull.Value },
                 new SqlParameter("@EmiratesIdNumber", SqlDbType.NVarChar, 100) { Value = (object?)row.EmiratesIdNumber ?? DBNull.Value },
                 new SqlParameter("@Nationality", SqlDbType.NVarChar, 80) { Value = (object?)row.Nationality ?? DBNull.Value },

@@ -45,6 +45,17 @@ public class MemberIdentityReference
     [MaxLength(80)]
     public string? Nationality { get; set; }
 
+    /// <summary>The holder's name in Arabic, as the card prints it beside the English. Kept
+    /// because the card carries it and a reviewer comparing a scan against a record is comparing
+    /// both halves; nothing reads it for matching.</summary>
+    [MaxLength(200)]
+    public string? NameOnEmiratesIdArabic { get; set; }
+
+    /// <summary>When the card expires. A declaration cannot be submitted on an expired Emirates
+    /// ID, so knowing this before the member reaches that point is the difference between asking
+    /// them for a new copy during onboarding and stopping them at submission.</summary>
+    public DateTime? EmiratesIdExpiryDate { get; set; }
+
     /// <summary>A scan of the card, loaded in bulk and matched to this row by its file name.
     ///
     /// The files are named after the Emirates ID number, which is why they can be attached without
@@ -63,7 +74,9 @@ public class MemberIdentityReference
 }
 
 /// <summary>What is on file for a person, for onboarding to read back to them.</summary>
-public sealed record KnownEmiratesId(string? NameOnCard, string? Number, string? Nationality, int? BlobId);
+public sealed record KnownEmiratesId(
+    string? NameOnCard, string? Number, string? Nationality, int? BlobId,
+    string? NameOnCardArabic = null, DateTime? ExpiryDate = null);
 
 public sealed record KnownDfm(string? Nin, string? RegisteredName);
 
@@ -82,7 +95,13 @@ public class MemberIdentityLookup(IDbContextFactory<ApplicationDbContext> dbFact
         var row = await FindAsync(email, ct);
         return row is null || string.IsNullOrWhiteSpace(row.EmiratesIdNumber)
             ? null
-            : new KnownEmiratesId(row.NameOnEmiratesId ?? row.FullName, row.EmiratesIdNumber, row.Nationality, row.EmiratesIdBlobId);
+            : new KnownEmiratesId(
+                row.NameOnEmiratesId ?? row.FullName,
+                row.EmiratesIdNumber,
+                row.Nationality,
+                row.EmiratesIdBlobId,
+                row.NameOnEmiratesIdArabic,
+                row.EmiratesIdExpiryDate);
     }
 
     public async Task<KnownDfm?> FindDfmAsync(string? email, CancellationToken ct = default)

@@ -120,7 +120,7 @@ public static class UserListWorkbookParser
             // where there is something to keep: a row with neither is nothing for onboarding to
             // show, and a blank reference row would make "we hold nothing for this person"
             // indistinguishable from "nobody has looked yet".
-            var nin = Clean(WorkbookTable.TextAny(row, columns, Nin));
+            var nin = Governance.Nin.Normalise(Clean(WorkbookTable.TextAny(row, columns, Nin)));
             var eid = Clean(WorkbookTable.TextAny(row, columns, EmiratesId));
             if (nin is not null || eid is not null)
             {

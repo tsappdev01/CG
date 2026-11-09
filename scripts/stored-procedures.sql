@@ -2724,6 +2724,8 @@ CREATE OR ALTER PROCEDURE dbo.usp_MemberIdentityReference_Upsert
     @NameOnEmiratesId nvarchar(200) = NULL,
     @EmiratesIdNumber nvarchar(100) = NULL,
     @Nationality nvarchar(80) = NULL,
+    @NameOnEmiratesIdArabic nvarchar(200) = NULL,
+    @EmiratesIdExpiryDate datetime2 = NULL,
     @SourceFileName nvarchar(260) = NULL,
     @ImportedAtUtc datetime2
 AS
@@ -2737,6 +2739,8 @@ BEGIN
         NameOnEmiratesId = @NameOnEmiratesId,
         EmiratesIdNumber = @EmiratesIdNumber,
         Nationality = @Nationality,
+        NameOnEmiratesIdArabic = @NameOnEmiratesIdArabic,
+        EmiratesIdExpiryDate = @EmiratesIdExpiryDate,
         SourceFileName = @SourceFileName,
         ImportedAtUtc = @ImportedAtUtc
     WHERE Email = @Email;
@@ -2744,9 +2748,11 @@ BEGIN
     IF @@ROWCOUNT = 0
     BEGIN
         INSERT INTO dbo.MemberIdentityReferences
-            (Email, FullName, CompanyName, Nin, NameOnEmiratesId, EmiratesIdNumber, Nationality, SourceFileName, ImportedAtUtc)
+            (Email, FullName, CompanyName, Nin, NameOnEmiratesId, EmiratesIdNumber, Nationality,
+             NameOnEmiratesIdArabic, EmiratesIdExpiryDate, SourceFileName, ImportedAtUtc)
         VALUES
-            (@Email, @FullName, @CompanyName, @Nin, @NameOnEmiratesId, @EmiratesIdNumber, @Nationality, @SourceFileName, @ImportedAtUtc);
+            (@Email, @FullName, @CompanyName, @Nin, @NameOnEmiratesId, @EmiratesIdNumber, @Nationality,
+             @NameOnEmiratesIdArabic, @EmiratesIdExpiryDate, @SourceFileName, @ImportedAtUtc);
     END
 END
 GO

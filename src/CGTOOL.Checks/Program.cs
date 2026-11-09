@@ -6,5 +6,6 @@ RelationshipChecks.Run();
 ReportAccessChecks.Run();
 IdentityFormatChecks.Run();
 ReportRenderingChecks.Run();
+CountryChecks.Run();
 
 return Check.Report();

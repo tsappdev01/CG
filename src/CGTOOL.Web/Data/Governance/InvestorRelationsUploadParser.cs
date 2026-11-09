@@ -38,7 +38,7 @@ public static class InvestorRelationsUploadParser
             records.Add(new ShareholderRecord
             {
                 SerialNo = Int(row, columns, "serialno"),
-                Nin = nin.Trim(),
+                Nin = Nin.Normalise(nin) ?? nin.Trim(),
                 CdsUpdated = WorkbookTable.Text(row, columns, "cdsupdated?"),
                 Name = WorkbookTable.Text(row, columns, "name"),
                 EnglishName = WorkbookTable.Text(row, columns, "englishname"),
@@ -100,7 +100,7 @@ public static class InvestorRelationsUploadParser
             {
                 ReportDate = reportDate.Value,
                 Symbol = WorkbookTable.Text(row, columns, "symbol") ?? string.Empty,
-                Nin = nin.Trim(),
+                Nin = Nin.Normalise(nin) ?? nin.Trim(),
                 InvestorName = WorkbookTable.Text(row, columns, "investorname"),
                 ClientType = WorkbookTable.Text(row, columns, "clienttype"),
                 Nationality = WorkbookTable.Text(row, columns, "nationality"),

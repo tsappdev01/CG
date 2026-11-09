@@ -50,6 +50,85 @@ public static class Countries
     ///
     /// A few codes are not ISO 3166-1 alpha-3: German passports write "D" for the nationality, and
     /// Kosovo's passports are issued as "RKS", with "XKX" used where a system needs three letters.</summary>
+    /// <summary>The name from this list that a written-down nationality means, or null when none
+    /// of them does.
+    ///
+    /// Files are written by people and by other systems, and the same country arrives spelt
+    /// several ways: an Emirates ID export writes the United Nations long form -- "State of
+    /// Palestine", "Iran (Islamic Republic of)", "Commonwealth of Dominica" -- where this list
+    /// holds the short name a person would pick from a dropdown.
+    ///
+    /// Resolving rather than adding the long forms to the list on purpose. Two entries for one
+    /// country is the thing this class exists to prevent: it was written because free text had
+    /// produced "UAE", "U.A.E.", "Emirati" and "United Arab Emirates" for one country, which no
+    /// report can group. A name that resolves to nothing is left for the caller to reject, rather
+    /// than guessed at.</summary>
+    public static string? Resolve(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        var text = value.Trim();
+
+        // Already one of ours, whatever the casing.
+        if (All.FirstOrDefault(c => string.Equals(c, text, StringComparison.OrdinalIgnoreCase)) is { } exact)
+        {
+            return exact;
+        }
+
+        if (Aliases.TryGetValue(text, out var alias)) return alias;
+
+        // "Iran (Islamic Republic of)" -> "Iran"; "State of Palestine" -> "Palestine".
+        var trimmed = text;
+        var bracket = trimmed.IndexOf('(', StringComparison.Ordinal);
+        if (bracket > 0) trimmed = trimmed[..bracket].Trim();
+
+        foreach (var prefix in LongFormPrefixes)
+        {
+            if (trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                trimmed = trimmed[prefix.Length..].Trim();
+                break;
+            }
+        }
+
+        if (!string.Equals(trimmed, text, StringComparison.Ordinal))
+        {
+            if (All.FirstOrDefault(c => string.Equals(c, trimmed, StringComparison.OrdinalIgnoreCase)) is { } stripped)
+            {
+                return stripped;
+            }
+
+            if (Aliases.TryGetValue(trimmed, out var strippedAlias)) return strippedAlias;
+        }
+
+        return null;
+    }
+
+    private static readonly string[] LongFormPrefixes =
+        ["State of ", "Commonwealth of ", "Republic of ", "Kingdom of ", "The "];
+
+    /// <summary>Spellings that no amount of trimming turns into one of All's names. Every value
+    /// here is one of All's -- src/CGTOOL.Checks fails if one stops being.</summary>
+    public static readonly Dictionary<string, string> Aliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["UAE"] = Default, ["U.A.E."] = Default, ["U.A.E"] = Default, ["Emirati"] = Default,
+        ["Syrian Arab Republic"] = "Syria",
+        ["Russian Federation"] = "Russia",
+        ["Republic of Korea"] = "South Korea", ["Korea, Republic of"] = "South Korea",
+        ["Viet Nam"] = "Vietnam",
+        // The list spells these the way the passport does, so the everyday spelling is the alias
+        // rather than the other way round.
+        ["Turkiye"] = "T\u00fcrkiye", ["Turkey"] = "T\u00fcrkiye",
+        ["Czech Republic"] = "Czechia",
+        ["Burma"] = "Myanmar",
+        ["Great Britain"] = "United Kingdom", ["Britain"] = "United Kingdom", ["England"] = "United Kingdom",
+        ["United States"] = "United States of America", ["USA"] = "United States of America",
+        ["U.S.A."] = "United States of America", ["US"] = "United States of America",
+        ["Holy See"] = "Vatican City", ["Vatican"] = "Vatican City",
+        ["Lao People's Democratic Republic"] = "Laos",
+        ["Brunei Darussalam"] = "Brunei",
+    };
+
     public static string? FromMrzCode(string? code) =>
         !string.IsNullOrWhiteSpace(code) && ByMrzCode.TryGetValue(code.Trim(), out var name) ? name : null;
 

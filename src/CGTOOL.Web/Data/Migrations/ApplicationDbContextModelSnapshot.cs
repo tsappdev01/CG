@@ -1571,6 +1571,9 @@ namespace CGTOOL.Web.Data.Migrations
                     b.Property<int?>("EmiratesIdBlobId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("EmiratesIdExpiryDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("EmiratesIdFileName")
                         .HasMaxLength(260)
                         .HasColumnType("nvarchar(260)");
@@ -1587,6 +1590,10 @@ namespace CGTOOL.Web.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("NameOnEmiratesId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("NameOnEmiratesIdArabic")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 

@@ -413,8 +413,7 @@ public partial class Onboarding
             // Only a spelling the list offers, since the field is a dropdown: the reader returns
             // whatever is printed on the card, and a value that is not an option would show as
             // nothing chosen and quietly save as blank.
-            if (read.CountryRegion is { Length: > 0 } country
-                && Countries.All.FirstOrDefault(c => string.Equals(c, country.Trim(), StringComparison.OrdinalIgnoreCase)) is { } known)
+            if (Countries.Resolve(read.CountryRegion) is { } known)
             {
                 _record!.EmiratesIdNationality = known;
             }

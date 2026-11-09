@@ -1344,6 +1344,96 @@ public partial class SubmitInsiderDeclaration
 
     private int WorkspaceLoadedCount => _loadedFromWorkspace.Count + _loadedTypesFromWorkspace.Count;
 
+    // ---------- what My Workspace still holds ----------
+
+    /// <summary>The blobs the member's My Workspace documents point at right now, refreshed every
+    /// time the workspace is read.
+    ///
+    /// A declaration references the same blob row My Workspace does rather than copying the file,
+    /// so removing a document there leaves this declaration pointing at bytes the register no
+    /// longer lists. That is correct -- a declaration has to keep what was declared, and a
+    /// document carried over from last quarter was never in this set either -- but the card went
+    /// on saying "Loaded from My Workspace" about something My Workspace does not have, and there
+    /// was no way to take it off the declaration short of uploading a replacement.</summary>
+    private HashSet<int> _workspaceBlobIds = [];
+
+    private bool StillInWorkspace(int? blobId) => blobId is { } id && _workspaceBlobIds.Contains(id);
+
+    /// <summary>What a card says about where its file came from. "Loaded from My Workspace" is
+    /// only true while My Workspace still has it; after that it is this declaration's own.</summary>
+    private string SourceLabel(MemberDocumentKind kind, int? blobId, bool uploaded) =>
+        !uploaded
+            ? "JPG, PNG or PDF, up to 1 MB"
+            : _loadedFromWorkspace.Contains(kind) && StillInWorkspace(blobId)
+                ? "Loaded from My Workspace"
+                : StillInWorkspace(blobId)
+                    ? "Also in My Workspace"
+                    : "Held by this declaration";
+
+    private string AddedSourceLabel(int typeId, int? blobId, bool uploaded) =>
+        !uploaded
+            ? "JPG, PNG or PDF, up to 1 MB"
+            : _loadedTypesFromWorkspace.Contains(typeId) && StillInWorkspace(blobId)
+                ? "Loaded from My Workspace"
+                : StillInWorkspace(blobId)
+                    ? "Also in My Workspace"
+                    : "Held by this declaration";
+
+    // ---------- taking a document off the declaration ----------
+
+    /// <summary>Clears a slot: the file and everything read off it.
+    ///
+    /// The member could previously only replace a document, never remove one, so a document that
+    /// reached the declaration -- pulled from My Workspace, or carried over from the last
+    /// declaration -- stayed on it even after they deleted it from My Workspace. Nothing in My
+    /// Workspace and nothing already submitted is touched; this is the draft in front of them.</summary>
+    private void RemoveEmiratesId()
+    {
+        _emiratesIdBlobId = null;
+        _emiratesIdPath = null;
+        _emiratesIdNumber = string.Empty;
+        _emiratesIdNameOnCard = string.Empty;
+        _emiratesIdExpiryDate = null;
+        _emiratesIdExpiredNeedsReupload = false;
+        _loadedFromWorkspace.Remove(MemberDocumentKind.EmiratesId);
+        Toasts.ShowSuccess($"{DocumentName(MemberDocumentKind.EmiratesId, "Emirates ID")} removed from this declaration. My Workspace is unchanged.");
+    }
+
+    private void RemovePassport()
+    {
+        _passportBlobId = null;
+        _passportPath = null;
+        _passportNumber = string.Empty;
+        _passportIssuingCountry = string.Empty;
+        _passportExpiryDate = null;
+        _loadedFromWorkspace.Remove(MemberDocumentKind.Passport);
+        Toasts.ShowSuccess($"{DocumentName(MemberDocumentKind.Passport, "Passport")} removed from this declaration. My Workspace is unchanged.");
+    }
+
+    private void RemoveTradeLicence()
+    {
+        _tradeLicenceBlobId = null;
+        _tradeLicencePath = null;
+        _tradeLicenceNumber = string.Empty;
+        _tradeLicenceExpiryDate = null;
+        _loadedFromWorkspace.Remove(MemberDocumentKind.TradeLicence);
+        Toasts.ShowSuccess($"{DocumentName(MemberDocumentKind.TradeLicence, "Trade Licence")} removed from this declaration. My Workspace is unchanged.");
+    }
+
+    private void RemoveAddedDocument(int typeId)
+    {
+        var row = AddedDocumentFor(typeId);
+        row.BlobId = null;
+        row.FilePath = null;
+        row.OriginalFileName = null;
+        row.DocumentNumber = null;
+        row.ExpiryDate = null;
+        _loadedTypesFromWorkspace.Remove(typeId);
+
+        var name = _documentTypes.FirstOrDefault(t => t.Id == typeId)?.Name ?? "Document";
+        Toasts.ShowSuccess($"{name} removed from this declaration. My Workspace is unchanged.");
+    }
+
     /// <summary>Applies a typed expiry date, complaining rather than silently clearing what is
     /// there when it cannot be read. Dates are dd/MM/yyyy everywhere: a native date input renders
     /// in the browser's locale, which on an en-US machine reads a UAE document's 14/03/2026 as a
@@ -1386,6 +1476,13 @@ public partial class SubmitInsiderDeclaration
                         && (d.Kind != MemberDocumentKind.Other || d.DocumentTypeId != null)
                         && d.BlobId != null)
             .ToListAsync();
+
+        // Every document the member holds, not only the ones this screen has a slot for: the
+        // cards ask "is this still in My Workspace", and an Other document is still in it.
+        _workspaceBlobIds = await db.MemberDocuments.AsNoTracking()
+            .Where(d => d.MemberId == _effectiveMember.Id && d.BlobId != null)
+            .Select(d => d.BlobId!.Value)
+            .ToHashSetAsync();
 
         // An expired document is not offered: bringing it across only to be stopped at Proceed to
         // Submission wastes the member's time and hides the actual problem, which is in My

@@ -11,5 +11,6 @@ OnboardingTemplateChecks.Run();
 ExpiryChecks.Run();
 AuditTrailChecks.Run();
 DirectoryFillChecks.Run();
+DeclarationDocumentChecks.Run();
 
 return Check.Report();

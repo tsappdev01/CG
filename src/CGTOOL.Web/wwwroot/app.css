@@ -2399,6 +2399,14 @@ select.cg-input {
    inherits neither the page's font nor a pointer, so both are asked for here. */
 button.cg-doc-chip { font-family: inherit; cursor: pointer; }
 button.cg-doc-chip:disabled { cursor: default; opacity: 0.6; text-decoration: none; }
+/* Taking a document off the declaration is the one destructive thing a card does, so it does not
+   look like View or Read details. It still only clears this declaration's slot -- My Workspace
+   keeps its copy -- which is why it is a chip beside them rather than a full critical button. */
+button.cg-doc-chip-remove {
+    background: var(--cg-critical-tint, #fdeeee);
+    border-color: var(--cg-critical, #b3261e);
+    color: var(--cg-critical, #b3261e);
+}
 .cg-doc-heading { font-size: 14px; font-weight: 700; margin: 22px 0 10px; color: var(--cg-ink); }
 .cg-doc-uploads { display: flex; flex-direction: column; gap: 10px; }
 .cg-doc-upload {

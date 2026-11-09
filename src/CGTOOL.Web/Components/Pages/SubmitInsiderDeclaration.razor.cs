@@ -330,7 +330,7 @@ public partial class SubmitInsiderDeclaration
     private bool _passportExpiredNeedsReupload;
     private bool _tradeLicenceExpiredNeedsReupload;
 
-    private const long MaxIdUploadBytes = 1 * 1024 * 1024;
+    private const long MaxIdUploadBytes = UploadLimits.DocumentBytes;
 
     private bool _pendingCapture1Confirm;
     private bool _savingDraft;
@@ -918,7 +918,8 @@ public partial class SubmitInsiderDeclaration
 
     private const int UploadChunkBytes = 64 * 1024;
 
-    // Functional Spec §3.3: JPG, PNG, or PDF only, 1 MB max. Copies in chunks (rather than a single
+    // JPG, PNG or PDF only, up to UploadLimits.DocumentBytes -- the Functional Spec's 1 MB was
+    // smaller than a phone photograph of an Emirates ID. Copies in chunks (rather than a single
     // CopyToAsync) purely so onProgress/StateHasChanged can report percent-complete back to the
     // progress bar in the UI as the upload streams in over SignalR.
     private async Task UploadIdDocumentAsync(InputFileChangeEventArgs e, string kind, Action<int> onSaved, Action onDone, Action onStart, Action<int> onProgress, Func<byte[], Task>? onSavedAsync)
@@ -940,7 +941,7 @@ public partial class SubmitInsiderDeclaration
         }
         if (file.Size > MaxIdUploadBytes)
         {
-            Toasts.ShowError("File must be 1 MB or smaller.");
+            Toasts.ShowError(UploadLimits.TooLarge(file.Size));
             return;
         }
 
@@ -1363,7 +1364,7 @@ public partial class SubmitInsiderDeclaration
     /// only true while My Workspace still has it; after that it is this declaration's own.</summary>
     private string SourceLabel(MemberDocumentKind kind, int? blobId, bool uploaded) =>
         !uploaded
-            ? "JPG, PNG or PDF, up to 1 MB"
+            ? UploadLimits.DocumentHint
             : _loadedFromWorkspace.Contains(kind) && StillInWorkspace(blobId)
                 ? "Loaded from My Workspace"
                 : StillInWorkspace(blobId)
@@ -1372,7 +1373,7 @@ public partial class SubmitInsiderDeclaration
 
     private string AddedSourceLabel(int typeId, int? blobId, bool uploaded) =>
         !uploaded
-            ? "JPG, PNG or PDF, up to 1 MB"
+            ? UploadLimits.DocumentHint
             : _loadedTypesFromWorkspace.Contains(typeId) && StillInWorkspace(blobId)
                 ? "Loaded from My Workspace"
                 : StillInWorkspace(blobId)

@@ -37,7 +37,7 @@ public partial class RpTransactionsPage
     private string _description = string.Empty;
     private bool _submitting;
 
-    private const long MaxDocumentFileBytes = 10 * 1024 * 1024;
+    private const long MaxDocumentFileBytes = UploadLimits.SupportingDocumentBytes;
     private readonly List<RelatedPartyTransactionDocument> _pendingDocuments = [];
     private bool _uploadingDocument;
     private int _uploadProgress;
@@ -153,7 +153,7 @@ public partial class RpTransactionsPage
         }
         if (file.Size > MaxDocumentFileBytes)
         {
-            Toasts.ShowError("File must be 10 MB or smaller.");
+            Toasts.ShowError(UploadLimits.TooLarge(file.Size, MaxDocumentFileBytes));
             return;
         }
 

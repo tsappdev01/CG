@@ -9,7 +9,7 @@ namespace CGTOOL.Web.Components.Pages;
 public partial class Onboarding
 {
     /// <summary>Per side of the card. A photographed Emirates ID is well under this.</summary>
-    private const long MaxCardBytes = 5 * 1024 * 1024;
+    private const long MaxCardBytes = UploadLimits.DocumentBytes;
 
     private bool _loading = true;
     private bool _busy;
@@ -94,7 +94,7 @@ public partial class Onboarding
 
     /// <summary>How far the file has got, 0-100 while it is transferring and null otherwise.
     ///
-    /// Counted rather than a spinner: the card is a PDF of up to 5 MB over whatever connection
+    /// Counted rather than a spinner: the card is a PDF of up to UploadLimits.DocumentBytes over whatever connection
     /// the member happens to be on, and the step before this one was instant. Without a number
     /// the screen looks like it ignored the file -- the only sign anything was happening was a
     /// line of text below the fields, which is not where somebody who has just pressed Choose
@@ -326,7 +326,7 @@ public partial class Onboarding
 
         if (file.Size > MaxCardBytes)
         {
-            _captureNote = $"That file is {file.Size / (1024 * 1024)} MB. The limit is 5 MB.";
+            _captureNote = UploadLimits.TooLarge(file.Size);
             return;
         }
 

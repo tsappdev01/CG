@@ -211,9 +211,9 @@ public partial class UserManagement
             try
             {
                 // Read fully into memory first: ExcelDataReader seeks, and the browser file stream
-                // does not. 10 MB is far beyond any plausible staff list.
+                // does not. UploadLimits.BulkBytes is far beyond any plausible staff list.
                 using var buffer = new MemoryStream();
-                await using (var source = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024))
+                await using (var source = file.OpenReadStream(maxAllowedSize: UploadLimits.BulkBytes))
                 {
                     // Copied a chunk at a time rather than with CopyToAsync so the bar can move: the
                     // browser sends the file over the circuit in pieces, and this is the only point

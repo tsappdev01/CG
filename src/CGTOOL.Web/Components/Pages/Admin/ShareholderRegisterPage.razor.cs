@@ -9,7 +9,7 @@ namespace CGTOOL.Web.Components.Pages.Admin;
 
 public partial class ShareholderRegisterPage
 {
-    private const long MaxUploadBytes = 20 * 1024 * 1024;
+    private const long MaxUploadBytes = UploadLimits.BulkBytes;
     private const int UploadChunkBytes = 256 * 1024;
     private const int PageSize = 25;
 
@@ -235,7 +235,7 @@ public partial class ShareholderRegisterPage
         }
         if (file.Size > MaxUploadBytes)
         {
-            _parseError = "File is too large (max 20 MB).";
+            _parseError = $"File is too large (max {UploadLimits.BulkLimit}).";
             return;
         }
 

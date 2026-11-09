@@ -86,7 +86,7 @@ public partial class MemberDetail
 
     private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
-    private const long MaxProfilePictureBytes = 2 * 1024 * 1024;
+    private const long MaxProfilePictureBytes = UploadLimits.PictureBytes;
 
     protected override async Task OnInitializedAsync()
     {
@@ -231,7 +231,7 @@ public partial class MemberDetail
 
         if (file.Size > MaxProfilePictureBytes)
         {
-            Toasts.ShowError("Profile picture must be 2 MB or smaller.");
+            Toasts.ShowError(UploadLimits.TooLarge(file.Size, MaxProfilePictureBytes));
             return;
         }
 

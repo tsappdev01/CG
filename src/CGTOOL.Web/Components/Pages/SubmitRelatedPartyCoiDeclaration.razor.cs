@@ -50,7 +50,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private DateTime? DocumentVersion(int documentTypeId) =>
         _documentWrittenAt.TryGetValue(documentTypeId, out var at) ? at : null;
 
-    private const long MaxDeclarationDocumentBytes = 10 * 1024 * 1024;
+    private const long MaxDeclarationDocumentBytes = UploadLimits.SupportingDocumentBytes;
 
     /// <summary>Active documents this declaration asks for, in the Document Center's order.</summary>
     private IEnumerable<DocumentType> RequestedDocumentTypes =>
@@ -331,7 +331,7 @@ public partial class SubmitRelatedPartyCoiDeclaration
     private bool _showAttestation;
     private bool _pendingFormConfirm;
 
-    private const long MaxTradeLicenseFileBytes = 10 * 1024 * 1024;
+    private const long MaxTradeLicenseFileBytes = UploadLimits.SupportingDocumentBytes;
     private const int MaxDocumentsPerRow = 10;
 
     private static readonly (RelativeRelationship Value, string Label)[] RelativeOptions =

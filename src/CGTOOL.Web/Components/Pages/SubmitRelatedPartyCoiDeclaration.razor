@@ -435,7 +435,7 @@
                                         <span class="cg-pill @(IsRequired(type) ? "cg-pill-required" : "")">@(IsRequired(type) ? "Required" : "Optional")</span>
                                         <span class="cg-pill cg-pill-status @(attached ? "cg-pill-done" : "")">@(attached ? "Attached" : "Not attached")</span>
                                     </h3>
-                                    <p class="cg-subtitle">@(string.IsNullOrWhiteSpace(type.Description) ? "JPG, PNG or PDF, up to 10 MB." : type.Description)</p>
+                                    <p class="cg-subtitle">@(string.IsNullOrWhiteSpace(type.Description) ? $"JPG, PNG or PDF, up to {UploadLimits.SupportingDocumentLimit}." : type.Description)</p>
                                 </div>
                                 <div class="cg-doc-panel-file">
                                     <InputFile OnChange="e => OnDeclarationDocumentSelectedAsync(type, e)" accept=".png,.jpg,.jpeg,.pdf" disabled="@IsUploadingDocument(type.Id)" />

@@ -9,7 +9,7 @@ namespace CGTOOL.Web.Components.Pages.Admin;
 
 public partial class ShareTradingPage
 {
-    private const long MaxUploadBytes = 20 * 1024 * 1024;
+    private const long MaxUploadBytes = UploadLimits.BulkBytes;
     private const int UploadChunkBytes = 256 * 1024;
 
     /// <summary>One row of the Running Position report -- an investor's opening balance (as of just
@@ -299,7 +299,7 @@ public partial class ShareTradingPage
         }
         if (file.Size > MaxUploadBytes)
         {
-            _parseError = "File is too large (max 20 MB).";
+            _parseError = $"File is too large (max {UploadLimits.BulkLimit}).";
             return;
         }
 

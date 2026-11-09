@@ -147,7 +147,7 @@
                             </label>
                             <label class="cg-field">
                                 <span>Minutes or approval evidence
-                                    <em class="cg-subtitle" style="margin:0;">— PDF, JPG or PNG, up to 10 MB</em></span>
+                                    <em class="cg-subtitle" style="margin:0;">— PDF, JPG or PNG, up to @UploadLimits.SupportingDocumentLimit</em></span>
                                 <InputFile OnChange="e => UploadMinutesAsync(e, s)" accept=".png,.jpg,.jpeg,.pdf" disabled="@_uploadingMinutes" />
                                 @if (_uploadingMinutes)
                                 {

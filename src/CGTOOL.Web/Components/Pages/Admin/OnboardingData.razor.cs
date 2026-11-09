@@ -8,7 +8,7 @@ public partial class OnboardingData
 {
     /// <summary>Per scan. The folder these came from holds files up to about two megabytes, with
     /// one at four and a half.</summary>
-    private const long MaxScanBytes = 10 * 1024 * 1024;
+    private const long MaxScanBytes = UploadLimits.SupportingDocumentBytes;
 
     /// <summary>How many scans one upload may carry. The real folder has 226.</summary>
     private const int MaxScanCount = 1000;
@@ -52,7 +52,7 @@ public partial class OnboardingData
                 // than one called out by name.
                 if (file.Size > MaxScanBytes)
                 {
-                    _scanResults.Add(new EmiratesIdAttachOutcome(file.Name, null, false, "Larger than 10 MB."));
+                    _scanResults.Add(new EmiratesIdAttachOutcome(file.Name, null, false, $"Larger than {UploadLimits.SupportingDocumentLimit}."));
                     continue;
                 }
 

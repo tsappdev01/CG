@@ -12,7 +12,7 @@ namespace CGTOOL.Web.Components.Pages.Admin;
 /// </summary>
 public partial class PolicyDocuments
 {
-    private const long MaxPolicyDocumentBytes = 20 * 1024 * 1024;
+    private const long MaxPolicyDocumentBytes = UploadLimits.BulkBytes;
     private const string PolicyDocumentRelativePath = PolicyDocumentLink.RelativePath;
     private const string PolicyBackupRelativeDir = PolicyDocumentLink.BackupRelativeDir;
 
@@ -50,7 +50,7 @@ public partial class PolicyDocuments
         }
         if (file.Size > MaxPolicyDocumentBytes)
         {
-            Toasts.ShowError("File must be 20 MB or smaller.");
+            Toasts.ShowError(UploadLimits.TooLarge(file.Size, UploadLimits.BulkBytes));
             return;
         }
 

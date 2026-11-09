@@ -39,7 +39,7 @@ public partial class RpTransactionCcaoReviewPage
     private DateTime? DecisionDateFor(int id) => _decisionDates.TryGetValue(id, out var v) ? v : null;
     private string AbstainedFor(int id) => _abstained.TryGetValue(id, out var v) ? v : string.Empty;
 
-    private const long MaxMinutesBytes = 10 * 1024 * 1024;
+    private const long MaxMinutesBytes = UploadLimits.SupportingDocumentBytes;
 
     /// <summary>The minutes behind the decision, filed against the transaction as evidence rather
     /// than as one of the requestor's supporting papers -- which is what Kind distinguishes.</summary>
@@ -60,7 +60,7 @@ public partial class RpTransactionCcaoReviewPage
         }
         if (file.Size > MaxMinutesBytes)
         {
-            Toasts.ShowError("File must be 10 MB or smaller.");
+            Toasts.ShowError(UploadLimits.TooLarge(file.Size, MaxMinutesBytes));
             return;
         }
 

@@ -45,8 +45,8 @@ public partial class MyRegister : ComponentBase
     private int _page = 1;
     private const int RelativesPageSize = 10;
 
-    private const long MaxIdUploadBytes = 1 * 1024 * 1024;
-    private const long MaxCompanyDocUploadBytes = 10 * 1024 * 1024;
+    private const long MaxIdUploadBytes = UploadLimits.DocumentBytes;
+    private const long MaxCompanyDocUploadBytes = UploadLimits.SupportingDocumentBytes;
 
     private readonly HashSet<(int Id, string Kind)> _uploadingDocs = [];
 
@@ -503,7 +503,7 @@ public partial class MyRegister : ComponentBase
 
     // ---------- my documents ----------
 
-    private const long MaxMemberDocumentBytes = 10 * 1024 * 1024;
+    private const long MaxMemberDocumentBytes = UploadLimits.SupportingDocumentBytes;
 
     /// <summary>What the Document Centre is currently asking for. This was a static array of three
     /// documents with their titles and blurbs written in; it is a table now, so a document can be
@@ -659,7 +659,7 @@ public partial class MyRegister : ComponentBase
 
         var extension = ExtensionFor(e.File.ContentType);
         if (extension is null) { Toasts.ShowError("Only JPEG, PNG, or PDF files are supported."); return; }
-        if (e.File.Size > MaxMemberDocumentBytes) { Toasts.ShowError("File must be 10 MB or smaller."); return; }
+        if (e.File.Size > MaxMemberDocumentBytes) { Toasts.ShowError(UploadLimits.TooLarge(e.File.Size, UploadLimits.SupportingDocumentBytes)); return; }
 
         // The browser's file is read to a temporary file FIRST, before the row is written and before
         // anything re-renders. The stream is served through the InputFile component that raised this
@@ -1049,7 +1049,7 @@ public partial class MyRegister : ComponentBase
 
         var extension = ExtensionFor(e.File.ContentType);
         if (extension is null) { Toasts.ShowError("Only JPEG, PNG, or PDF files are supported."); return; }
-        if (e.File.Size > MaxCompanyDocUploadBytes) { Toasts.ShowError("File must be 10 MB or smaller."); return; }
+        if (e.File.Size > MaxCompanyDocUploadBytes) { Toasts.ShowError(UploadLimits.TooLarge(e.File.Size, UploadLimits.SupportingDocumentBytes)); return; }
 
         var temporaryFile = Path.GetTempFileName();
         try
@@ -1515,7 +1515,7 @@ public partial class MyRegister : ComponentBase
 
         var extension = ExtensionFor(e.File.ContentType);
         if (extension is null) { Toasts.ShowError("Only JPEG, PNG, or PDF files are supported."); return; }
-        if (e.File.Size > MaxIdUploadBytes) { Toasts.ShowError("File must be 1 MB or smaller."); return; }
+        if (e.File.Size > MaxIdUploadBytes) { Toasts.ShowError(UploadLimits.TooLarge(e.File.Size)); return; }
 
         var target = _relativeTarget;
         _uploadingDocs.Add((target.Id, kind));
@@ -1605,7 +1605,7 @@ public partial class MyRegister : ComponentBase
 
         var extension = ExtensionFor(e.File.ContentType);
         if (extension is null) { Toasts.ShowError("Only JPEG, PNG, or PDF files are supported."); return; }
-        if (e.File.Size > MaxCompanyDocUploadBytes) { Toasts.ShowError("File must be 10 MB or smaller."); return; }
+        if (e.File.Size > MaxCompanyDocUploadBytes) { Toasts.ShowError(UploadLimits.TooLarge(e.File.Size, UploadLimits.SupportingDocumentBytes)); return; }
 
         var target = _companyTarget;
         _uploadingDocs.Add((target.Id, kind));

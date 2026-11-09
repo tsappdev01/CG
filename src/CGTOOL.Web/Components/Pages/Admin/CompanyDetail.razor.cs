@@ -9,7 +9,7 @@ namespace CGTOOL.Web.Components.Pages.Admin;
 
 public partial class CompanyDetail
 {
-    private const long MaxLogoBytes = 2 * 1024 * 1024;
+    private const long MaxLogoBytes = UploadLimits.PictureBytes;
 
     [Parameter] public int Id { get; set; }
 
@@ -105,7 +105,7 @@ public partial class CompanyDetail
         }
         if (file.Size > MaxLogoBytes)
         {
-            Toasts.ShowError("Logo must be 2 MB or smaller.");
+            Toasts.ShowError(UploadLimits.TooLarge(file.Size, MaxLogoBytes));
             return;
         }
 

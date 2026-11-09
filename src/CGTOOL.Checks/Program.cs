@@ -12,5 +12,6 @@ ExpiryChecks.Run();
 AuditTrailChecks.Run();
 DirectoryFillChecks.Run();
 DeclarationDocumentChecks.Run();
+UploadLimitChecks.Run();
 
 return Check.Report();

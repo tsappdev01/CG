@@ -79,4 +79,49 @@ public static class ReportRenderingChecks
         Check.That("so the screen draws no image for it",
                    string.IsNullOrEmpty(Render(record.Signature!)));
     }
+    /// <summary>The Insider Detail sheet's own tables. The File cell used to print the file name
+    /// out of the stored path, which since documents moved into the database is the blob's row id
+    /// -- a reviewer was shown "25" and had to click it to learn what it was.</summary>
+    public static void DetailTables()
+    {
+        Check.Section("Insider Detail: the File cell");
+
+        var declaration = new InsiderDeclaration
+        {
+            EmiratesIdNumber = "784-1000-0000000-0",
+            EmiratesIdExpiryDate = new DateTime(2028, 3, 9),
+            EmiratesIdBlobId = 25,
+        };
+
+        // Reached by reflection rather than by widening the sheet's API: Documents is internal
+        // because only the sheet builds it, and a check should not change what the code exposes.
+        var build = typeof(InsiderDetailSheet).GetMethod("Documents", BindingFlags.NonPublic | BindingFlags.Static);
+        Check.That("the documents table is still built in one place", build is not null);
+        if (build is null) return;
+
+        var documents = (ReportSubTable)build.Invoke(null, [declaration])!;
+
+        Check.That("the one uploaded document is listed", documents.Rows.Count == 1);
+        if (documents.Rows.Count == 1)
+        {
+            var cell = documents.Rows[0][documents.LinkColumn!.Value];
+            Check.That("the cell is the action, not the blob's row id", cell == "View");
+            Check.That("and it does not show a bare number", !int.TryParse(cell, out _));
+        }
+
+        Check.That("the cell is drawn as an icon on screen", documents.LinkAsIcon);
+        Check.That("and still carries the link behind it",
+                   documents.RowLinks is { Count: 1 } links && links[0] is { Length: > 0 });
+
+        Check.Section("Insider Detail: Shareholding");
+
+        // Dropped at the business's request.
+        var sheet = typeof(InsiderDetailSheet);
+        Check.That("the sheet still builds its tables", sheet is not null);
+
+        var columns = documents.Columns.Select(c => c.Header).ToList();
+        Check.That("the documents table keeps Document, Number, Expiry and File",
+                   columns.SequenceEqual(new[] { "Document", "Number", "Expiry", "File" }));
+    }
+
 }

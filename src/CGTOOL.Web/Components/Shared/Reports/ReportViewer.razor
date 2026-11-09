@@ -141,7 +141,20 @@
                                                                     {
                                                                         @* Opens in its own tab: the reviewer is part-way through a
                                                                            report and should not lose their place to look at a scan. *@
-                                                                        <a href="@href" target="_blank" rel="noopener">@text</a>
+                                                                        <a href="@href" target="_blank" rel="noopener" title="@text" class="@(table.LinkAsIcon ? "cg-report-view" : null)">
+                                                                            @if (table.LinkAsIcon)
+                                                                            {
+                                                                                @* The cell is an action, so it is drawn as one. The
+                                                                                   text stays in the title and for screen readers --
+                                                                                   an icon alone tells somebody using one nothing. *@
+                                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.6 12S5.4 5 12 5s10.4 7 10.4 7-3.8 7-10.4 7S1.6 12 1.6 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+                                                                                <span class="cg-visually-hidden">@text</span>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                @text
+                                                                            }
+                                                                        </a>
                                                                     }
                                                                     else
                                                                     {
@@ -411,7 +424,7 @@
         "application/pdf");
 
     private Task DownloadWorkbookAsync() => DownloadAsync(
-        () => ReportWorkbook.Build(Report),
+        () => ReportWorkbook.Build(Report, Branding.PublicBaseUrl),
         Report.FileName("xlsx"),
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 

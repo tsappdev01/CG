@@ -6,6 +6,7 @@ RelationshipChecks.Run();
 ReportAccessChecks.Run();
 IdentityFormatChecks.Run();
 ReportRenderingChecks.Run();
+ReportRenderingChecks.DetailTables();
 CountryChecks.Run();
 OnboardingTemplateChecks.Run();
 ExpiryChecks.Run();

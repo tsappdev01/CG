@@ -4489,3 +4489,11 @@ button.cg-appbar-user {
     cursor: pointer;
     flex: none;
 }
+
+/* The view link in a report cell: an icon, centred in its column, that lifts on hover the way the
+   other report actions do. */
+.cg-report-view {
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--cg-accent); text-decoration: none;
+}
+.cg-report-view:hover { color: var(--cg-ink); }

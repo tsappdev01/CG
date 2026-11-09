@@ -30,13 +30,18 @@ public sealed record ReportFact(string Label, string Value);
 /// spreadsheet leave the building and a relative path would not resolve from either, so the text
 /// is the file's own name rather than the word "View".</param>
 /// <param name="RowLinks">One href per row, in row order, or null where that row has no file.</param>
+/// <param name="LinkAsIcon">Draw the link as a view icon rather than its text. Only for a link to
+/// the file itself: a cell whose link navigates to another report keeps its words, because the
+/// words are what the reviewer is choosing between. Screen only -- a PDF or a workbook has
+/// nothing to click, so both keep the cell's text.</param>
 public sealed record ReportSubTable(
     string Heading,
     IReadOnlyList<ReportColumn> Columns,
     IReadOnlyList<string[]> Rows,
     string? EmptyNote = null,
     int? LinkColumn = null,
-    IReadOnlyList<string?>? RowLinks = null);
+    IReadOnlyList<string?>? RowLinks = null,
+    bool LinkAsIcon = false);
 
 /// <summary>One sheet of a detail report: a person, their facts, and the grids beneath them.
 ///

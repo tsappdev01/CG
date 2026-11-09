@@ -1,5 +1,7 @@
 using ClosedXML.Excel;
 
+using CGTOOL.Web.Data.Governance;
+
 namespace CGTOOL.Web.Data.Reports;
 
 /// <summary>A report as a real .xlsx, not a CSV with a spreadsheet's file extension.
@@ -14,7 +16,19 @@ public static class ReportWorkbook
     private static readonly XLColor Navy = XLColor.FromArgb(0, 40, 80);
     private static readonly XLColor Brand = XLColor.FromArgb(175, 131, 46);
 
-    public static byte[] Build(ReportDocument report)
+    /// <summary>A link a workbook can actually follow.
+    ///
+    /// Report links are site-relative ("/documents/25"), which a spreadsheet cannot resolve -- it
+    /// has no page to be relative to. They are combined with the site's published address, the
+    /// same constant the reminder emails build their links from. An href that is already absolute
+    /// is taken as it stands; anything that will not parse gets no link rather than a broken
+    /// one.</summary>
+    private static Uri? Absolute(string href, string? baseUrl) =>
+        Uri.TryCreate(href, UriKind.Absolute, out var absolute) ? absolute
+        : Uri.TryCreate(new Uri(baseUrl is { Length: > 0 } b ? b : Branding.DefaultPublicBaseUrl), href, out var combined) ? combined
+        : null;
+
+    public static byte[] Build(ReportDocument report, string? baseUrl = null)
     {
         using var workbook = new XLWorkbook();
         // Excel refuses a sheet name over 31 characters, or one containing : \ / ? * [ ] -- and
@@ -69,7 +83,7 @@ public static class ReportWorkbook
 
         if (report.IsDetail)
         {
-            WriteRecords(sheet, report, ref row);
+            WriteRecords(sheet, report, ref row, baseUrl);
 
             sheet.Columns(1, 6).AdjustToContents(1, 8, 60);
 
@@ -140,7 +154,7 @@ public static class ReportWorkbook
     /// <summary>A detail report written down the sheet rather than across it: one block per
     /// person, their facts as label/value pairs, then each grid under its own heading. One sheet
     /// rather than one tab per person, because a workbook with 304 tabs is not usable.</summary>
-    private static void WriteRecords(IXLWorksheet sheet, ReportDocument report, ref int row)
+    private static void WriteRecords(IXLWorksheet sheet, ReportDocument report, ref int row, string? baseUrl)
     {
         foreach (var record in report.Records)
         {
@@ -187,6 +201,7 @@ public static class ReportWorkbook
                 }
                 row++;
 
+                var tableRow = 0;
                 foreach (var data in table.Rows)
                 {
                     for (var c = 0; c < table.Columns.Count && c < data.Length; c++)
@@ -201,8 +216,21 @@ public static class ReportWorkbook
                         {
                             cell.SetValue(data[c]);
                         }
+
+                        // A cell drawn as a view icon on screen says "View", which in a workbook
+                        // is a word that does nothing. The link goes on the cell instead, so the
+                        // document is one click from the sheet as well.
+                        if (c == table.LinkColumn
+                            && table.RowLinks is { } links
+                            && tableRow < links.Count
+                            && links[tableRow] is { Length: > 0 } href
+                            && Absolute(href, baseUrl) is { } uri)
+                        {
+                            cell.SetHyperlink(new XLHyperlink(uri));
+                        }
                     }
                     row++;
+                    tableRow++;
                 }
             }
 

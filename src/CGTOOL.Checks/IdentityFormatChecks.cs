@@ -20,11 +20,11 @@ public static class IdentityFormatChecks
         Check.That("a wrong one is", Nin.IsInvalidEntry("PKA407"));
 
         Check.Section("Emirates ID number");
-        Check.That("fifteen digits beginning 784 is valid", EmiratesIdNumber.IsValid("784197940769280"));
+        Check.That("fifteen digits beginning 784 is valid", EmiratesIdNumber.IsValid("784100000000000"));
         Check.That("the same number with the card's separators is the same number",
-                   EmiratesIdNumber.IsValid("784-1979-4076928-0"));
+                   EmiratesIdNumber.IsValid("784-1000-0000000-0"));
         Check.That("and normalises to digits",
-                   EmiratesIdNumber.Normalise("784-1979-4076928-0") == "784197940769280");
+                   EmiratesIdNumber.Normalise("784-1000-0000000-0") == "784100000000000");
         Check.That("not beginning 784 is not valid", !EmiratesIdNumber.IsValid("123197940769280"));
         Check.That("fourteen digits is not", !EmiratesIdNumber.IsValid("78419794076928"));
         Check.That("a NIN is not an Emirates ID number", !EmiratesIdNumber.IsValid("PKA4076928"));

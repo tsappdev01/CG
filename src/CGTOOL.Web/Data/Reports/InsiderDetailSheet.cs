@@ -64,13 +64,15 @@ public static class InsiderDetailSheet
                 // the screen he signed and the PDF of it both said Self.
                 new ReportSubTable(
                     "Shareholding",
-                    [new("Name", 36), new("Held by", 22), new("NIN", 24), new("Shares", 18, Numeric: true)],
+                    // "Shares" was dropped at the business's request. It read whatever the
+                    // declarant typed into the shareholding grid, which is not a holding anyone
+                    // reconciles against -- the DFM's own figure is.
+                    [new("Name", 36), new("Held by", 22), new("NIN", 30)],
                     [.. d.Relatives.Select(r => new[]
                     {
                         r.IsSelf ? row.MemberName : r.RelativeName,
                         r.IsSelf ? "Self" : RelationshipLabel(r.Relationship),
                         r.NinNumber ?? "—",
-                        r.NumberOfShares.ToString(),
                     })],
                     d.RelativesHoldShares ? "Declared that relatives hold shares, but none were listed."
                                           : $"Declared that no relatives hold shares in {parentHoldingCompany}."),
@@ -110,25 +112,21 @@ public static class InsiderDetailSheet
 
         return new ReportSubTable(
             "Documents",
-            [new("Document", 26), new("Number", 26), new("Expiry", 18), new("File", 30)],
+            [new("Document", 26), new("Number", 26), new("Expiry", 18), new("File", 14)],
             [.. filed.Select(f => new[]
             {
                 f.Kind,
                 f.Number ?? "—",
                 f.Expiry?.ToString("dd/MM/yyyy") ?? "—",
-                FileNameOf(f.Path!),
+                // Not the file's name: a stored document is "/documents/25" now, so the name
+                // read as a bare row id -- a reviewer was shown "25" and had to click it to find
+                // out what it was. The cell is the action instead, drawn as an icon on screen.
+                "View",
             })],
             "No documents were uploaded with this declaration.",
             LinkColumn: 3,
-            RowLinks: [.. filed.Select(f => (string?)f.Path)]);
-    }
-
-    /// <summary>The name a person would recognise, out of a stored path like
-    /// "uploads/declarations/9f2c…-emirates-id.jpg".</summary>
-    internal static string FileNameOf(string path)
-    {
-        var name = path.Replace('\\', '/').Split('/').LastOrDefault();
-        return string.IsNullOrWhiteSpace(name) ? "Open" : name;
+            RowLinks: [.. filed.Select(f => (string?)f.Path)],
+            LinkAsIcon: true);
     }
 
     /// <summary>"FatherInLaw" is how the enum spells it; "Father in law" is how a reader does.</summary>
